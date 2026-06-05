@@ -6,6 +6,7 @@
     ./modules/home/browser.nix
     ./modules/home/zed.nix
     ./modules/home/wezterm.nix
+    ./modules/home/hyprland.nix
   ];
 
   home.username = "realdhiru";
