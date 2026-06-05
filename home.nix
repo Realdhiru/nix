@@ -7,6 +7,7 @@
     ./modules/home/zed.nix
     ./modules/home/wezterm.nix
     ./modules/home/hyprland.nix
+    ./modules/home/quickshell.nix
   ];
 
   home.username = "realdhiru";
