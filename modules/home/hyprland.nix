@@ -1,8 +1,8 @@
-{ config, ... }:
+{ ... }:
 
 {
-  xdg.configFile."hypr/hyprland.conf" = { 
-	source = ../../dotfiles/hypr/hyprland.conf;
-	force = true;
-    };
+  xdg.configFile."hypr" = {
+    source = ../../dotfiles/hypr;
+    force = true;
+  };
 }
