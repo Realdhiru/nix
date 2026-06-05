@@ -3,7 +3,11 @@ import QtQuick
 import QtQuick.Layouts
 
 PanelWindow {
-    anchors.top: true
+    anchors {
+        top: true
+        left: true
+        right: true
+    }
 
     implicitHeight: 32
 
@@ -11,13 +15,17 @@ PanelWindow {
         anchors.fill: parent
 
         Left {}
+
         Item {
             Layout.fillWidth: true
         }
+
         Center {}
+
         Item {
             Layout.fillWidth: true
         }
+
         Right {}
     }
 }
