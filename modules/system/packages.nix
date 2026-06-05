@@ -1,0 +1,47 @@
+{ pkgs, ... }:
+
+{
+  environment.systemPackages = with pkgs; [
+    # CLI
+    vim
+    wget
+    git
+    curl
+    tree
+    fastfetch
+
+    # Browser
+    brave
+
+    # File managers
+    thunar
+    kdePackages.dolphin
+
+    # Launcher
+    rofi
+
+    # Clipboard
+    wl-clipboard
+    cliphist
+
+    # Screenshots
+    grim
+    slurp
+
+    # Multimedia
+    brightnessctl
+    playerctl
+
+    # Windows drives
+    ntfs3g
+
+    # Notifications
+    libnotify
+
+    # Search
+    fsearch
+
+    # Polkit agent
+    polkit_gnome
+  ];
+}
