@@ -1,12 +1,23 @@
 import Quickshell
 import QtQuick
+import QtQuick.Layouts
 
 PanelWindow {
     anchors.top: true
-    implicitHeight: 30
 
-    Text {
-        anchors.centerIn: parent
-        text: "Quickshell"
+    implicitHeight: 32
+
+    RowLayout {
+        anchors.fill: parent
+
+        Left {}
+        Item {
+            Layout.fillWidth: true
+        }
+        Center {}
+        Item {
+            Layout.fillWidth: true
+        }
+        Right {}
     }
 }
