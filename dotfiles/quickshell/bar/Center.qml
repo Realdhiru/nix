@@ -2,5 +2,5 @@ import QtQuick
 
 Text {
     text: "Quickshell"
-    color: "white"
+    color: "black"
 }
