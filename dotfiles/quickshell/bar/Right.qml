@@ -1,6 +1,4 @@
 import QtQuick
+import "../widgets"
 
-Text {
-    text: "Right"
-    color: "white"
-}
+Clock {}
