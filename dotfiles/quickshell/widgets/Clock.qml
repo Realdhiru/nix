@@ -1,6 +1,6 @@
 import QtQuick
 
 Text {
-    color: "white"
+    color: "black"
     text: Qt.formatTime(new Date(), "hh:mm")
 }
