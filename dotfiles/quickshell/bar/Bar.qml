@@ -2,30 +2,43 @@ import Quickshell
 import QtQuick
 import QtQuick.Layouts
 
+import "."
+
 PanelWindow {
+
     anchors {
         top: true
         left: true
         right: true
     }
 
-    implicitHeight: 32
+    implicitHeight: 40
 
-    RowLayout {
+    Rectangle {
         anchors.fill: parent
 
-        Left {}
+        color: "#111827"
+        opacity: 0.9
 
-        Item {
-            Layout.fillWidth: true
+        RowLayout {
+
+            anchors.fill: parent
+            anchors.leftMargin: 20
+            anchors.rightMargin: 20
+
+            Left {}
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            Center {}
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            Right {}
         }
-
-        Center {}
-
-        Item {
-            Layout.fillWidth: true
-        }
-
-        Right {}
     }
 }

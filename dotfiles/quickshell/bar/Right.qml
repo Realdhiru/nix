@@ -1,4 +1,11 @@
 import QtQuick
+import QtQuick.Layouts
+
 import "../widgets"
 
-Clock {}
+RowLayout {
+
+    spacing: 20
+
+    Clock {}
+}
