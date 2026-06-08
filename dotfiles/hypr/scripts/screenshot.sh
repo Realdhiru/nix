@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-grim -g "$(slurp)" - | wl-copy
+grim -g "$(slurp -d)" - | wl-copy
