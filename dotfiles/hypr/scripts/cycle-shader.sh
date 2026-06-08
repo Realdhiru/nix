@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SHADER_DIR="$HOME/.config/shaders"
+SHADER_DIR="$HOME/.config/hypr/shaders"
 STATE_FILE="$HOME/.cache/current_shader"
 
 mapfile -t SHADERS < <(
