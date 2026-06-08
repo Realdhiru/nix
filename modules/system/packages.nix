@@ -27,6 +27,8 @@
     # Screenshots
     grim
     slurp
+    grimblast
+    wf-recorder
 
     # Multimedia
     brightnessctl
