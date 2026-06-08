@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 
 {
   users.users.realdhiru = {
@@ -8,6 +8,7 @@
       "wheel"
       "networkmanager"
     ];
+    shell = pkgs.zsh;
   };
 
   services.getty.autologinUser = "realdhiru";
