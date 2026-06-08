@@ -1,5 +1,5 @@
 { ... }:
 
 {
-  xdg.configFile."hypr/shaders".source = ../../dotfiles/hypr/shaders;
+  xdg.configFile.".config/hypr/shaders".source = ../../dotfiles/hypr/shaders;
 }
