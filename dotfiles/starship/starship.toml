@@ -1,0 +1,31 @@
+add_newline = true
+
+format = """
+$directory$git_branch$git_status$nix_shell$cmd_duration
+$character
+"""
+
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+style = "cyan"
+
+[git_branch]
+symbol = " "
+style = "purple"
+
+[git_status]
+style = "red"
+
+[nix_shell]
+symbol = "❄ "
+format = "[$symbol$state]($style) "
+style = "blue"
+
+[cmd_duration]
+min_time = 2000
+format = "took [$duration](yellow) "
+
+[character]
+success_symbol = "❯"
+error_symbol = "✗"
