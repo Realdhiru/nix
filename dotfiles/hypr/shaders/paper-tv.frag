@@ -1,4 +1,4 @@
-#version 320 es
+#version 300 es
 #define HYPRLAND_HOOK debug:damage_tracking 1
 precision highp float;
 

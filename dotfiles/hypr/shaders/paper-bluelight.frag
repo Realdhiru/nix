@@ -1,6 +1,4 @@
-// /home/peeru/.config/hypr/shaders/paper+bluelight.frag
-
-#version 320 es
+#version 300 es
 precision highp float;
 
 // ----------------------------------------------------

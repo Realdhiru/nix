@@ -1,13 +1,14 @@
+#version 300 es
 /*
  * Grayscale
  */
 
 
-/* 
+/*
 To override this parameters create a file named './grayscale.inc'
 We only need to match the file name and use 'inc' to incdicate that
  this is an "include" file
- Example: 
+ Example:
 
   ┌────────────────────────────────────────────────────────────────────────────┐
   │ // file: ./grayscale.inc                                                   │
@@ -39,14 +40,13 @@ We only need to match the file name and use 'inc' to incdicate that
 #ifndef GRAYSCALE_LIGHTNESS
     #define GRAYSCALE_LIGHTNESS 1 // Default fallback value
 #endif
-#ifndef GRAYSCALE_AVERAGE       
+#ifndef GRAYSCALE_AVERAGE
     #define GRAYSCALE_AVERAGE 2 // Default fallback value
 #endif
 #ifndef GRAYSCALE_LUMINOSITY
     #define GRAYSCALE_LUMINOSITY 0 // Default fallback value
 #endif
 
-#version 300 es
 precision highp float;
 in vec2 v_texcoord;
 out vec4 fragColor;
