@@ -9,6 +9,7 @@
     curl
     tree
     fastfetch
+    vscodium
 
     # Browser
     brave
