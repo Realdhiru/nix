@@ -5,6 +5,8 @@
     fastfetch
   ];
 
-  xdg.configFile."fastfetch".source =
-    ../../dotfiles/fastfetch;
+  xdg.configFile."fastfetch" = {
+    source = ../../dotfiles/fastfetch;
+    force = true;
+  };
 }

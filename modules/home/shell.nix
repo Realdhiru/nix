@@ -6,7 +6,7 @@
 
     enableCompletion = true;
 
-    enableAutosuggestions = true;
+    autosuggestion.enable = true;
 
     syntaxHighlighting.enable = true;
 
@@ -21,10 +21,14 @@
 
         git add -A
 
-        if [ $# -eq 0 ]; then
-          git commit -m "Update configuration" || true
+        if git diff --cached --quiet && git diff --quiet; then
+          echo "Nothing to commit."
         else
-          git commit -m "$*" || true
+          if [ $# -eq 0 ]; then
+            git commit -m "Update configuration"
+          else
+            git commit -m "$*"
+          fi
         fi
 
         sudo nixos-rebuild switch --flake .#vivobook
@@ -33,6 +37,7 @@
       update() {
         cd ~/nix || return
 
+        git pull
         nix flake update
 
         rebuild "flake update"
