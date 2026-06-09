@@ -50,7 +50,10 @@
 if [[ -o interactive ]] \
   && command -v fastfetch >/dev/null \
   && [[ "$TERM_PROGRAM" != "vscode" ]]; then
-  fastfetch
+
+  if ! pgrep -u "$USER" -f "fastfetch-terminal-marker" >/dev/null; then
+    exec -a fastfetch-terminal-marker zsh -ic 'fastfetch; exec zsh'
+  fi
 fi
     '';
   };
