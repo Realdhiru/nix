@@ -47,23 +47,15 @@
         sudo nix-collect-garbage -d
       }
 
-      MARKER="$XDG_RUNTIME_DIR/fastfetch-shell"
-
       if [[ -o interactive ]] \
         && [[ "$TERM_PROGRAM" != "vscode" ]] \
         && command -v fastfetch >/dev/null
       then
-        if [[ ! -e "$MARKER" ]]; then
-          touch "$MARKER"
+        shells=$(pgrep -u "$USER" -fc "^-zsh$")
+
+        if [[ "$shells" -eq 1 ]]; then
           fastfetch
         fi
-
-        trap '
-          count=$(pgrep -u "$USER" -fc "^-zsh$")
-          if [[ "$count" -le 1 ]]; then
-            rm -f "$MARKER"
-          fi
-        ' EXIT
       fi
     '';
   };
