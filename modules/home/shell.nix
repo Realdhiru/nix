@@ -47,18 +47,6 @@
         sudo nix-collect-garbage -d
       }
 
-      if [[ -o interactive ]] \
-        && [[ "$TERM_PROGRAM" != "vscode" ]] \
-        && command -v fastfetch >/dev/null
-      then
-        shells=$(pgrep -u "$USER" -fc "^-zsh$")
-
-        if [[ "$shells" -eq 1 ]]; then
-          fastfetch
-        fi
-      fi
-    '';
-  };
 
   programs.starship.enable = true;
 
