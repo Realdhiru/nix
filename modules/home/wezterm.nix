@@ -5,6 +5,8 @@
     wezterm
   ];
 
-  xdg.configFile."wezterm/wezterm.lua".source =
-    ../../dotfiles/wezterm/wezterm.lua;
+  xdg.configFile."wezterm/wezterm.lua" = {
+    source = ../../dotfiles/wezterm/wezterm.lua;
+    force = true;
+  };
 }

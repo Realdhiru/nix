@@ -46,6 +46,17 @@
       clean() {
         sudo nix-collect-garbage -d
       }
+
+      ff() {
+        fastfetch
+      }
+
+      if [[ -o interactive ]] \
+        && command -v fastfetch >/dev/null \
+        && [[ "$TERM_PROGRAM" != "vscode" ]]
+      then
+        fastfetch
+      fi
     '';
   };
 
