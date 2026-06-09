@@ -1,7 +1,4 @@
-{ ... }:
-
-{
-  programs.zsh = {
+programs.zsh = {
     enable = true;
 
     enableCompletion = true;
@@ -33,13 +30,11 @@
       clean() {
         sudo nix-collect-garbage -d
       }
-
-      fastfetch
     '';
-  };
 
-  programs.starship.enable = true;
-
-  xdg.configFile."starship.toml".source =
-    ../../dotfiles/starship/starship.toml;
-}
+    initExtra = ''
+      if [[ -o interactive ]]; then
+        fastfetch
+      fi
+    '';
+};
