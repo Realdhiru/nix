@@ -1,5 +1,7 @@
 { ... }:
-programs.zsh = {
+
+{
+  programs.zsh = {
     enable = true;
 
     enableCompletion = true;
@@ -38,4 +40,10 @@ programs.zsh = {
         fastfetch
       fi
     '';
-};
+  };
+
+  programs.starship.enable = true;
+
+  xdg.configFile."starship.toml".source =
+    ../../dotfiles/starship/starship.toml;
+}
