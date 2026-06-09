@@ -6,7 +6,7 @@
 
     enableCompletion = true;
 
-    autosuggestions.enable = true;
+    enableAutosuggestions = true;
 
     syntaxHighlighting.enable = true;
 
@@ -41,9 +41,7 @@
       clean() {
         sudo nix-collect-garbage -d
       }
-    '';
 
-    initExtra = ''
       if [[ -o interactive ]] && command -v fastfetch >/dev/null; then
         fastfetch
       fi
