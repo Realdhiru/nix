@@ -46,7 +46,8 @@
       clean() {
         sudo nix-collect-garbage -d
       }
-
+    '';
+  };
 
   programs.starship.enable = true;
 
