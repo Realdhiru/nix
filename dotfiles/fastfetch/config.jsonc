@@ -1,11 +1,10 @@
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/master/doc/json_schema.json",
   "logo": {
-  "width": 14,
-  "padding": {
-    "right": 0
-  }
-},
+    "type": "builtin",
+    "source": "nixos_small"
+  },
+
   "modules": [
     "title",
     "separator",
