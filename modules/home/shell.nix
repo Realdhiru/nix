@@ -1,42 +1,45 @@
-{ ... }:
+programs.zsh = {
+  enable = true;
 
-{
-  programs.zsh = {
-    enable = true;
+  enableCompletion = true;
 
-    initContent = ''
-      rebuild() {
-        cd ~/nix || return
+  autosuggestion.enable = true;
 
-        git add -A
+  syntaxHighlighting.enable = true;
 
-        if [ $# -eq 0 ]; then
-          git commit -m "Update configuration" || true
-        else
-          git commit -m "$*" || true
-        fi
-
-        sudo nixos-rebuild switch --flake .#vivobook
-      }
-
-      update() {
-        cd ~/nix || return
-
-        git pull
-        nix flake update
-
-        rebuild "flake update"
-      }
-
-      clean() {
-        sudo nix-collect-garbage -d
-      }
-    '';
+  history = {
+    size = 10000;
+    path = "$HOME/.zsh_history";
   };
 
-  programs.starship = {
-    enable = true;
-  };
-  xdg.configFile."starship.toml".source =
-  ../../dotfiles/starship/starship.toml;
-}
+  initContent = ''
+    rebuild() {
+      cd ~/nix || return
+
+      git add -A
+
+      if [ $# -eq 0 ]; then
+        git commit -m "Update configuration" || true
+      else
+        git commit -m "$*" || true
+      fi
+
+      sudo nixos-rebuild switch --flake .#vivobook
+    }
+
+    update() {
+      cd ~/nix || return
+
+      git pull
+      nix flake update
+
+      rebuild "flake update"
+    }
+
+    clean() {
+      sudo nix-collect-garbage -d
+    }
+
+    fastfetch
+  '';
+};
