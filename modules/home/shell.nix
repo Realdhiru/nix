@@ -30,12 +30,19 @@
         sudo nixos-rebuild switch --flake .#vivobook
       }
 
+      update() {
+        cd ~/nix || return
+
+        git pull
+        nix flake update
+
+        rebuild "flake update"
+      }
+
       clean() {
         sudo nix-collect-garbage -d
       }
-    '';
 
-    initExtra = ''
       if [[ -o interactive ]]; then
         fastfetch
       fi
