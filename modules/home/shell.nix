@@ -6,7 +6,7 @@
 
     enableCompletion = true;
 
-    autosuggestion.enable = true;
+    autosuggestions.enable = true;
 
     syntaxHighlighting.enable = true;
 
@@ -33,7 +33,6 @@
       update() {
         cd ~/nix || return
 
-        git pull
         nix flake update
 
         rebuild "flake update"
@@ -42,8 +41,10 @@
       clean() {
         sudo nix-collect-garbage -d
       }
+    '';
 
-      if [[ -o interactive ]]; then
+    initExtra = ''
+      if [[ -o interactive ]] && command -v fastfetch >/dev/null; then
         fastfetch
       fi
     '';
