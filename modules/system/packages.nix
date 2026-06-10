@@ -66,5 +66,6 @@
     pwvucontrol
     gpu-screen-recorder
 gpu-screen-recorder-gtk
+libva-utils
   ];
 }
