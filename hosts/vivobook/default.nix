@@ -28,6 +28,7 @@
     "nix-command"
     "flakes"
   ];
+  nixpkgs.config.allowUnfree = true;
 
   programs.hyprland.enable = true;
 
