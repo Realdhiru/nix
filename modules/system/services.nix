@@ -1,19 +1,55 @@
 { pkgs, ... }:
 
 {
-  programs.thunar.enable = true;
+  #
+  # Audio
+  #
+  security.rtkit.enable = true;
 
-  services.gvfs.enable = true;      # Mount, Trash, network shares
-  services.tumbler.enable = true;   # Image thumbnails
-  programs.xfconf.enable = true;    # Preserve Thunar settings
-  services.udisks2.enable = true;
+  services.pipewire = {
+    enable = true;
+    pulse.enable = true;
+    alsa.enable = true;
+    alsa.support32Bit = true;
+  };
+
+  #
+  # Thunar
+  #
+  programs.thunar = {
+    enable = true;
+
+    plugins = with pkgs.xfce; [
+      thunar-archive-plugin
+      thunar-volman
+    ];
+  };
+
+  services.gvfs.enable = true;
+  services.tumbler.enable = true;
+  programs.xfconf.enable = true;
+
+  #
+  # Power
+  #
   services.upower.enable = true;
-
   services.power-profiles-daemon.enable = true;
 
+  #
+  # Drives
+  #
+  services.udisks2.enable = true;
+
+  #
+  # Dconf
+  #
+  programs.dconf.enable = true;
+
+  #
+  # Polkit
+  #
   security.polkit.enable = true;
 
-  # Allow wheel users to mount drives without password
   security.polkit.extraConfig = ''
     polkit.addRule(function(action, subject) {
         if ((action.id == "org.freedesktop.udisks2.filesystem-mount" ||
@@ -24,7 +60,6 @@
     });
   '';
 
-  # Polkit agent
   systemd.user.services.polkit-gnome-authentication-agent-1 = {
     description = "polkit-gnome-authentication-agent-1";
 
@@ -34,7 +69,9 @@
 
     serviceConfig = {
       Type = "simple";
-      ExecStart = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
+      ExecStart =
+        "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
+
       Restart = "on-failure";
       RestartSec = 1;
       TimeoutStopSec = 10;

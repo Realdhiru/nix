@@ -2,70 +2,142 @@
 
 {
   environment.systemPackages = with pkgs; [
+    #
     # CLI
+    #
     vim
     wget
     git
     curl
     tree
     fastfetch
+    btop
+    weathr
+    libva-utils
+
+    #
+    # Development
+    #
     vscodium
 
-    # Browser
+    #
+    # Browsers
+    #
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     brave
 
-    # File managers
+    #
+    # File Managers
+    #
     thunar
 
-    # Launcher
+    #
+    # Launchers
+    #
     rofi
 
+    #
     # Clipboard
+    #
     wl-clipboard
     cliphist
+    nwg-clipman
 
-    # Screenshots
+    #
+    # Screenshots / Recording
+    #
     grim
     slurp
     grimblast
     wf-recorder
+    gpu-screen-recorder
+    gpu-screen-recorder-gtk
 
-    # Multimedia
+    #
+    # Media controls
+    #
     brightnessctl
     playerctl
 
-    # Windows drives
-    ntfs3g
-
+    #
     # Notifications
+    #
     libnotify
 
+    #
     # Search
+    #
     fsearch
 
-    # Polkit agent
+    #
+    # Polkit
+    #
     polkit_gnome
 
+    #
+    # Filesystems
+    #
+    ntfs3g
+
+    #
+    # Terminal
+    #
+    wezterm
+
+    #
+    # Music
+    #
+    spotify
+
+    #
+    # Video / Audio
+    #
     mpv
+
+    #
+    # Creative
+    #
     blender
     kdePackages.kdenlive
+
+    #
+    # Documents
+    #
     kdePackages.okular
     onlyoffice-desktopeditors
-    spotify
-    btop
-    weathr
+
+    #
+    # Images
+    #
     loupe
     imv
+
+    #
+    # Theme tools
+    #
     lxappearance
     nwg-look
-    nwg-displays
-    nwg-clipman
     nwg-icon-picker
+
+    #
+    # Displays
+    #
+    nwg-displays
+
+    #
+    # Downloads
+    #
     parabolic
+
+    #
+    # Volume
+    #
     pwvucontrol
-    gpu-screen-recorder
-gpu-screen-recorder-gtk
-libva-utils
+
+    #
+    # Intel VAAPI
+    #
+    intel-media-driver
+    vpl-gpu-rt
   ];
 }
