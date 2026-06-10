@@ -3,7 +3,9 @@
 {
   programs.thunar.enable = true;
 
-  services.gvfs.enable = true;
+  services.gvfs.enable = true;      # Mount, Trash, network shares
+  services.tumbler.enable = true;   # Image thumbnails
+  programs.xfconf.enable = true;    # Preserve Thunar settings
   services.udisks2.enable = true;
   services.upower.enable = true;
 

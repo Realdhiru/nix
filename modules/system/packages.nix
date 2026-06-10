@@ -16,7 +16,6 @@
 
     # File managers
     thunar
-    kdePackages.dolphin
 
     # Launcher
     rofi
