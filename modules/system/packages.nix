@@ -64,5 +64,7 @@
     nwg-icon-picker
     parabolic
     pwvucontrol
+    gpu-screen-recorder
+gpu-screen-recorder-gtk
   ];
 }
