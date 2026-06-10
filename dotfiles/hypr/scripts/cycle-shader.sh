@@ -16,10 +16,15 @@ if [[ -f "$STATE_FILE" ]]; then
     CURRENT=$(cat "$STATE_FILE")
 fi
 
-NEXT=$(( (CURRENT + 1) % TOTAL ))
+# If shader is currently disabled (e.g. after reload),
+# re-enable the current shader instead of advancing.
+if hyprctl getoption decoration:screen_shader | grep -q 'str: ""'; then
+    NEXT=$CURRENT
+else
+    NEXT=$(( (CURRENT + 1) % TOTAL ))
+fi
 
 if [[ "$NEXT" -eq "${#SHADERS[@]}" ]]; then
-    # Disable shader
     hyprctl keyword decoration:screen_shader ""
 else
     hyprctl keyword decoration:screen_shader "${SHADERS[$NEXT]}"
