@@ -20,30 +20,32 @@
     };
   };
 
-  outputs = inputs@{
+  outputs = {
     nixpkgs,
     home-manager,
+    zen-browser,
+    spicetify-nix,
     ...
   }: {
     nixosConfigurations.vivobook = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
 
       specialArgs = {
-        inherit inputs;
+        inherit zen-browser spicetify-nix;
       };
 
       modules = [
         ./hosts/vivobook/default.nix
 
         home-manager.nixosModules.home-manager
-        inputs.spicetify-nix.nixosModules.default
+        spicetify-nix.nixosModules.default
 
         {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
 
           home-manager.extraSpecialArgs = {
-            inherit inputs;
+            inherit zen-browser spicetify-nix;
           };
 
           home-manager.users.realdhiru = import ./home.nix;
