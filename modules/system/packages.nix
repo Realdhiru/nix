@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 
 {
   environment.systemPackages = with pkgs; [
@@ -12,6 +12,7 @@
     vscodium
 
     # Browser
+    inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     brave
 
     # File managers
@@ -45,5 +46,23 @@
 
     # Polkit agent
     polkit_gnome
+
+    mpv
+    blender
+    kdePackages.kdenlive
+    kdePackages.okular
+    onlyoffice-desktopeditors
+    spotify
+    btop
+    weathr
+    loupe
+    imv
+    lxappearance
+    nwg-look
+    nwg-displays
+    nwg-clipman
+    nwg-icon-picker
+    parabolic
+    pwvucontrol
   ];
 }
