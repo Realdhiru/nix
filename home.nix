@@ -1,4 +1,5 @@
-{ pkgs, spicetify-nix, ... }:
+
+{ ... }:
 
 {
   imports = [
@@ -9,28 +10,6 @@
     ./modules/home/quickshell.nix
     ./modules/home/fastfetch.nix
   ];
-
-  programs.spicetify =
-    let
-      spicePkgs =
-        spicetify-nix.legacyPackages.${pkgs.stdenv.hostPlatform.system};
-    in
-    {
-      enable = true;
-
-      enabledExtensions = with spicePkgs.extensions; [
-        adblock
-        hidePodcasts
-        shuffle
-      ];
-
-      enabledCustomApps = with spicePkgs.apps; [
-        newReleases
-      ];
-
-      theme = spicePkgs.themes.catppuccin;
-      colorScheme = "mocha";
-    };
 
   home.username = "realdhiru";
   home.homeDirectory = "/home/realdhiru";

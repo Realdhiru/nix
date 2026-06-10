@@ -8,49 +8,33 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
     zen-browser = {
       url = "github:youwen5/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
     spicetify-nix = {
       url = "github:Gerg-L/spicetify-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = {
-    nixpkgs,
-    home-manager,
-    zen-browser,
-    spicetify-nix,
-    ...
-  }: {
-    nixosConfigurations.vivobook = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
+  outputs =
+    { nixpkgs, home-manager, ... }:
+    {
+      nixosConfigurations.vivobook = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
 
-      specialArgs = {
-        inherit zen-browser spicetify-nix;
+        modules = [
+          ./hosts/vivobook/default.nix
+
+          home-manager.nixosModules.home-manager
+
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+
+            home-manager.users.realdhiru = import ./home.nix;
+          }
+        ];
       };
-
-      modules = [
-        ./hosts/vivobook/default.nix
-
-        home-manager.nixosModules.home-manager
-        spicetify-nix.nixosModules.default
-
-        {
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-
-          home-manager.extraSpecialArgs = {
-            inherit zen-browser spicetify-nix;
-          };
-
-          home-manager.users.realdhiru = import ./home.nix;
-        }
-      ];
     };
-  };
 }
