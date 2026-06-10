@@ -1,5 +1,4 @@
-
-{ ... }:
+{ pkgs, spicetify-nix, ... }:
 
 {
   imports = [
@@ -12,27 +11,26 @@
   ];
 
   programs.spicetify =
-let
-  spicePkgs =
-    inputs.spicetify-nix.legacyPackages.${pkgs.stdenv.hostPlatform.system};
-in
-{
-  enable = true;
+    let
+      spicePkgs =
+        spicetify-nix.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+    in
+    {
+      enable = true;
 
-  enabledExtensions = with spicePkgs.extensions; [
-    adblock
-    hidePodcasts
-    shuffle
-  ];
+      enabledExtensions = with spicePkgs.extensions; [
+        adblock
+        hidePodcasts
+        shuffle
+      ];
 
-  enabledCustomApps = with spicePkgs.apps; [
-    newReleases
-  ];
+      enabledCustomApps = with spicePkgs.apps; [
+        newReleases
+      ];
 
-  theme = spicePkgs.themes.catppuccin;
-
-  colorScheme = "mocha";
-};
+      theme = spicePkgs.themes.catppuccin;
+      colorScheme = "mocha";
+    };
 
   home.username = "realdhiru";
   home.homeDirectory = "/home/realdhiru";
