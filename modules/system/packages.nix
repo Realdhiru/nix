@@ -72,7 +72,7 @@
 
     # Images
     loupe
-    imv
+    #imv
 
     # Downloads
     parabolic
