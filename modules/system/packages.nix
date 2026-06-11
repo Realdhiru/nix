@@ -84,5 +84,9 @@
     # Intel VAAPI
     intel-media-driver
     vpl-gpu-rt
+
+blueman
+bluetuith
+
   ];
 }

@@ -13,6 +13,15 @@
     alsa.support32Bit = true;
   };
 
+{
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = true;
+  };
+  services.blueman.enable = true;
+}
+
+
   #
   # Thunar
   #
