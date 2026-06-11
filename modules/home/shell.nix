@@ -31,7 +31,7 @@
           fi
         fi
 
-          sudo nixos-rebuild switch --flake .#vivobook && hyprctl reload
+        sudo nixos-rebuild switch --flake .#vivobook
       }
 
       update() {
