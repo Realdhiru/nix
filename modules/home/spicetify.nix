@@ -10,6 +10,8 @@ in
     enabledCustomApps = with spicePkgs.apps; [
       marketplace
     ];
+        theme = spicePkgs.themes.marketplace;
+    colorScheme = "dark";
 
 #    theme = spicePkgs.themes.catppuccin;
 #    colorScheme = "mocha";
