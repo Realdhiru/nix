@@ -1,6 +1,0 @@
-#Desktop_LeftSidebar_Id .os-scrollbar-handle,
-.Root__nav-bar .os-scrollbar-handle,
-#Desktop_LeftSidebar_Id .os-scrollbar-track,
-.Root__nav-bar .os-scrollbar-track {
-    visibility: hidden;
-}

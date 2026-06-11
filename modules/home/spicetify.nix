@@ -3,6 +3,31 @@
 let
   spicePkgs =
     inputs.spicetify-nix.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+
+  spicyTrackerSrc = pkgs.fetchFromGitHub {
+    owner = "yodaluca23";
+    repo = "spicetify-extensions";
+    rev = "main";
+    hash = "";
+  };
+
+  spicyLyricTranslatorSrc = pkgs.fetchFromGitHub {
+    owner = "7xeh";
+    repo = "SpicyLyricTranslator";
+    rev = "v2.0.8";
+    hash = "";
+  };
+
+  spicyTracker = spicePkgs.newExtension {
+    src = "${spicyTrackerSrc}/SpicyTracker";
+    name = "SpicyTracker.js";
+  };
+
+  spicyLyricTranslator = spicePkgs.newExtension {
+    src = "${spicyLyricTranslatorSrc}/dist";
+    name = "spicy-lyric-translator.js";
+  };
+
 in
 {
   programs.spicetify = {
@@ -12,13 +37,18 @@ in
       marketplace
     ];
 
-    enabledExtensions = with spicePkgs.extensions; [
-      adblockify
-      spicyLyrics
-      aiBandBlocker
-      fullAlbumDate
-      sidebarCustomizer
-    ];
+    enabledExtensions =
+      (with spicePkgs.extensions; [
+        adblockify
+        spicyLyrics
+        aiBandBlocker
+        fullAlbumDate
+        sidebarCustomizer
+      ])
+      ++ [
+        spicyTracker
+        spicyLyricTranslator
+      ];
 
     theme = {
       name = "Liquify";
@@ -29,20 +59,6 @@ in
         rev = "main";
         hash = "sha256-+/pJ2/6FhgDyMhuruBdT6aR4qoXhy6Tddfox6BGytcs=";
       };
-
-      injectCss = true;
-      injectThemeJs = true;
-      replaceColors = true;
-      homeConfig = true;
-      overwriteAssets = false;
-
-      # NOTE: spicetify-nix intentionally uses this misspelled name
-      additonalCss =
-        builtins.readFile ../../dotfiles/spicetify/snippets/hide-sidebar-scrollbar.css
-        + "\n"
-        + builtins.readFile ../../dotfiles/spicetify/snippets/queue-top-side-panel.css
-        + "\n"
-        + builtins.readFile ../../dotfiles/spicetify/snippets/more-visible-unplayable-tracks.css;
     };
   };
 }
