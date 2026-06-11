@@ -8,7 +8,7 @@ let
     owner = "yodaluca23";
     repo = "spicetify-extensions";
     rev = "main";
-    hash = "";
+    hash = "sha256-5g9PCLvYEyH7i4sSi1RzGr9EE8pmh/nRSZkU/lxLCuA=";
   };
 
   spicyLyricTranslatorSrc = pkgs.fetchFromGitHub {
