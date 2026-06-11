@@ -18,7 +18,6 @@ in
       aiBandBlocker
       fullAlbumDate
       sidebarCustomizer
-      spicyTracker
     ];
 
     theme = {
