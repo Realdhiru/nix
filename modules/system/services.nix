@@ -13,14 +13,15 @@
     alsa.support32Bit = true;
   };
 
-{
+  #
+  # Bluetooth
+  #
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;
   };
-  services.blueman.enable = true;
-}
 
+  services.blueman.enable = true;
 
   #
   # Thunar
@@ -78,6 +79,7 @@
 
     serviceConfig = {
       Type = "simple";
+
       ExecStart =
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
 
