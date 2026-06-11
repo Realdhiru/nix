@@ -21,12 +21,10 @@
   };
 
   outputs = inputs@{
-    self,
     nixpkgs,
     home-manager,
     ...
-  }:
-  {
+  }: {
     nixosConfigurations.vivobook = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
 
@@ -46,6 +44,10 @@
           home-manager.extraSpecialArgs = {
             inherit inputs;
           };
+
+          home-manager.sharedModules = [
+            inputs.spicetify-nix.homeManagerModules.spicetify
+          ];
 
           home-manager.users.realdhiru = import ./home.nix;
         }

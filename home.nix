@@ -4,6 +4,7 @@
   imports = [
     ./modules/home/shell.nix
     ./modules/home/quickshell.nix
+    ./modules/home/spicetify.nix
   ];
 
   xdg.configFile."hypr" = {

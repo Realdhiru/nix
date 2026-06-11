@@ -61,7 +61,6 @@
 
     # Video / Audio
     mpv
-    spotify
 
     # Creative
     blender
