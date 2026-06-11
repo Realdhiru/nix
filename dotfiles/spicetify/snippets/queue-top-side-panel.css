@@ -1,0 +1,3 @@
+.main-nowPlayingView-section:not(.main-nowPlayingView-queue) {
+    order: 99;
+}

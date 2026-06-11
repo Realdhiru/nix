@@ -30,5 +30,13 @@ in
         hash = "sha256-+/pJ2/6FhgDyMhuruBdT6aR4qoXhy6Tddfox6BGytcs=";
       };
     };
+
+    customCss = ''
+      ${builtins.readFile ../../dotfiles/spicetify/snippets/hide-sidebar-scrollbar.css}
+
+      ${builtins.readFile ../../dotfiles/spicetify/snippets/queue-top-side-panel.css}
+
+      ${builtins.readFile ../../dotfiles/spicetify/snippets/more-visible-unplayable-tracks.css}
+    '';
   };
 }
