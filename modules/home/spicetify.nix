@@ -7,21 +7,20 @@ in
 {
   programs.spicetify = {
     enable = true;
+
     enabledCustomApps = with spicePkgs.apps; [
       marketplace
     ];
-    theme = spicePkgs.themes.catppuccin;
-    colorScheme = "mocha";
 
-#    theme = spicePkgs.themes.catppuccin;
-#    colorScheme = "mocha";
-#
-#    enabledExtensions = with spicePkgs.extensions; [
-#      adblockify
-#      hidePodcasts
-#      shuffle
-#      beautifulLyrics
-#      fullAppDisplay
-#    ];
+    theme = {
+      name = "Liquify";
+
+      src = pkgs.fetchFromGitHub {
+        owner = "NMWplays";
+        repo = "Liquify";
+        rev = "main";
+        hash = "";
+      };
+    };
   };
 }
