@@ -16,23 +16,25 @@
     };
 
     initContent = ''
-      rebuild() {
-        cd ~/nix || return
+rebuild() {
+  cd ~/nix || return
 
-        git add -A
+  git add -A
 
-        if git diff --cached --quiet && git diff --quiet; then
-          echo "Nothing to commit."
-        else
-          if [ $# -eq 0 ]; then
-            git commit -m "Update configuration"
-          else
-            git commit -m "$*"
-          fi
-        fi
+  if git diff --cached --quiet && git diff --quiet; then
+    echo "Nothing to commit."
+  else
+    if [ $# -eq 0 ]; then
+      git commit -m "Update configuration"
+    else
+      git commit -m "$*"
+    fi
+  fi
 
-        sudo nixos-rebuild switch --flake .#vivobook
-      }
+  if sudo nixos-rebuild switch --flake .#vivobook; then
+    hyprctl reload
+  fi
+}
 
       update() {
         cd ~/nix || return
