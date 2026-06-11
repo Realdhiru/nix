@@ -12,6 +12,15 @@ in
       marketplace
     ];
 
+    enabledExtensions = with spicePkgs.extensions; [
+      adblockify
+      spicyLyrics
+      aiBandBlocker
+      fullAlbumDate
+      sidebarCustomizer
+      spicyTracker
+    ];
+
     theme = {
       name = "Liquify";
 
