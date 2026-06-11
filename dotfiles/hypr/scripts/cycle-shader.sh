@@ -7,19 +7,14 @@ mapfile -t SHADERS < <(
     find "$SHADER_DIR" -maxdepth 1 -name "*.frag" | sort
 )
 
-# Add "none" as the last state
 TOTAL=$(( ${#SHADERS[@]} + 1 ))
 
 CURRENT=0
+[[ -f "$STATE_FILE" ]] && CURRENT=$(cat "$STATE_FILE")
 
-if [[ -f "$STATE_FILE" ]]; then
-    CURRENT=$(cat "$STATE_FILE")
-fi
-
-# If shader is currently disabled (e.g. after reload),
-# re-enable the current shader instead of advancing.
+# Shader got reset (e.g. hyprctl reload)
 if hyprctl getoption decoration:screen_shader | grep -q 'str: ""'; then
-    NEXT=$CURRENT
+    NEXT="$CURRENT"
 else
     NEXT=$(( (CURRENT + 1) % TOTAL ))
 fi
@@ -30,4 +25,5 @@ else
     hyprctl keyword decoration:screen_shader "${SHADERS[$NEXT]}"
 fi
 
+# Save currently applied state
 echo "$NEXT" > "$STATE_FILE"
