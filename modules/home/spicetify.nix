@@ -15,9 +15,8 @@ let
     owner = "7xeh";
     repo = "SpicyLyricTranslator";
     rev = "v2.0.8";
-    hash = "";
+    hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
   };
-
 in
 {
   programs.spicetify = {
