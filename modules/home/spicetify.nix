@@ -18,16 +18,6 @@ let
     hash = "";
   };
 
-  spicyTracker = spicePkgs.newExtension {
-    src = "${spicyTrackerSrc}/SpicyTracker";
-    name = "SpicyTracker.js";
-  };
-
-  spicyLyricTranslator = spicePkgs.newExtension {
-    src = "${spicyLyricTranslatorSrc}/dist";
-    name = "spicy-lyric-translator.js";
-  };
-
 in
 {
   programs.spicetify = {
@@ -46,8 +36,15 @@ in
         sidebarCustomizer
       ])
       ++ [
-        spicyTracker
-        spicyLyricTranslator
+        {
+          name = "SpicyTracker.js";
+          src = "${spicyTrackerSrc}/SpicyTracker";
+        }
+
+        {
+          name = "spicy-lyric-translator.js";
+          src = "${spicyLyricTranslatorSrc}/dist";
+        }
       ];
 
     theme = {
