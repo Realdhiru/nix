@@ -97,5 +97,12 @@ mpvpaper
 easyeffects
 cava
 
+# Quickshell ecosystem
+quickshell
+swayosd
+networkmanagerapplet
+hypridle
+hyprlock
+
   ];
 }
