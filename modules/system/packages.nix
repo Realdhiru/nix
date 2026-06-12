@@ -87,5 +87,15 @@
 blueman
 bluetuith
 
+# Quickshell dependencies
+matugen
+swww
+satty
+yq-go
+zbar
+mpvpaper
+easyeffects
+cava
+
   ];
 }
