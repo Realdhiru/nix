@@ -4,12 +4,12 @@ let
   spicePkgs =
     inputs.spicetify-nix.legacyPackages.${pkgs.stdenv.hostPlatform.system};
 
-spicyTrackerSrc = pkgs.fetchFromGitHub {
-  owner = "yodaluca23";
-  repo = "spicetify-extensions";
-  rev = "main";
-  hash = "sha256-5g9PCLvYEyH7i4sSi1RzGr9EE8pmh/nRSZkU/lxLCuA=";
-};
+  spicyTrackerSrc = pkgs.fetchFromGitHub {
+    owner = "yodaluca23";
+    repo = "spicetify-extensions";
+    rev = "main";
+    hash = "sha256-5g9PCLvYEyH7i4sSi1RzGr9EE8pmh/nRSZkU/lxLCuA=";
+  };
 
   spicyLyricTranslatorSrc = pkgs.fetchFromGitHub {
     owner = "7xeh";
