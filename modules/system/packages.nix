@@ -23,7 +23,7 @@
 
     # File Managers
     thunar
-    xfce.exo
+    xfce4-exo
 
     # Launchers
     rofi
