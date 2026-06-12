@@ -111,6 +111,7 @@ iw
 networkmanager
 bluez
 lm_sensors
+python3
 
   ];
 }
