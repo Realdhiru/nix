@@ -103,6 +103,14 @@ swayosd
 networkmanagerapplet
 hypridle
 hyprlock
+jq
+socat
+bc
+acpi
+iw
+networkmanager
+bluez
+lm_sensors
 
   ];
 }
