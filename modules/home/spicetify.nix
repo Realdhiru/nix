@@ -3,20 +3,6 @@
 let
   spicePkgs =
     inputs.spicetify-nix.legacyPackages.${pkgs.stdenv.hostPlatform.system};
-
-  spicyTrackerSrc = pkgs.fetchFromGitHub {
-    owner = "yodaluca23";
-    repo = "spicetify-extensions";
-    rev = "main";
-    hash = "sha256-5g9PCLvYEyH7i4sSi1RzGr9EE8pmh/nRSZkU/lxLCuA=";
-  };
-
-spicyLyricTranslatorSrc = pkgs.fetchFromGitHub {
-  owner = "7xeh";
-  repo = "SpicyLyricTranslator";
-  rev = "v2.0.8";
-  hash = "sha256-5g9PCLvYEyH7i4sSi1RzGr9EE8pmh/nRSZkU/lxLCuA=";
-};
 in
 {
   programs.spicetify = {
@@ -26,25 +12,13 @@ in
       marketplace
     ];
 
-    enabledExtensions =
-      (with spicePkgs.extensions; [
-        adblockify
-        spicyLyrics
-        aiBandBlocker
-        fullAlbumDate
-        sidebarCustomizer
-      ])
-      ++ [
-        {
-          name = "SpicyTracker.js";
-          src = "${spicyTrackerSrc}/SpicyTracker";
-        }
-
-        {
-          name = "spicy-lyric-translator.js";
-          src = "${spicyLyricTranslatorSrc}/dist";
-        }
-      ];
+    enabledExtensions = with spicePkgs.extensions; [
+      adblockify
+      spicyLyrics
+      aiBandBlocker
+      fullAlbumDate
+      sidebarCustomizer
+    ];
 
     theme = {
       name = "Liquify";
