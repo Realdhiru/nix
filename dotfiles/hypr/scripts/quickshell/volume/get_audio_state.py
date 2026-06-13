@@ -1,108 +1,101 @@
 #!/usr/bin/env python3
+
 import subprocess
 import json
-import sys
+import re
 
-def run_cmd(cmd):
+
+def run(cmd):
     try:
-        return subprocess.check_output(cmd, shell=True, stderr=subprocess.DEVNULL).decode('utf-8')
+        return subprocess.check_output(
+            cmd,
+            shell=True,
+            text=True,
+            stderr=subprocess.DEVNULL
+        )
     except:
-        return "[]"
+        return ""
 
-def parse_pactl(output):
-    try:
-        return json.loads(output)
-    except:
-        return []
 
-def get_valid_string(*args):
-    """Safely return the first valid string that isn't 'null' or empty."""
-    for arg in args:
-        if arg and str(arg).strip().lower() not in ["null", "none", ""]:
-            return str(arg)
+def parse_volume(line):
+    m = re.search(r'\[vol:\s*([0-9.]+)', line)
+    if m:
+        return int(float(m.group(1)) * 100)
+    return 0
+
+
+def parse_muted(line):
+    return "MUTED" in line
+
+
+def get_default_id(target):
+    out = run(f"wpctl inspect {target}")
+    m = re.search(r'object.serial = "([0-9]+)"', out)
+    if m:
+        return m.group(1)
     return ""
 
-def get_wpctl_default(node_target):
-    """Gets the accurate default node name directly from WirePlumber."""
-    try:
-        out = run_cmd(f"wpctl inspect {node_target}")
-        for line in out.splitlines():
-            if "node.name" in line:
-                parts = line.split("=", 1)
-                if len(parts) == 2:
-                    return parts[1].strip().strip('"')
-    except:
-        pass
-    return ""
 
-def get_data():
-    sinks = parse_pactl(run_cmd("pactl -f json list sinks"))
-    sources = parse_pactl(run_cmd("pactl -f json list sources"))
-    sink_inputs = parse_pactl(run_cmd("pactl -f json list sink-inputs"))
-    
-    # Use wpctl for accurate default nodes under PipeWire
-    default_sink = get_wpctl_default("@DEFAULT_AUDIO_SINK@")
-    default_source = get_wpctl_default("@DEFAULT_AUDIO_SOURCE@")
+default_sink = get_default_id("@DEFAULT_AUDIO_SINK@")
+default_source = get_default_id("@DEFAULT_AUDIO_SOURCE@")
 
-    # Fallback to pactl info if wpctl fails
-    if not default_sink or not default_source:
-        try:
-            info = parse_pactl(run_cmd("pactl -f json info"))
-            if not default_sink: default_sink = info.get("default_sink_name", "")
-            if not default_source: default_source = info.get("default_source_name", "")
-        except:
-            pass
+status = run("wpctl status")
 
-    def format_node(n, is_default=False, is_app=False):
-        vol = 0
-        if "volume" in n and isinstance(n["volume"], dict):
-            if "front-left" in n["volume"]:
-                vol = int(n["volume"]["front-left"].get("value_percent", "0%").strip("%"))
-            elif "mono" in n["volume"]:
-                vol = int(n["volume"]["mono"].get("value_percent", "0%").strip("%"))
+outputs = []
+inputs = []
 
-        props = n.get("properties", {})
-        
-        if is_app:
-            display_name = get_valid_string(props.get("application.name"), props.get("application.process.binary"), "Unknown App")
-            sub_desc = get_valid_string(props.get("media.name"), props.get("window.title"), props.get("media.role"), "Audio Stream")
-        else:
-            display_name = get_valid_string(props.get("device.description"), n.get("name"), "Unknown Device")
-            sub_desc = get_valid_string(n.get("name"), "Unknown")
+section = None
 
-        icon = get_valid_string(props.get("application.icon_name"), props.get("device.icon_name"), "audio-card")
-        
-        return {
-            "id": str(n.get("index")),
-            "name": sub_desc,
-            "description": display_name,
-            "volume": vol,
-            "mute": bool(n.get("mute", False)),
-            "is_default": bool(is_default),
-            "icon": icon
-        }
+for line in status.splitlines():
 
-    apps = []
-    for s in sink_inputs:
-        props = s.get("properties", {})
-        if props.get("application.id") != "org.PulseAudio.pavucontrol":
-            apps.append(format_node(s, is_app=True))
+    if "├─ Sinks:" in line:
+        section = "sinks"
+        continue
 
-    # Filter out monitor sources so outputs don't show up in the inputs tab
-    real_inputs = []
-    for s in sources:
-        props = s.get("properties", {})
-        if props.get("device.class") == "monitor" or str(s.get("name", "")).endswith(".monitor"):
-            continue
-        real_inputs.append(format_node(s, s.get("name") == default_source))
+    if "├─ Sources:" in line:
+        section = "sources"
+        continue
 
-    out = {
-        "outputs": [format_node(s, s.get("name") == default_sink) for s in sinks],
-        "inputs": real_inputs,
-        "apps": apps
+    if "├─ Filters:" in line:
+        section = None
+        continue
+
+    if section not in ["sinks", "sources"]:
+        continue
+
+    m = re.search(r'(\*?)\s*([0-9]+)\.\s+(.*?)\s+\[vol:', line)
+
+    if not m:
+        continue
+
+    star = m.group(1)
+    node_id = m.group(2)
+    desc = m.group(3).strip()
+
+    entry = {
+        "id": node_id,
+        "name": desc,
+        "description": desc,
+        "volume": parse_volume(line),
+        "mute": parse_muted(line),
+        "is_default": (
+            node_id == default_sink
+            if section == "sinks"
+            else node_id == default_source
+        ),
+        "icon": "audio-card"
     }
-    
-    print(json.dumps(out))
 
-if __name__ == "__main__":
-    get_data()
+    if section == "sinks":
+        outputs.append(entry)
+    else:
+        inputs.append(entry)
+
+
+result = {
+    "outputs": outputs,
+    "inputs": inputs,
+    "apps": []
+}
+
+print(json.dumps(result))
