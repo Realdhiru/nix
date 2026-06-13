@@ -89,7 +89,7 @@ bluetuith
 
 # Quickshell dependencies
 matugen
-swww
+awww
 satty
 yq-go
 zbar

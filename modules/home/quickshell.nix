@@ -3,6 +3,7 @@
 {
   home.packages = with pkgs; [
     quickshell
+    qt6.qtmultimedia
   ];
 
   xdg.configFile."quickshell".source =
