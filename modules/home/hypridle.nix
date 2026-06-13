@@ -4,7 +4,7 @@
 
     settings = {
       general = {
-        lock_cmd = "quickshell -p ~/.config/hypr/scripts/quickshell/Lock.qml";
+        lock_cmd = "~/.config/hypr/scripts/lock.sh";
         before_sleep_cmd = "loginctl lock-session";
         after_sleep_cmd = "hyprctl dispatch dpms on";
       };
