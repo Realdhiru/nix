@@ -112,6 +112,7 @@ networkmanager
 bluez
 lm_sensors
 python3
+linux-wallpaperengine
 
   ];
 }
