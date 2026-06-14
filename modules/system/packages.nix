@@ -102,6 +102,7 @@
 
     # Quickshell
     quickshell
+    qt6.qtmultimedia
     matugen
   ];
 }
