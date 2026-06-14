@@ -1,7 +1,7 @@
 configuration {
     modi:                   "drun,filebrowser,window";
     show-icons:             true;
-    display-drun:           "";
+    display-drun:           "";
     display-window:         "";
     display-filebrowser:    "";
     drun-display-format:    "{name}";
@@ -12,4 +12,4 @@ configuration {
     case-sensitive:         false;
 }
 
-@theme "/home/realdhiru/nix/dotfiles/rofi/theme.rasi"
+@theme "theme.rasi"
