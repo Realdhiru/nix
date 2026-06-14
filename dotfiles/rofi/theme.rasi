@@ -24,8 +24,8 @@
 window {
     anchor:              west;             /* Snap the orientation alignment anchor to the left side */
     location:            west;             /* Moves window position to the absolute left vertical center */
-    xoffset:             20%;             /* Push it rightward away from the screen edge (Tweak this value to your liking) */
-    yoffset:             0px;              /* Adjust this if you want it moved up (-) or down (+) */
+    x-offset:             20%;             /* Push it rightward away from the screen edge (Tweak this value to your liking) */
+    y-offset:             0px;              /* Adjust this if you want it moved up (-) or down (+) */
 
     /* --- DIMENSION CONTROLS --- */
     width:               420px;            /* Decreased horizontal width (was 650px) */
