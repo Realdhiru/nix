@@ -143,7 +143,7 @@ Item {
         if (window.currentFilter === "Search" && window.hasSearched) {
             let alreadyExists = window.isDownloaded(safeFileName);
             let destFile = window.srcDir + "/" + safeFileName;
-            let finalThumb = decodeURIComponent(window.thumbDir.replace("file://", "")) + "/" + safeFileName;
+            let finalThumb = "file://" + window.srcDir + "/" + safeFileName;
             let tempThumb = decodeURIComponent(window.searchDir.replace("file://", "")) + "/" + safeFileName;
             let mapFile = paths.getCacheDir("wallpaper_picker") + "/search_map.txt";
 
@@ -154,7 +154,7 @@ Item {
                     export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
                     
                     ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
-                    ( matugen image "$FINAL_THUMB" || true; bash "$RELOAD_SCRIPT" || true ) &
+                    ( matugen image "$DEST_FILE" || true; bash "$RELOAD_SCRIPT" || true ) &
                 `;
                 Quickshell.execDetached(["bash", "-c", applyScript]);
             } else {
@@ -164,8 +164,6 @@ Item {
                 const downloadScript = `
                     export SAFE_NAME="${escapeBash(safeFileName)}"
                     export DEST_FILE="${escapeBash(destFile)}"
-                    export FINAL_THUMB="${escapeBash(finalThumb)}"
-                    export TEMP_THUMB="${escapeBash(tempThumb)}"
                     export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
                     export MAP_FILE="${escapeBash(mapFile)}"
                     
@@ -178,11 +176,9 @@ Item {
                         else
                             mv "$DEST_FILE.tmp" "$DEST_FILE"
                         fi
-                        cp "$TEMP_THUMB" "$FINAL_THUMB"
-                        magick "$DEST_FILE" -resize x420 -quality 70 "$FINAL_THUMB" || true
                         
                         ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
-                        ( matugen image "$FINAL_THUMB" || true; bash "$RELOAD_SCRIPT" || true ) &
+                        ( matugen image "$DEST_FILE" || true; bash "$RELOAD_SCRIPT" || true ) &
                     fi
                 `;
                 Quickshell.execDetached(["bash", "-c", downloadScript]);
@@ -191,15 +187,12 @@ Item {
         }
 
         const originalFile = window.srcDir + "/" + cleanName;
-        const thumbFile = paths.getCacheDir("wallpaper_picker") + "/thumbs/" + safeFileName;
-        
         const escOriginal = escapeBash(originalFile);
-        const escThumb = escapeBash(thumbFile);
         const escReload = escapeBash(reloadScript);
 
         const fullScript = `
             ~/.config/hypr/scripts/set_wallpaper.sh "${escOriginal}"
-            ( matugen image "${escThumb}" || true; bash "${escReload}" || true ) &
+            ( matugen image "${escOriginal}" || true; bash "${escReload}" || true ) &
         `;
         Quickshell.execDetached(["bash", "-c", fullScript]);
     }
@@ -254,9 +247,9 @@ Item {
             if (!window.hasSearched) return "Type something to search...";
             if (window.isSearchPaused) return "Search Paused";
             if (window.visibleItemCount === 0) return "Searching DDG (FHD+)...";
-            return "Generating thumbnails...";
+            return "Parsing wallpapers...";
         }
-        if (isLoading) return "Generating thumbnails...";
+        if (isLoading) return "Parsing wallpapers...";
         if (window.visibleItemCount === 0) return "No wallpapers found";
         if (window.currentFilter === "All") return "";
         if (window.currentFilter === "Video") return "Videos";
@@ -307,7 +300,6 @@ Item {
         }
     }
 
-    // Delays incremental entry animation loops
     Timer {
         id: allowAddAnimationTimer
         interval: 600
@@ -372,7 +364,6 @@ Item {
         window.visibleItemCount = count;
     }
 
-    // Handles terminal search engine executions asynchronously
     function triggerOnlineSearch() {
         if (searchInput.text.trim() === "") return;
         window.isModelChanging = true;
@@ -418,7 +409,6 @@ Item {
     }
 
     readonly property string homeDir: "file://" + Quickshell.env("HOME")
-    readonly property string thumbDir: "file://" + paths.getCacheDir("wallpaper_picker") + "/thumbs"
     readonly property string searchDir: "file://" + paths.getCacheDir("wallpaper_picker") + "/search_thumbs"
     readonly property string srcDir: {
         const dir = Quickshell.env("WALLPAPER_DIR")
@@ -533,7 +523,7 @@ Item {
     function triggerColorExtraction() {
         const extractScript = `
             COLOR_DIR="${paths.getCacheDir('wallpaper_picker')}/colors_markers"
-            THUMBS="${paths.getCacheDir('wallpaper_picker')}/thumbs"
+            THUMBS="file://${window.srcDir}"
             CSV="${paths.getCacheDir('wallpaper_picker')}/colors.csv"
             mkdir -p "$COLOR_DIR"
             if [ -f "$CSV" ]; then
@@ -727,7 +717,7 @@ Item {
 
     FolderListModel {
         id: localFolderModel
-        folder: window.thumbDir
+        folder: "file://" + window.srcDir
         nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
         showDirs: false
         sortField: FolderListModel.Name

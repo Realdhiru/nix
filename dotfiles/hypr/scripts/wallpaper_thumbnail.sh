@@ -1,23 +1,37 @@
 #!/usr/bin/env bash
 
-mkdir -p ~/.cache/quickshell/wallpaper_thumbs
+SRC="$HOME/Pictures/Wallpapers"
+THUMB="$HOME/.cache/quickshell/wallpaper_picker/thumbs"
 
-for file in ~/Pictures/Wallpapers/*
+mkdir -p "$THUMB"
+
+rm -f "$THUMB"/*
+
+find "$SRC" -maxdepth 1 -type f | while read -r file
 do
     name=$(basename "$file")
 
-    if [[ "$file" =~ \.(jpg|jpeg|png)$ ]]
-    then
-        magick "$file" \
-            -thumbnail x300 \
-            ~/.cache/quickshell/wallpaper_thumbs/"$name"
-    else
-        ffmpeg \
-            -y \
-            -i "$file" \
-            -vf scale=-1:300 \
-            -frames:v 1 \
-            ~/.cache/quickshell/wallpaper_thumbs/"$name".jpg \
-            >/dev/null 2>&1
-    fi
+    case "${file,,}" in
+        *.jpg|*.jpeg|*.png|*.webp)
+            magick "$file" \
+                -thumbnail x420 \
+                "$THUMB/$name"
+            ;;
+
+        *.gif)
+            magick "$file[0]" \
+                -thumbnail x420 \
+                "$THUMB/$name"
+            ;;
+
+        *.mp4|*.mkv|*.mov|*.webm)
+            ffmpeg \
+                -y \
+                -ss 00:00:01 \
+                -i "$file" \
+                -frames:v 1 \
+                "$THUMB/$name.jpg" \
+                >/dev/null 2>&1
+            ;;
+    esac
 done
