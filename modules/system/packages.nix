@@ -89,8 +89,6 @@ bluetuith
 
 # Quickshell dependencies
 matugen
-awww
-satty
 yq-go
 zbar
 mpvpaper
@@ -112,7 +110,6 @@ networkmanager
 bluez
 lm_sensors
 python3
-linux-wallpaperengine
 
   ];
 }
