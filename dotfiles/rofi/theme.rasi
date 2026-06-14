@@ -1,9 +1,17 @@
 * {
-    /* Glassmorphism Color Palette */
-    bg-glass:            rgba(0, 0, 0, 0.15);      /* Highly transparent base */
-    bg-surface:          rgba(255, 255, 255, 0.03);/* Glass plate sheen */
-    bg-selected:         rgba(255, 255, 255, 0.08);/* Subtle highlight */
-    border-glass:        rgba(255, 255, 255, 0.12);/* Liquid rim reflection */
+    /* --- GLASS CONTROLS (Tweak these to change look) --- */
+    
+    /* Increased base dimness: Alpha changed from 0.15 to 0.45 for a darker glass background */
+    bg-glass:            rgba(0, 0, 0, 0.45);      
+    
+    /* Glass sheen plate overlay */
+    bg-surface:          rgba(255, 255, 255, 0.03);
+    
+    /* Selection bar highlight brightness */
+    bg-selected:         rgba(255, 255, 255, 0.08);
+    
+    /* Border reflection rim opacity */
+    border-glass:        rgba(255, 255, 255, 0.12);
     
     fg-main:             #FFFFFF;
     fg-muted:            #B0B0B0;
@@ -14,7 +22,8 @@
 }
 
 window {
-    width:               650px;
+    /* --- DIMENSION CONTROLS --- */
+    width:               520px;            /* Decreased horizontal width (was 650px) */
     border:              1px;
     border-color:        @border-glass;
     border-radius:       16px;
@@ -49,7 +58,10 @@ entry {
 listview {
     fixed-height:        false;
     dynamic:             true;
-    lines:               8;
+    
+    /* --- VERTICAL SIZE CONTROL --- */
+    lines:               6;                /* Decreased visible app count (was 8) */
+    
     spacing:             6px;
     scrollbar:           false;
 }
