@@ -12,4 +12,4 @@ configuration {
     case-sensitive:         false;
 }
 
-@theme "theme.rasi"
+@theme "/home/realdhiru/nix/dotfiles/rofi/theme.rasi"
