@@ -137,149 +137,47 @@ Item {
     }
 
     function applyWallpaper(safeFileName, isVideo) {
-        if (!safeFileName || window.isApplying) return;
-        
-        let outputs = window.getMonitorOutputs();
-        if (outputs === "none") return;
-        
-        window.isApplying = true;
-        applyUnlockTimer.restart();
-        
-        window.targetWallName = safeFileName;
-        let cleanName = window.getCleanName(safeFileName);
-        let reloadScript = Qt.resolvedUrl("matugen_reload.sh").toString();
-        
-        if (reloadScript.startsWith("file://")) {
-            reloadScript = decodeURIComponent(reloadScript.substring(7));
-        }
+    if (!safeFileName || window.isApplying)
+        return;
 
-        const escapeBash = (str) => String(str).replace(/(["\\$`])/g, '\\$1');
-        const randomTransition = window.transitions[Math.floor(Math.random() * window.transitions.length)];
-        const escOutputs = escapeBash(outputs);
-        
-        const logFile = paths.logDir + "/awww_debug.log";
-        
-        if (window.currentFilter === "Search" && window.hasSearched) {
-            let alreadyExists = window.isDownloaded(safeFileName);
-            let destFile = window.srcDir + "/" + safeFileName;
-            let finalThumb = decodeURIComponent(window.thumbDir.replace("file://", "")) + "/" + safeFileName;
-            let tempThumb = decodeURIComponent(window.searchDir.replace("file://", "")) + "/" + safeFileName;
-            let mapFile = paths.getCacheDir("wallpaper_picker") + "/search_map.txt";
+    window.isApplying = true;
+    applyUnlockTimer.restart();
 
-            if (alreadyExists) {
-                const applyScript = `
-                    export DEST_FILE="${escapeBash(destFile)}"
-                    export FINAL_THUMB="${escapeBash(finalThumb)}"
-                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
-                    export TARGET_MONITORS="${escOutputs}"
-                    
-                    cp "$DEST_FILE" ${paths.getCacheDir("wallpaper_picker")}/current_wallpaper.png || true
-                    pkill mpvpaper || true
-                    
-                    echo "" >> ${logFile}
-                    echo "[$(date +'%H:%M:%S.%3N')] APPLYING CACHED SEARCH: $DEST_FILE TO $TARGET_MONITORS" >> ${logFile}
-                    
-                    if [ "$TARGET_MONITORS" = "all" ]; then
-                        awww img "$DEST_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 >> ${logFile} 2>&1 &
-                    else
-                        awww img -o "$TARGET_MONITORS" "$DEST_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 >> ${logFile} 2>&1 &
-                    fi
-                    
-                    ( matugen image "$FINAL_THUMB" || true; bash "$RELOAD_SCRIPT" || true ) &
-                `;
-                Quickshell.execDetached(["bash", "-c", applyScript]);
-            } else {
-                window.isDownloadingWallpaper = true;
-                window.currentDownloadName = safeFileName;
+    window.targetWallName = safeFileName;
 
-                const downloadScript = `
-                    export SAFE_NAME="${escapeBash(safeFileName)}"
-                    export DEST_FILE="${escapeBash(destFile)}"
-                    export FINAL_THUMB="${escapeBash(finalThumb)}"
-                    export TEMP_THUMB="${escapeBash(tempThumb)}"
-                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
-                    export MAP_FILE="${escapeBash(mapFile)}"
-                    export TARGET_MONITORS="${escOutputs}"
-                    
-                    URL=$(awk -F'|' -v fname="$SAFE_NAME" '$1 == fname {print $2; exit}' "$MAP_FILE")
-                    if [ -n "$URL" ]; then
-                        curl -s -L -A "Mozilla/5.0" "$URL" -o "$DEST_FILE.tmp"
-                        
-                        if file "$DEST_FILE.tmp" | grep -iq "webp"; then
-                            magick "$DEST_FILE.tmp" "$DEST_FILE"
-                            rm -f "$DEST_FILE.tmp"
-                        else
-                            mv "$DEST_FILE.tmp" "$DEST_FILE"
-                        fi
-                        
-                        cp "$TEMP_THUMB" "$FINAL_THUMB"
-                        magick "$DEST_FILE" -resize x420 -quality 70 "$FINAL_THUMB" || true
-                        
-                        cp "$DEST_FILE" ${paths.getCacheDir("wallpaper_picker")}/current_wallpaper.png || true
-                        pkill mpvpaper || true
-                        
-                        echo "" >> ${logFile}
-                        echo "[$(date +'%H:%M:%S.%3N')] APPLYING NEW DOWNLOAD: $DEST_FILE TO $TARGET_MONITORS" >> ${logFile}
-                        
-                        if [ "$TARGET_MONITORS" = "all" ]; then
-                            awww img "$DEST_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 >> ${logFile} 2>&1 &
-                        else
-                            awww img -o "$TARGET_MONITORS" "$DEST_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 >> ${logFile} 2>&1 &
-                        fi
-                        
-                        ( matugen image "$FINAL_THUMB" || true; bash "$RELOAD_SCRIPT" || true ) &
-                    fi
-                `;
-                Quickshell.execDetached(["bash", "-c", downloadScript]);
-            }
-            return;
-        }
+    let cleanName = window.getCleanName(safeFileName);
 
-        const originalFile = window.srcDir + "/" + cleanName;
-        const thumbFile = paths.getCacheDir("wallpaper_picker") + "/thumbs/" + safeFileName;
-        
-        const escOriginal = escapeBash(originalFile);
-        const escThumb = escapeBash(thumbFile);
-        const escReload = escapeBash(reloadScript);
+    let originalFile = window.srcDir + "/" + cleanName;
 
-        let wallpaperCmd = "";
-        
-        if (isVideo) {
-            wallpaperCmd = `
-                echo "" >> ${logFile}
-                echo "[$(date +'%H:%M:%S.%3N')] APPLYING LOCAL VIDEO: ${escOriginal} TO ${escOutputs}" >> ${logFile}
-                
-                if [ "${escOutputs}" = "all" ]; then
-                    mpvpaper -o 'loop --no-audio --hwdec=auto --profile=high-quality --video-sync=display-resample --interpolation --tscale=oversample' '*' "${escOriginal}" >> ${logFile} 2>&1 &
-                else
-                    IFS=',' read -ra MON_ARR <<< "${escOutputs}"
-                    for mon in "\${MON_ARR[@]}"; do
-                        mpvpaper -o 'loop --no-audio --hwdec=auto --profile=high-quality --video-sync=display-resample --interpolation --tscale=oversample' "\$mon" "${escOriginal}" >> ${logFile} 2>&1 &
-                    done
-                fi
-            `;
-        } else {
-            wallpaperCmd = `
-                echo "" >> ${logFile}
-                echo "[$(date +'%H:%M:%S.%3N')] APPLYING LOCAL IMAGE: ${escOriginal} TO ${escOutputs}" >> ${logFile}
-                
-                if [ "${escOutputs}" = "all" ]; then
-                    awww img "${escOriginal}" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 >> ${logFile} 2>&1 &
-                else
-                    awww img -o "${escOutputs}" "${escOriginal}" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 >> ${logFile} 2>&1 &
-                fi
-            `;
-        }
+    let thumbFile =
+        paths.getCacheDir("wallpaper_picker")
+        + "/thumbs/"
+        + safeFileName;
 
-        const fullScript = `
-            cp "${isVideo ? escThumb : escOriginal}" ${paths.getCacheDir("wallpaper_picker")}/current_wallpaper.png || true
-            pkill mpvpaper || true
-            
-            ${wallpaperCmd}
-            ( matugen image "${escThumb}" || true; bash "${escReload}" || true ) &
-        `;
-        Quickshell.execDetached(["bash", "-c", fullScript]);
-    }
+    let reloadScript =
+        Qt.resolvedUrl("matugen_reload.sh")
+            .toString()
+            .replace(/^file:\/\//, "");
+
+    let cmd = `
+        ~/.config/hypr/scripts/set_wallpaper.sh "${originalFile}"
+
+        cp "${thumbFile}" \
+        ${paths.getCacheDir("wallpaper_picker")}/current_wallpaper.png \
+        2>/dev/null || true
+
+        (
+            matugen image "${thumbFile}" || true
+            bash "${reloadScript}" || true
+        ) &
+    `;
+
+    Quickshell.execDetached([
+        "bash",
+        "-c",
+        cmd
+    ]);
+}
     
     Settings {
         id: searchState
@@ -540,8 +438,6 @@ Item {
         ? dir 
         : Quickshell.env("HOME") + "/Pictures/Wallpapers"
     }
-
-    readonly property var transitions: ["simple", "fade", "left", "right", "top", "bottom", "wipe", "grow", "center", "outer", "random", "wave"]
 
     readonly property real itemWidth: window.s(400)
     readonly property real itemHeight: window.s(420)
