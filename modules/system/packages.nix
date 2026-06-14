@@ -5,14 +5,18 @@
 
     # CLI
     vim
-    wget
     git
     curl
+    wget
     tree
+    jq
+    yq-go
+    bc
+    socat
+    python3
     fastfetch
     btop
     weathr
-    libva-utils
 
     # Development
     vscodium
@@ -21,18 +25,21 @@
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     brave
 
-    # File Managers
+    # Terminal
+    wezterm
+
+    # File management
     thunar
     xfce4-exo
+    fsearch
+    ntfs3g
 
-    # Launchers
+    # Launchers and clipboard
     rofi
-
-    # Clipboard
     wl-clipboard
     cliphist
 
-    # Screenshots / Recording
+    # Screenshots and recording
     grim
     slurp
     grimblast
@@ -40,75 +47,61 @@
     gpu-screen-recorder
     gpu-screen-recorder-gtk
 
-    # Media controls
-    brightnessctl
-    playerctl
-
-    # Notifications
-    libnotify
-
-    # Search
-    fsearch
-
-    # Polkit
-    polkit_gnome
-
-    # Filesystems
-    ntfs3g
-
-    # Terminal
-    wezterm
-
-    # Video / Audio
+    # Media
     mpv
+    mpvpaper
+    playerctl
+    brightnessctl
+    easyeffects
+    cava
 
-    # Creative
-    blender
-    kdePackages.kdenlive
+    # Images and thumbnails
+    loupe
+    ffmpeg
+    imagemagick
+    zbar
 
     # Documents
     kdePackages.okular
     onlyoffice-desktopeditors
 
-    # Images
-    loupe
-    #imv
+    # Creative
+    blender
+    kdePackages.kdenlive
 
     # Downloads
     parabolic
 
-    # Volume
+    # Audio
     pwvucontrol
 
-    # Intel VAAPI
+    # Networking and Bluetooth
+    networkmanager
+    networkmanagerapplet
+    bluez
+    blueman
+    bluetuith
+
+    # Power and sensors
+    acpi
+    iw
+    lm_sensors
+    libva-utils
+
+    # Intel video acceleration
     intel-media-driver
     vpl-gpu-rt
 
-blueman
-bluetuith
+    # Notifications and authentication
+    libnotify
+    polkit_gnome
 
-# Quickshell dependencies
-matugen
-yq-go
-zbar
-mpvpaper
-easyeffects
-cava
+    # Hyprland
+    hypridle
+    hyprlock
 
-# Quickshell ecosystem
-quickshell
-networkmanagerapplet
-hypridle
-hyprlock
-jq
-socat
-bc
-acpi
-iw
-networkmanager
-bluez
-lm_sensors
-python3
-
+    # Quickshell
+    quickshell
+    matugen
   ];
 }
