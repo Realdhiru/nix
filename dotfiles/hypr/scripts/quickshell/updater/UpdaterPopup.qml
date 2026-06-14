@@ -12,30 +12,22 @@ Item {
     focus: true
 
     Caching { id: paths }
-    readonly property string videoPath: paths.getRunDir("updater") + "/video.mp4"
     
-    // WAYLAND ANTI-DEADLOCK: Guarantee the initial frame is never 0x0.
-    // If mainCard.width evaluates to 0 on tick 1, it falls back to raw 500.
     implicitWidth: mainCard.width || 500
     implicitHeight: mainCard.height || 600
 
     property bool _init: false
 
-    // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler
         currentWidth: Screen.width
     }
     
     function s(val) { 
-        // Failsafe: If Screen.width isn't ready on tick 1, return the raw value
         let res = scaler.s(val);
         return res > 0 ? res : val; 
     }
 
-    // -------------------------------------------------------------------------
-    // COLORS (Dynamic Matugen Palette + Added Blob Colors)
-    // -------------------------------------------------------------------------
     MatugenColors { id: _theme }
     
     readonly property color base: _theme.base
@@ -51,16 +43,9 @@ Item {
     readonly property color mauve: _theme.mauve || "#cba6f7"
     readonly property color blue: _theme.blue || "#89b4fa"
 
-    // -------------------------------------------------------------------------
-    // STATE & POLLING
-    // -------------------------------------------------------------------------
     property string localVersion: "..."
     property string remoteVersion: "..."
-    
-    // Dynamic URL based on the user's current version vs the manifest
-    property string videoUrl: ""
     property bool uiExpanded: false
-    property bool videoReady: false
     
     property var pendingCommits: []
     property int typeIndex: 0
@@ -77,24 +62,18 @@ Item {
         event.accepted = true;
     }
 
-    // =========================================================================
-    // ASYNC BOOT MANAGER
-    // Ensures UI maps perfectly in the compositor before firing heavy scripts
-    // =========================================================================
     Timer {
         id: bootSequence
-        interval: 250 // Give Hyprland a quarter-second to map the window
+        interval: 250
         running: true
         onTriggered: {
             window._init = true;
             localVerProcess.running = true;
             remoteVerProcess.running = true;
-            videoResolveProcess.running = true;
             commitFetchProcess.running = true;
         }
     }
 
-    // --- 1. LOCAL VERSION FETCH ---
     Process {
         id: localVerProcess
         running: false
@@ -107,7 +86,6 @@ Item {
         }
     }
 
-    // --- 2. REMOTE VERSION FETCH ---
     Process {
         id: remoteVerProcess
         running: false
@@ -120,76 +98,6 @@ Item {
         }
     }
 
-    // --- 3. DYNAMIC VIDEO RESOLUTION ---
-    property string videoResolveScript: `
-import urllib.request, json, subprocess, sys
-try:
-    local_str = subprocess.check_output("source ~/.local/state/imperative-dots-version 2>/dev/null && echo $LOCAL_VERSION", shell=True).decode('utf-8').strip()
-    if not local_str: local_str = '0.0.0'
-    
-    # Safe Semantic Version Parsing
-    def parse_v(v):
-        clean = ''.join(c if c.isdigit() or c == '.' else ' ' for c in v).strip().replace(' ', '.')
-        return [int(x) for x in clean.split('.') if x.isdigit()]
-        
-    local_v = parse_v(local_str)
-
-    req = urllib.request.Request('https://raw.githubusercontent.com/ilyamiro/imperative-dots/master/updates.json')
-    res = urllib.request.urlopen(req, timeout=5)
-    data = json.loads(res.read().decode())
-
-    valid_videos = []
-    for item in data.get('videos', []):
-        target_v = parse_v(item['version'])
-        # Only grab videos for versions newer than what the user currently has installed
-        if target_v > local_v:
-            valid_videos.append((target_v, item['url']))
-
-    if valid_videos:
-        valid_videos.sort(key=lambda x: x[0])
-        url = valid_videos[-1][1] # Play the newest feature video they missed
-        
-        # Verify the video URL is actually alive before expanding the UI
-        head = urllib.request.Request(url, method='HEAD')
-        head_res = urllib.request.urlopen(head, timeout=5)
-        if head_res.getcode() in [200, 301, 302]:
-            print(url)
-except Exception:
-    pass
-`
-
-    Process {
-        id: videoResolveProcess
-        running: false
-        command: ["python3", "-c", window.videoResolveScript]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let url = this.text ? this.text.trim() : "";
-                if (url !== "" && url.startsWith("http")) {
-                    window.videoUrl = url;
-                    window.uiExpanded = true;
-                    videoDownloadProcess.running = true;
-                }
-            }
-        }
-    }
-
-    // --- 4. VIDEO DOWNLOAD (BACKGROUND DISK WRITE) ---
-    Process {
-        id: videoDownloadProcess
-        running: false
-        // Quietly pulls the mp4 to RAM/tmpfs to avoid locking the UI thread
-        command: ["bash", "-c", "curl -m 60 -s -L -o '" + window.videoPath + "' " + window.videoUrl]
-        onExited: {
-            if (exitCode === 0) {
-                videoPlayer.source = "file://" + window.videoPath;
-                videoPlayer.play();
-                window.videoReady = true; // Fades out spinner, fades in video
-            }
-        }
-    }
-
-    // --- 5. COMMIT LOG FETCH ---
     property string fetchScript: `
 import urllib.request, json, subprocess
 
@@ -228,7 +136,7 @@ try:
                 
                 for line in content.splitlines():
                     if line.startswith('DOTS_VERSION='):
-                        ver = line.split('=', 1)[1].strip().strip('"\\'')
+                        ver = line.split('=', 1)[1].strip().strip('"\'')
                         if ver == local:
                             local_sha = sha
                         break
@@ -304,9 +212,6 @@ except Exception as e:
         }
     }
 
-    // =========================================================================
-    // UI LAYOUT
-    // =========================================================================
     Rectangle {
         id: mainCard
         width: window.uiExpanded ? window.s(950) : window.s(500)
@@ -322,7 +227,6 @@ except Exception as e:
         Behavior on width { enabled: window._init; NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
         Behavior on height { enabled: window._init; NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
 
-        // --- AMBIENT BLOBS ---
         Rectangle {
             width: parent.width * 0.8; height: width; radius: width / 2
             x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
@@ -346,7 +250,6 @@ except Exception as e:
             anchors.margins: window.s(25)
             spacing: window.s(20)
 
-            // --- ANIMATED CHOREOGRAPHED VERSIONS ---
             Item {
                 id: versionContainer
                 Layout.fillWidth: true
@@ -425,67 +328,6 @@ except Exception as e:
                 }
             }
 
-            // --- STRICT 16:9 DYNAMIC VIDEO PREVIEW ---
-            Item {
-                id: videoContainer
-                Layout.fillWidth: true
-                // Perfectly clamps height to a 16:9 ratio of the dynamic width
-                Layout.preferredHeight: window.uiExpanded ? (width * 9 / 16) : 0 
-                visible: window.uiExpanded || height > 0
-                clip: true
-                
-                Behavior on Layout.preferredHeight { enabled: window._init; NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: window.s(12)
-                    color: window.crust 
-                    border.color: window.surface2 
-                    border.width: 1
-                    clip: true
-
-                    // Loading State Animation (Visible while downloading)
-                    Item {
-                        anchors.centerIn: parent
-                        width: window.s(42)
-                        height: window.s(42)
-                        visible: window.uiExpanded && !window.videoReady
-                        
-                        Text {
-                            anchors.centerIn: parent
-                            text: "󰑮"
-                            font.family: "Iosevka Nerd Font"
-                            font.pixelSize: window.s(42)
-                            color: window.mauve
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            transformOrigin: Item.Center
-                            
-                            RotationAnimation on rotation {
-                                from: 0; to: 360; duration: 2500; loops: Animation.Infinite; running: parent.visible
-                            }
-                        }
-                    }
-
-                    MediaPlayer {
-                        id: videoPlayer
-                        videoOutput: videoOutput
-                        loops: MediaPlayer.Infinite
-                    }
-
-                    VideoOutput {
-                        id: videoOutput
-                        anchors.fill: parent
-                        fillMode: VideoOutput.PreserveAspectFit 
-                        
-                        // Fades in smoothly once the local video is physically ready
-                        opacity: window.videoReady ? 1.0 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.InOutQuad } }
-                    }
-                }
-            }
-
-            // --- CLEAN COMMIT LIST ---
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -520,7 +362,6 @@ except Exception as e:
                         color: window.surface0 
                         radius: window.s(12)
 
-                        // Subtle Matugen Tint Overlay
                         Rectangle {
                             anchors.fill: parent
                             radius: parent.radius
@@ -546,7 +387,6 @@ except Exception as e:
                 }
             }
 
-            // --- HOLD TO UPDATE BUTTON ---
             Rectangle {
                 id: updateBtn
                 Layout.alignment: Qt.AlignHCenter 
