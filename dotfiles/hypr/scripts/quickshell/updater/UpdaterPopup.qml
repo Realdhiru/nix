@@ -3,7 +3,6 @@ import QtQuick.Window
 import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Controls
-import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import "../"
