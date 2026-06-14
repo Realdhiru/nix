@@ -5,7 +5,8 @@
     ./modules/home/shell.nix
     ./modules/home/quickshell.nix
     ./modules/home/spicetify.nix
-#    ./modules/home/swayosd.nix
+#   ./modules/home/swayosd.nix
+    ./dotfiles/rofi/default.nix
   ];
 
   xdg.configFile."hypr" = {
