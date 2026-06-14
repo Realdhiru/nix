@@ -23,7 +23,7 @@
 
 window {
     /* --- DIMENSION CONTROLS --- */
-    width:               520px;            /* Decreased horizontal width (was 650px) */
+    width:               420px;            /* Decreased horizontal width (was 650px) */
     border:              1px;
     border-color:        @border-glass;
     border-radius:       16px;
