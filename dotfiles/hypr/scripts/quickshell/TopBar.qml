@@ -574,37 +574,7 @@ Variants {
             Item {
                 anchors.fill: parent
 
-                Rectangle {
-                    id: leftContent
-                    y: (parent.height - barWindow.barHeight) / 2
-                    height: barWindow.barHeight
-
-                    color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
-                    radius: barWindow.s(14)
-                    border.width: 1
-                    border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08)
-                    clip: true
-                    
-                    property bool showLayout: false
-                    
-                    opacity: (showLayout && !barWindow.isSettingsOpen) ? 1 : 0
-                    enabled: !barWindow.isSettingsOpen
-                    
-                    property real targetX: (showLayout && !barWindow.isSettingsOpen) ? 0 : barWindow.s(-200)
-                    x: targetX
-                    Behavior on x { NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
-                    
-                    Timer {
-                        running: barWindow.isStartupReady
-                        interval: 10
-                        onTriggered: leftContent.showLayout = true
-                    }
-
-                    width: leftLayout.width + barWindow.s(16)
-
-                    
-                }
+                
                 
                 Rectangle {
                     id: workspacesBox
