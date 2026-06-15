@@ -38,8 +38,8 @@ Variants {
 
             anchors {
                 top: true
-                left: true
-                right: true
+                left: false
+                right: false
             }
 
             Scaler {
