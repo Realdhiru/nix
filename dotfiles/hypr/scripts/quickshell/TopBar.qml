@@ -579,7 +579,7 @@ Variants {
                     y: (parent.height - barWindow.barHeight) / 2
                     height: barWindow.barHeight
 
-                    color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
+                    color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.25)
                     radius: barWindow.s(14)
                     border.width: 1
                     border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08)
