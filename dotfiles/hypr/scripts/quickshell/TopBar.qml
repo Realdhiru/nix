@@ -258,12 +258,16 @@ Variants {
             property string displayTitle: ""
             property string displayTime: ""
             property string displayArtUrl: ""
+            
+            // Fixed: Appending a cache-busting timestamp forces QML to bypass file locks and reload the asset
+            property string artCacheBuster: ""
 
             onMusicDataChanged: {
                 if (musicData && musicData.status !== "Stopped" && musicData.title !== "") {
                     displayTitle = musicData.title;
                     displayTime = musicData.timeStr;
                     displayArtUrl = musicData.artUrl;
+                    artCacheBuster = "?t=" + Date.now();
                 }
             }
 
@@ -574,7 +578,6 @@ Variants {
             Item {
                 anchors.fill: parent
 
-                // FIXED: Placed a single parent Row bounded explicitly to the screen center coordinate
                 Row {
                     id: globalCenterContainer
                     anchors.centerIn: parent
@@ -778,10 +781,20 @@ Variants {
                                             border.width: barWindow.musicData.status === "Playing" ? 1 : 0
                                             border.color: mocha.mauve
                                             clip: true
+                                            
                                             Image { 
-                                                anchors.fill: parent; 
-                                                source: barWindow.displayArtUrl || ""; 
+                                                anchors.fill: parent
+                                                // Fixed: Concatenating the time query bypasses internal pixel mapping cache states instantly
+                                                source: barWindow.displayArtUrl ? (barWindow.displayArtUrl + barWindow.artCacheBuster) : ""
                                                 fillMode: Image.PreserveAspectCrop 
+                                                
+                                                // Failsafe connection event handler: If data stream hasn't completed, re-trigger resource retrieval
+                                                onStatusChanged: {
+                                                    if (status === Image.Error && barWindow.displayArtUrl !== "") {
+                                                        musicForceRefresh.running = false;
+                                                        musicForceRefresh.running = true;
+                                                    }
+                                                }
                                             }
                                             
                                             Rectangle {
