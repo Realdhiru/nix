@@ -783,33 +783,19 @@ Variants {
                                             clip: true
                                             
                                             Image { 
-    id: musicThumbnail
-    anchors.fill: parent
-    source: barWindow.displayArtUrl || ""
-    fillMode: Image.PreserveAspectCrop 
-    cache: false
-
-    // Multi-stage verification loop
-    onStatusChanged: {
-        if (status === Image.Error && barWindow.displayArtUrl !== "") {
-            // First pass fail means disk write is still active. 
-            // Halt, let file I/O complete, then trigger data reload.
-            syncTimer.start();
-        }
-    }
-
-    Timer {
-        id: syncTimer
-        interval: 350 // Safe window allowing music_info.sh to finish writing the asset
-        running: false
-        repeat: false
-        onTriggered: {
-            // Re-run the backend collector process to broadcast the finished image file
-            musicForceRefresh.running = false;
-            musicForceRefresh.running = true;
-        }
-    }
-}
+                                                anchors.fill: parent
+                                                // Fixed: Concatenating the time query bypasses internal pixel mapping cache states instantly
+                                                source: barWindow.displayArtUrl ? (barWindow.displayArtUrl + barWindow.artCacheBuster) : ""
+                                                fillMode: Image.PreserveAspectCrop 
+                                                
+                                                // Failsafe connection event handler: If data stream hasn't completed, re-trigger resource retrieval
+                                                onStatusChanged: {
+                                                    if (status === Image.Error && barWindow.displayArtUrl !== "") {
+                                                        musicForceRefresh.running = false;
+                                                        musicForceRefresh.running = true;
+                                                    }
+                                                }
+                                            }
                                             
                                             Rectangle {
                                                 anchors.fill: parent
