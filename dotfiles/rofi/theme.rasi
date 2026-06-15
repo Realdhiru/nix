@@ -15,13 +15,13 @@
 
 window {
     /* --- POSITION CONTROLS --- */
-    anchor:              north west;       /* Changed from 'west' to force the anchor lock to the top-left corner */
+    anchor:              west;             
     location:            west;             
-    x-offset:            5%;               
-    y-offset:            -15%;             /* Adjust this to shift the static top-edge position up (-) or down (+) */
+    x-offset:            5%;               /* Offset moves 5% out from the left screen boundary */
+    y-offset:            0%;               
 
     /* --- DIMENSION CONTROLS --- */
-    width:               420px;            
+    width:               420px;            /* Narrowed horizontal width */
     border:              1px;
     border-color:        @border-glass;
     border-radius:       16px;
