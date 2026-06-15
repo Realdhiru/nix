@@ -770,11 +770,7 @@ Variants {
                                         border.width: barWindow.musicData.status === "Playing" ? 1 : 0
                                         border.color: mocha.mauve
                                         clip: true
-                                        Image { 
-                                            anchors.fill: parent; 
-                                            source: barWindow.displayArtUrl || ""; 
-                                            fillMode: Image.PreserveAspectCrop 
-                                        }
+                                        
                                         
                                         Rectangle {
                                             anchors.fill: parent
