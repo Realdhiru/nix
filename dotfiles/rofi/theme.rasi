@@ -17,16 +17,16 @@ window {
     /* --- POSITION CONTROLS --- */
     anchor:              west;             
     location:            west;             
-    x-offset:            5%;               /* Offset moves 5% out from the left screen boundary */
+    x-offset:            8%;               /* Offset moves 5% out from the left screen boundary */
     y-offset:            0%;               
 
     /* --- DIMENSION CONTROLS --- */
-    width:               420px;            /* Narrowed horizontal width */
-    border:              1px;
+    width:               400px;            /* Narrowed horizontal width */
+    border:              0.2px;
     border-color:        @border-glass;
     border-radius:       16px;
     background-color:    @bg-glass;
-    padding:             20px;
+    padding:             17px;
 }
 
 mainbox {
