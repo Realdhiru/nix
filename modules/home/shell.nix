@@ -55,7 +55,7 @@
         && command -v fastfetch >/dev/null \
         && [[ "$TERM_PROGRAM" != "vscode" ]]
       then
-        fastfetch
+      /*  fastfetch */
       fi
     '';
   };
