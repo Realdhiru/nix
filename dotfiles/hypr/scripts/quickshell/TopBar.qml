@@ -598,40 +598,32 @@ Variants {
                     Behavior on opacity { NumberAnimation { duration: 300 } }
 
                     Rectangle {
-                        id: activeHighlight
-                        y: (workspacesBox.height - barWindow.s(32)) / 2
-                        height: barWindow.s(32)
-                        radius: barWindow.s(10)
-                        color: mocha.mauve
-                        z: 0
+    id: activeHighlight
+    y: (workspacesBox.height - barWindow.s(32)) / 2
+    height: barWindow.s(32)
+    radius: barWindow.s(10)
+    color: mocha.mauve
+    z: 0
 
-                        property int prevIdx: 0
-                        property int curIdx: workspacesModel.activeIndex
+    // Look up the active pill item safely inside the Row's Repeater hierarchy
+    property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsRepeater.count) 
+                             ? wsRepeater.itemAt(workspacesModel.activeIndex) 
+                             : null
 
-                        onCurIdxChanged: {
-                            if (curIdx > prevIdx) {
-                                rightAnim.duration = 200; leftAnim.duration = 350;
-                            } else if (curIdx < prevIdx) {
-                                leftAnim.duration = 200; rightAnim.duration = 350;
-                            }
-                            prevIdx = curIdx;
-                        }
+    // Target the actual coordinate space of the visible item
+    property real targetLeft: activePill ? (wsLayout.x + activePill.x) : 0
+    property real targetWidth: activePill ? activePill.width : 0
 
-                        // FIXED: Calculate step size to perfectly match the rounded width + rounded spacing of the Row elements.
-                        property real stepSize: barWindow.s(32) + barWindow.s(6)
-                        property real targetLeft: wsLayout.x + (curIdx * stepSize)
-                        property real targetRight: targetLeft + barWindow.s(32)
+    property real actualLeft: targetLeft
+    property real actualWidth: targetWidth
 
-                        property real actualLeft: targetLeft
-                        property real actualRight: targetRight
+    Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: 250; easing.type: Easing.OutExpo } }
+    Behavior on actualWidth { NumberAnimation { id: widthAnim; duration: 250; easing.type: Easing.OutExpo } }
 
-                        Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: 250; easing.type: Easing.OutExpo } }
-                        Behavior on actualRight { NumberAnimation { id: rightAnim; duration: 250; easing.type: Easing.OutExpo } }
-
-                        x: actualLeft
-                        width: actualRight - actualLeft
-                        opacity: workspacesModel.count > 0 ? 1 : 0
-                    }
+    x: actualLeft
+    width: actualWidth
+    opacity: (workspacesModel.count > 0 && activePill && activePill.visible) ? 1 : 0
+}
 
                     Row {
                         id: wsLayout
