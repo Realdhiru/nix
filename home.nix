@@ -12,14 +12,16 @@
     force = true;
   };
 
-  xdg.configFile."matugen".source =
-    config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/matugen";
-
   xdg.configFile."rofi" = {
     source = ./dotfiles/rofi;
     force = true;
   };
+
+  xdg.configFile."fastfetch/config.jsonc".source = ./dotfiles/fastfetch/config.jsonc;
+
+  xdg.configFile."matugen".source =
+    config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/matugen";
 
   home.username = "realdhiru";
   home.homeDirectory = "/home/realdhiru";

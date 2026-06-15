@@ -2,107 +2,40 @@
 
 {
   environment.systemPackages = with pkgs; [
+    # CLI & Core Utilities
+    vim git curl wget tree jq yq-go bc socat python3 btop weathr
 
-    # CLI
-    vim
-    git
-    curl
-    wget
-    tree
-    jq
-    yq-go
-    bc
-    socat
-    python3
-    fastfetch
-    btop
-    weathr
-
-    # Development
+    # Development & Terminal
     vscodium
+    wezterm
+    fastfetch
 
     # Browsers
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     brave
 
-    # Terminal
-    wezterm
+    # File Management
+    fsearch ntfs3g xfce4-exo
 
-    # File management
-    thunar
-    xfce4-exo
-    fsearch
-    ntfs3g
+    # Launchers & Clipboard
+    rofi wl-clipboard cliphist
 
-    # Launchers and clipboard
-    rofi
-    wl-clipboard
-    cliphist
+    # Screenshots & Recording
+    grim slurp grimblast wf-recorder gpu-screen-recorder gpu-screen-recorder-gtk
 
-    # Screenshots and recording
-    grim
-    slurp
-    grimblast
-    wf-recorder
-    gpu-screen-recorder
-    gpu-screen-recorder-gtk
+    # Media & Display
+    mpv mpvpaper playerctl brightnessctl easyeffects cava loupe ffmpeg imagemagick zbar
 
-    # Media
-    mpv
-    mpvpaper
-    playerctl
-    brightnessctl
-    easyeffects
-    cava
+    # Documents & Creative
+    kdePackages.okular onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic
 
-    # Images and thumbnails
-    loupe
-    ffmpeg
-    imagemagick
-    zbar
+    # Audio & Networking
+    pwvucontrol networkmanagerapplet blueman bluetuith
 
-    # Documents
-    kdePackages.okular
-    onlyoffice-desktopeditors
+    # Power & Sensors
+    acpi iw lm_sensors
 
-    # Creative
-    blender
-    kdePackages.kdenlive
-
-    # Downloads
-    parabolic
-
-    # Audio
-    pwvucontrol
-
-    # Networking and Bluetooth
-    networkmanager
-    networkmanagerapplet
-    bluez
-    blueman
-    bluetuith
-
-    # Power and sensors
-    acpi
-    iw
-    lm_sensors
-    libva-utils
-
-    # Intel video acceleration
-    intel-media-driver
-    vpl-gpu-rt
-
-    # Notifications and authentication
-    libnotify
-    polkit_gnome
-
-    # Hyprland
-    hypridle
-    hyprlock
-
-    # Quickshell
-    quickshell
-    qt6Packages.qtmultimedia
-    matugen
+    # Desktop Integration
+    libnotify polkit_gnome hypridle hyprlock quickshell qt6Packages.qtmultimedia matugen
   ];
 }
