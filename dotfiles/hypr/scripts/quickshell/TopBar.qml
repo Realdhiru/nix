@@ -19,7 +19,7 @@ Variants {
             screen: modelData
 
             anchors {
-                top: true
+                bottom: true
                 left: true
                 right: true
             }
@@ -179,8 +179,8 @@ Variants {
                     Rectangle {
                         height: barWindow.barHeight
                         width: wsLayout.implicitWidth + barWindow.s(24)
-                        color: "rgba(0, 0, 0, 0.4)"
-                        border.color: "rgba(255, 255, 255, 0.1)"
+                        color: Qt.rgba(0, 0, 0, 0.4)
+                        border.color: Qt.rgba(1, 1, 1, 0.1)
                         border.width: 1
                         radius: barWindow.s(100)
                         clip: true
@@ -202,7 +202,7 @@ Variants {
                                     width: isVisibleWs ? (isActive ? barWindow.s(24) : barWindow.s(12)) : 0
                                     height: barWindow.s(12)
                                     radius: barWindow.s(100)
-                                    color: isActive ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 255, 255, 0.3)"
+                                    color: Qt.rgba(1, 1, 1, isActive ? 0.9 : 0.3)
                                     
                                     Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
                                     Behavior on color { ColorAnimation { duration: 250 } }
@@ -220,8 +220,8 @@ Variants {
                     Rectangle {
                         height: barWindow.barHeight
                         width: mediaLayout.implicitWidth + barWindow.s(24)
-                        color: "rgba(0, 0, 0, 0.4)"
-                        border.color: "rgba(255, 255, 255, 0.1)"
+                        color: Qt.rgba(0, 0, 0, 0.4)
+                        border.color: Qt.rgba(1, 1, 1, 0.1)
                         border.width: 1
                         radius: barWindow.s(100)
                         visible: barWindow.isMediaActive
@@ -233,7 +233,7 @@ Variants {
 
                             Rectangle {
                                 width: barWindow.s(32); height: barWindow.s(32); radius: barWindow.s(100)
-                                color: "rgba(255, 255, 255, 0.1)"
+                                color: Qt.rgba(1, 1, 1, 0.1)
                                 clip: true
                                 Image {
                                     id: artImage
@@ -246,14 +246,14 @@ Variants {
                                     anchors.centerIn: parent
                                     text: "󰎆"
                                     font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(18)
-                                    color: "rgba(255, 255, 255, 0.7)"
+                                    color: Qt.rgba(1, 1, 1, 0.7)
                                 }
                             }
 
                             Text {
                                 text: barWindow.displayTitle
                                 font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: barWindow.s(13)
-                                color: "rgba(255, 255, 255, 0.9)"
+                                color: Qt.rgba(1, 1, 1, 0.9)
                                 Layout.maximumWidth: barWindow.s(150)
                                 elide: Text.ElideRight
                             }
@@ -262,7 +262,7 @@ Variants {
                             Text {
                                 text: "󰽰"
                                 font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(20)
-                                color: "rgba(255, 255, 255, 0.7)"
+                                color: Qt.rgba(1, 1, 1, 0.7)
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: Quickshell.execDetached(["wezterm", "start", "--", "cava"])
@@ -271,9 +271,9 @@ Variants {
 
                             Row {
                                 spacing: barWindow.s(8)
-                                Text { text: "󰒮"; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(20); color: "rgba(255, 255, 255, 0.9)"; MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["playerctl", "previous"]) } }
-                                Text { text: barWindow.musicData.status === "Playing" ? "󰏤" : "󰐊"; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(24); color: "rgba(255, 255, 255, 0.9)"; MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["playerctl", "play-pause"]) } }
-                                Text { text: "󰒭"; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(20); color: "rgba(255, 255, 255, 0.9)"; MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["playerctl", "next"]) } }
+                                Text { text: "󰒮"; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(20); color: Qt.rgba(1, 1, 1, 0.9); MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["playerctl", "previous"]) } }
+                                Text { text: barWindow.musicData.status === "Playing" ? "󰏤" : "󰐊"; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(24); color: Qt.rgba(1, 1, 1, 0.9); MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["playerctl", "play-pause"]) } }
+                                Text { text: "󰒭"; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(20); color: Qt.rgba(1, 1, 1, 0.9); MouseArea { anchors.fill: parent; onClicked: Quickshell.execDetached(["playerctl", "next"]) } }
                             }
                         }
                     }
@@ -281,18 +281,29 @@ Variants {
                     // 3. Clock
                     Rectangle {
                         height: barWindow.barHeight
-                        width: clockLayout.implicitWidth + barWindow.s(32)
-                        color: "rgba(0, 0, 0, 0.4)"
-                        border.color: "rgba(255, 255, 255, 0.1)"
+                        width: clockContainer.implicitWidth + barWindow.s(32)
+                        color: Qt.rgba(0, 0, 0, 0.4)
+                        border.color: Qt.rgba(1, 1, 1, 0.1)
                         border.width: 1
                         radius: barWindow.s(100)
 
-                        ColumnLayout {
-                            id: clockLayout
+                        RowLayout {
+                            id: clockContainer
                             anchors.centerIn: parent
-                            spacing: -2
-                            Text { text: barWindow.timeStr; Layout.alignment: Qt.AlignHCenter; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(15); font.weight: Font.Black; color: "rgba(255, 255, 255, 0.95)" }
-                            Text { text: barWindow.dateStr; Layout.alignment: Qt.AlignHCenter; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(10); font.weight: Font.Bold; color: "rgba(255, 255, 255, 0.6)" }
+                            spacing: barWindow.s(10)
+
+                            Text {
+                                text: "󰥔"
+                                font.family: "Iosevka Nerd Font"
+                                font.pixelSize: barWindow.s(20)
+                                color: Qt.rgba(1, 1, 1, 0.9)
+                            }
+
+                            ColumnLayout {
+                                spacing: -2
+                                Text { text: barWindow.timeStr; Layout.alignment: Qt.AlignLeft; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(15); font.weight: Font.Black; color: Qt.rgba(1, 1, 1, 0.95) }
+                                Text { text: barWindow.dateStr; Layout.alignment: Qt.AlignLeft; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(10); font.weight: Font.Bold; color: Qt.rgba(1, 1, 1, 0.6) }
+                            }
                         }
                     }
 
@@ -300,8 +311,8 @@ Variants {
                     Rectangle {
                         height: barWindow.barHeight
                         width: batLayout.implicitWidth + barWindow.s(24)
-                        color: "rgba(0, 0, 0, 0.4)"
-                        border.color: "rgba(255, 255, 255, 0.1)"
+                        color: Qt.rgba(0, 0, 0, 0.4)
+                        border.color: Qt.rgba(1, 1, 1, 0.1)
                         border.width: 1
                         radius: barWindow.s(100)
                         visible: !barWindow.isDesktop
@@ -310,8 +321,8 @@ Variants {
                             id: batLayout
                             anchors.centerIn: parent
                             spacing: barWindow.s(8)
-                            Text { text: barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(18); color: "rgba(255, 255, 255, 0.9)" }
-                            Text { text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Bold; color: "rgba(255, 255, 255, 0.9)" }
+                            Text { text: barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(18); color: Qt.rgba(1, 1, 1, 0.9) }
+                            Text { text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Bold; color: Qt.rgba(1, 1, 1, 0.9) }
                         }
                     }
 
@@ -319,8 +330,8 @@ Variants {
                     Rectangle {
                         height: barWindow.barHeight
                         width: trayRepeater.count > 0 ? trayLayout.width + barWindow.s(24) : 0
-                        color: "rgba(0, 0, 0, 0.4)"
-                        border.color: "rgba(255, 255, 255, 0.1)"
+                        color: Qt.rgba(0, 0, 0, 0.4)
+                        border.color: Qt.rgba(1, 1, 1, 0.1)
                         border.width: 1
                         radius: barWindow.s(100)
                         visible: width > 0
