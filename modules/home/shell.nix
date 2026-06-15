@@ -50,13 +50,13 @@
       ff() {
         fastfetch
       }
-
+/*
       if [[ -o interactive ]] \
         && command -v fastfetch >/dev/null \
         && [[ "$TERM_PROGRAM" != "vscode" ]]
       then
-      /*  fastfetch */
-      fi
+        fastfetch 
+      fi */
     '';
   };
 
