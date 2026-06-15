@@ -598,7 +598,7 @@ Variants {
                     Behavior on opacity { NumberAnimation { duration: 300 } }
 
                     Rectangle {
-        id: workspacesBox 
+        id: workspacesBox
         color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
         radius: barWindow.s(14)
         border.width: 1
@@ -607,7 +607,7 @@ Variants {
         y: (parent.height - barWindow.barHeight) / 2
         clip: true
         
-        width: workspacesModel.count > 0 ? wsDynGroupRow.implicitWidth + barWindow.s(20) : 0
+        width: workspacesModel.count > 0 ? wsLayout.implicitWidth + barWindow.s(20) : 0
         
         property real defaultX: leftContent.x + leftContent.width + barWindow.s(4)
         property real settingsX: mediaBox.settingsX - width - (width > 0 ? barWindow.s(4) : 0)
@@ -621,25 +621,25 @@ Variants {
         Behavior on opacity { NumberAnimation { duration: 300 } }
 
         Rectangle {
-            id: wsDynGroupHighlight
+            id: activeHighlight
             y: (workspacesBox.height - barWindow.s(32)) / 2
             height: barWindow.s(32)
             radius: barWindow.s(10)
             color: mocha.mauve
             z: 0
 
-            property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsDynGroupRepeater.count) 
-                                     ? wsDynGroupRepeater.itemAt(workspacesModel.activeIndex) 
+            property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsRepeater.count) 
+                                     ? wsRepeater.itemAt(workspacesModel.activeIndex) 
                                      : null
 
-            property real targetLeft: activePill ? (wsDynGroupRow.x + activePill.x) : 0
+            property real targetLeft: activePill ? (wsLayout.x + activePill.x) : 0
             property real targetWidth: activePill ? activePill.width : 0
 
             property real actualLeft: targetLeft
             property real actualWidth: targetWidth
 
-            Behavior on actualLeft { NumberAnimation { id: wsDynGroupLAnim; duration: 250; easing.type: Easing.OutExpo } }
-            Behavior on actualWidth { NumberAnimation { id: wsDynGroupWAnim; duration: 250; easing.type: Easing.OutExpo } }
+            Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: 250; easing.type: Easing.OutExpo } }
+            Behavior on actualWidth { NumberAnimation { id: widthAnim; duration: 250; easing.type: Easing.OutExpo } }
 
             x: actualLeft
             width: actualWidth
@@ -647,15 +647,15 @@ Variants {
         }
 
         Row {
-            id: wsDynGroupRow
+            id: wsLayout
             anchors.centerIn: parent
             spacing: barWindow.s(6)
             
             Repeater {
-                id: wsDynGroupRepeater
+                id: wsRepeater
                 model: workspacesModel
                 delegate: Rectangle {
-                    id: wsDynGroupPill
+                    id: wsPill
                     
                     property string stateLabel: model.wsState
                     property string wsName: model.wsId
@@ -664,7 +664,7 @@ Variants {
                     property bool isLimited: workspacesBox.limitActive && index >= 6
                     visible: isItemVisible
                     
-                    property bool isHovered: wsDynGroupMouse.containsMouse
+                    property bool isHovered: wsPillMouse.containsMouse
                     
                     property real targetWidth: isItemVisible ? barWindow.s(32) : 0
                     width: targetWidth
@@ -681,24 +681,24 @@ Variants {
                     property bool initAnimTrigger: false
                     opacity: initAnimTrigger && isItemVisible ? 1 : 0
                     transform: Translate {
-                        y: wsDynGroupPill.initAnimTrigger ? 0 : barWindow.s(15)
+                        y: wsPill.initAnimTrigger ? 0 : barWindow.s(15)
                         Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } }
                     }
 
                     Component.onCompleted: {
                         if (!barWindow.startupCascadeFinished) {
-                            wsDynGroupTimer.interval = index * 60;
-                            wsDynGroupTimer.start();
+                            animTimer.interval = index * 60;
+                            animTimer.start();
                         } else {
                             initAnimTrigger = true;
                         }
                     }
 
                     Timer {
-                        id: wsDynGroupTimer
+                        id: animTimer
                         running: false
                         repeat: false
-                        onTriggered: wsDynGroupPill.initAnimTrigger = true
+                        onTriggered: wsPill.initAnimTrigger = true
                     }
                     
                     Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
@@ -706,7 +706,7 @@ Variants {
 
                     Text {
                         anchors.centerIn: parent
-                        text: wsDynGroupPill.isItemVisible ? wsName : ""
+                        text: wsPill.isItemVisible ? wsName : ""
                         font.family: "JetBrains Mono"
                         font.pixelSize: barWindow.s(14)
                         font.weight: stateLabel === "active" ? Font.Black : (stateLabel === "occupied" ? Font.Bold : Font.Medium)
@@ -717,10 +717,10 @@ Variants {
                     }
                     
                     MouseArea {
-                        id: wsDynGroupMouse
+                        id: wsPillMouse
                         hoverEnabled: true
                         anchors.fill: parent
-                        enabled: wsDynGroupPill.isItemVisible
+                        enabled: wsPill.isItemVisible
                         onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh " + wsName])
                     }
                 }
