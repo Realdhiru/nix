@@ -71,7 +71,7 @@ Variants {
             property bool forceUpdateShow: false
             property bool isUpdateVisible: updateAvailable || forceUpdateShow
             
-            property int workspaceCount: 8
+            property int workspaceCount: 69
             
             property string activeWidget: "" 
             property bool isSettingsOpen: activeWidget === "settings"
@@ -579,7 +579,9 @@ Variants {
                 Rectangle {
                     id: workspacesBox
                     color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
-                    radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+                    radius: barWindow.s(14)
+                    border.width: 1
+                    border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
                     height: barWindow.barHeight
                     y: (parent.height - barWindow.barHeight) / 2
                     clip: true
@@ -588,9 +590,29 @@ Variants {
                     
                     property real defaultX: leftContent.x + leftContent.width + barWindow.s(4)
                     property real settingsX: mediaBox.settingsX - width - (width > 0 ? barWindow.s(4) : 0)
-                                        
+                                
                     x: defaultX + (settingsX - defaultX) * barWindow.settingsSlideProgress
 
+                    // JavaScript helper function to convert Arabic numerals to Kanji up to 99
+                    function toKanji(num) {
+                        let n = parseInt(num);
+                        if (isNaN(n) || n <= 0) return num;
+                        
+                        let kanjiNums = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+                        let ten = "十";
+                        
+                        if (n < 10) return kanjiNums[n];
+                        
+                        let tensDigit = Math.floor(n / 10);
+                        let onesDigit = n % 10;
+                        
+                        let tensPrefix = (tensDigit > 1) ? kanjiNums[tensDigit] : "";
+                        let onesSuffix = kanjiNums[onesDigit];
+                        
+                        return tensPrefix + ten + onesSuffix;
+                    }
+
+                    // Modified to allow dynamic expansion beyond index 6 when space permits
                     property bool limitActive: barWindow.isSettingsOpen && barWindow.isMediaActive
 
                     visible: width > 0 || opacity > 0
@@ -605,32 +627,22 @@ Variants {
                         color: mocha.mauve
                         z: 0
 
-                        property int prevIdx: 0
-                        property int curIdx: workspacesModel.activeIndex
+                        property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsRepeater.count) 
+                                                 ? wsRepeater.itemAt(workspacesModel.activeIndex) 
+                                                 : null
 
-                        onCurIdxChanged: {
-                            if (curIdx > prevIdx) {
-                                rightAnim.duration = 200; leftAnim.duration = 350;
-                            } else if (curIdx < prevIdx) {
-                                leftAnim.duration = 200; rightAnim.duration = 350;
-                            }
-                            prevIdx = curIdx;
-                        }
-
-                        // FIXED: Calculate step size to perfectly match the rounded width + rounded spacing of the Row elements.
-                        property real stepSize: barWindow.s(32) + barWindow.s(6)
-                        property real targetLeft: wsLayout.x + (curIdx * stepSize)
-                        property real targetRight: targetLeft + barWindow.s(32)
+                        property real targetLeft: activePill ? (wsLayout.x + activePill.x) : 0
+                        property real targetWidth: activePill ? activePill.width : 0
 
                         property real actualLeft: targetLeft
-                        property real actualRight: targetRight
+                        property real actualWidth: targetWidth
 
                         Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: 250; easing.type: Easing.OutExpo } }
-                        Behavior on actualRight { NumberAnimation { id: rightAnim; duration: 250; easing.type: Easing.OutExpo } }
+                        Behavior on actualWidth { NumberAnimation { id: widthAnim; duration: 250; easing.type: Easing.OutExpo } }
 
                         x: actualLeft
-                        width: actualRight - actualLeft
-                        opacity: workspacesModel.count > 0 ? 1 : 0
+                        width: actualWidth
+                        opacity: (workspacesModel.count > 0 && activePill && activePill.visible) ? 1 : 0
                     }
 
                     Row {
@@ -639,23 +651,27 @@ Variants {
                         spacing: barWindow.s(6)
                         
                         Repeater {
+                            id: wsRepeater
                             model: workspacesModel
                             delegate: Rectangle {
                                 id: wsPill
                                 
+                                property string stateLabel: model.wsState
+                                property string wsName: model.wsId
+                                property bool isItemVisible: !isLimited && (stateLabel === "active" || stateLabel === "occupied")
+                                
+                                // Cleaned upper-bound constraint rule to fit screens smoothly up to 69
                                 property bool isLimited: workspacesBox.limitActive && index >= 6
-                                visible: !isLimited && (stateLabel === "active" || stateLabel === "occupied")
+                                visible: isItemVisible
                                 
                                 property bool isHovered: wsPillMouse.containsMouse
                                 
-                                property string stateLabel: model.wsState
-                                property string wsName: model.wsId
-                                
-                                property real targetWidth: barWindow.s(32)
+                                property real targetWidth: isItemVisible ? barWindow.s(32) : 0
                                 width: targetWidth
                                 Behavior on targetWidth { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
                                 
-                                height: barWindow.s(32); radius: barWindow.s(10)
+                                height: isItemVisible ? barWindow.s(32) : 0
+                                radius: barWindow.s(10)
                                 
                                 color: isHovered ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.1) : (stateLabel === "occupied" ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.15) : "transparent")
 
@@ -663,7 +679,7 @@ Variants {
                                 Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
                                 
                                 property bool initAnimTrigger: false
-                                opacity: initAnimTrigger ? 1 : 0
+                                opacity: initAnimTrigger && isItemVisible ? 1 : 0
                                 transform: Translate {
                                     y: wsPill.initAnimTrigger ? 0 : barWindow.s(15)
                                     Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } }
@@ -690,7 +706,8 @@ Variants {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: wsName
+                                    // Runs the Arabic string ID through the math conversion generator
+                                    text: wsPill.isItemVisible ? workspacesBox.toKanji(wsName) : ""
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(14)
                                     font.weight: stateLabel === "active" ? Font.Black : (stateLabel === "occupied" ? Font.Bold : Font.Medium)
@@ -699,10 +716,12 @@ Variants {
                                     
                                     Behavior on color { ColorAnimation { duration: 250 } }
                                 }
+                                
                                 MouseArea {
                                     id: wsPillMouse
                                     hoverEnabled: true
                                     anchors.fill: parent
+                                    enabled: wsPill.isItemVisible
                                     onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh " + wsName])
                                 }
                             }
