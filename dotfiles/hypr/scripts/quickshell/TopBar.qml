@@ -571,17 +571,16 @@ Variants {
                 onTriggered: barWindow.typeInIndex += 1
             }
 
-            // Outer surface bounds mapping wrapper context
             Item {
                 anchors.fill: parent
 
-                // The Centering sandbox mask. Stretches to 90% and keeps the layout centered
-                Item {
-                    id: leftContent // Retained name token to preserve workspaces Box interpolation dependencies
-                    width: parent.width * 0.9
-                    height: parent.height
-                    anchors.horizontalCenter: parent.horizontalCenter
-                
+                // FIXED: Placed a single parent Row bounded explicitly to the screen center coordinate
+                Row {
+                    id: globalCenterContainer
+                    anchors.centerIn: parent
+                    spacing: barWindow.s(6)
+                    height: barWindow.barHeight
+
                     Rectangle {
                         id: workspacesBox
                         color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
@@ -589,16 +588,9 @@ Variants {
                         border.width: 1
                         border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
                         height: barWindow.barHeight
-                        y: (parent.height - barWindow.barHeight) / 2
                         clip: true
                         
                         width: workspacesModel.count > 0 ? wsLayout.implicitWidth + barWindow.s(20) : 0
-                        
-                        // Retained math pipeline targets to preserve slide layout values intact
-                        property real defaultX: 0 
-                        property real settingsX: mediaBox.settingsX - width - (width > 0 ? barWindow.s(4) : 0)
-                                    
-                        x: defaultX + (settingsX - defaultX) * barWindow.settingsSlideProgress
 
                         function toKanji(num) {
                             let n = parseInt(num);
@@ -736,17 +728,11 @@ Variants {
                         id: mediaBox
                         color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
                         radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
-                        y: (parent.height - barWindow.barHeight) / 2
                         height: barWindow.barHeight
                         clip: true 
                         
                         width: barWindow.isMediaActive ? innerMediaLayout.implicitWidth + barWindow.s(24) : 0
                         Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
-
-                        property real defaultX: workspacesBox.x + workspacesBox.width + (workspacesBox.width > 0 ? barWindow.s(4) : 0)
-                        property real settingsX: centerBox.settingsX - width - (width > 0 ? barWindow.s(4) : 0)
-
-                        x: defaultX + (settingsX - defaultX) * barWindow.settingsSlideProgress
 
                         visible: width > 0 || opacity > 0
                         opacity: barWindow.isMediaActive ? 1.0 : 0.0
@@ -880,19 +866,8 @@ Variants {
                         property bool isHovered: centerMouse.containsMouse
                         color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.95) : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
                         radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.15 : 0.05)
-                        
-                        y: (parent.height - barWindow.barHeight) / 2
                         height: barWindow.barHeight
-                        
                         width: centerLayout.implicitWidth + barWindow.s(36)
-                        Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutExpo } }
-                        
-                        property real pureCenter: (parent.width - width) / 2
-                        property real minCenterDefaultX: mediaBox.defaultX + mediaBox.width + (mediaBox.width > 0 ? barWindow.s(4) : 0)
-                        property real settingsX: parent.width - rightContent.width - width - barWindow.s(4)
-                        property real defaultX: Math.max(minCenterDefaultX, pureCenter)
-                        
-                        x: defaultX + (settingsX - defaultX) * barWindow.settingsSlideProgress
                         
                         property bool showLayout: false
                         opacity: showLayout ? 1 : 0
@@ -935,8 +910,6 @@ Variants {
 
                     Row {
                         id: rightContent
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
                         spacing: barWindow.s(4)
                         
                         property bool showLayout: false
@@ -1139,60 +1112,61 @@ Variants {
                                 }                       
                             }
                         }
-                        Rectangle {
-                            id: recButton
-                            property bool isHovered: recMouse.containsMouse
+                    }
+
+                    Rectangle {
+                        id: recButton
+                        property bool isHovered: recMouse.containsMouse
+                        
+                        color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.95) : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
+                        radius: barWindow.s(14)
+                        border.width: 1
+                        border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.15 : 0.05)
+
+                        property real targetWidth: barWindow.isRecording ? barWindow.barHeight : 0
+                        width: targetWidth
+                        height: barWindow.barHeight 
+
+                        visible: targetWidth > 0 || opacity > 0
+                        opacity: barWindow.isRecording ? 1.0 : 0.0
+                        clip: true
+
+                        Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                        Behavior on opacity { NumberAnimation { duration: 300 } }
+                        
+                        scale: isHovered ? 1.05 : 1.0
+                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
+                        Behavior on color { ColorAnimation { duration: 200 } }
+
+                        Text {
+                            id: recIcon
+                            anchors.centerIn: parent
+                            text: "" 
+                            font.family: "Iosevka Nerd Font"
+                            font.pixelSize: barWindow.s(20)
+                            color: mocha.red
                             
-                            color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.95) : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
-                            radius: barWindow.s(14)
-                            border.width: 1
-                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.15 : 0.05)
-
-                            property real targetWidth: barWindow.isRecording ? barWindow.barHeight : 0
-                            width: targetWidth
-                            height: barWindow.barHeight 
-
-                            visible: targetWidth > 0 || opacity > 0
-                            opacity: barWindow.isRecording ? 1.0 : 0.0
-                            clip: true
-
-                            Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
-                            Behavior on opacity { NumberAnimation { duration: 300 } }
-                            
-                            scale: isHovered ? 1.05 : 1.0
-                            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
-                            Behavior on color { ColorAnimation { duration: 200 } }
-
-                            Text {
-                                id: recIcon
-                                anchors.centerIn: parent
-                                text: "" 
-                                font.family: "Iosevka Nerd Font"
-                                font.pixelSize: barWindow.s(20)
-                                color: mocha.red
-                                
-                                SequentialAnimation on opacity {
-                                    running: barWindow.isRecording && !recButton.isHovered
-                                    loops: Animation.Infinite
-                                    NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
-                                    NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
-                                }
-                                SequentialAnimation on scale {
-                                    running: barWindow.isRecording && !recButton.isHovered
-                                    loops: Animation.Infinite
-                                    NumberAnimation { to: 1.15; duration: 600; easing.type: Easing.InOutSine }
-                                    NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
-                                }
+                            SequentialAnimation on opacity {
+                                running: barWindow.isRecording && !recButton.isHovered
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
                             }
-                            
-                            MouseArea {
-                                id: recMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onClicked: {
-                                    barWindow.isRecording = false; 
-                                    Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/screenshot.sh"]); 
-                                }
+                            SequentialAnimation on scale {
+                                running: barWindow.isRecording && !recButton.isHovered
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 1.15; duration: 600; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                            }
+                        }
+                        
+                        MouseArea {
+                            id: recMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                barWindow.isRecording = false; 
+                                Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/screenshot.sh"]); 
                             }
                         }
                     }
