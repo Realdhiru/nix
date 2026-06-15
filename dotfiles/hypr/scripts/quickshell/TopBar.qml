@@ -727,7 +727,6 @@ Variants {
             }
         }
     }
-}
                 }
 
                 Rectangle {
