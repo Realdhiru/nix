@@ -1,4 +1,4 @@
-{ ... }:
+{ config, ... }:
 
 {
   imports = [
@@ -12,10 +12,9 @@
     force = true;
   };
 
-  xdg.configFile."matugen" = {
-    source = ./dotfiles/matugen;
-    force = true;
-  };
+  xdg.configFile."matugen".source =
+    config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/matugen";
 
   xdg.configFile."rofi" = {
     source = ./dotfiles/rofi;
