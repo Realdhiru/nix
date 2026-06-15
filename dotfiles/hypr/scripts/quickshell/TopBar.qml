@@ -40,6 +40,7 @@ Variants {
                 top: true
                 left: false
                 right: false
+                center: true
             }
 
             Scaler {
@@ -53,7 +54,7 @@ Variants {
                 return scaler.s(val); 
             }
 
-            property int barHeight: s(48)
+            property int barHeight: s(30)
 
             height: barHeight
             margins { top: s(8); bottom: 0; left: s(4); right: s(4) }
