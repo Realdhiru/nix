@@ -71,7 +71,7 @@ Variants {
             property bool forceUpdateShow: false
             property bool isUpdateVisible: updateAvailable || forceUpdateShow
             
-            property int workspaceCount: 8
+            property int workspaceCount: 69
             
             property string activeWidget: "" 
             property bool isSettingsOpen: activeWidget === "settings"
