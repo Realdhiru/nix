@@ -1,98 +1,91 @@
+@import "~/.config/rofi/colors.rasi"
+
 * {
-    /* --- GLASS CONTROLS (Tweak these to change look) --- */
-    
-    /* Increased base dimness: Alpha changed from 0.15 to 0.45 for a darker glass background */
-    bg-glass:            rgba(0, 0, 0, 0.45);      
-    
-    /* Glass sheen plate overlay */
-    bg-surface:          rgba(255, 255, 255, 0.03);
-    
-    /* Selection bar highlight brightness */
-    bg-selected:         rgba(255, 255, 255, 0.08);
-    
-    /* Border reflection rim opacity */
-    border-glass:        rgba(255, 255, 255, 0.12);
-    
-    fg-main:             #FFFFFF;
-    fg-muted:            #B0B0B0;
-    
-    font:                "JetBrainsMono Nerd Font 11";
-    background-color:    transparent;
-    text-color:          @fg-main;
+    font: "JetBrainsMono Nerd Font 11";
+    background-color: transparent;
+    text-color: @fg-main;
 }
 
 window {
-    anchor:              west;             /* Snap the orientation alignment anchor to the left side */
-    location:            west;             /* Moves window position to the absolute left vertical center */
-    x-offset:             15%;             /* Push it rightward away from the screen edge (Tweak this value to your liking) */
-    y-offset:             5%;              /* Adjust this if you want it moved up (-) or down (+) */
+    anchor: west;
+    location: west;
 
-    /* --- DIMENSION CONTROLS --- */
-    width:               420px;            /* Decreased horizontal width (was 650px) */
-    border:              1px;
-    border-color:        @border-glass;
-    border-radius:       16px;
-    background-color:    @bg-glass;
-    padding:             20px;
+    x-offset: 15%;
+    y-offset: 5%;
+
+    width: 420px;
+
+    border: 1px;
+    border-color: @border-glass;
+    border-radius: 16px;
+
+    background-color: @bg-glass;
+
+    padding: 20px;
 }
 
 mainbox {
-    spacing:             12px;
-    children:            [ inputbar, listview ];
+    spacing: 12px;
+    children: [ inputbar, listview ];
 }
 
 inputbar {
-    spacing:             8px;
-    padding:             10px 16px;
-    background-color:    @bg-surface;
-    border:              1px;
-    border-color:        @border-glass;
-    border-radius:       10px;
-    children:            [ prompt, entry ];
+    spacing: 8px;
+    padding: 10px 16px;
+
+    background-color: @bg-surface;
+
+    border: 1px;
+    border-color: @border-glass;
+    border-radius: 10px;
+
+    children: [ prompt, entry ];
 }
 
 prompt {
-    text-color:          @fg-muted;
+    text-color: @fg-muted;
 }
 
 entry {
-    placeholder:         "Search applications...";
-    placeholder-color:   @fg-muted;
+    placeholder: "Search applications...";
+    placeholder-color: @fg-muted;
 }
 
 listview {
-    fixed-height:        false;
-    dynamic:             true;
-    
-    /* --- VERTICAL SIZE CONTROL --- */
-    lines:               6;                /* Decreased visible app count (was 8) */
-    
-    spacing:             6px;
-    scrollbar:           false;
+    dynamic: true;
+    fixed-height: false;
+
+    lines: 6;
+
+    spacing: 6px;
+    scrollbar: false;
 }
 
 element {
-    padding:             10px 14px;
-    border-radius:       8px;
-    spacing:             12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    spacing: 12px;
 }
 
-element normal normal, element alternate normal {
-    background-color:    transparent;
-    text-color:          @fg-main;
+element normal normal,
+element alternate normal {
+    background-color: transparent;
+    text-color: @fg-main;
 }
 
 element selected normal {
-    background-color:    @bg-selected;
-    border:              1px;
-    border-color:        rgba(255, 255, 255, 0.2);
-    text-color:          @fg-main;
+    background-color: @bg-selected;
+
+    border: 1px;
+    border-color: @border-glass;
+
+    text-color: @fg-main;
 }
 
 element-icon {
-    size:                24px;
+    size: 24px;
 }
 
 element-text {
-    vertical-align:      0.5;
+    vertical-align: 0.5;
 }
