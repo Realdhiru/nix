@@ -598,7 +598,7 @@ Variants {
                     Behavior on opacity { NumberAnimation { duration: 300 } }
 
                     Rectangle {
-    id: workspacesBox
+    id: dynamicWorkspacesBox
     color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
     radius: barWindow.s(14)
     border.width: 1
@@ -607,7 +607,7 @@ Variants {
     y: (parent.height - barWindow.barHeight) / 2
     clip: true
     
-    width: workspacesModel.count > 0 ? wsLayout.implicitWidth + barWindow.s(20) : 0
+    width: workspacesModel.count > 0 ? dynamicWsLayout.implicitWidth + barWindow.s(20) : 0
     
     property real defaultX: leftContent.x + leftContent.width + barWindow.s(4)
     property real settingsX: mediaBox.settingsX - width - (width > 0 ? barWindow.s(4) : 0)
@@ -621,26 +621,25 @@ Variants {
     Behavior on opacity { NumberAnimation { duration: 300 } }
 
     Rectangle {
-        id: activeHighlight
-        y: (workspacesBox.height - barWindow.s(32)) / 2
+        id: dynamicActiveHighlight
+        y: (dynamicWorkspacesBox.height - barWindow.s(32)) / 2
         height: barWindow.s(32)
         radius: barWindow.s(10)
         color: mocha.mauve
         z: 0
 
-        // Updated lookup to reference the globally unique ID
-        property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < dynamicWorkspaceRepeater.count) 
-                                 ? dynamicWorkspaceRepeater.itemAt(workspacesModel.activeIndex) 
+        property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < uniqueWorkspaceRepeater.count) 
+                                 ? uniqueWorkspaceRepeater.itemAt(workspacesModel.activeIndex) 
                                  : null
 
-        property real targetLeft: activePill ? (wsLayout.x + activePill.x) : 0
+        property real targetLeft: activePill ? (dynamicWsLayout.x + activePill.x) : 0
         property real targetWidth: activePill ? activePill.width : 0
 
         property real actualLeft: targetLeft
         property real actualWidth: targetWidth
 
-        Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: 250; easing.type: Easing.OutExpo } }
-        Behavior on actualWidth { NumberAnimation { id: widthAnim; duration: 250; easing.type: Easing.OutExpo } }
+        Behavior on actualLeft { NumberAnimation { id: dynLeftAnim; duration: 250; easing.type: Easing.OutExpo } }
+        Behavior on actualWidth { NumberAnimation { id: dynWidthAnim; duration: 250; easing.type: Easing.OutExpo } }
 
         x: actualLeft
         width: actualWidth
@@ -648,24 +647,24 @@ Variants {
     }
 
     Row {
-        id: wsLayout
+        id: dynamicWsLayout
         anchors.centerIn: parent
         spacing: barWindow.s(6)
         
         Repeater {
-            id: dynamicWorkspaceRepeater // Made unique to fix the error
+            id: uniqueWorkspaceRepeater
             model: workspacesModel
             delegate: Rectangle {
-                id: wsPill
+                id: uniqueWsPill
                 
                 property string stateLabel: model.wsState
                 property string wsName: model.wsId
                 property bool isItemVisible: !isLimited && (stateLabel === "active" || stateLabel === "occupied")
                 
-                property bool isLimited: workspacesBox.limitActive && index >= 6
+                property bool isLimited: dynamicWorkspacesBox.limitActive && index >= 6
                 visible: isItemVisible
                 
-                property bool isHovered: wsPillMouse.containsMouse
+                property bool isHovered: uniqueWsPillMouse.containsMouse
                 
                 property real targetWidth: isItemVisible ? barWindow.s(32) : 0
                 width: targetWidth
@@ -682,24 +681,24 @@ Variants {
                 property bool initAnimTrigger: false
                 opacity: initAnimTrigger && isItemVisible ? 1 : 0
                 transform: Translate {
-                    y: wsPill.initAnimTrigger ? 0 : barWindow.s(15)
+                    y: uniqueWsPill.initAnimTrigger ? 0 : barWindow.s(15)
                     Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } }
                 }
 
                 Component.onCompleted: {
                     if (!barWindow.startupCascadeFinished) {
-                        animTimer.interval = index * 60;
-                        animTimer.start();
+                        uniqueAnimTimer.interval = index * 60;
+                        uniqueAnimTimer.start();
                     } else {
                         initAnimTrigger = true;
                     }
                 }
 
                 Timer {
-                    id: animTimer
+                    id: uniqueAnimTimer
                     running: false
                     repeat: false
-                    onTriggered: wsPill.initAnimTrigger = true
+                    onTriggered: uniqueWsPill.initAnimTrigger = true
                 }
                 
                 Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
@@ -707,7 +706,7 @@ Variants {
 
                 Text {
                     anchors.centerIn: parent
-                    text: wsPill.isItemVisible ? wsName : ""
+                    text: uniqueWsPill.isItemVisible ? wsName : ""
                     font.family: "JetBrains Mono"
                     font.pixelSize: barWindow.s(14)
                     font.weight: stateLabel === "active" ? Font.Black : (stateLabel === "occupied" ? Font.Bold : Font.Medium)
@@ -718,15 +717,16 @@ Variants {
                 }
                 
                 MouseArea {
-                    id: wsPillMouse
+                    id: uniqueWsPillMouse
                     hoverEnabled: true
                     anchors.fill: parent
-                    enabled: wsPill.isItemVisible
+                    enabled: uniqueWsPill.isItemVisible
                     onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh " + wsName])
                 }
             }
         }
     }
+}
                 }
 
                 Rectangle {
