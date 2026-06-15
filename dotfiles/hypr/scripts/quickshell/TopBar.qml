@@ -14,7 +14,7 @@ Variants {
             id: barWindow
             property bool pendingReload: false
             
-	    Caching { id: paths }
+            Caching { id: paths }
         
             IpcHandler {
                 target: "topbar"
@@ -36,11 +36,14 @@ Variants {
             required property var modelData
             screen: modelData
 
+            // FIXED: Changed from full-width edge anchoring to a centered bounding box
             anchors {
                 top: true
-                left: true
-                right: true
+                horizontalCenter: true
             }
+            
+            // Set the physical width of the centered top bar (e.g., 90% of screen width)
+            width: screen.width * 0.9
 
             Scaler {
                 id: scaler
@@ -124,39 +127,39 @@ Variants {
             }
 
             Process {
- 	    	id: recWatcher
- 		running: true
- 		command: ["bash", "-c", "inotifywait -qq -e create,delete,modify,close_write " + paths.getCacheDir("recording") + "/ 2>/dev/null || sleep 2"]
- 	        onExited: {
- 	        	recPoller.running = false;
- 	         	recPoller.running = true;
- 	         	running = false;
- 	         	running = true;
- 	        }
-	    }	  
+                id: recWatcher
+                running: true
+                command: ["bash", "-c", "inotifywait -qq -e create,delete,modify,close_write " + paths.getCacheDir("recording") + "/ 2>/dev/null || sleep 2"]
+                onExited: {
+                    recPoller.running = false;
+                    recPoller.running = true;
+                    running = false;
+                    running = true;
+                }
+            }     
             Process {
-	        id: updatePoller
-	        command: ["bash", "-c", "if [ -f " + paths.getCacheDir("updater") + "/update_pending ]; then echo '1'; else echo '0'; fi"]
-	        running: true
-	        stdout: StdioCollector {
-	            onStreamFinished: {
-	                barWindow.updateAvailable = (this.text.trim() === "1");
-	            }
-	        }
-	    }
-	    
-	    Process {
-	        id: updateWatcher
-	        running: true
-	        command: ["bash", "-c", "inotifywait -qq -e create,delete,close_write " + paths.getCacheDir("updater") + "/ 2>/dev/null || sleep 5"]
-	        onExited: {
-	            updatePoller.running = false;
-	            updatePoller.running = true;
-	            running = false;
-	            running = true;
-	        }
-	    }
-	                
+                id: updatePoller
+                command: ["bash", "-c", "if [ -f " + paths.getCacheDir("updater") + "/update_pending ]; then echo '1'; else echo '0'; fi"]
+                running: true
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        barWindow.updateAvailable = (this.text.trim() === "1");
+                    }
+                }
+            }
+            
+            Process {
+                id: updateWatcher
+                running: true
+                command: ["bash", "-c", "inotifywait -qq -e create,delete,close_write " + paths.getCacheDir("updater") + "/ 2>/dev/null || sleep 5"]
+                onExited: {
+                    updatePoller.running = false;
+                    updatePoller.running = true;
+                    running = false;
+                    running = true;
+                }
+            }
+                        
             Process {
                 id: settingsReader
                 command: ["bash", "-c", "cat ~/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
@@ -289,8 +292,8 @@ Variants {
             }
 
             Process {
-		id: wsReader
-		running: true
+                id: wsReader
+                running: true
                 command: ["cat", paths.getRunDir("workspaces") + "/workspaces.json"]
                 stdout: StdioCollector {
                     onStreamFinished: {
@@ -573,8 +576,6 @@ Variants {
 
             Item {
                 anchors.fill: parent
-
-                
                 
                 Rectangle {
                     id: workspacesBox
@@ -593,7 +594,6 @@ Variants {
                                 
                     x: defaultX + (settingsX - defaultX) * barWindow.settingsSlideProgress
 
-                    // JavaScript helper function to convert Arabic numerals to Kanji up to 99
                     function toKanji(num) {
                         let n = parseInt(num);
                         if (isNaN(n) || n <= 0) return num;
@@ -612,7 +612,6 @@ Variants {
                         return tensPrefix + ten + onesSuffix;
                     }
 
-                    // Modified to allow dynamic expansion beyond index 6 when space permits
                     property bool limitActive: barWindow.isSettingsOpen && barWindow.isMediaActive
 
                     visible: width > 0 || opacity > 0
@@ -660,7 +659,6 @@ Variants {
                                 property string wsName: model.wsId
                                 property bool isItemVisible: !isLimited && (stateLabel === "active" || stateLabel === "occupied")
                                 
-                                // Cleaned upper-bound constraint rule to fit screens smoothly up to 69
                                 property bool isLimited: workspacesBox.limitActive && index >= 6
                                 visible: isItemVisible
                                 
@@ -706,7 +704,6 @@ Variants {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    // Runs the Arabic string ID through the math conversion generator
                                     text: wsPill.isItemVisible ? workspacesBox.toKanji(wsName) : ""
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(14)
@@ -853,7 +850,7 @@ Variants {
                                         scale: playMouse.containsMouse ? 1.15 : 1.0
                                         Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
                                     }
-                                    MouseArea { id: playMouse; hoverEnabled: true; anchors.fill: parent; onClicked: { Quickshell.execDetached(["playerctl", "play-pause"]); musicForceRefresh.running = true; } } 
+                                    MouseArea { id: playMouse; hoverEnabled: true; anchors.fill: parent; onClicked: { Quickshell.execDetached(["play-pause"]); musicForceRefresh.running = true; } } 
                                 }
                                 Item { 
                                     width: barWindow.s(24); height: barWindow.s(24); 
@@ -927,7 +924,6 @@ Variants {
                             Text { text: barWindow.timeStr; Layout.alignment: Qt.AlignLeft; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(16); font.weight: Font.Black; color: mocha.blue }
                             Text { text: barWindow.dateStr; Layout.alignment: Qt.AlignLeft; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(11); font.weight: Font.Bold; color: mocha.subtext0 }
                         }
-
                     }
                 }
 
@@ -1083,9 +1079,7 @@ Variants {
                                 opacity: initAnimTrigger ? 1 : 0
                                 transform: Translate { y: parent.initAnimTrigger ? 0 : barWindow.s(15); Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } } }
                                 Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
-
-                                }
-
+                            }
 
                             Rectangle {
                                 property bool isHovered: batMouse.containsMouse
@@ -1140,9 +1134,9 @@ Variants {
                                 }
                                 MouseArea { id: batMouse; hoverEnabled: true; anchors.fill: parent; onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle battery"]) }
                             }                       
-                 }
-            }
-            Rectangle {
+                        }
+                    }
+                    Rectangle {
                         id: recButton
                         property bool isHovered: recMouse.containsMouse
                         
