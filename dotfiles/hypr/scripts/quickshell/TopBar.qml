@@ -598,7 +598,7 @@ Variants {
                     Behavior on opacity { NumberAnimation { duration: 300 } }
 
                     Rectangle {
-    id: dynamicWorkspacesBox
+    id: workspacesBox // RESTORED: Prevents external breakages and positioning loss
     color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
     radius: barWindow.s(14)
     border.width: 1
@@ -622,7 +622,7 @@ Variants {
 
     Rectangle {
         id: dynamicActiveHighlight
-        y: (dynamicWorkspacesBox.height - barWindow.s(32)) / 2
+        y: (workspacesBox.height - barWindow.s(32)) / 2
         height: barWindow.s(32)
         radius: barWindow.s(10)
         color: mocha.mauve
@@ -661,7 +661,7 @@ Variants {
                 property string wsName: model.wsId
                 property bool isItemVisible: !isLimited && (stateLabel === "active" || stateLabel === "occupied")
                 
-                property bool isLimited: dynamicWorkspacesBox.limitActive && index >= 6
+                property bool isLimited: workspacesBox.limitActive && index >= 6
                 visible: isItemVisible
                 
                 property bool isHovered: uniqueWsPillMouse.containsMouse
@@ -726,7 +726,7 @@ Variants {
             }
         }
     }
-}
+                    }
                 }
 
                 Rectangle {
