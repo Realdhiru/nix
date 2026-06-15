@@ -14,7 +14,7 @@ Variants {
             id: barWindow
             property bool pendingReload: false
             
-	    Caching { id: paths }
+            Caching { id: paths }
         
             IpcHandler {
                 target: "topbar"
@@ -38,7 +38,8 @@ Variants {
 
             anchors {
                 top: true
-                left: parent.left
+                left: true
+                right: true
             }
 
             Scaler {
