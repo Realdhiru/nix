@@ -1065,8 +1065,7 @@ Variants {
                                 transform: Translate { y: parent.initAnimTrigger ? 0 : barWindow.s(15); Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } } }
                                 Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
-                               
-
+                                }
 
 
                             Rectangle {
