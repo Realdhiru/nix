@@ -788,21 +788,6 @@ Variants {
     fillMode: Image.PreserveAspectCrop 
     cache: false
 }
-
-                                                Timer {
-                                                    id: retryTimer
-                                                    interval: 250 // Hard execution delay allows background writing pipelines to sync completely
-                                                    running: false
-                                                    repeat: false
-                                                    onTriggered: {
-                                                        let currentUrl = musicThumbnail.source;
-                                                        // Clear source execution parameter string to break engine optimization references
-                                                        musicThumbnail.source = "";
-                                                        // Force a second path evaluation loop to pull the asset directly from disk storage
-                                                        musicThumbnail.source = currentUrl;
-                                                    }
-                                                }
-                                            }
                                             
                                             Rectangle {
                                                 anchors.fill: parent
