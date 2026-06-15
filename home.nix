@@ -1,3 +1,4 @@
+# ~/nix/home.nix
 { config, ... }:
 
 {
@@ -22,6 +23,9 @@
   xdg.configFile."matugen".source =
     config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/matugen";
+
+  services.easyeffects.enable = true;
+  services.playerctld.enable = true;
 
   home.username = "realdhiru";
   home.homeDirectory = "/home/realdhiru";
