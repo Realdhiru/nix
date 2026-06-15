@@ -783,18 +783,46 @@ Variants {
                                             clip: true
                                             
                                             Image { 
-    anchors.fill: parent
-    source: barWindow.displayArtUrl || ""
-    fillMode: Image.PreserveAspectCrop 
-    cache: false // FIXED: Prevents QML from locking a blank/stale thumbnail path
-    
-    onStatusChanged: {
-        if (status === Image.Error && barWindow.displayArtUrl !== "") {
-            musicForceRefresh.running = false;
-            musicForceRefresh.running = true;
-        }
-    }
-}
+                                                id: musicThumbnail
+                                                anchors.fill: parent
+                                                source: barWindow.displayArtUrl || ""
+                                                fillMode: Image.PreserveAspectCrop 
+                                                cache: false
+
+                                                // State container to handle tracking sequential execution attempts
+                                                property bool isRetrying: false
+
+                                                onStatusChanged: {
+                                                    // Triggered immediately if file descriptor initialization hits a disk lock race condition
+                                                    if (status === Image.Error && barWindow.displayArtUrl !== "") {
+                                                        if (!isRetrying) {
+                                                            isRetrying = true;
+                                                            retryTimer.start();
+                                                        } else {
+                                                            // Fallback constraint loop if filesystem synchronization encounters I/O stall spikes
+                                                            musicForceRefresh.running = false;
+                                                            musicForceRefresh.running = true;
+                                                        }
+                                                    } else if (status === Image.Ready) {
+                                                        // Reset state on successful load verification pass
+                                                        isRetrying = false;
+                                                    }
+                                                }
+
+                                                Timer {
+                                                    id: retryTimer
+                                                    interval: 250 // Hard execution delay allows background writing pipelines to sync completely
+                                                    running: false
+                                                    repeat: false
+                                                    onTriggered: {
+                                                        let currentUrl = musicThumbnail.source;
+                                                        // Clear source execution parameter string to break engine optimization references
+                                                        musicThumbnail.source = "";
+                                                        // Force a second path evaluation loop to pull the asset directly from disk storage
+                                                        musicThumbnail.source = currentUrl;
+                                                    }
+                                                }
+                                            }
                                             
                                             Rectangle {
                                                 anchors.fill: parent
@@ -1031,6 +1059,67 @@ Variants {
                                         }
                                     }
                                 }
+                            }
+                        }
+
+                        Rectangle {
+                            height: barWindow.barHeight
+                            radius: barWindow.s(14)
+                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08)
+                            border.width: 1
+                            color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
+                            clip: true
+                            
+                            width: sysLayout.implicitWidth + barWindow.s(20)
+
+                            Row {
+                                id: sysLayout
+                                anchors.centerIn: parent
+                                spacing: barWindow.s(8) 
+
+                                property int pillHeight: barWindow.s(34)
+
+                                Rectangle {
+                                    property bool isHovered: batMouse.containsMouse
+                                    color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6) : Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.4); 
+                                    radius: barWindow.s(10); height: sysLayout.pillHeight;
+                                    clip: true
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: barWindow.s(10)
+                                        opacity: 1.0 
+                                        Behavior on opacity { NumberAnimation { duration: 300 } }
+                                        gradient: Gradient {
+                                            orientation: Gradient.Horizontal
+                                            GradientStop { position: 0.0; color: barWindow.isDesktop ? mocha.red : barWindow.batDynamicColor; Behavior on color { ColorAnimation { duration: 300 } } }
+                                            GradientStop { position: 1.0; color: barWindow.isDesktop ? Qt.lighter(mocha.red, 1.3) : Qt.lighter(barWindow.batDynamicColor, 1.3); Behavior on color { ColorAnimation { duration: 300 } } }
+                                        }
+                                    }
+                                    
+                                    property real targetWidth: barWindow.isDesktop ? barWindow.s(34) : batLayoutRow.implicitWidth + barWindow.s(24)
+                                    width: targetWidth
+                                    Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutQuint } }
+                                    
+                                    scale: isHovered ? 1.05 : 1.0
+                                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+
+                                    property bool initAnimTrigger: false
+                                    Timer { running: rightContent.showLayout && !parent.initAnimTrigger; interval: 200; onTriggered: parent.initAnimTrigger = true }
+                                    opacity: initAnimTrigger ? 1 : 0
+                                    transform: Translate { y: parent.initAnimTrigger ? 0 : barWindow.s(15); Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } } }
+                                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+
+                                    Row { 
+                                        id: batLayoutRow
+                                        anchors.centerIn: parent
+                                        spacing: barWindow.s(8)
+                                        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: mocha.base; Behavior on color { ColorAnimation { duration: 300 } } }
+                                        Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.base; Behavior on color { ColorAnimation { duration: 300 } } }
+                                    }
+                                    MouseArea { id: batMouse; hoverEnabled: true; anchors.fill: parent; onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle battery"]) }
+                                }                       
                             }
                         }
                     }
