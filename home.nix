@@ -4,7 +4,6 @@
   imports = [
     ./modules/home/shell.nix
     ./modules/home/spicetify.nix
-    ./dotfiles/rofi/default.nix
   ];
 
   xdg.configFile."hypr" = {
