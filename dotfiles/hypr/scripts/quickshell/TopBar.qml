@@ -263,13 +263,13 @@ Variants {
             property string artCacheBuster: ""
 
             onMusicDataChanged: {
-    if (musicData && musicData.status !== "Stopped" && musicData.title !== "") {
-        displayTitle = musicData.title;
-        displayTime = musicData.timeStr;
-        // Forces QML to evaluate a distinct URI string on every single track change
-        displayArtUrl = musicData.artUrl + "?update=" + Date.now();
-    }
-}
+                if (musicData && musicData.status !== "Stopped" && musicData.title !== "") {
+                    displayTitle = musicData.title;
+                    displayTime = musicData.timeStr;
+                    displayArtUrl = musicData.artUrl;
+                    artCacheBuster = "?t=" + Date.now();
+                }
+            }
 
             property bool isMediaActive: barWindow.musicData.status !== "Stopped" && barWindow.musicData.title !== ""
             property bool isWifiOn: barWindow.wifiStatus.toLowerCase() === "enabled" || barWindow.wifiStatus.toLowerCase() === "on"
@@ -783,10 +783,32 @@ Variants {
                                             clip: true
                                             
                                             Image { 
+    id: musicThumbnail
     anchors.fill: parent
     source: barWindow.displayArtUrl || ""
     fillMode: Image.PreserveAspectCrop 
     cache: false
+
+    // Multi-stage verification loop
+    onStatusChanged: {
+        if (status === Image.Error && barWindow.displayArtUrl !== "") {
+            // First pass fail means disk write is still active. 
+            // Halt, let file I/O complete, then trigger data reload.
+            syncTimer.start();
+        }
+    }
+
+    Timer {
+        id: syncTimer
+        interval: 350 // Safe window allowing music_info.sh to finish writing the asset
+        running: false
+        repeat: false
+        onTriggered: {
+            // Re-run the backend collector process to broadcast the finished image file
+            musicForceRefresh.running = false;
+            musicForceRefresh.running = true;
+        }
+    }
 }
                                             
                                             Rectangle {
