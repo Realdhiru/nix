@@ -597,7 +597,7 @@ Variants {
                     opacity: workspacesModel.count > 0 ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 300 } }
 
-Rectangle {
+                    Rectangle {
     id: workspacesBox
     color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
     radius: barWindow.s(14)
@@ -628,8 +628,9 @@ Rectangle {
         color: mocha.mauve
         z: 0
 
-        property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsRepeater.count) 
-                                 ? wsRepeater.itemAt(workspacesModel.activeIndex) 
+        // Updated lookup to reference the globally unique ID
+        property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < dynamicWorkspaceRepeater.count) 
+                                 ? dynamicWorkspaceRepeater.itemAt(workspacesModel.activeIndex) 
                                  : null
 
         property real targetLeft: activePill ? (wsLayout.x + activePill.x) : 0
@@ -652,7 +653,7 @@ Rectangle {
         spacing: barWindow.s(6)
         
         Repeater {
-            id: wsRepeater
+            id: dynamicWorkspaceRepeater // Made unique to fix the error
             model: workspacesModel
             delegate: Rectangle {
                 id: wsPill
@@ -666,7 +667,6 @@ Rectangle {
                 
                 property bool isHovered: wsPillMouse.containsMouse
                 
-                // Forces width to 0 when empty to eliminate layout gaps inside the Row
                 property real targetWidth: isItemVisible ? barWindow.s(32) : 0
                 width: targetWidth
                 Behavior on targetWidth { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
