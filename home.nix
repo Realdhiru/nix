@@ -13,10 +13,6 @@
     force = true;
   };
 
-  {
-  services.hypridle.enable = true;
-}
-
   xdg.configFile."rofi" = {
     source = ./dotfiles/rofi;
     force = true;
