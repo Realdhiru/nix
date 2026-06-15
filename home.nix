@@ -6,13 +6,16 @@
     ./modules/home/shell.nix
     ./modules/home/quickshell.nix
     ./modules/home/spicetify.nix
-    ./modules/home/hypridle.nix
   ];
 
   xdg.configFile."hypr" = {
     source = ./dotfiles/hypr;
     force = true;
   };
+
+  {
+  services.hypridle.enable = true;
+}
 
   xdg.configFile."rofi" = {
     source = ./dotfiles/rofi;
