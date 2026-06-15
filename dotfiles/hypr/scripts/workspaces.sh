@@ -38,11 +38,11 @@ fi
 
 # Configuration: Parse from settings.json dynamically, fallback to 8
 SETTINGS_FILE="$HOME/.config/hypr/settings.json"
-SEQ_END=$(jq -r '.workspaceCount // 8' "$SETTINGS_FILE" 2>/dev/null)
+# SEQ_END=$(jq -r '.workspaceCount // 8' "$SETTINGS_FILE" 2>/dev/null)
 # Double check it is a valid integer to prevent jq errors later
-if ! [[ "$SEQ_END" =~ ^[0-9]+$ ]]; then
-    SEQ_END=8
-fi
+# if ! [[ "$SEQ_END" =~ ^[0-9]+$ ]]; then
+    SEQ_END=69
+# fi
 
 print_workspaces() {
     # Get raw data with a timeout fallback
