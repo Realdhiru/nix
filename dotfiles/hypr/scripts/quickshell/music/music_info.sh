@@ -57,8 +57,6 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
     else
         if [ ! -f "$lockFile" ] && [ -n "$rawUrl" ]; then
             touch "$lockFile"
-            # THE FIX: We redirect standard output/error to /dev/null
-            # This severs the pipe to Quickshell, preventing the 30s Qt destructor lockup.
             (
                 tempArt="$TMP_DIR/${trackHash}_temp_art.jpg"
                 tempBlur="$TMP_DIR/${trackHash}_temp_blur.png"
@@ -107,8 +105,10 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
 
                 rm "$lockFile"
                 (cd "$TMP_DIR" && ls -1t | tail -n +21 | xargs -r rm 2>/dev/null)
+
+                # FIXED: Force Quickshell to reload the data stream via IPC immediately on file completion
+                quickshell -i "topbar" eval "musicForceRefresh.running = false; musicForceRefresh.running = true;" 2>/dev/null
             ) </dev/null >/dev/null 2>&1 & 
-            # ^^^ This is the magic line that fixes the freeze.
         fi
     fi
 
