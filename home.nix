@@ -3,16 +3,12 @@
 {
   imports = [
     ./modules/home/shell.nix
+    ./modules/home/quickshell.nix
     ./modules/home/spicetify.nix
   ];
 
   xdg.configFile."hypr" = {
     source = ./dotfiles/hypr;
-    force = true;
-  };
-
-  xdg.configFile."quickshell" = {
-    source = ./dotfiles/quickshell;
     force = true;
   };
 
@@ -22,9 +18,9 @@
   };
 
   xdg.configFile."rofi" = {
-  source = ./dotfiles/rofi;
-  force = true;
-};
+    source = ./dotfiles/rofi;
+    force = true;
+  };
 
   home.username = "realdhiru";
   home.homeDirectory = "/home/realdhiru";
