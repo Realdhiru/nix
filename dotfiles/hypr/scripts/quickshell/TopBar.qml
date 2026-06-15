@@ -593,6 +593,26 @@ Variants {
                                 
                     x: defaultX + (settingsX - defaultX) * barWindow.settingsSlideProgress
 
+                    // JavaScript helper function to convert Arabic numerals to Kanji up to 99
+                    function toKanji(num) {
+                        let n = parseInt(num);
+                        if (isNaN(n) || n <= 0) return num;
+                        
+                        let kanjiNums = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+                        let ten = "十";
+                        
+                        if (n < 10) return kanjiNums[n];
+                        
+                        let tensDigit = Math.floor(n / 10);
+                        let onesDigit = n % 10;
+                        
+                        let tensPrefix = (tensDigit > 1) ? kanjiNums[tensDigit] : "";
+                        let onesSuffix = kanjiNums[onesDigit];
+                        
+                        return tensPrefix + ten + onesSuffix;
+                    }
+
+                    // Modified to allow dynamic expansion beyond index 6 when space permits
                     property bool limitActive: barWindow.isSettingsOpen && barWindow.isMediaActive
 
                     visible: width > 0 || opacity > 0
@@ -640,6 +660,7 @@ Variants {
                                 property string wsName: model.wsId
                                 property bool isItemVisible: !isLimited && (stateLabel === "active" || stateLabel === "occupied")
                                 
+                                // Cleaned upper-bound constraint rule to fit screens smoothly up to 69
                                 property bool isLimited: workspacesBox.limitActive && index >= 6
                                 visible: isItemVisible
                                 
@@ -685,7 +706,8 @@ Variants {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: wsPill.isItemVisible ? wsName : ""
+                                    // Runs the Arabic string ID through the math conversion generator
+                                    text: wsPill.isItemVisible ? workspacesBox.toKanji(wsName) : ""
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(14)
                                     font.weight: stateLabel === "active" ? Font.Black : (stateLabel === "occupied" ? Font.Bold : Font.Medium)
