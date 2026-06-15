@@ -36,14 +36,12 @@ Variants {
             required property var modelData
             screen: modelData
 
-            // FIXED: Changed from full-width edge anchoring to a centered bounding box
+            // RESTORED: Standard Quickshell surface boundary mapping
             anchors {
                 top: true
-                horizontalCenter: true
+                left: true
+                right: true
             }
-            
-            // Set the physical width of the centered top bar (e.g., 90% of screen width)
-            width: screen.width * 0.9
 
             Scaler {
                 id: scaler
@@ -574,8 +572,11 @@ Variants {
                 onTriggered: barWindow.typeInIndex += 1
             }
 
+            // FIXED: Inner canvas layout box centering calculations
             Item {
-                anchors.fill: parent
+                width: parent.width * 0.9
+                height: parent.height
+                anchors.horizontalCenter: parent.horizontalCenter
                 
                 Rectangle {
                     id: workspacesBox
