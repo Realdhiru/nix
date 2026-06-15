@@ -33,7 +33,6 @@ Variants {
             function s(val) { return scaler.s(val); }
 
             property int barHeight: s(48)
-            property int pillHeight: s(34)
 
             height: barHeight
             margins { top: s(8); bottom: 0; left: s(4); right: s(4) }
@@ -70,7 +69,16 @@ Variants {
             // --- Battery ---
             property string batPercent: "100%"
             property string batIcon: "󰁹"
+            property string batStatus: "Unknown"
+            property int batCap: parseInt(barWindow.batPercent) || 0
+            property bool isCharging: barWindow.batStatus === "Charging" || barWindow.batStatus === "Full"
             
+            property color batDynamicColor: {
+                if (isCharging) return mocha.green;
+                if (batCap <= 20) return mocha.red;
+                return mocha.text; 
+            }
+
             Process {
                 id: batteryPoller; running: true
                 command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/battery_fetch.sh"]
@@ -82,6 +90,7 @@ Variants {
                                 let data = JSON.parse(txt);
                                 barWindow.batPercent = data.percent.toString() + "%";
                                 barWindow.batIcon = data.icon;
+                                barWindow.batStatus = data.status;
                             } catch(e) {}
                         }
                         batteryWaiter.running = false;
@@ -98,7 +107,6 @@ Variants {
             }
             
             property var kanjiMap: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
-            property string activeKanji: kanjiMap[workspacesModel.activeIndex] || (workspacesModel.activeIndex + 1).toString()
 
             Process {
                 id: wsDaemon
@@ -122,6 +130,8 @@ Variants {
                                 let newActive = -1;
                                 for (let i = 0; i < newData.length; i++) {
                                     if (newData[i].state === "active") newActive = i;
+                                    if (workspacesModel.get(i).wsState !== newData[i].state) workspacesModel.setProperty(i, "wsState", newData[i].state);
+                                    if (workspacesModel.get(i).wsId !== newData[i].id.toString()) workspacesModel.setProperty(i, "wsId", newData[i].id.toString());
                                 }
                                 if (newActive !== -1 && workspacesModel.activeIndex !== newActive) {
                                     workspacesModel.activeIndex = newActive;
@@ -139,10 +149,17 @@ Variants {
                 onExited: { wsReader.running = false; wsReader.running = true; running = false; running = true; }
             }
 
-            // --- Music (Fast, Inline) ---
+            // --- Music ---
             property var musicData: { "status": "Stopped", "title": "", "timeStr": "" }
             property string displayTitle: ""
             property bool isMediaActive: barWindow.musicData.status !== "Stopped" && barWindow.musicData.title !== ""
+            property bool isPlaying: barWindow.musicData.status === "Playing"
+
+            // Fake Audio Visualizer properties
+            property real vis1: 0.2
+            property real vis2: 0.2
+            property real vis3: 0.2
+            property real vis4: 0.2
 
             onMusicDataChanged: {
                 if (musicData && musicData.status !== "Stopped" && musicData.title !== "") {
@@ -171,10 +188,10 @@ Variants {
 
             Timer {
                 interval: 1000
-                running: barWindow.musicData !== null && barWindow.musicData.status === "Playing"
+                running: barWindow.isPlaying
                 repeat: true
                 onTriggered: {
-                    if (!barWindow.musicData || barWindow.musicData.status !== "Playing") return;
+                    if (!barWindow.isPlaying) return;
                     if (!barWindow.musicData.timeStr || barWindow.musicData.timeStr === "") return;
 
                     let parts = barWindow.musicData.timeStr.split(" / ");
@@ -183,13 +200,8 @@ Variants {
                     let posParts = parts[0].split(":").map(Number);
                     let lenParts = parts[1].split(":").map(Number);
 
-                    let posSecs = (posParts.length === 3) 
-                        ? (posParts[0] * 3600 + posParts[1] * 60 + posParts[2]) 
-                        : (posParts[0] * 60 + posParts[1]);
-
-                    let lenSecs = (lenParts.length === 3) 
-                        ? (lenParts[0] * 3600 + lenParts[1] * 60 + lenParts[2]) 
-                        : (lenParts[0] * 60 + lenParts[1]);
+                    let posSecs = (posParts.length === 3) ? (posParts[0] * 3600 + posParts[1] * 60 + posParts[2]) : (posParts[0] * 60 + posParts[1]);
+                    let lenSecs = (lenParts.length === 3) ? (lenParts[0] * 3600 + lenParts[1] * 60 + lenParts[2]) : (lenParts[0] * 60 + lenParts[1]);
 
                     if (isNaN(posSecs) || isNaN(lenSecs)) return;
 
@@ -214,6 +226,18 @@ Variants {
                 }
             }
 
+            Timer {
+                interval: 150
+                running: barWindow.isPlaying
+                repeat: true
+                onTriggered: {
+                    barWindow.vis1 = Math.random() * 0.8 + 0.2;
+                    barWindow.vis2 = Math.random() * 0.8 + 0.2;
+                    barWindow.vis3 = Math.random() * 0.8 + 0.2;
+                    barWindow.vis4 = Math.random() * 0.8 + 0.2;
+                }
+            }
+
             // --- Layout: Centered Dynamic Row ---
             Item {
                 anchors.fill: parent
@@ -222,26 +246,56 @@ Variants {
                     anchors.centerIn: parent
                     spacing: barWindow.s(12)
 
-                    // 1. Workspace Pill (Japanese)
+                    // 1. Workspaces
                     Rectangle {
                         color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
                         radius: barWindow.s(14)
                         border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
                         height: barWindow.barHeight
-                        width: wsContent.implicitWidth + barWindow.s(32)
+                        width: workspacesModel.count > 0 ? wsLayout.implicitWidth + barWindow.s(24) : 0
+                        visible: width > 0
+                        clip: true
                         
-                        Text {
-                            id: wsContent
+                        Row {
+                            id: wsLayout
                             anchors.centerIn: parent
-                            text: barWindow.activeKanji
-                            font.family: "JetBrains Mono"
-                            font.pixelSize: barWindow.s(16)
-                            font.weight: Font.Black
-                            color: mocha.text
+                            spacing: barWindow.s(6)
+
+                            Repeater {
+                                model: workspacesModel
+                                delegate: Rectangle {
+                                    property bool isActive: model.wsState === "active"
+                                    property bool isOccupied: model.wsState === "occupied"
+                                    property bool isVisibleWs: isActive || isOccupied
+                                    
+                                    visible: isVisibleWs
+                                    width: isVisibleWs ? barWindow.s(24) : 0
+                                    height: barWindow.s(24)
+                                    radius: barWindow.s(8)
+                                    color: isActive ? mocha.surface1 : "transparent"
+                                    
+                                    Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
+                                    Behavior on color { ColorAnimation { duration: 250 } }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: kanjiMap[index] || (index + 1).toString()
+                                        font.family: "JetBrains Mono"
+                                        font.pixelSize: barWindow.s(14)
+                                        font.weight: Font.Black
+                                        color: isActive ? mocha.text : mocha.overlay0
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh " + model.wsId])
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    // 2. Music Inline Pill (Cava + Title + Timeline)
+                    // 2. Music Inline Pill (Visualizer + Title + Timeline)
                     Rectangle {
                         color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
                         radius: barWindow.s(14)
@@ -260,28 +314,30 @@ Variants {
                         Row {
                             id: mediaRow
                             anchors.centerIn: parent
-                            spacing: barWindow.s(10)
+                            spacing: barWindow.s(12)
 
-                            Text {
-                                text: "󰽰"
-                                font.family: "Iosevka Nerd Font"
-                                font.pixelSize: barWindow.s(18)
-                                color: mocha.mauve
+                            // Native QML Audio Visualizer (Zero CPU overhead)
+                            Row {
                                 anchors.verticalCenter: parent.verticalCenter
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: Quickshell.execDetached(["wezterm", "start", "--", "cava"])
-                                }
+                                spacing: barWindow.s(3)
+                                
+                                property real maxHeight: barWindow.s(16)
+                                property real minHeight: barWindow.s(3)
+
+                                Rectangle { width: barWindow.s(3); radius: barWindow.s(2); color: mocha.mauve; height: barWindow.isPlaying ? parent.minHeight + (parent.maxHeight - parent.minHeight) * barWindow.vis1 : parent.minHeight; Behavior on height { NumberAnimation { duration: 150 } } anchors.verticalCenter: parent.verticalCenter }
+                                Rectangle { width: barWindow.s(3); radius: barWindow.s(2); color: mocha.mauve; height: barWindow.isPlaying ? parent.minHeight + (parent.maxHeight - parent.minHeight) * barWindow.vis2 : parent.minHeight; Behavior on height { NumberAnimation { duration: 150 } } anchors.verticalCenter: parent.verticalCenter }
+                                Rectangle { width: barWindow.s(3); radius: barWindow.s(2); color: mocha.mauve; height: barWindow.isPlaying ? parent.minHeight + (parent.maxHeight - parent.minHeight) * barWindow.vis3 : parent.minHeight; Behavior on height { NumberAnimation { duration: 150 } } anchors.verticalCenter: parent.verticalCenter }
+                                Rectangle { width: barWindow.s(3); radius: barWindow.s(2); color: mocha.mauve; height: barWindow.isPlaying ? parent.minHeight + (parent.maxHeight - parent.minHeight) * barWindow.vis4 : parent.minHeight; Behavior on height { NumberAnimation { duration: 150 } } anchors.verticalCenter: parent.verticalCenter }
                             }
 
                             Text {
                                 text: barWindow.displayTitle
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: barWindow.s(13)
-                                font.weight: Font.Black
+                                font.weight: Font.Bold
                                 color: mocha.text
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: Math.min(implicitWidth, barWindow.s(200))
+                                width: Math.min(implicitWidth, barWindow.s(250))
                                 elide: Text.ElideRight
                             }
 
@@ -316,7 +372,7 @@ Variants {
                             font.family: "JetBrains Mono"
                             font.pixelSize: barWindow.s(15)
                             font.weight: Font.Black
-                            color: mocha.blue
+                            color: mocha.text
                         }
                     }
 
@@ -395,7 +451,7 @@ Variants {
                                 text: barWindow.isDesktop ? "" : barWindow.batIcon; 
                                 font.family: "Iosevka Nerd Font"; 
                                 font.pixelSize: barWindow.s(16); 
-                                color: mocha.text 
+                                color: barWindow.batDynamicColor
                             }
                             Text { 
                                 anchors.verticalCenter: parent.verticalCenter
@@ -404,7 +460,7 @@ Variants {
                                 font.family: "JetBrains Mono"; 
                                 font.pixelSize: barWindow.s(13); 
                                 font.weight: Font.Black; 
-                                color: mocha.text 
+                                color: barWindow.batDynamicColor
                             }
                         }
                     }
