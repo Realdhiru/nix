@@ -38,9 +38,7 @@ Variants {
 
             anchors {
                 top: true
-                left: false
-                right: false
-                center: true
+               horizontalCenter: parent.horizontalCenter
             }
 
             Scaler {
