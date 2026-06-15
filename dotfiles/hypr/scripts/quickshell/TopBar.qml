@@ -263,13 +263,13 @@ Variants {
             property string artCacheBuster: ""
 
             onMusicDataChanged: {
-                if (musicData && musicData.status !== "Stopped" && musicData.title !== "") {
-                    displayTitle = musicData.title;
-                    displayTime = musicData.timeStr;
-                    displayArtUrl = musicData.artUrl;
-                    artCacheBuster = "?t=" + Date.now();
-                }
-            }
+    if (musicData && musicData.status !== "Stopped" && musicData.title !== "") {
+        displayTitle = musicData.title;
+        displayTime = musicData.timeStr;
+        // Forces QML to evaluate a distinct URI string on every single track change
+        displayArtUrl = musicData.artUrl + "?update=" + Date.now();
+    }
+}
 
             property bool isMediaActive: barWindow.musicData.status !== "Stopped" && barWindow.musicData.title !== ""
             property bool isWifiOn: barWindow.wifiStatus.toLowerCase() === "enabled" || barWindow.wifiStatus.toLowerCase() === "on"
@@ -783,31 +783,11 @@ Variants {
                                             clip: true
                                             
                                             Image { 
-                                                id: musicThumbnail
-                                                anchors.fill: parent
-                                                source: barWindow.displayArtUrl || ""
-                                                fillMode: Image.PreserveAspectCrop 
-                                                cache: false
-
-                                                // State container to handle tracking sequential execution attempts
-                                                property bool isRetrying: false
-
-                                                onStatusChanged: {
-                                                    // Triggered immediately if file descriptor initialization hits a disk lock race condition
-                                                    if (status === Image.Error && barWindow.displayArtUrl !== "") {
-                                                        if (!isRetrying) {
-                                                            isRetrying = true;
-                                                            retryTimer.start();
-                                                        } else {
-                                                            // Fallback constraint loop if filesystem synchronization encounters I/O stall spikes
-                                                            musicForceRefresh.running = false;
-                                                            musicForceRefresh.running = true;
-                                                        }
-                                                    } else if (status === Image.Ready) {
-                                                        // Reset state on successful load verification pass
-                                                        isRetrying = false;
-                                                    }
-                                                }
+    anchors.fill: parent
+    source: barWindow.displayArtUrl || ""
+    fillMode: Image.PreserveAspectCrop 
+    cache: false
+}
 
                                                 Timer {
                                                     id: retryTimer
