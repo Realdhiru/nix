@@ -644,7 +644,7 @@ Variants {
                                 id: wsPill
                                 
                                 property bool isLimited: workspacesBox.limitActive && index >= 6
-                                visible: !isLimited
+                                visible: !isLimited && (stateLabel === "active" || stateLabel === "occupied")
                                 
                                 property bool isHovered: wsPillMouse.containsMouse
                                 
