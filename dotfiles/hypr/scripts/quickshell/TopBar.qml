@@ -597,109 +597,137 @@ Variants {
                     opacity: workspacesModel.count > 0 ? 1 : 0
                     Behavior on opacity { NumberAnimation { duration: 300 } }
 
-                    Rectangle {
-    id: activeHighlight
-    y: (workspacesBox.height - barWindow.s(32)) / 2
-    height: barWindow.s(32)
-    radius: barWindow.s(10)
-    color: mocha.mauve
-    z: 0
+Rectangle {
+    id: workspacesBox
+    color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
+    radius: barWindow.s(14)
+    border.width: 1
+    border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+    height: barWindow.barHeight
+    y: (parent.height - barWindow.barHeight) / 2
+    clip: true
+    
+    width: workspacesModel.count > 0 ? wsLayout.implicitWidth + barWindow.s(20) : 0
+    
+    property real defaultX: leftContent.x + leftContent.width + barWindow.s(4)
+    property real settingsX: mediaBox.settingsX - width - (width > 0 ? barWindow.s(4) : 0)
+                
+    x: defaultX + (settingsX - defaultX) * barWindow.settingsSlideProgress
 
-    // Look up the active pill item safely inside the Row's Repeater hierarchy
-    property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsRepeater.count) 
-                             ? wsRepeater.itemAt(workspacesModel.activeIndex) 
-                             : null
+    property bool limitActive: barWindow.isSettingsOpen && barWindow.isMediaActive
 
-    // Target the actual coordinate space of the visible item
-    property real targetLeft: activePill ? (wsLayout.x + activePill.x) : 0
-    property real targetWidth: activePill ? activePill.width : 0
+    visible: width > 0 || opacity > 0
+    opacity: workspacesModel.count > 0 ? 1 : 0
+    Behavior on opacity { NumberAnimation { duration: 300 } }
 
-    property real actualLeft: targetLeft
-    property real actualWidth: targetWidth
+    Rectangle {
+        id: activeHighlight
+        y: (workspacesBox.height - barWindow.s(32)) / 2
+        height: barWindow.s(32)
+        radius: barWindow.s(10)
+        color: mocha.mauve
+        z: 0
 
-    Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: 250; easing.type: Easing.OutExpo } }
-    Behavior on actualWidth { NumberAnimation { id: widthAnim; duration: 250; easing.type: Easing.OutExpo } }
+        property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsRepeater.count) 
+                                 ? wsRepeater.itemAt(workspacesModel.activeIndex) 
+                                 : null
 
-    x: actualLeft
-    width: actualWidth
-    opacity: (workspacesModel.count > 0 && activePill && activePill.visible) ? 1 : 0
-}
+        property real targetLeft: activePill ? (wsLayout.x + activePill.x) : 0
+        property real targetWidth: activePill ? activePill.width : 0
 
-                    Row {
-                        id: wsLayout
-                        anchors.centerIn: parent
-                        spacing: barWindow.s(6)
-                        
-                        Repeater {
-                            model: workspacesModel
-                            delegate: Rectangle {
-                                id: wsPill
-                                
-                                property bool isLimited: workspacesBox.limitActive && index >= 6
-                                visible: !isLimited && (stateLabel === "active" || stateLabel === "occupied")
-                                
-                                property bool isHovered: wsPillMouse.containsMouse
-                                
-                                property string stateLabel: model.wsState
-                                property string wsName: model.wsId
-                                
-                                property real targetWidth: barWindow.s(32)
-                                width: targetWidth
-                                Behavior on targetWidth { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-                                
-                                height: barWindow.s(32); radius: barWindow.s(10)
-                                
-                                color: isHovered ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.1) : (stateLabel === "occupied" ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.15) : "transparent")
+        property real actualLeft: targetLeft
+        property real actualWidth: targetWidth
 
-                                scale: isHovered && stateLabel !== "active" ? 1.08 : 1.0
-                                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-                                
-                                property bool initAnimTrigger: false
-                                opacity: initAnimTrigger ? 1 : 0
-                                transform: Translate {
-                                    y: wsPill.initAnimTrigger ? 0 : barWindow.s(15)
-                                    Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } }
-                                }
+        Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: 250; easing.type: Easing.OutExpo } }
+        Behavior on actualWidth { NumberAnimation { id: widthAnim; duration: 250; easing.type: Easing.OutExpo } }
 
-                                Component.onCompleted: {
-                                    if (!barWindow.startupCascadeFinished) {
-                                        animTimer.interval = index * 60;
-                                        animTimer.start();
-                                    } else {
-                                        initAnimTrigger = true;
-                                    }
-                                }
+        x: actualLeft
+        width: actualWidth
+        opacity: (workspacesModel.count > 0 && activePill && activePill.visible) ? 1 : 0
+    }
 
-                                Timer {
-                                    id: animTimer
-                                    running: false
-                                    repeat: false
-                                    onTriggered: wsPill.initAnimTrigger = true
-                                }
-                                
-                                Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
-                                Behavior on color { ColorAnimation { duration: 250 } }
+    Row {
+        id: wsLayout
+        anchors.centerIn: parent
+        spacing: barWindow.s(6)
+        
+        Repeater {
+            id: wsRepeater
+            model: workspacesModel
+            delegate: Rectangle {
+                id: wsPill
+                
+                property string stateLabel: model.wsState
+                property string wsName: model.wsId
+                property bool isItemVisible: !isLimited && (stateLabel === "active" || stateLabel === "occupied")
+                
+                property bool isLimited: workspacesBox.limitActive && index >= 6
+                visible: isItemVisible
+                
+                property bool isHovered: wsPillMouse.containsMouse
+                
+                // Forces width to 0 when empty to eliminate layout gaps inside the Row
+                property real targetWidth: isItemVisible ? barWindow.s(32) : 0
+                width: targetWidth
+                Behavior on targetWidth { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                
+                height: isItemVisible ? barWindow.s(32) : 0
+                radius: barWindow.s(10)
+                
+                color: isHovered ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.1) : (stateLabel === "occupied" ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.15) : "transparent")
 
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: wsName
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: barWindow.s(14)
-                                    font.weight: stateLabel === "active" ? Font.Black : (stateLabel === "occupied" ? Font.Bold : Font.Medium)
-                                    
-                                    color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
-                                    
-                                    Behavior on color { ColorAnimation { duration: 250 } }
-                                }
-                                MouseArea {
-                                    id: wsPillMouse
-                                    hoverEnabled: true
-                                    anchors.fill: parent
-                                    onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh " + wsName])
-                                }
-                            }
-                        }
+                scale: isHovered && stateLabel !== "active" ? 1.08 : 1.0
+                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                
+                property bool initAnimTrigger: false
+                opacity: initAnimTrigger && isItemVisible ? 1 : 0
+                transform: Translate {
+                    y: wsPill.initAnimTrigger ? 0 : barWindow.s(15)
+                    Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } }
+                }
+
+                Component.onCompleted: {
+                    if (!barWindow.startupCascadeFinished) {
+                        animTimer.interval = index * 60;
+                        animTimer.start();
+                    } else {
+                        initAnimTrigger = true;
                     }
+                }
+
+                Timer {
+                    id: animTimer
+                    running: false
+                    repeat: false
+                    onTriggered: wsPill.initAnimTrigger = true
+                }
+                
+                Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
+                Behavior on color { ColorAnimation { duration: 250 } }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: wsPill.isItemVisible ? wsName : ""
+                    font.family: "JetBrains Mono"
+                    font.pixelSize: barWindow.s(14)
+                    font.weight: stateLabel === "active" ? Font.Black : (stateLabel === "occupied" ? Font.Bold : Font.Medium)
+                    
+                    color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
+                    
+                    Behavior on color { ColorAnimation { duration: 250 } }
+                }
+                
+                MouseArea {
+                    id: wsPillMouse
+                    hoverEnabled: true
+                    anchors.fill: parent
+                    enabled: wsPill.isItemVisible
+                    onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh " + wsName])
+                }
+            }
+        }
+    }
+}
                 }
 
                 Rectangle {
