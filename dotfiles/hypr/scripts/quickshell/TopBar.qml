@@ -346,7 +346,7 @@ Variants {
                 }
             }
 
-            Process {
+                Process {
                 id: musicForceRefresh
                 running: true
                 command: ["bash", "-c", "bash ~/.config/hypr/scripts/quickshell/music/music_info.sh | tee " + paths.getRunDir("music") + "/music_info.json"]
@@ -357,6 +357,18 @@ Variants {
                             try { barWindow.musicData = JSON.parse(txt); } catch(e) {}
                         }
                     }
+                }
+            }
+
+            Process {
+                id: musicWatcher
+                running: true
+                command: ["bash", "-c", "while [ ! -d " + paths.getRunDir("music") + " ]; do sleep 1; done; inotifywait -qq -e close_write,modify " + paths.getRunDir("music") + "/music_info.json"]
+                onExited: {
+                    musicForceRefresh.running = false;
+                    musicForceRefresh.running = true;
+                    running = false;
+                    running = true;
                 }
             }
 
@@ -408,7 +420,7 @@ Variants {
                 }
             }
 
-            Process {
+                Process {   
                 id: mprisWatcher
                 running: true
                 command: ["bash", "-c", "dbus-monitor --session \"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',arg0='org.mpris.MediaPlayer2.Player'\" \"type='signal',interface='org.mpris.MediaPlayer2.Player',member='Seeked'\" 2>/dev/null | grep -m 1 'member=' > /dev/null || sleep 2"]
