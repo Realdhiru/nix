@@ -898,36 +898,7 @@ Variants {
                         onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle calendar"])
                     }
 
-                    RowLayout {
-                        id: centerLayout
-                        anchors.centerIn: parent
-                        spacing: barWindow.s(24)
-
-                        ColumnLayout {
-                            spacing: -2
-                            Text { text: barWindow.timeStr; Layout.alignment: Qt.AlignLeft; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(16); font.weight: Font.Black; color: mocha.blue }
-                            Text { text: barWindow.dateStr; Layout.alignment: Qt.AlignLeft; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(11); font.weight: Font.Bold; color: mocha.subtext0 }
-                        }
-
-                        RowLayout {
-                            spacing: barWindow.s(8)
-                            Text { 
-                                text: barWindow.weatherIcon; 
-                                Layout.alignment: Qt.AlignVCenter;
-                                font.family: "Iosevka Nerd Font"; 
-                                font.pixelSize: barWindow.s(24); 
-                                color: Qt.tint(barWindow.weatherHex, Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.4)) 
-                            }
-                            Text { 
-                                text: barWindow.weatherTemp; 
-                                Layout.alignment: Qt.AlignVCenter;
-                                font.family: "JetBrains Mono"; 
-                                font.pixelSize: barWindow.s(17); 
-                                font.weight: Font.Black; 
-                                color: mocha.peach 
-                            }
-                        }
-                    }
+                    
                 }
 
                 Row {
