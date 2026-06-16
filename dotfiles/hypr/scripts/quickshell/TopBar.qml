@@ -764,69 +764,42 @@ Variants {
                         }
                     }
 
-                    // --- REPRODUCIBLE NATIVE CAVA VISUALIZER MODULE ---
-                    Rectangle {
-                        id: cavaWidgetBox
-                        color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
-                        radius: barWindow.s(14)
-                        border.width: 1
-                        border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
-                        height: barWindow.barHeight
-                        clip: true
+                    // Automatically instantiates the target background named pipe stream inside your user cache path
+            Process {
+                id: cavaDaemon
+                command: ["bash", "-c", "mkfifo " + paths.getRunDir("music") + "/qml_cava.fifo 2>/dev/null; cava -p " + paths.homeDir + "/.config/cava/config"]
+                running: barWindow.isMediaActive
+            }
 
-                        // Fluid expansion mechanics tied directly to media status flags
-                        property real targetWidth: barWindow.isMediaActive ? barWindow.s(110) : 0
-                        width: targetWidth
-                        visible: targetWidth > 0 || opacity > 0
-                        opacity: barWindow.isMediaActive ? 1.0 : 0.0
+            // Real-time ASCII byte stream data evaluator pipe consumer mapped securely to user space
+            Process {
+                id: cavaStreamReader
+                command: ["cat", paths.getRunDir("music") + "/qml_cava.fifo"]
+                running: barWindow.isMediaActive
+                
+                property var barValues: [0,0,0,0,0,0,0,0,0,0]
 
-                        Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
-                        Behavior on opacity { NumberAnimation { duration: 300 } }
-
-                        Canvas {
-                            id: cavaCanvas
-                            anchors.fill: parent
-                            anchors.margins: barWindow.s(6)
-                            antialiasing: true
-                            renderTarget: Canvas.FramebufferObject
-
-                            property var smoothHeights: [0,0,0,0,0,0,0,0,0,0]
-
-                            onPaint: {
-                                var ctx = getContext("2d");
-                                ctx.clearRect(0, 0, width, height);
-
-                                var rawData = cavaStreamReader.barValues;
-                                var barCount = 10;
-                                var spacing = barWindow.s(3);
-                                var totalSpacing = spacing * (barCount - 1);
-                                var barWidth = (width - totalSpacing) / barCount;
-
-                                for (var i = 0; i < barCount; i++) {
-                                    var rawTarget = (rawData[i] / 255.0) * height;
-                                    
-                                    // Smooth exponential dampening math loop to keep behavior liquid
-                                    smoothHeights[i] = smoothHeights[i] + (rawTarget - smoothHeights[i]) * 0.35;
-
-                                    var xCoord = i * (barWidth + spacing);
-                                    var finalBarHeight = Math.max(barWindow.s(3), smoothHeights[i]);
-                                    var yCoord = height - finalBarHeight;
-
-                                    // Dynamic linear color mapping pulled right from your Matugen tokens
-                                    var gradient = ctx.createLinearGradient(xCoord, yCoord, xCoord, height);
-                                    gradient.addColorStop(0.0, mocha.mauve);
-                                    gradient.addColorStop(0.5, mocha.blue);
-                                    gradient.addColorStop(1.0, mocha.surface1);
-
-                                    ctx.fillStyle = gradient;
-                                    
-                                    ctx.beginPath();
-                                    ctx.roundRect(xCoord, yCoord, barWidth, finalBarHeight, barWindow.s(4));
-                                    ctx.fill();
-                                }
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let rawLine = this.text.trim().split("\n").pop();
+                        if (!rawLine) return;
+                        
+                        let points = rawLine.split(/[; ]/);
+                        let cleanPoints = [];
+                        
+                        for (let i = 0; i < points.length; i++) {
+                            if (points[i] !== "") {
+                                cleanPoints.push(parseInt(points[i]) || 0);
                             }
                         }
+                        
+                        if (cleanPoints.length >= 10) {
+                            cavaStreamReader.barValues = cleanPoints.slice(0, 10);
+                            cavaCanvas.requestPaint(); 
+                        }
                     }
+                }
+            }
 
                     Rectangle {
                         id: mediaBox

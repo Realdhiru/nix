@@ -4,7 +4,7 @@ framerate = 60
 
 [output]
 method = raw
-raw_target = /tmp/qml_cava.fifo
+raw_target = /run/user/1000/quickshell/runtime/music/qml_cava.fifo
 data_format = ascii
 bit_format = 8bit
 ascii_max_range = 255
