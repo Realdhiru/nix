@@ -1,4 +1,6 @@
 [config]
+scheme = "fidelity"
+contrast = 0.0
 reload_apps = false
 
 [templates.quickshell]
