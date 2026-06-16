@@ -548,7 +548,7 @@ Item {
                             anchors.fill: parent
                             radius: root.s(110)
                             color: root.surface1
-                            border.width: root.s(4)
+                            border.width: root.s(0)
                             border.color: root.musicData.status === "Playing" ? root.mauve : root.overlay0
                             Behavior on border.color { ColorAnimation { duration: 500 } }
 
