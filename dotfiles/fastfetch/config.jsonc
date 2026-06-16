@@ -3,7 +3,7 @@
   "modules": [
     {
       "type": "command",
-      "key": "  ",
+      "key": " ",
       "text": "hyprctl splash"
     },
     "title",
