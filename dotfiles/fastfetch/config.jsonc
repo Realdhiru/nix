@@ -6,26 +6,40 @@
       "key": " ",
       "text": "hyprctl splash"
     },
-    "break",
+        {
+      "type": "custom",
+      "format": "┌──────────────────────────────────────────┐"
+    },
     { "type": "os", "key": "OS" },
     { "type": "kernel", "key": "Kernel" },
     { "type": "shell", "key": "Shell" },
     { "type": "de", "key": "DE" },
     { "type": "wm", "key": "WM" },
+     {
+      "type": "custom",
+      "format": "└──────────────────────────────────────────┘"
+    },
+    {
+      "type": "custom",
+      "format": "┌──────────────────────────────────────────┐"
+    },
     { "type": "cpu", "key": "CPU" },
     { "type": "gpu", "key": "GPU" },
     { "type": "memory", "key": "Memory" },
     { "type": "swap", "key": "Swap" },
     { "type": "disk", "key": "Disk" },
-    {
-              "type": "disk",
-      "key": "  󱦟 OS Age ",
+    { "type": "disk", "key": "disk" },
+     {
+      "type": "custom",
+      "format": "└──────────────────────────────────────────┘"
+    },
+    {  "key": "  󱦟 OS Age ",
       "folders": "/",
       "format": "{days} days"
-    },
+  }
     { "type": "uptime", "key": "󱫐" },
     { "type": "break" },
-    { "type": "title", "key": "" }
+    { "type": "title", "key": "" },
         {
       "type": "colors",
       "paddingLeft": 2,
