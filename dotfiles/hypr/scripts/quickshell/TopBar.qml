@@ -53,7 +53,7 @@ Variants {
                 return scaler.s(val); 
             }
 
-            property int barHeight: s(48)
+            property int barHeight: s(40)
 
             height: barHeight
             margins { top: s(2); bottom: 0; left: s(4); right: s(4) }
@@ -258,8 +258,6 @@ Variants {
             property string displayTitle: ""
             property string displayTime: ""
             property string displayArtUrl: ""
-            
-            // Fixed: Appending a cache-busting timestamp forces QML to bypass file locks and reload the asset
             property string artCacheBuster: ""
 
             onMusicDataChanged: {
@@ -360,17 +358,15 @@ Variants {
                 }
             }
 
-            // Automatically instantiates the target background named pipe stream
             Process {
                 id: cavaDaemon
-                command: ["bash", "-c", "mkfifo /tmp/qml_cava.fifo 2>/dev/null; cava -p " + paths.homeDir + "/.config/cava/config"]
+                command: ["bash", "-c", "mkfifo " + paths.getRunDir("music") + "/qml_cava.fifo 2>/dev/null; cava -p " + paths.homeDir + "/.config/cava/config"]
                 running: barWindow.isMediaActive
             }
 
-            // Real-time ASCII byte stream data evaluator pipe consumer
             Process {
                 id: cavaStreamReader
-                command: ["cat", "/tmp/qml_cava.fifo"]
+                command: ["cat", paths.getRunDir("music") + "/qml_cava.fifo"]
                 running: barWindow.isMediaActive
                 
                 property var barValues: [0,0,0,0,0,0,0,0,0,0]
@@ -391,69 +387,9 @@ Variants {
                         
                         if (cleanPoints.length >= 10) {
                             cavaStreamReader.barValues = cleanPoints.slice(0, 10);
-                            cavaCanvas.requestPaint(); // Force frame canvas repaint
+                            uniqueCavaCanvas.requestPaint(); 
                         }
                     }
-                }
-            }
-
-            Timer {
-                interval: 1000
-                running: barWindow.musicData !== null && barWindow.musicData.status === "Playing"
-                repeat: true
-                onTriggered: {
-                    if (!barWindow.musicData || barWindow.musicData.status !== "Playing") return;
-                    if (!barWindow.musicData.timeStr || barWindow.musicData.timeStr === "") return;
-
-                    let parts = barWindow.musicData.timeStr.split(" / ");
-                    if (parts.length !== 2) return;
-
-                    let posParts = parts[0].split(":").map(Number);
-                    let lenParts = parts[1].split(":").map(Number);
-
-                    let posSecs = (posParts.length === 3) 
-                        ? (posParts[0] * 3600 + posParts[1] * 60 + posParts[2]) 
-                        : (posParts[0] * 60 + posParts[1]);
-
-                    let lenSecs = (lenParts.length === 3) 
-                        ? (lenParts[0] * 3600 + lenParts[1] * 60 + lenParts[2]) 
-                        : (lenParts[0] * 60 + lenParts[1]);
-
-                    if (isNaN(posSecs) || isNaN(lenSecs)) return;
-
-                    posSecs++;
-                    if (posSecs > lenSecs) posSecs = lenSecs;
-
-                    let newPosStr = "";
-                    if (posParts.length === 3) {
-                        let h = Math.floor(posSecs / 3600);
-                        let m = Math.floor((posSecs % 3600) / 60);
-                        let s = posSecs % 60;
-                        newPosStr = h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-                    } else {
-                        let m = Math.floor(posSecs / 60);
-                        let s = posSecs % 60;
-                        newPosStr = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-                    }
-
-                    let newData = Object.assign({}, barWindow.musicData);
-                    newData.timeStr = newPosStr + " / " + parts[1];
-                    newData.positionStr = newPosStr;
-                    if (lenSecs > 0) newData.percent = (posSecs / lenSecs) * 100;
-                    
-                    barWindow.musicData = newData;
-                }
-            }
-
-            Process {
-                id: mprisWatcher
-                running: true
-                command: ["bash", "-c", "dbus-monitor --session \"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',arg0='org.mpris.MediaPlayer2.Player'\" \"type='signal',interface='org.mpris.MediaPlayer2.Player',member='Seeked'\" 2>/dev/null | grep -m 1 'member=' > /dev/null || sleep 2"]
-                onExited: {
-                    musicForceRefresh.running = false;
-                    musicForceRefresh.running = true;
-                    running = false;
-                    running = true;
                 }
             }
 
@@ -590,7 +526,6 @@ Variants {
                 }
             }
             Timer { interval: 150000; running: true; repeat: true; triggeredOnStart: true; onTriggered: { weatherPoller.running = false; weatherPoller.running = true; } }
-
 
             Timer {
                 interval: 1000; running: true; repeat: true; triggeredOnStart: true
@@ -764,42 +699,65 @@ Variants {
                         }
                     }
 
-                    // Automatically instantiates the target background named pipe stream inside your user cache path
-            Process {
-                id: cavaDaemon
-                command: ["bash", "-c", "mkfifo " + paths.getRunDir("music") + "/qml_cava.fifo 2>/dev/null; cava -p " + paths.homeDir + "/.config/cava/config"]
-                running: barWindow.isMediaActive
-            }
+                    // --- CAVA AUDIO VISUALIZER капсула ---
+                    Rectangle {
+                        id: cavaWidgetBox
+                        color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
+                        radius: barWindow.s(14)
+                        border.width: 1
+                        border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+                        height: barWindow.barHeight
+                        clip: true
 
-            // Real-time ASCII byte stream data evaluator pipe consumer mapped securely to user space
-            Process {
-                id: cavaStreamReader
-                command: ["cat", paths.getRunDir("music") + "/qml_cava.fifo"]
-                running: barWindow.isMediaActive
-                
-                property var barValues: [0,0,0,0,0,0,0,0,0,0]
+                        property real targetWidth: barWindow.isMediaActive ? barWindow.s(110) : 0
+                        width: targetWidth
+                        visible: targetWidth > 0 || opacity > 0
+                        opacity: barWindow.isMediaActive ? 1.0 : 0.0
 
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        let rawLine = this.text.trim().split("\n").pop();
-                        if (!rawLine) return;
-                        
-                        let points = rawLine.split(/[; ]/);
-                        let cleanPoints = [];
-                        
-                        for (let i = 0; i < points.length; i++) {
-                            if (points[i] !== "") {
-                                cleanPoints.push(parseInt(points[i]) || 0);
+                        Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                        Behavior on opacity { NumberAnimation { duration: 300 } }
+
+                        Canvas {
+                            id: uniqueCavaCanvas
+                            anchors.fill: parent
+                            anchors.margins: barWindow.s(6)
+                            antialiasing: true
+                            renderTarget: Canvas.FramebufferObject
+
+                            property var smoothHeights: [0,0,0,0,0,0,0,0,0,0]
+
+                            onPaint: {
+                                var ctx = getContext("2d");
+                                ctx.clearRect(0, 0, width, height);
+
+                                var rawData = cavaStreamReader.barValues;
+                                var barCount = 10;
+                                var spacing = barWindow.s(3);
+                                var totalSpacing = spacing * (barCount - 1);
+                                var barWidth = (width - totalSpacing) / barCount;
+
+                                for (var i = 0; i < barCount; i++) {
+                                    var rawTarget = (rawData[i] / 255.0) * height;
+                                    smoothHeights[i] = smoothHeights[i] + (rawTarget - smoothHeights[i]) * 0.35;
+
+                                    var xCoord = i * (barWidth + spacing);
+                                    var finalBarHeight = Math.max(barWindow.s(3), smoothHeights[i]);
+                                    var yCoord = height - finalBarHeight;
+
+                                    var gradient = ctx.createLinearGradient(xCoord, yCoord, xCoord, height);
+                                    gradient.addColorStop(0.0, mocha.mauve);
+                                    gradient.addColorStop(0.5, mocha.blue);
+                                    gradient.addColorStop(1.0, mocha.surface1);
+
+                                    ctx.fillStyle = gradient;
+                                    
+                                    ctx.beginPath();
+                                    ctx.roundRect(xCoord, yCoord, barWidth, finalBarHeight, barWindow.s(4));
+                                    ctx.fill();
+                                }
                             }
                         }
-                        
-                        if (cleanPoints.length >= 10) {
-                            cavaStreamReader.barValues = cleanPoints.slice(0, 10);
-                            cavaCanvas.requestPaint(); 
-                        }
                     }
-                }
-            }
 
                     Rectangle {
                         id: mediaBox
@@ -858,11 +816,9 @@ Variants {
                                             
                                             Image { 
                                                 anchors.fill: parent
-                                                // Fixed: Concatenating the time query bypasses internal pixel mapping cache states instantly
                                                 source: barWindow.displayArtUrl ? (barWindow.displayArtUrl + barWindow.artCacheBuster) : ""
                                                 fillMode: Image.PreserveAspectCrop 
                                                 
-                                                // Failsafe connection event handler: If data stream hasn't completed, re-trigger resource retrieval
                                                 onStatusChanged: {
                                                     if (status === Image.Error && barWindow.displayArtUrl !== "") {
                                                         musicForceRefresh.running = false;
@@ -983,46 +939,44 @@ Variants {
                         }
 
                         RowLayout {
-                        id: centerLayout
-                        anchors.centerIn: parent
-                        spacing: barWindow.s(12)
-
-                        // Left Side: Big, clean time display
-                        Text {
-                            text: barWindow.timeStr
-                            font.family: "JetBrains Mono"
-                            font.pixelSize: barWindow.s(18)
-                            font.weight: Font.Black
-                            color: mocha.blue
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-
-                        // Right Side: Vertically stacked Day and Date text fields
-                        ColumnLayout {
-                            spacing: 0 // Reset to 0 to let the layout engine calculate bounding limits cleanly
-                            Layout.alignment: Qt.AlignVCenter
+                            id: centerLayout
+                            anchors.centerIn: parent
+                            spacing: barWindow.s(12)
 
                             Text {
-                                text: barWindow.dateStr.split(',')[0] || ""
+                                text: barWindow.timeStr
                                 font.family: "JetBrains Mono"
-                                font.pixelSize: barWindow.s(10)
+                                font.pixelSize: barWindow.s(18)
                                 font.weight: Font.Black
-                                color: mocha.text
-                                horizontalAlignment: Text.AlignLeft // FIXED: Forces left anchoring inside the column
-                                Layout.fillWidth: true
+                                color: mocha.blue
+                                Layout.alignment: Qt.AlignVCenter
                             }
 
-                            Text {
-                                text: (barWindow.dateStr.split(',')[1] || "").trim()
-                                font.family: "JetBrains Mono"
-                                font.pixelSize: barWindow.s(10)
-                                font.weight: Font.Bold
-                                color: mocha.subtext0
-                                horizontalAlignment: Text.AlignLeft // FIXED: Forces left anchoring inside the column
-                                Layout.fillWidth: true
+                            ColumnLayout {
+                                spacing: 0
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: barWindow.dateStr.split(',')[0] || ""
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: barWindow.s(10)
+                                    font.weight: Font.Black
+                                    color: mocha.text
+                                    horizontalAlignment: Text.AlignLeft
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: (barWindow.dateStr.split(',')[1] || "").trim()
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: barWindow.s(10)
+                                    font.weight: Font.Bold
+                                    color: mocha.subtext0
+                                    horizontalAlignment: Text.AlignLeft
+                                    Layout.fillWidth: true
+                                }
                             }
                         }
-                    }
                     }
 
                     Row {
@@ -1233,6 +1187,7 @@ Variants {
                             font.pixelSize: barWindow.s(20)
                             color: mocha.red
                             
+                            // Анимация пульсации при записи
                             SequentialAnimation on opacity {
                                 running: barWindow.isRecording && !recButton.isHovered
                                 loops: Animation.Infinite
