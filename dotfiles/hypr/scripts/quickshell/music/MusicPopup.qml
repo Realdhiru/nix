@@ -548,7 +548,7 @@ Item {
                             anchors.fill: parent
                             radius: root.s(110)
                             color: root.surface1
-                            border.width: root.s(0)
+                            border.width: root.s(4)
                             border.color: root.musicData.status === "Playing" ? root.mauve : root.overlay0
                             Behavior on border.color { ColorAnimation { duration: 500 } }
 
@@ -985,7 +985,7 @@ Item {
                             radius: root.s(10)
                             color: root.eqData.pending ? root.mauve : root.surface1
                             border.color: root.eqData.pending ? root.mauve : root.surface2
-                            border.width: 1
+                            border.width: 0
                             
                             Behavior on color { ColorAnimation { duration: 300; easing.type: Easing.OutCubic } }
                             Behavior on border.color { ColorAnimation { duration: 300; easing.type: Easing.OutCubic } }
