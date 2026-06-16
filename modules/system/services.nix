@@ -29,10 +29,10 @@
   programs.thunar = {
     enable = true;
 
-plugins = with pkgs; [
-  thunar-archive-plugin
-  thunar-volman
-];
+    plugins = with pkgs; [
+      thunar-archive-plugin
+      thunar-volman
+    ];
   };
 
   services.gvfs.enable = true;
@@ -62,11 +62,11 @@ plugins = with pkgs; [
 
   security.polkit.extraConfig = ''
     polkit.addRule(function(action, subject) {
-        if ((action.id == "org.freedesktop.udisks2.filesystem-mount" ||
-             action.id == "org.freedesktop.udisks2.filesystem-mount-system") &&
-            subject.isInGroup("wheel")) {
-            return polkit.Result.YES;
-        }
+      if ((action.id == "org.freedesktop.udisks2.filesystem-mount" ||
+           action.id == "org.freedesktop.udisks2.filesystem-mount-system") &&
+          subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+      }
     });
   '';
 
@@ -87,5 +87,14 @@ plugins = with pkgs; [
       RestartSec = 1;
       TimeoutStopSec = 10;
     };
+  };
+
+  #
+  # Memory
+  #
+  zramSwap = {
+    enable = true;
+    algorithm = "zstd";
+    memoryPercent = 50;
   };
 }
