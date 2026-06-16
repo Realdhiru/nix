@@ -20,7 +20,7 @@
     { "type": "poweradapter", "key": "Power" },
     { "type": "uptime", "key": "Uptime" },
     { "type": "break" },
-    { "type": "title", "key": "Title" }
+    { "type": "title", "key": "󱗃" }
   ]
 }
 
