@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell.Io
 
-QtObject {
+Item {
     id: root
 
     property string base: "#1e1e2e"
