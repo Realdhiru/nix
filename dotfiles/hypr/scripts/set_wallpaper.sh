@@ -10,6 +10,9 @@ mpvpaper \
 '*' \
 "$WALL" &
 
-matugen image "$WALL" --config ~/nix/dotfiles/matugen/config.toml -m dark -t expressive --source-color-index 0
-
-touch ~/.config/wezterm/wezterm.lua
+# Use absolute paths and pipe output to a log file to catch the exact failure
+matugen image "$WALL" \
+  --config /home/realdhiru/nix/dotfiles/matugen/config.toml \
+  -m dark \
+  -t expressive \
+  --source-color-index 0 > /tmp/matugen.log 2>&1
