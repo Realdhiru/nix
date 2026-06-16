@@ -9,7 +9,7 @@ return {
     selection_fg = "{{colors.on_primary_container.default.hex}}",
 
     ansi = {
-        "{{colors.surface.default.hex}}", -- index 1: black (Fixed your color shifting)
+        "{{colors.surface.default.hex}}",
         "{{colors.error.default.hex}}",
         "{{colors.primary.default.hex}}",
         "{{colors.secondary.default.hex}}",
@@ -20,7 +20,7 @@ return {
     },
 
     brights = {
-        "{{colors.surface_variant.default.hex}}", -- index 1: bright black
+        "{{colors.surface_variant.default.hex}}",
         "{{colors.error_container.default.hex}}",
         "{{colors.primary.default.hex}}",
         "{{colors.secondary.default.hex}}",
