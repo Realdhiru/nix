@@ -947,6 +947,7 @@ Variants {
                             }
                         }
                     }
+                    }
 
                     Row {
                         id: rightContent
