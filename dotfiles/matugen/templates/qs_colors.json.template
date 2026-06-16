@@ -9,16 +9,16 @@
   "surface1": "{{colors.surface_container_high.default.hex}}",
   "surface2": "{{colors.surface_container_highest.default.hex}}",
   "overlay0": "{{colors.inverse_surface.default.hex}}",
-  "overlay1": "{{colors.inverse_surface.default.hex}}",
-  "overlay2": "{{colors.inverse_surface.default.hex}}",
+  "overlay1": "{{colors.on_primary.default.hex}}",
+  "overlay2": "{{colors.on_secondary.default.hex}}",
   "blue": "{{colors.primary.default.hex}}",
   "sapphire": "{{colors.primary_container.default.hex}}",
-  "peach": "{{colors.tertiary.default.hex}}",
+  "peach": "{{colors.inverse_primary.default.hex}}",
   "green": "{{colors.secondary.default.hex}}",
   "red": "{{colors.error.default.hex}}",
-  "mauve": "{{colors.primary.default.hex}}",
+  "mauve": "{{colors.tertiary.default.hex}}",
   "pink": "{{colors.tertiary_container.default.hex}}",
-  "yellow": "{{colors.secondary_container.default.hex}}",
+  "yellow": "{{colors.on_secondary_container.default.hex}}",
   "maroon": "{{colors.error_container.default.hex}}",
-  "teal": "{{colors.secondary.default.hex}}"
+  "teal": "{{colors.secondary_container.default.hex}}"
 }
