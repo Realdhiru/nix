@@ -10,9 +10,8 @@ mpvpaper \
 '*' \
 "$WALL" &
 
-# Use absolute paths and pipe output to a log file to catch the exact failure
 matugen image "$WALL" \
   --config /home/realdhiru/nix/dotfiles/matugen/config.toml \
   -m dark \
-  -t expressive \
+  -t scheme-expressive \
   --source-color-index 0 > /tmp/matugen.log 2>&1
