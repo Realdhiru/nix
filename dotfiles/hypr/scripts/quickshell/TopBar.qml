@@ -280,8 +280,11 @@ Variants {
             property int batCap: parseInt(barWindow.batPercent) || 0
             property bool isCharging: barWindow.batStatus === "Charging" || barWindow.batStatus === "Full"
             
-            // Replace the old batDynamicColor property block with this:
-            property color batDynamicColor: mocha.primary
+            property color batDynamicColor: {
+                if (isCharging) return mocha.mauve;
+                if (batCap <= 20) return mocha.mauve;
+                return mocha.text; 
+            }
 
             Process {
                 id: wsDaemon
@@ -1092,10 +1095,10 @@ Variants {
                                         opacity: 1.0 
                                         Behavior on opacity { NumberAnimation { duration: 300 } }
                                         gradient: Gradient {
-    orientation: Gradient.Horizontal
-    GradientStop { position: 0.0; color: mocha.primary }
-    GradientStop { position: 1.0; color: Qt.lighter(mocha.primary, 1.3) }
-}
+                                            orientation: Gradient.Horizontal
+                                            GradientStop { position: 0.0; color: barWindow.isDesktop ? mocha.mauve : barWindow.batDynamicColor; Behavior on color { ColorAnimation { duration: 300 } } }
+                                            GradientStop { position: 1.0; color: barWindow.isDesktop ? Qt.lighter(mocha.red, 1.3) : Qt.lighter(barWindow.batDynamicColor, 1.3); Behavior on color { ColorAnimation { duration: 300 } } }
+                                        }
                                     }
                                     
                                     property real targetWidth: barWindow.isDesktop ? barWindow.s(34) : batLayoutRow.implicitWidth + barWindow.s(24)
