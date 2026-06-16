@@ -911,13 +911,13 @@ Variants {
                         RowLayout {
                         id: centerLayout
                         anchors.centerIn: parent
-                        spacing: barWindow.s(12) // Balanced gap between Time and Date stack
+                        spacing: barWindow.s(12)
 
                         // Left Side: Big, clean time display
                         Text {
                             text: barWindow.timeStr
                             font.family: "JetBrains Mono"
-                            font.pixelSize: barWindow.s(18) // Slightly increased size for prominence
+                            font.pixelSize: barWindow.s(18)
                             font.weight: Font.Black
                             color: mocha.blue
                             Layout.alignment: Qt.AlignVCenter
@@ -925,25 +925,27 @@ Variants {
 
                         // Right Side: Vertically stacked Day and Date text fields
                         ColumnLayout {
-                            spacing: -2
+                            spacing: 0 // Reset to 0 to let the layout engine calculate bounding limits cleanly
                             Layout.alignment: Qt.AlignVCenter
 
                             Text {
-                                // Extracts the day name (e.g., "Tuesday")
                                 text: barWindow.dateStr.split(',')[0] || ""
                                 font.family: "JetBrains Mono"
-                                font.pixelSize: barWindow.s(10) // Reduced to fit neatly alongside time
+                                font.pixelSize: barWindow.s(10)
                                 font.weight: Font.Black
                                 color: mocha.text
+                                horizontalAlignment: Text.AlignLeft // FIXED: Forces left anchoring inside the column
+                                Layout.fillWidth: true
                             }
 
                             Text {
-                                // Extracts the month and date text string (e.g., " June 16")
                                 text: (barWindow.dateStr.split(',')[1] || "").trim()
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: barWindow.s(10)
                                 font.weight: Font.Bold
                                 color: mocha.subtext0
+                                horizontalAlignment: Text.AlignLeft // FIXED: Forces left anchoring inside the column
+                                Layout.fillWidth: true
                             }
                         }
                     }
