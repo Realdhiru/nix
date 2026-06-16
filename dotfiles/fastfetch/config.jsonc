@@ -6,7 +6,7 @@
       "key": " ",
       "text": "hyprctl splash"
     },
-    { "type": "os", "key": "󰍹" },
+    { "type": "os", "key": " " },
     { "type": "kernel", "key": "Kernel" },
     { "type": "shell", "key": "Shell" },
     { "type": "de", "key": "DE" },
