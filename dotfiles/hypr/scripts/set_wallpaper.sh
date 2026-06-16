@@ -10,6 +10,6 @@ mpvpaper \
 '*' \
 "$WALL" &
 
-matugen image "$WALL" -c ~/nix/dotfiles/matugen/config.toml -m dark -t expressive
+matugen image "$WALL" --config ~/nix/dotfiles/matugen/config.toml -m dark -t expressive --source-color-index 0
 
 touch ~/.config/wezterm/wezterm.lua
