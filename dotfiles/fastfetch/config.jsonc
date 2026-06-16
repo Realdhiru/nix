@@ -6,67 +6,30 @@
       "key": " ",
       "text": "hyprctl splash"
     },
-        {
-      "type": "custom",
-      "format": "┌──────────────────────────────────────────┐"
-    },
-    { "type": "os", "key": "OS" },
-    { "type": "kernel", "key": "Kernel" },
-    { "type": "shell", "key": "Shell" },
-    { "type": "de", "key": "DE" },
-    { "type": "wm", "key": "WM" },
-     {
-      "type": "custom",
-      "format": "└──────────────────────────────────────────┘"
-    },
-    {
-      "type": "custom",
-      "format": "┌──────────────────────────────────────────┐"
-    },
-    { "type": "cpu", "key": "CPU" },
-    { "type": "gpu", "key": "GPU" },
-    { "type": "memory", "key": "Memory" },
-    { "type": "swap", "key": "Swap" },
-    { "type": "disk", "key": "Disk" },
-    { "type": "disk", "key": "disk" },
-     {
-      "type": "custom",
-      "format": "└──────────────────────────────────────────┘"
-    },
-    {  "key": "  󱦟 OS Age ",
-      "folders": "/",
-      "format": "{days} days"
-  },
-    { "type": "uptime", "key": "󱫐" },
-    { "type": "break" },
+    { "type": "custom", "format": "┌──────────────────────────────────────────┐" },
+    { "type": "os", "key": "│  OS" },
+    { "type": "kernel", "key": "│  Kernel" },
+    { "type": "shell", "key": "│  Shell" },
+    { "type": "de", "key": "│  DE" },
+    { "type": "wm", "key": "│  WM" },
+    { "type": "packages", "key": "└  Pkgs" },
+    { "type": "custom", "format": " " },
+    { "type": "custom", "format": "┌──────────────────────────────────────────┐" },
+    { "type": "cpu", "key": "│ 󰍛 CPU" },
+    { "type": "gpu", "key": "│ 󰢮 GPU" },
+    { "type": "memory", "key": "│  RAM" },
+    { "type": "swap", "key": "│ 󰾴 Swap" },
+    { "type": "disk", "key": "└  Disk" },
+    { "type": "custom", "format": " " },
+    { "type": "custom", "format": "┌──────────────────────────────────────────┐" },
+    { "type": "uptime", "key": "│  Uptime" },
+    { "type": "osage", "key": "└  OS Age", "format": "{days} days" },
+    { "type": "custom", "format": " " },
     { "type": "title", "key": "" },
-        {
+    {
       "type": "colors",
       "paddingLeft": 2,
       "symbol": "circle"
-    },
-    "break"
+    }
   ]
 }
-
-
-//   "key": "󰨡
-//   "key": "│ Kernel:  
-//   "key": "│ Terminal:  
-//   "key": "│ Terminal Font: 
-//   "key": "│ DM: 󰌾 
-//   "key": "│ DE:  
-//   "key": "│ WM:  : 󰃣 
-//   "key": "└ Packages:  
-//   "key": "󰟀 
-//   "key": "│ BIOS:  
-//   "key": "│ RAM Memory:  
-//   "key": "│ Swap: 󰾴 
-//   "key": "│ Processor: 󰍛
-//   "key": "│ Videocard: 󰢮 
-//   "key": "│ Storage:  
-//   "key": "└ Battery: 󰁹
-//   "key": " 
-//    "key": "│ DateTime:  
-//    "key": "│ OS Time Life:  
-//   "key": "└ Locale: 󰇧 
