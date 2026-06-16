@@ -7,31 +7,32 @@
       "text": "hyprctl splash"
     },
     { "type": "custom", "format": "┌──────────────────────────────────────────┐" },
-    { "type": "os", "key": "│  OS" },
-    { "type": "kernel", "key": "│  Kernel" },
-    { "type": "shell", "key": "│  Shell" },
-    { "type": "wm", "key": "│  WM" },
-    { "type": "packages", "key": "└  Pkgs" },
+    { "type": "os", "key": "│ 󱗃 OS     " },
+    { "type": "kernel", "key": "│  Kernel " },
+    { "type": "shell", "key": "│  Shell  " },
+    { "type": "wm", "key": "│  WM     " },
+    { "type": "packages", "key": "└  Pkgs   " },
     { "type": "custom", "format": " " },
     { "type": "custom", "format": "┌──────────────────────────────────────────┐" },
-    { "type": "cpu", "key": "│ 󰍛 CPU" },
-    { "type": "gpu", "key": "│ 󰢮 GPU" },
-    { "type": "memory", "key": "│  RAM" },
-    { "type": "swap", "key": "│ 󰾴 Swap" },
-    { "type": "disk", "key": "│  Disk" },
-    { "type": "disk", "key": "└  Disk" },
+    { "type": "cpu", "key": "│ 󰍛 CPU    " },
+    { "type": "gpu", "key": "│ 󰢮 GPU    " },
+    { "type": "memory", "key": "│  RAM    " },
+    { "type": "swap", "key": "│ 󰾴 Swap   " },
+    { "type": "disk", "key": "│  Disk   " },
+    { "type": "disk", "key": "└  Disk   " },
     { "type": "custom", "format": " " },
-    { "type": "uptime", "key": " Uptime" },
-    { "type": "osage", "key": " OS Age" },
+    { "type": "uptime", "key": " Uptime   " },
+    { "type": "{days} days", "key": " OS Age   " },
     { "type": "custom", "format": " " },
     {
       "type": "host",
-      "key": " ",
+      "key": " ",
       "format": "{user}@{host}"
     },
     {
       "type": "colors",
-      "symbol": "circle"
+      "symbol": "circle",
+      "paddingLeft": 2
     }
   ]
 }
