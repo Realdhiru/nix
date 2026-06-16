@@ -36,7 +36,7 @@
     {  "key": "  󱦟 OS Age ",
       "folders": "/",
       "format": "{days} days"
-  }
+  },
     { "type": "uptime", "key": "󱫐" },
     { "type": "break" },
     { "type": "title", "key": "" },
