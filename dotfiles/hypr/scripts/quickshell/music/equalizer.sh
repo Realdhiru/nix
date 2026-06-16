@@ -12,7 +12,7 @@ mkdir -p "$PRESET_DIR"
 
 # Default state (Now includes "pending": false)
 if [ ! -f "$STATE_FILE" ]; then
-    echo '{"b1": 0, "b2": 0, "b3": 0, "b4": 0, "b5": 0, "b6": 0, "b7": 0, "b8": 0, "b9": 0, "b10": 0, "preset": "Flat", "pending": false}' > "$STATE_FILE"
+    echo '{"b1": 0, "b2": 0, "b3": 0, "b4": 0, "b5": 0, "b6": 0, "b7": 0, "b8": 0, "b9": 0, "b10": 0, "preset": "Vocal", "pending": false}' > "$STATE_FILE"
 fi
 
 apply_eq() {
