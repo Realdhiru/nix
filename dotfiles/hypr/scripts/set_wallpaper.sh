@@ -13,5 +13,5 @@ mpvpaper \
 matugen image "$WALL" \
   --config /home/realdhiru/nix/dotfiles/matugen/config.toml \
   -m dark \
-  -t scheme-expressive \
+  -t scheme-fidelity \
   --source-color-index 0 > /tmp/matugen.log 2>&1
