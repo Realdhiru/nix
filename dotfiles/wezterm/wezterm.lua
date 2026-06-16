@@ -12,4 +12,11 @@ if ok then
     config.colors = colors
 end
 
+local matugen_path = os.getenv("HOME") .. "/.cache/matugen/wezterm-colors.lua"
+local f = io.open(matugen_path, "r")
+if f then
+    f:close()
+    config.colors = dofile(matugen_path)
+end
+
 return config

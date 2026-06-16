@@ -3,24 +3,24 @@ reload_apps = false
 
 [templates.quickshell]
 input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/qs_colors.json.template"
-output_path = "/tmp/qs_colors.json"
+output_path = "/home/realdhiru/.cache/matugen/qs_colors.json"
 
 [templates.hyprland]
 input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/hyprland.conf.template"
-output_path = "/home/realdhiru/.config/hypr/colors.conf"
+output_path = "/home/realdhiru/.cache/matugen/colors.conf"
 
 [templates.cava]
 input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/cava-colors.ini.template"
-output_path = "/home/realdhiru/.config/cava/colors"
+output_path = "/home/realdhiru/.cache/matugen/cava-colors"
 
 [templates.rofi]
 input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/rofi-colors.rasi.template"
-output_path = "/home/realdhiru/.config/rofi/colors.rasi"
+output_path = "/home/realdhiru/.cache/matugen/rofi-colors.rasi"
 
 [templates.wezterm]
 input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/wezterm-colors.lua.template"
-output_path = "/home/realdhiru/.config/wezterm/colors.lua"
+output_path = "/home/realdhiru/.cache/matugen/wezterm-colors.lua"
 
 [templates.neovim]
 input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/nvim-colors.lua.template"
-output_path = "/home/realdhiru/.config/nvim/matugen_colors.lua"
+output_path = "/home/realdhiru/.cache/matugen/nvim-matugen_colors.lua"
