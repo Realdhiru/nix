@@ -449,7 +449,7 @@ Item {
         Rectangle {
             id: innerBg
             anchors.fill: parent
-            anchors.margins: -root.s(2)
+            anchors.margins: -root.s(1)
             clip: true
             color: root.base
             radius: root.s(10)
