@@ -56,7 +56,7 @@ Variants {
             property int barHeight: s(48)
 
             height: barHeight
-            margins { top: s(8); bottom: 0; left: s(4); right: s(4) }
+            margins { top: s(2); bottom: 0; left: s(4); right: s(4) }
             exclusiveZone: barHeight 
             color: "transparent"
 
