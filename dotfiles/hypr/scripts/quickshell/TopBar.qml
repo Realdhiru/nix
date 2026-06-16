@@ -909,14 +909,41 @@ Variants {
                         }
 
                         RowLayout {
-                            id: centerLayout
-                            anchors.centerIn: parent
-                            spacing: barWindow.s(24)
+                        id: centerLayout
+                        anchors.centerIn: parent
+                        spacing: barWindow.s(12) // Balanced gap between Time and Date stack
 
-                            ColumnLayout {
-                                spacing: -2
-                                Text { text: barWindow.timeStr; Layout.alignment: Qt.AlignLeft; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(16); font.weight: Font.Black; color: mocha.blue }
-                                Text { text: barWindow.dateStr; Layout.alignment: Qt.AlignLeft; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(11); font.weight: Font.Bold; color: mocha.subtext0 }
+                        // Left Side: Big, clean time display
+                        Text {
+                            text: barWindow.timeStr
+                            font.family: "JetBrains Mono"
+                            font.pixelSize: barWindow.s(18) // Slightly increased size for prominence
+                            font.weight: Font.Black
+                            color: mocha.blue
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+
+                        // Right Side: Vertically stacked Day and Date text fields
+                        ColumnLayout {
+                            spacing: -2
+                            Layout.alignment: Qt.AlignVCenter
+
+                            Text {
+                                // Extracts the day name (e.g., "Tuesday")
+                                text: barWindow.dateStr.split(',')[0] || ""
+                                font.family: "JetBrains Mono"
+                                font.pixelSize: barWindow.s(10) // Reduced to fit neatly alongside time
+                                font.weight: Font.Black
+                                color: mocha.text
+                            }
+
+                            Text {
+                                // Extracts the month and date text string (e.g., " June 16")
+                                text: (barWindow.dateStr.split(',')[1] || "").trim()
+                                font.family: "JetBrains Mono"
+                                font.pixelSize: barWindow.s(10)
+                                font.weight: Font.Bold
+                                color: mocha.subtext0
                             }
                         }
                     }
