@@ -6,17 +6,33 @@ config.window_close_confirmation = "NeverPrompt"
 config.hide_tab_bar_if_only_one_tab = true
 config.adjust_window_size_when_changing_font_size = false
 
-local ok, colors = pcall(dofile, os.getenv("HOME") .. "/.config/wezterm/colors.lua")
+-- 1. Establish path strings
+local home = os.getenv("HOME")
+local static_colors_path = home .. "/.config/wezterm/colors.lua"
+local matugen_path = home .. "/.cache/matugen/wezterm-colors.lua"
 
-if ok then
-    config.colors = colors
+-- 2. Define a function to load the colors dynamically
+local function load_colors()
+    -- Try Matugen first
+    local f = io.open(matugen_path, "r")
+    if f then
+        f:close()
+        return dofile(matugen_path)
+    end
+
+    -- Fallback to static config if Matugen isn't generated yet
+    local ok, static_colors = pcall(dofile, static_colors_path)
+    if ok then
+        return static_colors
+    end
+
+    return nil
 end
 
-local matugen_path = os.getenv("HOME") .. "/.cache/matugen/wezterm-colors.lua"
-local f = io.open(matugen_path, "r")
-if f then
-    f:close()
-    config.colors = dofile(matugen_path)
-end
+-- Load colors on startup
+config.colors = load_colors()
+
+-- 3. AUTOMATIC RELOAD WATCHER: Watch the matugen cache folder for updates
+wezterm.config_watch_path(home .. "/.cache/matugen")
 
 return config
