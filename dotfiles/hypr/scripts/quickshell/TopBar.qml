@@ -359,43 +359,7 @@ Variants {
                     }
                 }
             }
-
-            // Automatically instantiates the target background named pipe stream
-            Process {
-                id: cavaDaemon
-                command: ["bash", "-c", "mkfifo /tmp/qml_cava.fifo 2>/dev/null; cava -p " + paths.homeDir + "/.config/cava/config"]
-                running: barWindow.isMediaActive
-            }
-
-            // Real-time ASCII byte stream data evaluator pipe consumer
-            Process {
-                id: cavaStreamReader
-                command: ["cat", "/tmp/qml_cava.fifo"]
-                running: barWindow.isMediaActive
-                
-                property var barValues: [0,0,0,0,0,0,0,0,0,0]
-
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        let rawLine = this.text.trim().split("\n").pop();
-                        if (!rawLine) return;
-                        
-                        let points = rawLine.split(/[; ]/);
-                        let cleanPoints = [];
-                        
-                        for (let i = 0; i < points.length; i++) {
-                            if (points[i] !== "") {
-                                cleanPoints.push(parseInt(points[i]) || 0);
-                            }
-                        }
-                        
-                        if (cleanPoints.length >= 10) {
-                            cavaStreamReader.barValues = cleanPoints.slice(0, 10);
-                            cavaCanvas.requestPaint(); // Force frame canvas repaint
-                        }
-                    }
-                }
-            }
+            
 
             Timer {
                 interval: 1000
@@ -763,43 +727,6 @@ Variants {
                             }
                         }
                     }
-
-                    // Automatically instantiates the target background named pipe stream inside your user cache path
-            Process {
-                id: cavaDaemon
-                command: ["bash", "-c", "mkfifo " + paths.getRunDir("music") + "/qml_cava.fifo 2>/dev/null; cava -p " + paths.homeDir + "/.config/cava/config"]
-                running: barWindow.isMediaActive
-            }
-
-            // Real-time ASCII byte stream data evaluator pipe consumer mapped securely to user space
-            Process {
-                id: cavaStreamReader
-                command: ["cat", paths.getRunDir("music") + "/qml_cava.fifo"]
-                running: barWindow.isMediaActive
-                
-                property var barValues: [0,0,0,0,0,0,0,0,0,0]
-
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        let rawLine = this.text.trim().split("\n").pop();
-                        if (!rawLine) return;
-                        
-                        let points = rawLine.split(/[; ]/);
-                        let cleanPoints = [];
-                        
-                        for (let i = 0; i < points.length; i++) {
-                            if (points[i] !== "") {
-                                cleanPoints.push(parseInt(points[i]) || 0);
-                            }
-                        }
-                        
-                        if (cleanPoints.length >= 10) {
-                            cavaStreamReader.barValues = cleanPoints.slice(0, 10);
-                            cavaCanvas.requestPaint(); 
-                        }
-                    }
-                }
-            }
 
                     Rectangle {
                         id: mediaBox
