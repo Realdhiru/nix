@@ -18,6 +18,10 @@
     force = true;
   };
 
+  xdg.configFile."wezterm".source =
+    config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/wezterm";
+
   xdg.configFile."fastfetch/config.jsonc".source = ./dotfiles/fastfetch/config.jsonc;
 
   xdg.configFile."matugen".source =
