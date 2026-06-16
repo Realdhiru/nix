@@ -7,6 +7,7 @@
     ../../modules/system/services.nix
     ../../modules/system/packages.nix
     ../../modules/system/fonts.nix
+    ../../modules/system/memory.nix
   ];
 
   programs.zsh.enable = true;
