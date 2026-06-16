@@ -6,17 +6,17 @@ config.window_close_confirmation = "NeverPrompt"
 config.hide_tab_bar_if_only_one_tab = true
 config.adjust_window_size_when_changing_font_size = false
 
--- Securely load the Matugen generated file
-local matugen_path = os.getenv("HOME") .. "/.cache/matugen/wezterm-colors.lua"
+-- 1. Use WezTerm's native home_dir (os.getenv("HOME") crashes during background reloads)
+local matugen_path = wezterm.home_dir .. "/.cache/matugen/wezterm-colors.lua"
 
-local f = io.open(matugen_path, "r")
-if f then
-    f:close()
-    local ok, matugen_colors = pcall(dofile, matugen_path)
-    if ok and type(matugen_colors) == "table" then
-        config.colors = matugen_colors
-    end
+-- 2. Explicitly watch the generated file for automatic hot-reloading
+wezterm.add_to_config_reload_watch_list(matugen_path)
+
+-- 3. Wrap dofile in a pcall. If Matugen is in the middle of writing the file 
+--    and it is temporarily empty, pcall prevents the terminal from crashing.
+local success, theme = pcall(dofile, matugen_path)
+if success and type(theme) == "table" then
+    config.colors = theme
 end
 
--- Must be at the very bottom
 return config

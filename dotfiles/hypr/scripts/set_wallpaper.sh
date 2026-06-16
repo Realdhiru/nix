@@ -25,5 +25,3 @@ else
       --type scheme-fidelity \
       --source-color-index 0 > /tmp/matugen.log 2>&1
 fi
-
-touch ~/.config/wezterm/wezterm.lua
