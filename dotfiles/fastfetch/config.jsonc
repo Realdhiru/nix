@@ -8,7 +8,7 @@
   "modules": [
     {
       "type": "command",
-      "key": "󰌽 ·",
+      "key": "  ·",
       "text": "hyprctl splash"
     },
 
@@ -18,7 +18,7 @@
     },
     {
       "type": "os",
-      "key": "│ 󰣇 OS:"
+      "key": "│  OS:"
     },
     {
       "type": "kernel",
