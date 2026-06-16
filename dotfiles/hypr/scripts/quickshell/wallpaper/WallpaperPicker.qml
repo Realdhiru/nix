@@ -478,15 +478,21 @@ Item {
         return window.getHexBucket(hexColor) === filter;
     }
 
+    Timer {
+        id: markerDebounce
+        interval: 300
+        onTriggered: window.processMarkers()
+    }
+
     FolderListModel {
         id: markerModel
         folder: "file://" + paths.getCacheDir("wallpaper_picker") + "/colors_markers"
         showDirs: false
         nameFilters: ["*_HEX_*"]
-        onCountChanged: window.processMarkers()
-        onStatusChanged: { if (status === FolderListModel.Ready) window.processMarkers() }
+        onCountChanged: markerDebounce.restart()
+        onStatusChanged: { if (status === FolderListModel.Ready) markerDebounce.restart() }
     }
-
+    
     FolderListModel {
         id: srcModel
         folder: "file://" + window.srcDir
