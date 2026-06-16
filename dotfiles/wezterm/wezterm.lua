@@ -32,7 +32,7 @@ end
 -- Load colors on startup
 config.colors = load_colors()
 
--- 3. AUTOMATIC RELOAD WATCHER: Watch the matugen cache folder for updates
-wezterm.config_watch_path(home .. "/.cache/matugen")
+-- 3. FIXED RELOAD WATCHER: Push the file track hook explicitly into the reload array
+wezterm.add_to_config_reload_watch_list(matugen_path)
 
 return config
