@@ -1095,10 +1095,11 @@ Variants {
                                         opacity: 1.0 
                                         Behavior on opacity { NumberAnimation { duration: 300 } }
                                         gradient: Gradient {
-                                            orientation: Gradient.Horizontal
-                                            GradientStop { position: 0.0; color: barWindow.isDesktop ? mocha.mauve : barWindow.batDynamicColor; Behavior on color { ColorAnimation { duration: 300 } } }
-                                            GradientStop { position: 1.0; color: barWindow.isDesktop ? Qt.lighter(mocha.red, 1.3) : Qt.lighter(barWindow.batDynamicColor, 1.3); Behavior on color { ColorAnimation { duration: 300 } } }
-                                        }
+    orientation: Gradient.Horizontal
+    // Force both stops to mocha.mauve to keep the color uniform
+    GradientStop { position: 0.0; color: mocha.mauve }
+    GradientStop { position: 1.0; color: Qt.lighter(mocha.mauve, 1.3) }
+}
                                     }
                                     
                                     property real targetWidth: barWindow.isDesktop ? barWindow.s(34) : batLayoutRow.implicitWidth + barWindow.s(24)
