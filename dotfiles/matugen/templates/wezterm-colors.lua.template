@@ -11,22 +11,22 @@ return {
     ansi = {
         "{{colors.surface.default.hex}}",             -- Black
         "{{colors.error.default.hex}}",               -- Red
-        "{{colors.primary.default.hex}}",             -- Green (True Wallpaper Dominant)
-        "{{colors.secondary.default.hex}}",           -- Yellow (True Wallpaper Secondary)
-        "{{colors.primary_fixed_dim.default.hex}}",   -- Blue (Mapped to Deep Dominant)
-        "{{colors.secondary_fixed.default.hex}}",     -- Magenta (Mapped to Vivid Secondary - ZERO PINK)
-        "{{colors.primary_fixed.default.hex}}",       -- Cyan (Mapped to Vivid Dominant)
+        "{{colors.primary.default.hex}}",             -- Green (Base Dominant)
+        "{{colors.secondary.default.hex}}",           -- Yellow (Base Secondary)
+        "{{colors.primary_container.default.hex}}",   -- Blue (Deep, dark dominant)
+        "{{colors.secondary_fixed.default.hex}}",     -- Magenta (Lighter wood/brown)
+        "{{colors.primary_fixed.default.hex}}",       -- Cyan (Lighter green)
         "{{colors.on_surface.default.hex}}"           -- White
     },
 
     brights = {
-        "{{colors.surface_variant.default.hex}}",     -- Bright Black
-        "{{colors.error.default.hex}}",               -- Bright Red
-        "{{colors.primary.default.hex}}",             -- Bright Green
-        "{{colors.secondary.default.hex}}",           -- Bright Yellow
-        "{{colors.primary_fixed_dim.default.hex}}",   -- Bright Blue
-        "{{colors.secondary_fixed.default.hex}}",     -- Bright Magenta
-        "{{colors.primary_fixed.default.hex}}",       -- Bright Cyan
-        "{{colors.on_surface_variant.default.hex}}"   -- Bright White
+        "{{colors.surface_variant.default.hex}}",       -- Bright Black
+        "{{colors.error.default.hex}}",                 -- Bright Red
+        "{{colors.on_primary_container.default.hex}}",  -- Bright Green (MAX Saturation Dominant)
+        "{{colors.on_secondary_container.default.hex}}",-- Bright Yellow (MAX Saturation Secondary)
+        "{{colors.primary.default.hex}}",               -- Bright Blue (Punchy base)
+        "{{colors.on_secondary_container.default.hex}}",-- Bright Magenta (MAX Saturation Wood/Brown)
+        "{{colors.on_primary_container.default.hex}}",  -- Bright Cyan (MAX Saturation Green)
+        "{{colors.on_surface_variant.default.hex}}"     -- Bright White
     }
 }
