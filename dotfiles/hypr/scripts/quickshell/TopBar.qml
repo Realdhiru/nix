@@ -280,11 +280,8 @@ Variants {
             property int batCap: parseInt(barWindow.batPercent) || 0
             property bool isCharging: barWindow.batStatus === "Charging" || barWindow.batStatus === "Full"
             
-            property color batDynamicColor: {
-                if (isCharging) return mocha.green;
-                if (batCap <= 20) return mocha.red;
-                return mocha.text; 
-            }
+            // Replace the old batDynamicColor property block with this:
+            property color batDynamicColor: mocha.primary
 
             Process {
                 id: wsDaemon
