@@ -17,10 +17,21 @@
     { "type": "memory", "key": "Memory" },
     { "type": "swap", "key": "Swap" },
     { "type": "disk", "key": "Disk" },
-    { "type": "poweradapter", "key": "Power" },
-    { "type": "uptime", "key": "Uptime" },
+    {
+              "type": "disk",
+      "key": "  󱦟 OS Age ",
+      "folders": "/",
+      "format": "{days} days"
+    },
+    { "type": "uptime", "key": "󱫐" },
     { "type": "break" },
-    { "type": "title", "key": "󱗃" }
+    { "type": "title", "key": "" }
+        {
+      "type": "colors",
+      "paddingLeft": 2,
+      "symbol": "circle"
+    },
+    "break"
   ]
 }
 
@@ -29,111 +40,19 @@
 //   "key": "│ Kernel:  
 //   "key": "│ Terminal:  
 //   "key": "│ Terminal Font: 
-
-//   "key": "│ DM: 󰌾 ",
-//   "keyColor": "#FFC0CB"
-// },
-// {
-//   "type": "de",
-//   "key": "│ DE:  ",
-//   "keyColor": "#FFC0CB"
-// },
-// {
-//   "type": "wm",
-//   "key": "│ WM:  ",
-//   "keyColor": "#FFC0CB"
-// },
-// {
-//   "type": "wmtheme",
-//   "key": "│ WM Theme: 󰃣 ",
-//   "keyColor": "#FFC0CB"
-// },
-// {
-//   "type": "packages",
-//   "key": "└ Packages:  ",
-//   "keyColor": "#FFC0CB"
-// },
-// {
-//   "type": "custom",
-//   "format": "\u001b[90m├────────────────────── Device ────────────────────────────────┤"
-// },
-// {
-//   "type": "host",
-//   "key": "󰟀 Host:",
-//   "keyColor": "yellow"
-// },
-// {
-//   "type": "bios",
-//   "key": "│ BIOS:  ",
-//   "keyColor": "yellow"
-// },
-// {
-//   "type": "memory",
-//   "key": "│ RAM Memory:  ",
-//   "keyColor": "yellow"
-// },
-// {
-//   "type": "swap",
-//   "key": "│ Swap: 󰾴 ",
-//   "keyColor": "yellow"
-// },
-// {
-//   "type": "cpu",
-//   "key": "│ Processor: 󰍛 ",
-//   "keyColor": "yellow"
-// },
-// {
-//   "type": "gpu",
-//   "key": "│ Videocard: 󰢮 ",
-//   "keyColor": "yellow"
-// },
-// {
-//   "type": "disk",
-//   "key": "│ Storage:  ",
-//   "keyColor": "yellow"
-// },
-// {
-//   "type": "battery",
-//   "key": "└ Battery: 󰁹 ",
-//   "keyColor": "yellow"
-// },
-// {
-//   "type": "custom",
-//   "format": "\u001b[90m├────────────────────── Others Configurations ─────────────────┤"
-// },
-// {
-//   "type": "uptime",
-//   "key": " Uptime:",
-//   "keyColor": "cyan"
-// },
-// {
-//    "type": "datetime",
-//    "key": "│ DateTime:  ",
-//    "keyColor": "cyan"
-// },
-// {
-//    "type": "command",
-//    "key": "│ OS Time Life:  ",
-//    "keyColor": "cyan",
-//    "text": "birth_install=$(stat -c %W /); current=$(date +%s); time_progression=$((current - birth_install)); days_difference=$((time_progression / 86400)); echo $days_difference days"
-// },
-// {
-//   "type": "locale",
-//   "key": "└ Locale: 󰇧 ",
-//   "keyColor": "cyan"
-// },
-// {
-//   "type": "custom",
-//   "format": "\u001b[90m└──────────────────────────────────────────────────────────────┘"
-// },
-// {
-//   "type": "colors",
-//   "paddingLeft": 24,
-//   "symbol": "circle",
-//   "block": {
-//     "width": 10
-//   }
-// },
-// "break",
-// ]
-// }
+//   "key": "│ DM: 󰌾 
+//   "key": "│ DE:  
+//   "key": "│ WM:  : 󰃣 
+//   "key": "└ Packages:  
+//   "key": "󰟀 
+//   "key": "│ BIOS:  
+//   "key": "│ RAM Memory:  
+//   "key": "│ Swap: 󰾴 
+//   "key": "│ Processor: 󰍛
+//   "key": "│ Videocard: 󰢮 
+//   "key": "│ Storage:  
+//   "key": "└ Battery: 󰁹
+//   "key": " 
+//    "key": "│ DateTime:  
+//    "key": "│ OS Time Life:  
+//   "key": "└ Locale: 󰇧 
