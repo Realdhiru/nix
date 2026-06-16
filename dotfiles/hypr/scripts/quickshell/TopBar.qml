@@ -920,7 +920,7 @@ Variants {
                             font.family: "JetBrains Mono"
                             font.pixelSize: barWindow.s(18)
                             font.weight: Font.Black
-                            color: mocha.blue
+                            color: mocha.mauve
                             Layout.alignment: Qt.AlignVCenter
                         }
 
