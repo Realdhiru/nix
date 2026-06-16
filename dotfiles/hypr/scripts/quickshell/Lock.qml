@@ -677,15 +677,6 @@ ShellRoot {
                                                 
                                                 NumberAnimation on opacity { from: 0; to: 1; duration: 150 }
                                                 
-                                                Timer {
-                                                    interval: lockSettings.revealDuration
-                                                    running: !model.isDot && !lockSettings.hidePassword
-                                                    onTriggered: {
-                                                        if (index >= 0 && index < passModel.count) {
-                                                            passModel.setProperty(index, "isDot", true);
-                                                        }
-                                                    }
-                                                }
                                             }
                                         }
                                     }
