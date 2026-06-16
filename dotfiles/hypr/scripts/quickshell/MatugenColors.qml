@@ -28,7 +28,7 @@ Item {
     property string teal: "#94e2d5"
 
     Process {
-        running: true
+        id: colorReader
         command: ["cat", "/home/realdhiru/.cache/matugen/qs_colors.json"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -45,5 +45,22 @@ Item {
                 }
             }
         }
+    }
+
+    Process {
+        id: colorWatcher
+        running: true
+        command: ["bash", "-c", "while [ ! -f /home/realdhiru/.cache/matugen/qs_colors.json ]; do sleep 1; done; inotifywait -qq -e close_write,modify /home/realdhiru/.cache/matugen/qs_colors.json"]
+        onExited: {
+            colorReader.running = false;
+            colorReader.running = true;
+            running = false;
+            running = true;
+        }
+    }
+    
+    // Trigger initial read on startup
+    Component.onCompleted: {
+        colorReader.running = true;
     }
 }
