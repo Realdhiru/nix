@@ -81,6 +81,10 @@
       "text": "echo \"$((($(date +%s)-$(stat -c %W /))/86400)) days\""
     },
     {
+      "type": "custom",
+      "format": ""
+    },
+    {
       "type": "title",
       "key": " 󰀄 "
     }
