@@ -480,15 +480,15 @@ Item {
                 }
 
                 // LAYER 1: Background Blur (Smooth fade-in)
-                Image {
-                    anchors.fill: parent
-                    source: root.musicData.blur ? "file://" + root.musicData.blur : ""
-                    fillMode: Image.PreserveAspectCrop
-                    
+                //Image {
+                //    anchors.fill: parent
+                //   source: root.musicData.blur ? "file://" + root.musicData.blur : ""
+                //    fillMode: Image.PreserveAspectCrop
+                //    
                     // Fixed: Ensures blur is completely hidden when stopped so the pure base color matches the calendar
-                    opacity: (status === Image.Ready && root.musicData.status !== "Stopped" && root.musicData.status !== "Offline") ? 0.9 : 0.0
-                    Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.InOutQuad } }
-                }
+                //    opacity: (status === Image.Ready && root.musicData.status !== "Stopped" && root.musicData.status !== "Offline") ? 0.9 : 0.0
+                //    Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.InOutQuad } }
+                //}
 
                 // LAYER 1.5: Flowing Orbits
                 Rectangle {
