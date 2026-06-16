@@ -1,5 +1,8 @@
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/master/doc/json_schema.json",
+  "display": {
+    "separator": " : "
+  },
   "modules": [
     {
       "type": "command",
@@ -7,23 +10,27 @@
       "text": "hyprctl splash"
     },
     { "type": "custom", "format": "┌──────────────────────────────────────────┐" },
-    { "type": "os", "key": "│ 󱗃 OS     " },
-    { "type": "kernel", "key": "│  Kernel " },
-    { "type": "shell", "key": "│  Shell  " },
-    { "type": "wm", "key": "│  WM     " },
-    { "type": "packages", "key": "└  Pkgs   " },
+    { "type": "os", "key": "│ 󱗃 OS      " },
+    { "type": "kernel", "key": "│  Kernel  " },
+    { "type": "shell", "key": "│  Shell   " },
+    { "type": "wm", "key": "│  WM      " },
+    { "type": "packages", "key": "└  Pkgs    " },
     { "type": "custom", "format": " " },
     { "type": "custom", "format": "┌──────────────────────────────────────────┐" },
-    { "type": "cpu", "key": "│ 󰍛 CPU    " },
-    { "type": "gpu", "key": "│ 󰢮 GPU    " },
-    { "type": "memory", "key": "│  RAM    " },
-    { "type": "swap", "key": "│ 󰾴 Swap   " },
-    { "type": "disk", "key": "│  Disk   " },
-    { "type": "disk", "key": "└  Disk   " },
+    { "type": "cpu", "key": "│ 󰍛 CPU     " },
+    { "type": "gpu", "key": "│ 󰢮 GPU     " },
+    { "type": "memory", "key": "│  RAM     " },
+    { "type": "swap", "key": "│ 󰾴 Swap    " },
+    { "type": "disk", "key": "│  Disk    ", "folders": "/" },
+    { "type": "disk", "key": "└  Disk    ", "folders": "/boot" },
     { "type": "custom", "format": " " },
-    { "type": "uptime", "key": " Uptime   " },
-    { "type": "{days} days", "key": " OS Age   " },
-    { "type": "custom", "format": " " },
+    { "type": "uptime", "key": " Uptime    " },
+    {
+      "type": "disk",
+      "key": " OS Age    ",
+      "folders": "/",
+      "format": "{days} days"
+    },
     {
       "type": "host",
       "key": " ",
