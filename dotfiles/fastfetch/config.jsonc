@@ -1,39 +1,74 @@
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/master/doc/json_schema.json",
-  "display": {
-    "separator": " : "
-  },
   "modules": [
     {
       "type": "command",
       "key": " ",
       "text": "hyprctl splash"
     },
-    { "type": "custom", "format": "┌──────────────────────────────────────────┐" },
-    { "type": "os", "key": "│ 󱗃 OS      " },
-    { "type": "kernel", "key": "│  Kernel  " },
-    { "type": "shell", "key": "│  Shell   " },
-    { "type": "wm", "key": "│  WM      " },
-    { "type": "packages", "key": "└  Pkgs    " },
-    { "type": "custom", "format": " " },
-    { "type": "custom", "format": "┌──────────────────────────────────────────┐" },
-    { "type": "cpu", "key": "│ 󰍛 CPU     " },
-    { "type": "gpu", "key": "│ 󰢮 GPU     " },
-    { "type": "memory", "key": "│  RAM     " },
-    { "type": "swap", "key": "│ 󰾴 Swap    " },
-    { "type": "disk", "key": "│  Disk    ", "folders": "/" },
-    { "type": "disk", "key": "└  Disk    ", "folders": "/boot" },
-    { "type": "custom", "format": " " },
-    { "type": "uptime", "key": " Uptime    " },
+
+    {
+      "type": "custom",
+      "format": "┌──────────────────────────────────────────┐"
+    },
+    {
+      "type": "os",
+      "key": " 󱗃 OS     "
+    },
+    {
+      "type": "kernel",
+      "key": "  Kernel "
+    },
+    {
+      "type": "shell",
+      "key": "  Shell  "
+    },
+    {
+      "type": "wm",
+      "key": "  WM     "
+    },
+    {
+      "type": "custom",
+      "format": "└──────────────────────────────────────────┘"
+    },
+
+    {
+      "type": "custom",
+      "format": "┌──────────────────────────────────────────┐"
+    },
+    {
+      "type": "memory",
+      "key": "  RAM    "
+    },
+    {
+      "type": "swap",
+      "key": " 󰾴 Swap   "
+    },
     {
       "type": "disk",
-      "key": " OS Age    ",
-      "folders": "/",
-      "format": "{days} days"
+      "key": "  Disk   "
+    },
+    {
+      "type": "uptime",
+      "key": "  Uptime "
+    },
+    {
+      "type": "command",
+      "key": "  OS Age ",
+      "text": "echo \"$((($(date +%s)-$(stat -c %W /))/86400)) days\""
+    },
+    {
+      "type": "custom",
+      "format": "└──────────────────────────────────────────┘"
+    },
+
+    {
+      "type": "custom",
+      "format": ""
     },
     {
       "type": "host",
-      "key": " ",
+      "key": "  ",
       "format": "{user}@{host}"
     },
     {
