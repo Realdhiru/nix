@@ -56,25 +56,28 @@
     },
     {
       "type": "memory",
-      "key": "│  RAM:"
+      "key": "│  RAM:",
+      "format": "{used} / {total}"
     },
     {
       "type": "swap",
-      "key": "│ 󰓡 Swap:"
+      "key": "│ 󰓡 Swap:",
+      "format": "{used} / {total}"
     },
     {
       "type": "disk",
       "key": "│  Disk:",
-      "showFileSystem": false
-    },
-    {
-      "type": "disk",
-      "key": "│  Disk:",
-      "showFileSystem": false
+      "showFileSystem": false,
+      "format": "{used} / {total}"
     },
     {
       "type": "custom",
       "format": "└────────────────────────────────────────────────────────────────────────┘"
+    },
+
+    {
+      "type": "custom",
+      "format": ""
     },
 
     {
