@@ -10,12 +10,12 @@ return {
 
 ansi = {
         "{{colors.surface.default.hex}}",          -- Black
-        "{{colors.error.default.hex}}",            -- Red
-        "{{colors.primary.default.hex}}",          -- Green 
-        "{{colors.secondary.default.hex}}",        -- Yellow
-        "{{colors.tertiary.default.hex}}",         -- Blue
-        "{{colors.inverse_primary.default.hex}}",  -- Magenta (High contrast pop)
-        "{{colors.primary_fixed.default.hex}}",    -- Cyan
+        "{{colors.error.default.hex}}",            -- Red (Still required for errors)
+        "{{colors.primary.default.hex}}",          -- Green (Dominant Image Hue)
+        "{{colors.secondary.default.hex}}",        -- Yellow (Secondary Image Hue)
+        "{{colors.tertiary.default.hex}}",         -- Blue (Muted Image Hue)
+        "{{colors.secondary_fixed.default.hex}}",  -- Magenta (Replaced Pink with a fixed Secondary)
+        "{{colors.primary_fixed.default.hex}}",    -- Cyan (Fixed Dominant)
         "{{colors.on_surface.default.hex}}"        -- White
     },
 
@@ -25,7 +25,7 @@ ansi = {
         "{{colors.primary.default.hex}}",          -- Bright Green
         "{{colors.secondary.default.hex}}",        -- Bright Yellow
         "{{colors.tertiary.default.hex}}",         -- Bright Blue
-        "{{colors.inverse_primary.default.hex}}",  -- Bright Magenta
+        "{{colors.secondary_fixed.default.hex}}",  -- Bright Magenta (Replaced Pink)
         "{{colors.primary_fixed.default.hex}}",    -- Bright Cyan
         "{{colors.on_surface.default.hex}}"        -- Bright White
     }
