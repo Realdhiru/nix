@@ -810,16 +810,6 @@ ShellRoot {
                         anchors.right: parent.right
                         spacing: 6 * screenRoot.sc
 
-                        // --- SYSTEM ACTIONS SECTION ---
-                        Text {
-                            text: "SYSTEM"
-                            font.family: "JetBrains Mono"
-                            font.weight: Font.Black
-                            font.pixelSize: 12 * screenRoot.sc
-                            font.letterSpacing: 1.5
-                            color: root.mauve
-                            Layout.leftMargin: 18 * screenRoot.sc; Layout.bottomMargin: 4 * screenRoot.sc
-                        }
 
                         Rectangle {
                             Layout.fillWidth: true; Layout.preferredHeight: 48 * screenRoot.sc; Layout.leftMargin: 10 * screenRoot.sc; Layout.rightMargin: 10 * screenRoot.sc; radius: 12 * screenRoot.sc
