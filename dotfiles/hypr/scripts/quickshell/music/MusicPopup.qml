@@ -449,7 +449,8 @@ Item {
         Rectangle {
             id: innerBg
             anchors.fill: parent
-            anchors.margins: root.s(3)
+            anchors.margins: -root.s(2)
+            clip: true
             color: root.base
             radius: root.s(10)
 
@@ -985,7 +986,7 @@ Item {
                             radius: root.s(10)
                             color: root.eqData.pending ? root.mauve : root.surface1
                             border.color: root.eqData.pending ? root.mauve : root.surface2
-                            border.width: 0
+                            border.width: 1
                             
                             Behavior on color { ColorAnimation { duration: 300; easing.type: Easing.OutCubic } }
                             Behavior on border.color { ColorAnimation { duration: 300; easing.type: Easing.OutCubic } }
