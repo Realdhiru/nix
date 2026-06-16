@@ -154,7 +154,6 @@ Item {
                     export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
                     
                     ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
-                    ( matugen image "$DEST_FILE" || true; bash "$RELOAD_SCRIPT" || true ) &
                 `;
                 Quickshell.execDetached(["bash", "-c", applyScript]);
             } else {
@@ -178,7 +177,6 @@ Item {
                         fi
                         
                         ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
-                        ( matugen image "$DEST_FILE" || true; bash "$RELOAD_SCRIPT" || true ) &
                     fi
                 `;
                 Quickshell.execDetached(["bash", "-c", downloadScript]);
@@ -188,11 +186,9 @@ Item {
 
         const originalFile = window.srcDir + "/" + cleanName;
         const escOriginal = escapeBash(originalFile);
-        const escReload = escapeBash(reloadScript);
 
         const fullScript = `
             ~/.config/hypr/scripts/set_wallpaper.sh "${escOriginal}"
-            ( matugen image "${escOriginal}" || true; bash "${escReload}" || true ) &
         `;
         Quickshell.execDetached(["bash", "-c", fullScript]);
     }
@@ -518,41 +514,6 @@ Item {
         window.colorMap = newMap;
         window.cacheVersion++;
         window.updateVisibleCount();
-    }
-
-    function triggerColorExtraction() {
-        const extractScript = `
-            COLOR_DIR="${paths.getCacheDir('wallpaper_picker')}/colors_markers"
-            THUMBS="file://${window.srcDir}"
-            CSV="${paths.getCacheDir('wallpaper_picker')}/colors.csv"
-            mkdir -p "$COLOR_DIR"
-            if [ -f "$CSV" ]; then
-                while IFS=, read -r fname hexcode; do
-                    cleanhex=\$(echo "$hexcode" | tr -d '\\r#' | cut -c 1-6)
-                    if [ -n "$cleanhex" ] && [ -n "$fname" ]; then
-                        touch "$COLOR_DIR/$fname""_HEX_\$cleanhex" 2>/dev/null
-                    fi
-                done < "$CSV"
-                mv "$CSV" "$CSV.bak" 2>/dev/null
-            fi
-            if command -v magick &> /dev/null; then CMD="magick"; else CMD="convert"; fi
-            for file in "$THUMBS"/*; do
-                if [ -f "$file" ]; then
-                    filename=\$(basename "$file")
-                    found=0
-                    for marker in "$COLOR_DIR/\$filename"_HEX_*; do
-                        if [ -e "$marker" ]; then found=1; break; fi
-                    done
-                    if [ \$found -eq 0 ]; then
-                        hex=\$(\$CMD "$file" -modulate 100,200 -resize "1x1^" -gravity center -extent 1x1 -depth 8 -format "%[hex:p{0,0}]" info:- 2>/dev/null | grep -oE '[0-9A-Fa-f]{6}' | head -n 1)
-                        if [ -n "\$hex" ]; then
-                            touch "$COLOR_DIR/\$filename""_HEX_\$hex"
-                        fi
-                    fi
-                fi
-            done
-        `;
-        Quickshell.execDetached(["bash", "-c", extractScript]);
     }
 
     function stepToNextValidIndex(direction) {
@@ -895,6 +856,8 @@ Item {
             readonly property real targetWidth: isVisuallyEnlarged ? (window.itemWidth * 1.5) : (window.itemWidth * 0.5)
             readonly property real targetHeight: isVisuallyEnlarged ? (window.itemHeight + window.s(30)) : window.itemHeight
             
+            readonly property string thumbPath: "file://" + paths.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName)
+
             width: matchesFilter ? (targetWidth + window.spacing) : 0
             visible: width > 0.1 || opacity > 0.01
             opacity: matchesFilter ? (isVisuallyEnlarged ? 1.0 : 0.6) : 0.0
@@ -931,8 +894,8 @@ Item {
 
                 Image {
                     anchors.fill: parent
-                    source: fileUrl !== undefined ? fileUrl : ""
-                    sourceSize: Qt.size(1, 1)
+                    source: thumbPath
+                    sourceSize: Qt.size(256, 256)
                     fillMode: Image.Stretch
                     asynchronous: true
                 }
@@ -949,7 +912,8 @@ Item {
                         width: (window.itemWidth * 1.5) + ((window.itemHeight + window.s(30)) * Math.abs(window.skewFactor)) + window.s(50)
                         height: window.itemHeight + window.s(30)
                         fillMode: Image.PreserveAspectCrop
-                        source: fileUrl !== undefined ? fileUrl : ""
+                        source: thumbPath
+                        sourceSize: Qt.size(400, 400)
                         asynchronous: true
 
                         transform: Matrix4x4 {
@@ -1473,7 +1437,7 @@ Item {
 
         view.forceActiveFocus();
         window.processMarkers();
-        window.triggerColorExtraction();
+        Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/wallpaper_thumbnail.sh"]);
     }
 
     Component.onDestruction: {
