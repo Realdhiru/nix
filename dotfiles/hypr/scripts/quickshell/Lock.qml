@@ -667,7 +667,7 @@ ShellRoot {
                                             model: passModel
                                             // Render text directly as the delegate to avoid circular layout loops
                                             delegate: Text {
-                                                text: model.isDot ? "•" : model.charStr
+                                                text: "•"
                                                 font.family: "JetBrains Mono"
                                                 font.pixelSize: model.isDot ? (32 * screenRoot.sc) : (24 * screenRoot.sc)
                                                 font.weight: Font.Bold
@@ -778,42 +778,6 @@ ShellRoot {
                         MouseArea { id: batMouse; anchors.fill: parent; hoverEnabled: true; enabled: !screenRoot.isPlayingIntro }
                     }
 
-                    // Weather Pill
-                    Rectangle {
-                        property bool isHovered: weatherMouse.containsMouse
-                        Layout.preferredHeight: 48 * screenRoot.sc
-                        Layout.preferredWidth: weatherLayoutRow.implicitWidth + (36 * screenRoot.sc)
-                        radius: height / 2
-                        
-                        color: isHovered ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.4)
-                        border.color: isHovered ? root.blue : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.08)
-                        border.width: Math.max(1, 1 * screenRoot.sc)
-
-                        scale: isHovered ? 1.05 : 1.0
-                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                        Behavior on border.color { ColorAnimation { duration: 200 } }
-
-                        RowLayout { 
-                            id: weatherLayoutRow; anchors.centerIn: parent; spacing: 8 * screenRoot.sc
-                            Text { 
-                                text: screenRoot.weatherIcon
-                                font.family: "Iosevka Nerd Font"
-                                font.pixelSize: 20 * screenRoot.sc
-                                color: parent.parent.isHovered ? root.blue : root.text
-                                Behavior on color { ColorAnimation { duration: 200 } }
-                            }
-                            Text { 
-                                text: screenRoot.weatherTemp
-                                font.family: "JetBrains Mono"
-                                font.pixelSize: 14 * screenRoot.sc
-                                font.weight: Font.Black
-                                color: root.text
-                                Behavior on color { ColorAnimation { duration: 200 } }
-                            }
-                        }
-                        MouseArea { id: weatherMouse; anchors.fill: parent; hoverEnabled: true; enabled: !screenRoot.isPlayingIntro }
-                    }
                 }
 
                 // ---------------------------------------------------------
