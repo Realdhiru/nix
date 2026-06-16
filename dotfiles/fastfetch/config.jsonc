@@ -10,7 +10,6 @@
     { "type": "os", "key": "│  OS" },
     { "type": "kernel", "key": "│  Kernel" },
     { "type": "shell", "key": "│  Shell" },
-    { "type": "de", "key": "│  DE" },
     { "type": "wm", "key": "│  WM" },
     { "type": "packages", "key": "└  Pkgs" },
     { "type": "custom", "format": " " },
@@ -19,16 +18,19 @@
     { "type": "gpu", "key": "│ 󰢮 GPU" },
     { "type": "memory", "key": "│  RAM" },
     { "type": "swap", "key": "│ 󰾴 Swap" },
+    { "type": "disk", "key": "│  Disk" },
     { "type": "disk", "key": "└  Disk" },
     { "type": "custom", "format": " " },
-    { "type": "custom", "format": "┌──────────────────────────────────────────┐" },
-    { "type": "uptime", "key": "│  Uptime" },
-    { "type": "osage", "key": "└  OS Age", "format": "{days} days" },
+    { "type": "uptime", "key": " Uptime" },
+    { "type": "osage", "key": " OS Age" },
     { "type": "custom", "format": " " },
-    { "type": "title", "key": "" },
+    {
+      "type": "host",
+      "key": " ",
+      "format": "{user}@{host}"
+    },
     {
       "type": "colors",
-      "paddingLeft": 2,
       "symbol": "circle"
     }
   ]
