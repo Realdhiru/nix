@@ -66,23 +66,30 @@ Variants {
 
             // Cava processing core linked dynamically to media active states
             property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-            Process {
-                id: cavaStreamer
-                command: ["cat", "/tmp/cava_quickshell.fifo"]
-                running: barWindow.isMediaActive
-                stdoutSplitter: "\n"
 
-                onStdoutLine: (line) => {
-                    var cleaned = line.trim();
-                    if (cleaned.length === 0) return;
-                    var tokens = cleaned.split(";");
-                    var tempArray = [];
-                    for (var i = 0; i < Math.min(tokens.length, 10); i++) {
-                        tempArray.push(parseInt(tokens[i]) || 0);
-                    }
-                    if (tempArray.length > 0) barWindow.cavaBars = tempArray;
-                }
+Process {
+    id: cavaStreamer
+    command: ["cat", "/tmp/cava_quickshell.fifo"]
+    running: barWindow.isMediaActive
+    
+    // Connect standard output to a line parser module
+    stdout: LineReader {
+        onLine: (line) => {
+            var cleaned = line.trim();
+            if (cleaned.length === 0) return;
+            
+            var tokens = cleaned.split(";");
+            var tempArray = [];
+            for (var i = 0; i < Math.min(tokens.length, 10); i++) {
+                tempArray.push(parseInt(tokens[i]) || 0);
             }
+            
+            if (tempArray.length > 0) {
+                barWindow.cavaBars = tempArray;
+            }
+        }
+    }
+}
 
             property bool showHelpIcon: true
             property bool isRecording: false
