@@ -14,7 +14,7 @@ if (( $(echo "$sat < 5" | bc -l) )); then
       --config /home/realdhiru/nix/dotfiles/matugen/config.toml \
       --type scheme-fidelity \
       --source-color-index 0 \
-      --custom-colors '{"primary": "#d3d3d3", "secondary": "#d3d3d3"}' > /tmp/matugen.log 2>&1
+      --custom-colors '{"primary": "#d3d3d3", "secondary": "#d3d3d3", "tertiary": "#d3d3d3"}' > /tmp/matugen.log 2>&1
       
     # Run your raw colors file to catch any stubborn JSON-only quickshell keys
     ~/nix/dotfiles/matugen/extract_raw_colors.sh "$WALL"
