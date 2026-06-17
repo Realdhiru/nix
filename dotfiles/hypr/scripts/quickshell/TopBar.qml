@@ -68,23 +68,29 @@ Variants {
             property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             Process {
                 id: cavaStreamer
-                command: ["tail", "-f", "/tmp/cava_quickshell.fifo"] // Replaced "cat" with "tail -f"
-                running: barWindow.isMediaActive
+                // Listen to the exact path specified in your cava/config
+                command: ["tail", "-f", paths.getRunDir("music") + "/qml_cava.fifo"]
+                running: true 
                 
                 stdout: SplitParser {
                     onRead: data => {
-                        var cleaned = data.trim();
-                        if (cleaned.length === 0) return;
-                        
-                        var tokens = cleaned.split(";");
-                        var tempArray = [];
-                        for (var i = 0; i < Math.min(tokens.length, 10); i++) {
-                            tempArray.push(parseInt(tokens[i]) || 0);
-                        }
-                        
-                        if (tempArray.length > 0) {
+                        try {
+                            var rawString = String(data);
+                            var cleaned = rawString.trim();
+                            if (cleaned.length < 3) return; 
+                            
+                            var tokens = cleaned.split(";");
+                            var tempArray = [];
+                            
+                            for (var i = 0; i < 10; i++) {
+                                if (i < tokens.length && tokens[i] !== "") {
+                                    tempArray.push(parseInt(tokens[i], 10) || 0);
+                                } else {
+                                    tempArray.push(0);
+                                }
+                            }
                             barWindow.cavaBars = tempArray;
-                        }
+                        } catch(e) {}
                     }
                 }
             }
@@ -801,30 +807,6 @@ Variants {
                                         scale: mediaInfoMouse.containsMouse ? 1.02 : 1.0
                                         Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
 
-                                        Row {
-                                    id: cavaVisualizerPill
-                                    spacing: 2
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    
-                                    Repeater {
-                                        model: 10
-                                        delegate: Rectangle {
-                                            width: 2
-                                            height: Math.max(3, (barWindow.cavaBars[index] ?? 0) * 2.2)
-                                            color: mocha.mauve
-                                            radius: 1
-
-                                            Behavior on height {
-                                                NumberAnimation {
-                                                    duration: 35
-                                                    easing.type: Easing.OutCubic
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-
                                         Rectangle {
                                             width: barWindow.s(32); height: barWindow.s(32); radius: barWindow.s(8); color: mocha.surface1
                                             border.width: barWindow.musicData.status === "Playing" ? 1 : 0
@@ -919,6 +901,30 @@ Variants {
                                         MouseArea { id: nextMouse; hoverEnabled: true; anchors.fill: parent; onClicked: { Quickshell.execDetached(["playerctl", "next"]); musicForceRefresh.running = true; } } 
                                     }
                                 }
+
+                                Row {
+                                            id: cavaVisualizerPill
+                                            spacing: 2
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            
+                                            Repeater {
+                                                model: 10
+                                                delegate: Rectangle {
+                                                    width: 2
+                                                    // Math fix: Normalize the 0-255 value, then scale to 24px max height
+                                                    height: Math.max(3, ( (barWindow.cavaBars[index] ?? 0) / 255.0 ) * barWindow.s(24))
+                                                    color: mocha.mauve
+                                                    radius: 1
+
+                                                    Behavior on height {
+                                                        NumberAnimation {
+                                                            duration: 35
+                                                            easing.type: Easing.OutCubic
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                             }
                         }
                     }
