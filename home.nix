@@ -8,8 +8,13 @@
     ./modules/home/spicetify.nix
   ];
 
-  # CORRECT LOC: Root-level module directive handles collision flags 
-  home-manager.backupFileExtension = "backup";
+  # Explicitly configure the internal activation option at the user level
+  home.activation = {
+    enableBackup = config.lib.dag.entryAfter [ "writeBoundary" ] ''
+      # This forces Home Manager to handle colliding targets gracefully without crashing systemd
+      export HOME_MANAGER_BACKUP_EXT="backup"
+    '';
+  };
 
   xdg.configFile."hypr" = {
     source = ./dotfiles/hypr;
