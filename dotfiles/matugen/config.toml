@@ -1,7 +1,8 @@
 [config]
 scheme = "fidelity"
-contrast = 1
+contrast = 1.0
 reload_apps = false
+fallback_color = "#808080"
 
 [templates.quickshell]
 input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/qs_colors.json.template"
@@ -23,6 +24,6 @@ output_path = "/home/realdhiru/.cache/matugen/rofi-colors.rasi"
 input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/wezterm-colors.lua.template"
 output_path = "/home/realdhiru/.cache/matugen/wezterm-colors.lua"
 
-[templates.neovim]
-input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/nvim-colors.lua.template"
-output_path = "/home/realdhiru/.cache/matugen/nvim-matugen_colors.lua"
+# [templates.neovim]
+# input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/nvim-colors.lua.template"
+# output_path = "/home/realdhiru/.cache/matugen/nvim-matugen_colors.lua"
