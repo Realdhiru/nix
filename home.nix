@@ -8,8 +8,8 @@
     ./modules/home/spicetify.nix
   ];
 
-  # Force fallback naming to prevent deployment system blocks during early systemd activation
-  home.backupFileExtension = "backup";
+  # CORRECT LOC: Root-level module directive handles collision flags 
+  home-manager.backupFileExtension = "backup";
 
   xdg.configFile."hypr" = {
     source = ./dotfiles/hypr;
