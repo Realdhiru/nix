@@ -64,7 +64,6 @@ Variants {
                 id: mocha
             }
 
-
             property bool showHelpIcon: true
             property bool isRecording: false
             
@@ -829,8 +828,6 @@ Variants {
                                     }
                                 }
 
-                                
-
                                 Row {
                                     anchors.verticalCenter: parent.verticalCenter
                                     spacing: barWindow.width < 1920 ? barWindow.s(4) : barWindow.s(8)
@@ -910,44 +907,44 @@ Variants {
                         }
 
                         RowLayout {
-                            id: centerLayout
-                            anchors.centerIn: parent
-                            spacing: barWindow.s(12)
+                        id: centerLayout
+                        anchors.centerIn: parent
+                        spacing: barWindow.s(12)
+
+                        Text {
+                            text: barWindow.timeStr
+                            font.family: "JetBrains Mono"
+                            font.pixelSize: barWindow.s(18)
+                            font.weight: Font.Black
+                            color: mocha.mauve
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+
+                        ColumnLayout {
+                            spacing: 0 
+                            Layout.alignment: Qt.AlignVCenter
 
                             Text {
-                                text: barWindow.timeStr
+                                text: barWindow.dateStr.split(',')[0] || ""
                                 font.family: "JetBrains Mono"
-                                font.pixelSize: barWindow.s(18)
+                                font.pixelSize: barWindow.s(10)
                                 font.weight: Font.Black
-                                color: mocha.mauve
-                                Layout.alignment: Qt.AlignVCenter
+                                color: mocha.text
+                                horizontalAlignment: Text.AlignLeft 
+                                Layout.fillWidth: true
                             }
 
-                            ColumnLayout {
-                                spacing: 0 
-                                Layout.alignment: Qt.AlignVCenter
-
-                                Text {
-                                    text: barWindow.dateStr.split(',')[0] || ""
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: barWindow.s(10)
-                                    font.weight: Font.Black
-                                    color: mocha.text
-                                    horizontalAlignment: Text.AlignLeft 
-                                    Layout.fillWidth: true
-                                }
-
-                                Text {
-                                    text: (barWindow.dateStr.split(',')[1] || "").trim()
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: barWindow.s(10)
-                                    font.weight: Font.Bold
-                                    color: mocha.subtext0
-                                    horizontalAlignment: Text.AlignLeft 
-                                    Layout.fillWidth: true
-                                }
+                            Text {
+                                text: (barWindow.dateStr.split(',')[1] || "").trim()
+                                font.family: "JetBrains Mono"
+                                font.pixelSize: barWindow.s(10)
+                                font.weight: Font.Bold
+                                color: mocha.subtext0
+                                horizontalAlignment: Text.AlignLeft 
+                                Layout.fillWidth: true
                             }
                         }
+                    }
                     }
 
                     Row {
