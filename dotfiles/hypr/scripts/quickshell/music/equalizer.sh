@@ -12,7 +12,7 @@ mkdir -p "$PRESET_DIR"
 
 # Default state (Now includes "pending": false)
 if [ ! -f "$STATE_FILE" ]; then
-    echo '{"b1": 0, "b2": 0, "b3": 0, "b4": 0, "b5": 0, "b6": 0, "b7": 0, "b8": 0, "b9": 0, "b10": 0, "preset": "Vocal", "pending": false}' > "$STATE_FILE"
+    echo '{"b1": -2, "b2": -1, "b3": 1, "b4": 3, "b5": 5, "b6": 5, "b7": 4, "b8": 2, "b9": 1, "b10": 0, "preset": "Vocal", "pending": false}' > "$STATE_FILE"
 fi
 
 apply_eq() {
@@ -54,6 +54,19 @@ arg1=$2
 arg2=$3
 
 case $cmd in
+    "--init")
+        # DAEMON SYNC SYNC LOOP: Wait up to 20 seconds for the engine to stand up
+        (
+            for retry in {1..20}; do
+                if pgrep -x "easyeffects" >/dev/null; then
+                    sleep 3 # Give the DSP engine a moment to hook into PipeWire sinks
+                    apply_eq
+                    break
+                fi
+                sleep 1
+            done
+        ) &
+        ;;
     "get") cat "$STATE_FILE" ;;
     "set_band")
         # SLIDER MOVE: Set pending = true, Preset = Custom. DO NOT APPLY.
