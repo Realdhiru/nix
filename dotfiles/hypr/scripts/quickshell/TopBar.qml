@@ -68,7 +68,7 @@ Variants {
             property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             Process {
                 id: cavaStreamer
-                command: ["cat", "/tmp/cava_quickshell.fifo"]
+                command: ["tail", "-f", "/tmp/cava_quickshell.fifo"] // Replaced "cat" with "tail -f"
                 running: barWindow.isMediaActive
                 
                 stdout: SplitParser {
@@ -801,6 +801,30 @@ Variants {
                                         scale: mediaInfoMouse.containsMouse ? 1.02 : 1.0
                                         Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
 
+                                        Row {
+                                    id: cavaVisualizerPill
+                                    spacing: 2
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    
+                                    Repeater {
+                                        model: 10
+                                        delegate: Rectangle {
+                                            width: 2
+                                            height: Math.max(3, (barWindow.cavaBars[index] ?? 0) * 2.2)
+                                            color: mocha.mauve
+                                            radius: 1
+
+                                            Behavior on height {
+                                                NumberAnimation {
+                                                    duration: 35
+                                                    easing.type: Easing.OutCubic
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+
                                         Rectangle {
                                             width: barWindow.s(32); height: barWindow.s(32); radius: barWindow.s(8); color: mocha.surface1
                                             border.width: barWindow.musicData.status === "Playing" ? 1 : 0
@@ -853,28 +877,7 @@ Variants {
                                     }
                                 }
 
-                                Row {
-                                    id: cavaVisualizerPill
-                                    spacing: 2
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    
-                                    Repeater {
-                                        model: 10
-                                        delegate: Rectangle {
-                                            width: 2
-                                            height: Math.max(3, (barWindow.cavaBars[index] ?? 0) * 2.2)
-                                            color: mocha.mauve
-                                            radius: 1
-
-                                            Behavior on height {
-                                                NumberAnimation {
-                                                    duration: 35
-                                                    easing.type: Easing.OutCubic
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                
 
                                 Row {
                                     anchors.verticalCenter: parent.verticalCenter
