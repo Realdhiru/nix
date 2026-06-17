@@ -50,11 +50,20 @@ NETWORK_MODE_FILE="$QS_NETWORK_CACHE/mode"
 MANIFEST="$THUMB_DIR/.manifest"
 
 # -----------------------------------------------------------------------------
-# ZOMBIE WATCHDOG
+# ZOMBIE WATCHDOG & CAVA RUNTIME ENGINE
 # Only runs on slow path — not on every workspace switch
 # -----------------------------------------------------------------------------
 
 if ! pgrep -f "quickshell.*Shell.qml" >/dev/null; then
+    # 1. Prepare volatile IPC named pipe infrastructure
+    if [ ! -p /tmp/cava_quickshell.fifo ]; then
+        mkfifo /tmp/cava_quickshell.fifo
+    fi
+
+    # 2. Clear lingering audio visualizer nodes and bind background daemon to pipe
+    pkill -x cava 2>/dev/null
+    cava -p ~/nix/dotfiles/cava/config > /dev/null 2>&1 &
+
     quickshell -p "$SHELL_QML_PATH" >/dev/null 2>&1 &
     disown
 fi

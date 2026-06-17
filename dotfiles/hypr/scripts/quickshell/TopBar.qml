@@ -89,6 +89,26 @@ Variants {
                 }
             }
 
+            // 1. CAVA STREAM ENGINE: Registered globally within the window module context
+            property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            Process {
+                id: cavaStreamer
+                command: ["cat", "/tmp/cava_quickshell.fifo"]
+                running: barWindow.isMediaActive # Save hardware cycles by sleeping when media is stopped
+                stdoutSplitter: "\n"
+
+                onStdoutLine: (line) => {
+                    var cleaned = line.trim();
+                    if (cleaned.length === 0) return;
+                    var tokens = cleaned.split(";");
+                    var tempArray = [];
+                    for (var i = 0; i < Math.min(tokens.length, 10); i++) {
+                        tempArray.push(parseInt(tokens[i]) || 0);
+                    }
+                    if (tempArray.length > 0) barWindow.cavaBars = tempArray;
+                }
+            }
+
             Process {
                 id: widgetPoller
                 command: ["bash", "-c", "cat " + paths.runDir + "/current_widget 2>/dev/null || echo ''"]
@@ -259,7 +279,6 @@ Variants {
             property string displayTime: ""
             property string displayArtUrl: ""
             
-            // Fixed: Appending a cache-busting timestamp forces QML to bypass file locks and reload the asset
             property string artCacheBuster: ""
 
             onMusicDataChanged: {
@@ -785,11 +804,9 @@ Variants {
                                             
                                             Image { 
                                                 anchors.fill: parent
-                                                // Fixed: Concatenating the time query bypasses internal pixel mapping cache states instantly
                                                 source: barWindow.displayArtUrl ? (barWindow.displayArtUrl + barWindow.artCacheBuster) : ""
                                                 fillMode: Image.PreserveAspectCrop 
                                                 
-                                                // Failsafe connection event handler: If data stream hasn't completed, re-trigger resource retrieval
                                                 onStatusChanged: {
                                                     if (status === Image.Error && barWindow.displayArtUrl !== "") {
                                                         musicForceRefresh.running = false;
@@ -825,7 +842,31 @@ Variants {
                                                 font.pixelSize: barWindow.s(10); 
                                                 color: mocha.subtext0;
                                                 width: parent.width
-                                                elide: Text.ElideRight;
+                                                elide: Text.ElideRight; 
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // 2. NESTED AUDIO SPECTRUM VISUALIZER: Integrated to anchor and animate alongside album metadata
+                                Row {
+                                    id: cavaVisualizerPill
+                                    spacing: 2
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    
+                                    Repeater {
+                                        model: 10
+                                        delegate: Rectangle {
+                                            width: 2
+                                            height: Math.max(3, (barWindow.cavaBars[index] ?? 0) * 2.2)
+                                            color: mocha.mauve
+                                            radius: 1
+
+                                            Behavior on height {
+                                                NumberAnimation {
+                                                    duration: 35
+                                                    easing.type: Easing.OutCubic
+                                                }
                                             }
                                         }
                                     }
@@ -914,7 +955,6 @@ Variants {
                         anchors.centerIn: parent
                         spacing: barWindow.s(12)
 
-                        // Left Side: Big, clean time display
                         Text {
                             text: barWindow.timeStr
                             font.family: "JetBrains Mono"
@@ -924,9 +964,8 @@ Variants {
                             Layout.alignment: Qt.AlignVCenter
                         }
 
-                        // Right Side: Vertically stacked Day and Date text fields
                         ColumnLayout {
-                            spacing: 0 // Reset to 0 to let the layout engine calculate bounding limits cleanly
+                            spacing: 0 
                             Layout.alignment: Qt.AlignVCenter
 
                             Text {
@@ -935,7 +974,7 @@ Variants {
                                 font.pixelSize: barWindow.s(10)
                                 font.weight: Font.Black
                                 color: mocha.text
-                                horizontalAlignment: Text.AlignLeft // FIXED: Forces left anchoring inside the column
+                                horizontalAlignment: Text.AlignLeft 
                                 Layout.fillWidth: true
                             }
 
@@ -945,7 +984,7 @@ Variants {
                                 font.pixelSize: barWindow.s(10)
                                 font.weight: Font.Bold
                                 color: mocha.subtext0
-                                horizontalAlignment: Text.AlignLeft // FIXED: Forces left anchoring inside the column
+                                horizontalAlignment: Text.AlignLeft 
                                 Layout.fillWidth: true
                             }
                         }
@@ -1095,11 +1134,10 @@ Variants {
                                         opacity: 1.0 
                                         Behavior on opacity { NumberAnimation { duration: 300 } }
                                         gradient: Gradient {
-    orientation: Gradient.Horizontal
-    // Force both stops to mocha.mauve to keep the color uniform
-    GradientStop { position: 0.0; color: mocha.mauve }
-    GradientStop { position: 1.0; color: Qt.lighter(mocha.mauve, 1.3) }
-}
+                                            orientation: Gradient.Horizontal
+                                            GradientStop { position: 0.0; color: mocha.mauve }
+                                            GradientStop { position: 1.0; color: Qt.lighter(mocha.mauve, 1.3) }
+                                        }
                                     }
                                     
                                     property real targetWidth: barWindow.isDesktop ? barWindow.s(34) : batLayoutRow.implicitWidth + barWindow.s(24)
@@ -1124,7 +1162,7 @@ Variants {
                                         Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.base; Behavior on color { ColorAnimation { duration: 300 } } }
                                     }
                                     MouseArea { id: batMouse; hoverEnabled: true; anchors.fill: parent; onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle battery"]) }
-                                }                       
+                                }                        
                             }
                         }
                     }
