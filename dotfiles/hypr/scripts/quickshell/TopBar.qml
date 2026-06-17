@@ -65,11 +65,12 @@ Variants {
             }
 
             // Cava processing core linked dynamically to media active states
-            property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+             property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             Process {
                 id: cavaStreamer
-                // Listen to the exact path specified in your cava/config
-                command: ["tail", "-f", paths.getRunDir("music") + "/qml_cava.fifo"]
+                
+                // Active polling loop: Keep reading the pipe and flush instantly
+                command: ["bash", "-c", "while true; do if [ -p " + paths.getRunDir('music') + "/qml_cava.fifo ]; then cat " + paths.getRunDir('music') + "/qml_cava.fifo; else sleep 1; fi; done"]
                 running: true 
                 
                 stdout: SplitParser {
