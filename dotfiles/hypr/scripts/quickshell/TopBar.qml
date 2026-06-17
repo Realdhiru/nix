@@ -72,11 +72,11 @@ Process {
     command: ["cat", "/tmp/cava_quickshell.fifo"]
     running: barWindow.isMediaActive
     
-    // QuickShell component to cut the incoming raw byte stream into readable lines
-    stdout: SplitReader {
-        delimiter: "\n"
+    // QuickShell component that safely catches data streams and splits on a string delimiter
+    stdout: SplitCollector {
+        split: "\n"
         
-        onRead: (line) => {
+        onReady: (line) => {
             var cleaned = line.trim();
             if (cleaned.length === 0) return;
             
