@@ -64,6 +64,26 @@ Variants {
                 id: mocha
             }
 
+            // Cava processing core linked dynamically to media active states
+            property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            Process {
+                id: cavaStreamer
+                command: ["cat", "/tmp/cava_quickshell.fifo"]
+                running: barWindow.isMediaActive
+                stdoutSplitter: "\n"
+
+                onStdoutLine: (line) => {
+                    var cleaned = line.trim();
+                    if (cleaned.length === 0) return;
+                    var tokens = cleaned.split(";");
+                    var tempArray = [];
+                    for (var i = 0; i < Math.min(tokens.length, 10); i++) {
+                        tempArray.push(parseInt(tokens[i]) || 0);
+                    }
+                    if (tempArray.length > 0) barWindow.cavaBars = tempArray;
+                }
+            }
+
             property bool showHelpIcon: true
             property bool isRecording: false
             
@@ -86,26 +106,6 @@ Variants {
                 if (!barWindow.isSettingsOpen && barWindow.pendingReload) {
                     barWindow.pendingReload = false;
                     Quickshell.reload(true);
-                }
-            }
-
-            // 1. CAVA STREAM ENGINE: Registered globally within the window module context
-            property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-            Process {
-                id: cavaStreamer
-                command: ["cat", "/tmp/cava_quickshell.fifo"]
-                running: barWindow.isMediaActive # Save hardware cycles by sleeping when media is stopped
-                stdoutSplitter: "\n"
-
-                onStdoutLine: (line) => {
-                    var cleaned = line.trim();
-                    if (cleaned.length === 0) return;
-                    var tokens = cleaned.split(";");
-                    var tempArray = [];
-                    for (var i = 0; i < Math.min(tokens.length, 10); i++) {
-                        tempArray.push(parseInt(tokens[i]) || 0);
-                    }
-                    if (tempArray.length > 0) barWindow.cavaBars = tempArray;
                 }
             }
 
@@ -848,7 +848,6 @@ Variants {
                                     }
                                 }
 
-                                // 2. NESTED AUDIO SPECTRUM VISUALIZER: Integrated to anchor and animate alongside album metadata
                                 Row {
                                     id: cavaVisualizerPill
                                     spacing: 2
@@ -951,44 +950,44 @@ Variants {
                         }
 
                         RowLayout {
-                        id: centerLayout
-                        anchors.centerIn: parent
-                        spacing: barWindow.s(12)
-
-                        Text {
-                            text: barWindow.timeStr
-                            font.family: "JetBrains Mono"
-                            font.pixelSize: barWindow.s(18)
-                            font.weight: Font.Black
-                            color: mocha.mauve
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-
-                        ColumnLayout {
-                            spacing: 0 
-                            Layout.alignment: Qt.AlignVCenter
+                            id: centerLayout
+                            anchors.centerIn: parent
+                            spacing: barWindow.s(12)
 
                             Text {
-                                text: barWindow.dateStr.split(',')[0] || ""
+                                text: barWindow.timeStr
                                 font.family: "JetBrains Mono"
-                                font.pixelSize: barWindow.s(10)
+                                font.pixelSize: barWindow.s(18)
                                 font.weight: Font.Black
-                                color: mocha.text
-                                horizontalAlignment: Text.AlignLeft 
-                                Layout.fillWidth: true
+                                color: mocha.mauve
+                                Layout.alignment: Qt.AlignVCenter
                             }
 
-                            Text {
-                                text: (barWindow.dateStr.split(',')[1] || "").trim()
-                                font.family: "JetBrains Mono"
-                                font.pixelSize: barWindow.s(10)
-                                font.weight: Font.Bold
-                                color: mocha.subtext0
-                                horizontalAlignment: Text.AlignLeft 
-                                Layout.fillWidth: true
+                            ColumnLayout {
+                                spacing: 0 
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: barWindow.dateStr.split(',')[0] || ""
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: barWindow.s(10)
+                                    font.weight: Font.Black
+                                    color: mocha.text
+                                    horizontalAlignment: Text.AlignLeft 
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: (barWindow.dateStr.split(',')[1] || "").trim()
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: barWindow.s(10)
+                                    font.weight: Font.Bold
+                                    color: mocha.subtext0
+                                    horizontalAlignment: Text.AlignLeft 
+                                    Layout.fillWidth: true
+                                }
                             }
                         }
-                    }
                     }
 
                     Row {
@@ -1124,7 +1123,7 @@ Variants {
 
                                 Rectangle {
                                     property bool isHovered: batMouse.containsMouse
-                                    color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6) : Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.4); 
+                                    color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6) : Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.4)
                                     radius: barWindow.s(10); height: sysLayout.pillHeight;
                                     clip: true
 
