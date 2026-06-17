@@ -29,4 +29,4 @@ else
       --config /home/realdhiru/nix/dotfiles/matugen/config.toml \
       --type scheme-fidelity \
       --source-color-index 0 > /tmp/matugen.log 2>&1
-fi
+fiz2

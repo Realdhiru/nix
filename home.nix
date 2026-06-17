@@ -8,6 +8,9 @@
     ./modules/home/spicetify.nix
   ];
 
+  # Force fallback naming to prevent deployment system blocks during early systemd activation
+  home.backupFileExtension = "backup";
+
   xdg.configFile."hypr" = {
     source = ./dotfiles/hypr;
     force = true;
