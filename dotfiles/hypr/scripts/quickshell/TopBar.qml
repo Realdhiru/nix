@@ -64,6 +64,37 @@ Variants {
                 id: mocha
             }
 
+            // Cava processing core linked dynamically to media active states
+             property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            property int cavaTick: 0 // Tracks data updates to force the UI to redraw
+            
+            Process {
+                id: cavaStreamer
+                // Hardcoded path avoids cache race. -F forces it to wait for the file to be created.
+                command: ["tail", "-F", "/run/user/1000/quickshell/runtime/music/qml_cava.fifo"]
+                running: true
+                
+                stdout: SplitParser {
+                    onRead: data => {
+                        try {
+                            var rawString = String(data);
+                            var cleaned = rawString.trim();
+                            if (cleaned.length < 3) return; 
+                            
+                            var tokens = cleaned.split(";");
+                            var tempArray = [];
+                            
+                            for (var i = 0; i < 10; i++) {
+                                tempArray.push(parseInt(tokens[i]) || 0);
+                            }
+                            
+                            barWindow.cavaBars = tempArray;
+                            barWindow.cavaTick += 1; // Manually ping the UI to update heights
+                        } catch(e) {}
+                    }
+                }
+            }
+
             property bool showHelpIcon: true
             property bool isRecording: false
             
@@ -259,7 +290,6 @@ Variants {
             property string displayTime: ""
             property string displayArtUrl: ""
             
-            // Fixed: Appending a cache-busting timestamp forces QML to bypass file locks and reload the asset
             property string artCacheBuster: ""
 
             onMusicDataChanged: {
@@ -785,11 +815,9 @@ Variants {
                                             
                                             Image { 
                                                 anchors.fill: parent
-                                                // Fixed: Concatenating the time query bypasses internal pixel mapping cache states instantly
                                                 source: barWindow.displayArtUrl ? (barWindow.displayArtUrl + barWindow.artCacheBuster) : ""
                                                 fillMode: Image.PreserveAspectCrop 
                                                 
-                                                // Failsafe connection event handler: If data stream hasn't completed, re-trigger resource retrieval
                                                 onStatusChanged: {
                                                     if (status === Image.Error && barWindow.displayArtUrl !== "") {
                                                         musicForceRefresh.running = false;
@@ -825,11 +853,13 @@ Variants {
                                                 font.pixelSize: barWindow.s(10); 
                                                 color: mocha.subtext0;
                                                 width: parent.width
-                                                elide: Text.ElideRight;
+                                                elide: Text.ElideRight; 
                                             }
                                         }
                                     }
                                 }
+
+                                
 
                                 Row {
                                     anchors.verticalCenter: parent.verticalCenter
@@ -871,6 +901,41 @@ Variants {
                                         MouseArea { id: nextMouse; hoverEnabled: true; anchors.fill: parent; onClicked: { Quickshell.execDetached(["playerctl", "next"]); musicForceRefresh.running = true; } } 
                                     }
                                 }
+
+                                // 1. FIRST ITEM: Cava Visualizer
+                                        Row {
+                                            id: cavaVisualizerPill
+                                            spacing: 2
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            
+                                            Repeater {
+                                                model: 10
+                                                delegate: Rectangle {
+                                                    width: 2
+                                                    color: mocha.mauve
+                                                    radius: 1
+                                                    
+                                                    // Tell QML to watch the tick tracker for changes
+                                                    property int syncTick: barWindow.cavaTick
+                                                    
+                                                    height: {
+                                                        let dummy = syncTick; // Forces re-evaluation on every new frame
+                                                        let val = barWindow.cavaBars[index];
+                                                        if (val === undefined || isNaN(val)) val = 0;
+                                                        
+                                                        // Math: (value / 255 max) * 24 pixels tall
+                                                        return Math.max(3, (val / 255.0) * barWindow.s(24));
+                                                    }
+
+                                                    Behavior on height {
+                                                        NumberAnimation {
+                                                            duration: 35
+                                                            easing.type: Easing.OutCubic
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                             }
                         }
                     }
@@ -910,46 +975,44 @@ Variants {
                         }
 
                         RowLayout {
-                        id: centerLayout
-                        anchors.centerIn: parent
-                        spacing: barWindow.s(12)
-
-                        // Left Side: Big, clean time display
-                        Text {
-                            text: barWindow.timeStr
-                            font.family: "JetBrains Mono"
-                            font.pixelSize: barWindow.s(18)
-                            font.weight: Font.Black
-                            color: mocha.mauve
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-
-                        // Right Side: Vertically stacked Day and Date text fields
-                        ColumnLayout {
-                            spacing: 0 // Reset to 0 to let the layout engine calculate bounding limits cleanly
-                            Layout.alignment: Qt.AlignVCenter
+                            id: centerLayout
+                            anchors.centerIn: parent
+                            spacing: barWindow.s(12)
 
                             Text {
-                                text: barWindow.dateStr.split(',')[0] || ""
+                                text: barWindow.timeStr
                                 font.family: "JetBrains Mono"
-                                font.pixelSize: barWindow.s(10)
+                                font.pixelSize: barWindow.s(18)
                                 font.weight: Font.Black
-                                color: mocha.text
-                                horizontalAlignment: Text.AlignLeft // FIXED: Forces left anchoring inside the column
-                                Layout.fillWidth: true
+                                color: mocha.mauve
+                                Layout.alignment: Qt.AlignVCenter
                             }
 
-                            Text {
-                                text: (barWindow.dateStr.split(',')[1] || "").trim()
-                                font.family: "JetBrains Mono"
-                                font.pixelSize: barWindow.s(10)
-                                font.weight: Font.Bold
-                                color: mocha.subtext0
-                                horizontalAlignment: Text.AlignLeft // FIXED: Forces left anchoring inside the column
-                                Layout.fillWidth: true
+                            ColumnLayout {
+                                spacing: 0 
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: barWindow.dateStr.split(',')[0] || ""
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: barWindow.s(10)
+                                    font.weight: Font.Black
+                                    color: mocha.text
+                                    horizontalAlignment: Text.AlignLeft 
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: (barWindow.dateStr.split(',')[1] || "").trim()
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: barWindow.s(10)
+                                    font.weight: Font.Bold
+                                    color: mocha.subtext0
+                                    horizontalAlignment: Text.AlignLeft 
+                                    Layout.fillWidth: true
+                                }
                             }
                         }
-                    }
                     }
 
                     Row {
@@ -1085,7 +1148,7 @@ Variants {
 
                                 Rectangle {
                                     property bool isHovered: batMouse.containsMouse
-                                    color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6) : Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.4); 
+                                    color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6) : Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.4)
                                     radius: barWindow.s(10); height: sysLayout.pillHeight;
                                     clip: true
 
@@ -1095,11 +1158,10 @@ Variants {
                                         opacity: 1.0 
                                         Behavior on opacity { NumberAnimation { duration: 300 } }
                                         gradient: Gradient {
-    orientation: Gradient.Horizontal
-    // Force both stops to mocha.mauve to keep the color uniform
-    GradientStop { position: 0.0; color: mocha.mauve }
-    GradientStop { position: 1.0; color: Qt.lighter(mocha.mauve, 1.3) }
-}
+                                            orientation: Gradient.Horizontal
+                                            GradientStop { position: 0.0; color: mocha.mauve }
+                                            GradientStop { position: 1.0; color: Qt.lighter(mocha.mauve, 1.3) }
+                                        }
                                     }
                                     
                                     property real targetWidth: barWindow.isDesktop ? barWindow.s(34) : batLayoutRow.implicitWidth + barWindow.s(24)
@@ -1124,7 +1186,7 @@ Variants {
                                         Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.base; Behavior on color { ColorAnimation { duration: 300 } } }
                                     }
                                     MouseArea { id: batMouse; hoverEnabled: true; anchors.fill: parent; onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle battery"]) }
-                                }                       
+                                }                        
                             }
                         }
                     }
