@@ -64,36 +64,6 @@ Variants {
                 id: mocha
             }
 
-            // Cava processing core linked dynamically to media active states
-             property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-            property int cavaTick: 0 // Tracks data updates to force the UI to redraw
-            
-            Process {
-                id: cavaStreamer
-                // Hardcoded path avoids cache race. -F forces it to wait for the file to be created.
-                command: ["tail", "-F", "/run/user/1000/quickshell/runtime/music/qml_cava.fifo"]
-                running: true
-                
-                stdout: SplitParser {
-                    onRead: data => {
-                        try {
-                            var rawString = String(data);
-                            var cleaned = rawString.trim();
-                            if (cleaned.length < 3) return; 
-                            
-                            var tokens = cleaned.split(";");
-                            var tempArray = [];
-                            
-                            for (var i = 0; i < 10; i++) {
-                                tempArray.push(parseInt(tokens[i]) || 0);
-                            }
-                            
-                            barWindow.cavaBars = tempArray;
-                            barWindow.cavaTick += 1; // Manually ping the UI to update heights
-                        } catch(e) {}
-                    }
-                }
-            }
 
             property bool showHelpIcon: true
             property bool isRecording: false
@@ -901,41 +871,6 @@ Variants {
                                         MouseArea { id: nextMouse; hoverEnabled: true; anchors.fill: parent; onClicked: { Quickshell.execDetached(["playerctl", "next"]); musicForceRefresh.running = true; } } 
                                     }
                                 }
-
-                                // 1. FIRST ITEM: Cava Visualizer
-                                        Row {
-                                            id: cavaVisualizerPill
-                                            spacing: 2
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            
-                                            Repeater {
-                                                model: 10
-                                                delegate: Rectangle {
-                                                    width: 2
-                                                    color: mocha.mauve
-                                                    radius: 1
-                                                    
-                                                    // Tell QML to watch the tick tracker for changes
-                                                    property int syncTick: barWindow.cavaTick
-                                                    
-                                                    height: {
-                                                        let dummy = syncTick; // Forces re-evaluation on every new frame
-                                                        let val = barWindow.cavaBars[index];
-                                                        if (val === undefined || isNaN(val)) val = 0;
-                                                        
-                                                        // Math: (value / 255 max) * 24 pixels tall
-                                                        return Math.max(3, (val / 255.0) * barWindow.s(24));
-                                                    }
-
-                                                    Behavior on height {
-                                                        NumberAnimation {
-                                                            duration: 35
-                                                            easing.type: Easing.OutCubic
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
                             }
                         }
                     }
