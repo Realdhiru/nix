@@ -33,6 +33,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/caching.sh"
 qs_ensure_cache "workspaces"
 qs_ensure_cache "network"
 qs_ensure_cache "wallpaper_picker"
+qs_ensure_cache "music" # CRITICAL FIX: Ensure the music runtime directory actually exists
 
 BT_PID_FILE="$QS_RUN_DIR/bt_scan_pid"
 BT_SCAN_LOG="$QS_LOG_DIR/bt_scan.log"
@@ -55,14 +56,20 @@ MANIFEST="$THUMB_DIR/.manifest"
 # -----------------------------------------------------------------------------
 
 if ! pgrep -f "quickshell.*Shell.qml" >/dev/null; then
-    # 1. Prepare volatile IPC named pipe infrastructure
-    if [ ! -p /tmp/cava_quickshell.fifo ]; then
-        mkfifo /tmp/cava_quickshell.fifo
+    # 1. Prepare volatile IPC named pipe infrastructure matching your cava config
+    # Note: Using the exact hardcoded path from your screenshot to guarantee alignment
+    CAVA_FIFO_PATH="/run/user/1000/quickshell/runtime/music/qml_cava.fifo"
+    
+    # Ensure the parent directory is fully constructed before making the pipe
+    mkdir -p "$(dirname "$CAVA_FIFO_PATH")"
+    
+    if [ ! -p "$CAVA_FIFO_PATH" ]; then
+        mkfifo "$CAVA_FIFO_PATH"
     fi
 
     # 2. Clear lingering audio visualizer nodes and bind background daemon to pipe
     pkill -x cava 2>/dev/null
-    cava -p ~/nix/dotfiles/cava/config > /dev/null 2>&1 &
+    cava -p ~/.config/cava/config > /dev/null 2>&1 &
 
     quickshell -p "$SHELL_QML_PATH" >/dev/null 2>&1 &
     disown
