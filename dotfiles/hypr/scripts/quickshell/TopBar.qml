@@ -66,12 +66,13 @@ Variants {
 
             // Cava processing core linked dynamically to media active states
              property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            property int cavaTick: 0 // Tracks data updates to force the UI to redraw
+            
             Process {
                 id: cavaStreamer
-                
-                // Active polling loop: Keep reading the pipe and flush instantly
-                command: ["bash", "-c", "while true; do if [ -p " + paths.getRunDir('music') + "/qml_cava.fifo ]; then cat " + paths.getRunDir('music') + "/qml_cava.fifo; else sleep 1; fi; done"]
-                running: true 
+                // Hardcoded path avoids cache race. -F forces it to wait for the file to be created.
+                command: ["tail", "-F", "/run/user/1000/quickshell/runtime/music/qml_cava.fifo"]
+                running: true
                 
                 stdout: SplitParser {
                     onRead: data => {
@@ -84,13 +85,11 @@ Variants {
                             var tempArray = [];
                             
                             for (var i = 0; i < 10; i++) {
-                                if (i < tokens.length && tokens[i] !== "") {
-                                    tempArray.push(parseInt(tokens[i], 10) || 0);
-                                } else {
-                                    tempArray.push(0);
-                                }
+                                tempArray.push(parseInt(tokens[i]) || 0);
                             }
+                            
                             barWindow.cavaBars = tempArray;
+                            barWindow.cavaTick += 1; // Manually ping the UI to update heights
                         } catch(e) {}
                     }
                 }
@@ -903,7 +902,8 @@ Variants {
                                     }
                                 }
 
-                                Row {
+                                // 1. FIRST ITEM: Cava Visualizer
+                                        Row {
                                             id: cavaVisualizerPill
                                             spacing: 2
                                             anchors.verticalCenter: parent.verticalCenter
@@ -912,10 +912,20 @@ Variants {
                                                 model: 10
                                                 delegate: Rectangle {
                                                     width: 2
-                                                    // Math fix: Normalize the 0-255 value, then scale to 24px max height
-                                                    height: Math.max(3, ( (barWindow.cavaBars[index] ?? 0) / 255.0 ) * barWindow.s(24))
                                                     color: mocha.mauve
                                                     radius: 1
+                                                    
+                                                    // Tell QML to watch the tick tracker for changes
+                                                    property int syncTick: barWindow.cavaTick
+                                                    
+                                                    height: {
+                                                        let dummy = syncTick; // Forces re-evaluation on every new frame
+                                                        let val = barWindow.cavaBars[index];
+                                                        if (val === undefined || isNaN(val)) val = 0;
+                                                        
+                                                        // Math: (value / 255 max) * 24 pixels tall
+                                                        return Math.max(3, (val / 255.0) * barWindow.s(24));
+                                                    }
 
                                                     Behavior on height {
                                                         NumberAnimation {
