@@ -182,11 +182,6 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
             CURRENT_SRC=$(awww query 2>/dev/null | grep -o "$SRC_DIR/[^ ]*" | head -n1)
         fi
 
-        # RESTORED: Trigger non-interactive color engine processing node
-        if [ -n "$CURRENT_SRC" ]; then
-            echo "" | matugen image "$CURRENT_SRC" >/dev/null 2>&1 &
-        fi
-
         TARGET_THUMB=""
         if [ -n "$CURRENT_SRC" ]; then
             BASE=$(basename "$CURRENT_SRC")
