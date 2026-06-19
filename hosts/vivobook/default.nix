@@ -12,6 +12,10 @@
     ../../modules/system/memory.nix
   ];
 
+  systemd.tmpfiles.rules = [
+    "w /sys/class/power_supply/BAT0/charge_control_end_threshold - - - - 80"
+  ];
+
   programs.zsh.enable = true;
 
   networking.hostName = "nixos";
