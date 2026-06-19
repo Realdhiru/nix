@@ -1,6 +1,23 @@
 { pkgs, ... }:
 
 {
+  # 
+  # D-Bus IPC Optimization
+  # Drop latency and make system events across Quickshell & Hyprland snappy
+  #
+  services.dbus.implementation = "broker";
+
+  #
+  # Nix Storage Optimization
+  # Stop generations from clogging up your disk automatically
+  #
+  nix.settings.auto-optimise-store = true;
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 7d";
+  };
+
   #
   # Audio
   #
