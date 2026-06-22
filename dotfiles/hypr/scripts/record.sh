@@ -5,9 +5,9 @@ mkdir -p "$TARGET_DIR"
 
 OUTPUT_FILE="$TARGET_DIR/rec_$(date +%Y%m%d_%H%M%S).mp4"
 
-if pgrep -x "gpu-screen-reco" > /dev/null; then
-    # FIXED: Replaced killall with pkill to send the graceful termination signal
-    pkill -SIGINT gpu-screen-recorder
+# FIXED: Added -f flag to match the full command line argument layout
+if pgrep -f "gpu-screen-recorder" > /dev/null; then
+    pkill -f -SIGINT "gpu-screen-recorder"
     exit 0
 fi
 
