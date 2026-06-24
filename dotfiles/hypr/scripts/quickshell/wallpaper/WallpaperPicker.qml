@@ -869,8 +869,9 @@ Item {
             opacity: matchesFilter ? (isVisuallyEnlarged ? 1.0 : 0.6) : 0.0
             scale: matchesFilter ? 1.0 : 0.5
             height: matchesFilter ? targetHeight : 0
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: window.s(15)
+
+            // FIXED: Removed broken anchors.verticalCenter string evaluation loop pattern
+            y: parent ? (parent.height - height) / 2 + window.s(15) : window.s(15)
             z: isVisuallyEnlarged ? 10 : 1
             
             Behavior on scale { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
@@ -962,7 +963,8 @@ Item {
                 visible: width > 0.1
                 radius: window.s(10)
                 clip: true
-                anchors.verticalCenter: parent.verticalCenter
+                // FIXED: Changed deprecated height string context binding loops to explicit structural metrics properties
+                y: (parent.height - height) / 2
                 color: window.showNotification ? _theme.surface2 : "transparent"
                 border.color: window.showNotification ? _theme.surface1 : "transparent"
                 border.width: 1
@@ -976,7 +978,7 @@ Item {
                     width: window.s(44)
                     height: window.s(44)
                     anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
+                    y: (parent.height - height) / 2
 
                     Canvas {
                         id: notifSpinner
@@ -1014,7 +1016,7 @@ Item {
                     id: notifTextDrawer
                     anchors.left: parent.left
                     anchors.leftMargin: window.showSpinner ? window.s(40) : window.s(16)
-                    anchors.verticalCenter: parent.verticalCenter
+                    y: (parent.height - height) / 2
                     width: Math.min(implicitWidth, window.s(300) - anchors.leftMargin - window.s(16))
                     text: window.currentNotification
                     color: _theme.text
@@ -1036,7 +1038,7 @@ Item {
                 width: visible ? (window.isMonitorSelectorOpen ? expandedWidth : window.s(44)) : 0
                 radius: window.s(10)
                 clip: true
-                anchors.verticalCenter: parent.verticalCenter
+                y: (parent.height - height) / 2
                 color: window.isMonitorSelectorOpen ? _theme.surface2 : "transparent"
                 border.color: window.isMonitorSelectorOpen ? _theme.text : _theme.surface1
                 border.width: window.isMonitorSelectorOpen ? window.s(2) : 1
@@ -1050,7 +1052,7 @@ Item {
                     width: window.s(44)
                     height: window.s(44)
                     anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
+                    y: (parent.height - height) / 2
                     hoverEnabled: true
                     enabled: !window.isApplying
                     cursorShape: Qt.PointingHandCursor
@@ -1090,7 +1092,7 @@ Item {
                 Row {
                     id: monitorListRow
                     anchors.left: monitorIconMouse.right
-                    anchors.verticalCenter: parent.verticalCenter
+                    y: (parent.height - height) / 2
                     spacing: window.s(8)
                     opacity: window.isMonitorSelectorOpen ? 1.0 : 0.0
                     Behavior on opacity { NumberAnimation { duration: 300 } }
@@ -1100,7 +1102,7 @@ Item {
                         delegate: Item {
                             width: monitorText.contentWidth + window.s(16)
                             height: window.s(32)
-                            anchors.verticalCenter: parent.verticalCenter
+                            y: (parent.height - height) / 2
                             
                             Rectangle {
                                 anchors.fill: parent
@@ -1153,7 +1155,7 @@ Item {
                     visible: modelData.name !== "Search"
                     width: !visible ? 0 : ((modelData.name === "Video" || modelData.name === "All") ? window.s(44) : (modelData.hex === "" ? filterText.contentWidth + window.s(24) : window.s(36)))
                     height: !visible ? 0 : window.s(36)
-                    anchors.verticalCenter: parent.verticalCenter
+                    y: (parent.height - height) / 2
                     
                     Rectangle {
                         anchors.fill: parent
@@ -1242,7 +1244,7 @@ Item {
                 height: window.s(44)
                 radius: window.s(10)
                 clip: true
-                anchors.verticalCenter: parent.verticalCenter
+                y: (parent.height - height) / 2
                 color: window.isSearchPaused ? _theme.surface2 : "transparent"
                 border.color: window.isSearchPaused ? _theme.text : _theme.surface1
                 border.width: window.isSearchPaused ? window.s(2) : 1
@@ -1295,7 +1297,7 @@ Item {
                 width: window.currentFilter === "Search" ? window.s(360) : window.s(44)
                 radius: window.s(10)
                 clip: true
-                anchors.verticalCenter: parent.verticalCenter
+                y: (parent.height - height) / 2
                 color: window.currentFilter === "Search" ? Qt.rgba(_theme.surface2.r, _theme.surface2.g, _theme.surface2.b, 0.8) : "transparent"
                 border.color: window.currentFilter === "Search" ? _theme.text : _theme.surface1
                 border.width: window.currentFilter === "Search" ? window.s(2) : 1
@@ -1325,7 +1327,7 @@ Item {
                     height: window.s(44)
                     anchors.left: parent.left
                     anchors.leftMargin: window.currentFilter === "Search" ? window.s(5) : 0
-                    anchors.verticalCenter: parent.verticalCenter
+                    y: (parent.height - height) / 2
                     Behavior on anchors.leftMargin { NumberAnimation { duration: 500; easing.type: Easing.OutExpo } }
                     property string activeColor: window.currentFilter === "Search" ? _theme.text : (searchMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
                     onActiveColorChanged: requestPaint()
@@ -1353,7 +1355,7 @@ Item {
                     anchors.left: searchIcon.right
                     anchors.right: submitBtn.left
                     anchors.rightMargin: window.s(8)
-                    anchors.verticalCenter: parent.verticalCenter
+                    y: (parent.height - height) / 2
                     opacity: window.currentFilter === "Search" ? 1.0 : 0.0
                     visible: opacity > 0
                     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
@@ -1380,7 +1382,7 @@ Item {
                     radius: window.s(8)
                     anchors.right: parent.right
                     anchors.rightMargin: window.s(8)
-                    anchors.verticalCenter: parent.verticalCenter
+                    y: (parent.height - height) / 2
                     opacity: window.currentFilter === "Search" ? 1.0 : 0.0
                     visible: opacity > 0
                     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
