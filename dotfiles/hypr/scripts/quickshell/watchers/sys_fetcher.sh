@@ -19,7 +19,6 @@ DIFF_TOTAL=$((TOTAL2 - TOTAL1))
 if [ "$DIFF_TOTAL" -eq 0 ]; then CPU_USAGE=0; else CPU_USAGE=$(( 100 * (DIFF_TOTAL - DIFF_IDLE) / DIFF_TOTAL )); fi
 
 # --- Network Calculation ---
-# Bytes across 0.5 seconds multiplied by 2 = Bytes per second
 RX_RATE=$(((rx2 - rx1) * 2))
 TX_RATE=$(((tx2 - tx1) * 2))
 
@@ -36,13 +35,10 @@ RAM_GB=$(awk "BEGIN {printf \"%.1f\", $USED_MEM / 1024 / 1024}")
 
 # --- Temperature Calculation ---
 TEMP_RAW=""
-
-# Attempt 1: Check hwmon for known CPU temperature drivers (Intel, AMD, ARM)
 for hwmon in /sys/class/hwmon/hwmon*; do
     if [ -f "$hwmon/name" ]; then
         hwmon_name=$(cat "$hwmon/name" 2>/dev/null)
         if [[ "$hwmon_name" =~ ^(coretemp|k10temp|zenpower|cpu_thermal|bcm2835_thermal)$ ]]; then
-            # Usually temp1_input is the main package/die temp
             if [ -f "$hwmon/temp1_input" ]; then
                 TEMP_RAW=$(cat "$hwmon/temp1_input" 2>/dev/null)
                 break
@@ -51,7 +47,6 @@ for hwmon in /sys/class/hwmon/hwmon*; do
     fi
 done
 
-# Attempt 2: Fallback to thermal_zone for known CPU identifiers
 if [ -z "$TEMP_RAW" ]; then
     for tz in /sys/class/thermal/thermal_zone*; do
         if [ -f "$tz/type" ]; then
@@ -64,18 +59,14 @@ if [ -z "$TEMP_RAW" ]; then
     done
 fi
 
-# Attempt 3: Ultimate fallback to the first available hardware monitor or thermal zone
 if [ -z "$TEMP_RAW" ]; then
     TEMP_RAW=$(cat /sys/class/hwmon/hwmon0/temp1_input 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)
 fi
 
-# Normalize to degrees Celsius
-if [ "$TEMP_RAW" -gt 1000 ]; then
-    TEMP=$((TEMP_RAW / 1000))
-else
-    TEMP=$TEMP_RAW
-fi
+if [ "$TEMP_RAW" -gt 1000 ]; then TEMP=$((TEMP_RAW / 1000)); else TEMP=$TEMP_RAW; fi
 
 # --- Output formatted string ---
-# Format: CPU|RAM_PCT|RAM_GB|TEMP|RX_RATE|TX_RATE
 echo "$CPU_USAGE|$RAM_PCT|$RAM_GB|$TEMP|$RX_RATE|$TX_RATE"
+
+# FIXED: Hard throttle delay ensures QuickShell doesn't spin loop this file continuously
+sleep 2.0
