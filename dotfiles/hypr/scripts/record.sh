@@ -1,31 +1,32 @@
 #!/usr/bin/env bash
 
-LOCK_FILE="/tmp/gpu_recorder.lock"
 TARGET_DIR="$HOME/Videos/Recordings"
 mkdir -p "$TARGET_DIR"
 
-# 1. ATOMIC CHECK: If lock exists, kill the recorder immediately and clean up
-if [ -f "$LOCK_FILE" ]; then
-    pkill -f -SIGINT "gpu-screen-recorder"
-    rm -f "$LOCK_FILE"
-    notify-send -t 2000 "GPU Recorder" "Recording saved to ~/Videos/Recordings/"
+# 1. Check if the core recorder binary is already active
+if pgrep -x "gpu-screen-recorder" > /dev/null; then
+    # Send the interrupt signal gracefully to flush video indexing to disk
+    pkill -X -SIGINT "gpu-screen-recorder"
+    notify-send -t 2000 "GPU Recorder" "Recording saved to $TARGET_DIR"
     exit 0
 fi
 
-# 2. SLOW PATH: No lock found, meaning we want to start a new session
+# 2. No active session found -> launch region selection
 REGION_GEOM=$(slurp)
 
-# Exit cleanly if selection is canceled
+# Clean exit if user hits Escape or clicks away
 if [ -z "$REGION_GEOM" ]; then
     notify-send -t 1500 "GPU Recorder" "Recording canceled"
     exit 0
 fi
 
-# Create the atomic lock file IMMEDIATELY after a successful region choice
-touch "$LOCK_FILE"
-
 AUDIO_SINK="default_output"
+OUTPUT_FILE="$TARGET_DIR/rec_$(date +%Y%m%d_%H%M%S).mp4"
+
 notify-send -t 2000 "GPU Recorder" "Region capture started at 120 FPS..."
 
-# Launch encoder engine
-gpu-screen-recorder -w region -region "$REGION_GEOM" -f 120 -c mp4 -a "$AUDIO_SINK" -q ultra -o "$TARGET_DIR/rec_$(date +%Y%m%d_%H%M%S).mp4" &
+# 3. Launch with exact binary name execution mapping
+gpu-screen-recorder -w region -region "$REGION_GEOM" -f 120 -c mp4 -a "$AUDIO_SINK" -q ultra -o "$OUTPUT_FILE" &
+
+# 4. Small sleep delay ensures pgrep catches the background process on the next hotkey press
+sleep 0.3
