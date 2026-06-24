@@ -3,20 +3,25 @@
 TARGET_DIR="$HOME/Videos/Recordings"
 mkdir -p "$TARGET_DIR"
 
-# 1. Check if the core recorder binary is already active
+# 1. If an active recording is running, stop it cleanly
 if pgrep -x "gpu-screen-recorder" > /dev/null; then
-    # Send the interrupt signal gracefully to flush video indexing to disk
-    pkill -X -SIGINT "gpu-screen-recorder"
+    pkill -SIGINT -x "gpu-screen-recorder"
     notify-send -t 2000 "GPU Recorder" "Recording saved to $TARGET_DIR"
     exit 0
 fi
 
-# 2. No active session found -> launch region selection
+# 2. If slurp is already active, it means the user pressed the hotkey to CANCEL selection
+if pgrep -x "slurp" > /dev/null; then
+    pkill -x "slurp"
+    notify-send -t 1500 "GPU Recorder" "Selection canceled"
+    exit 0
+fi
+
+# 3. No active session or selection -> launch selection tool
 REGION_GEOM=$(slurp)
 
-# Clean exit if user hits Escape or clicks away
+# Clean exit if slurp returns empty (e.g. user pressed Escape)
 if [ -z "$REGION_GEOM" ]; then
-    notify-send -t 1500 "GPU Recorder" "Recording canceled"
     exit 0
 fi
 
@@ -25,8 +30,5 @@ OUTPUT_FILE="$TARGET_DIR/rec_$(date +%Y%m%d_%H%M%S).mp4"
 
 notify-send -t 2000 "GPU Recorder" "Region capture started at 120 FPS..."
 
-# 3. Launch with exact binary name execution mapping
+# 4. Launch encoder engine
 gpu-screen-recorder -w region -region "$REGION_GEOM" -f 120 -c mp4 -a "$AUDIO_SINK" -q ultra -o "$OUTPUT_FILE" &
-
-# 4. Small sleep delay ensures pgrep catches the background process on the next hotkey press
-sleep 0.3
