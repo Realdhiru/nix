@@ -24,7 +24,7 @@
     grim slurp grimblast wf-recorder gpu-screen-recorder gpu-screen-recorder-gtk
 
     # Media & Display
-    mpv mpvpaper playerctl brightnessctl easyeffects cava loupe ffmpeg imagemagick zbar
+    mpv mpvpaper awww playerctl brightnessctl easyeffects cava loupe ffmpeg imagemagick zbar
 
     # Documents & Creative
     kdePackages.okular onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic
@@ -37,5 +37,7 @@
 
     # Desktop Integration
     libnotify polkit_gnome hypridle hyprlock quickshell qt6Packages.qtmultimedia matugen
+
+    powertop 
   ];
 }
