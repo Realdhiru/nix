@@ -67,6 +67,3 @@ if [ "$TEMP_RAW" -gt 1000 ]; then TEMP=$((TEMP_RAW / 1000)); else TEMP=$TEMP_RAW
 
 # --- Output formatted string ---
 echo "$CPU_USAGE|$RAM_PCT|$RAM_GB|$TEMP|$RX_RATE|$TX_RATE"
-
-# FIXED: Removed the trailing syntax error (%) to let the process sleep cleanly
-sleep 2.0

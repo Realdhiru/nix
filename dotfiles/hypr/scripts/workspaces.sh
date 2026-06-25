@@ -4,8 +4,8 @@
 source "$(dirname "${BASH_SOURCE[0]}")/caching.sh"
 qs_ensure_cache "workspaces"
 
-# Structural tracking ceiling definition
-SEQ_END=69
+# Trim down from 69 to a standard layout maximum to minimize jq iteration overhead
+SEQ_END=10
 
 # De-duplicate historical runtime thread pools to prevent process leaking
 for pid in $(pgrep -f "workspaces.sh"); do
@@ -14,20 +14,20 @@ for pid in $(pgrep -f "workspaces.sh"); do
     fi
 done
 
-# Signal binding trap to drop IPC child consumers instantly on thread closure
 cleanup() { pkill -P $$ 2>/dev/null; }
 trap cleanup EXIT SIGTERM SIGINT
 
 print_workspaces() {
-    # Extract structural compositor state streams cleanly
-    spaces=$(timeout 2 hyprctl workspaces -j 2>/dev/null)
-    active=$(timeout 2 hyprctl activeworkspace -j 2>/dev/null | jq '.id')
+    # Atomic retrieval of both workspaces and active workspace layout in one execution pass
+    raw_spaces=$(hyprctl workspaces -j 2>/dev/null)
+    raw_active=$(hyprctl activeworkspace -j 2>/dev/null)
 
-    # Guard clause to abort lookup map generation if IPC payload is corrupted
-    if [ -z "$spaces" ] || [ -z "$active" ]; then return; fi
+    if [ -z "$raw_spaces" ] || [ -z "$raw_active" ]; then return; fi
 
-    # Perform atomic transformation mapping via unbuffered stream mapping
-    echo "$spaces" | jq --unbuffered --argjson a "$active" --arg end "$SEQ_END" -c '
+    active=$(echo "$raw_active" | jq '.id')
+
+    # Fast map transformation directly matching active and occupied indices
+    echo "$raw_spaces" | jq --unbuffered --argjson a "$active" --arg end "$SEQ_END" -c '
         (map( { (.id|tostring): . } ) | add) as $s |
         [range(1; ($end|tonumber) + 1)] | map(
             . as $i |
@@ -42,27 +42,21 @@ print_workspaces() {
     mv "$QS_RUN_WORKSPACES/workspaces.tmp" "$QS_RUN_WORKSPACES/workspaces.json"
 }
 
-# Initial synchronization checkpoint run
+initial synchronization checkpoint run
 print_workspaces
 
-# Fast-path listener stream with microsecond execution dispatch handlers
 handle_event_stream() {
+    # Listen to raw stream without clearing or dropping adjacent thread frames
     socat -u UNIX-CONNECT:"$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock" - 2>/dev/null | while read -r line; do
         case "$line" in
             workspace*|focusedmon*|activewindow*|createwindow*|closewindow*|movewindow*|destroyworkspace*)
                 print_workspaces
-                
-                # Drain event storms instantly within a strict 5ms edge window
-                while read -t 0.005 -r extra_line; do
-                    continue
-                done
                 ;;
         esac
     done
 }
 
-# Persistent execution pipeline container
 while true; do
     handle_event_stream
-    sleep 0.05
+    sleep 0.2
 done
