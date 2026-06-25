@@ -38,6 +38,6 @@
     # Desktop Integration
     libnotify polkit_gnome hypridle hyprlock quickshell qt6Packages.qtmultimedia matugen
 
-    powertop 
+    powertop psmisc hyprsunset
   ];
 }
