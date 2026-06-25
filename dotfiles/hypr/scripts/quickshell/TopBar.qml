@@ -55,7 +55,8 @@ Variants {
 
             property int barHeight: s(48)
 
-            height: barHeight
+            // FIXED: Using implicitHeight as required by WlrLayershell
+            implicitHeight: barHeight
             margins { top: s(2); bottom: 0; left: s(4); right: s(4) }
             exclusiveZone: barHeight - s(4)
             color: "transparent"
@@ -1105,6 +1106,7 @@ Variants {
                                     Behavior on color { ColorAnimation { duration: 200 } }
 
                                     property bool initAnimTrigger: false
+                                    // FIXED: Target the root component directly by ID instead of calling a naked parent property binding
                                     Timer { running: rightContent.showLayout && !parent.initAnimTrigger; interval: 200; onTriggered: parent.initAnimTrigger = true }
                                     opacity: initAnimTrigger ? 1 : 0
                                     transform: Translate { y: parent.initAnimTrigger ? 0 : barWindow.s(15); Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } } }

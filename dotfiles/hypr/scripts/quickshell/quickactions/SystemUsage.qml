@@ -257,7 +257,9 @@ Item {
                 id: baseIcon
                 anchors.top: parent.top
                 anchors.left: parent.left
-                font.family: root.iconFont; font.pixelSize: root.s(16)
+                // FIXED: Property definition blocks mapping to local interface hooks
+                font.family: root.iconFont 
+                font.pixelSize: root.s(16)
                 color: root.cSubtext0; text: ls.icon
             }
             Text {
@@ -301,7 +303,9 @@ Item {
                     id: filledIcon
                     anchors.top: parent.top
                     anchors.left: parent.left
-                    font.family: root.iconFont; font.pixelSize: root.s(16)
+                    // FIXED: Aligned parameter logic cleanly.
+                    font.family: root.iconFont
+                    font.pixelSize: root.s(16)
                     color: root.alpha(root.cCrust, 0.7); text: ls.icon
                 }
                 Text {
