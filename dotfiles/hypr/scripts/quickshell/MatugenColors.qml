@@ -47,19 +47,19 @@ Item {
         }
     }
 
+    // FIXED: Converted exiting while subshell check loops to continuous monitored pipeline stream
     Process {
         id: colorWatcher
         running: true
-        command: ["bash", "-c", "while [ ! -f /home/realdhiru/.cache/matugen/qs_colors.json ]; do sleep 1; done; inotifywait -qq -e close_write,modify /home/realdhiru/.cache/matugen/qs_colors.json"]
-        onExited: {
-            colorReader.running = false;
-            colorReader.running = true;
-            running = false;
-            running = true;
+        command: ["bash", "-c", "mkdir -p ~/.cache/matugen && touch ~/.cache/matugen/qs_colors.json && inotifywait -m -e close_write,modify ~/.cache/matugen/qs_colors.json"]
+        stdout: StdioCollector {
+            onLineRead: {
+                colorReader.running = false;
+                colorReader.running = true;
+            }
         }
     }
     
-    // Trigger initial read on startup
     Component.onCompleted: {
         colorReader.running = true;
     }

@@ -103,9 +103,6 @@ PanelWindow {
         onClicked: switchWidget("hidden", "")
     }
 
-    // =========================================================
-    // --- DAEMON: PRELOADING SYSTEM
-    // =========================================================
     Item {
         id: preloaderContainer
         visible: false
@@ -140,8 +137,6 @@ PanelWindow {
         }
     }
 
-    // =========================================================
-
     property string currentActive: "hidden"
 
     onCurrentActiveChanged: {
@@ -166,16 +161,12 @@ PanelWindow {
 
     property real globalUiScale: 1.0
 
-    // =========================================================
-    // --- DAEMON: NOTIFICATION HANDLING
-    // =========================================================
     ListModel { id: globalNotificationHistory }
     ListModel { id: activePopupsModel }
 
     property var liveNotifs: ({})
     property int _popupCounter: 0
 
-    // --- NEW: Startup Grace Period Flag & Timer ---
     property bool isStartup: true
     Timer {
         interval: 500
@@ -214,7 +205,6 @@ PanelWindow {
             masterWindow._popupCounter++;
             let currentUid = masterWindow._popupCounter;
 
-            // Always store the live object so the history center can interact with it
             masterWindow.liveNotifs[currentUid] = n;
 
             let notifData = {
@@ -227,10 +217,8 @@ PanelWindow {
                 "notif":       n
             };
 
-            // Always silently add to the history list
             globalNotificationHistory.insert(0, notifData);
 
-            // --- CHANGED: Only trigger the visual popup if we are past the startup phase ---
             if (!masterWindow.isStartup) {
                 activePopupsModel.append(notifData);
                 osdPopups.storeNotif(currentUid, n);
@@ -268,23 +256,19 @@ PanelWindow {
         }
     }
 
+    // FIXED: Replaced exiting structural locks with streaming line-read traps
     Process {
         id: settingsWatcher
-        command: ["bash", "-c", "while [ ! -f ~/.config/hypr/settings.json ]; do sleep 1; done; inotifywait -qq -e modify,close_write ~/.config/hypr/settings.json"]
+        command: ["bash", "-c", "mkdir -p ~/.config/hypr && touch ~/.config/hypr/settings.json && inotifywait -m -e modify,close_write ~/.config/hypr/settings.json"]
         running: true
         stdout: StdioCollector {
-            onStreamFinished: {
+            onLineRead: {
                 settingsReader.running = false;
                 settingsReader.running = true;
-                settingsWatcher.running = false;
-                settingsWatcher.running = true;
             }
         }
     }
 
-    // =========================================================
-    // --- LAYOUT CACHE
-    // =========================================================
     property var    _layoutCache:    ({})
     property string _layoutCacheKey: ""
 
@@ -330,9 +314,6 @@ PanelWindow {
         if (isVisible) widgetStack.forceActiveFocus();
     }
 
-    // =========================================================
-    // --- ANIMATED BOUNDING BOX
-    // =========================================================
     Item {
         x: masterWindow.animX
         y: masterWindow.animY
@@ -421,9 +402,6 @@ PanelWindow {
         }
     }
 
-    // =========================================================
-    // --- WIDGET SWITCHING
-    // =========================================================
     function switchWidget(newWidget, arg) {
         delayedClear.stop();
 

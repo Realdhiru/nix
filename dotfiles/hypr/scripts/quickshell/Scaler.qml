@@ -8,10 +8,9 @@ Item {
     visible: false
 
     property real currentWidth: 1920.0
-    property real currentHeight: 1080.0 // <-- ADDED
+    property real currentHeight: 1080.0
     property real uiScale: 1.0
 
-    // FIXED: Now passes both Width and Height to respect aspect ratio
     property real baseScale: LayoutMath.getScale(currentWidth, currentHeight, uiScale)
     
     function s(val) { 
@@ -36,20 +35,15 @@ Item {
         }
     }
 
-    // EVENT-DRIVEN WATCHER
+    // FIXED: Continuous streaming file descriptor synchronization loop drops overhead
     Process {
         id: scaleWatcher
-        // -qq keeps it completely silent. It waits for the file to exist, listens for a write, and then exits.
-        command: ["bash", "-c", "while [ ! -f ~/.config/hypr/settings.json ]; do sleep 1; done; inotifywait -qq -e modify,close_write ~/.config/hypr/settings.json"]
+        command: ["bash", "-c", "mkdir -p ~/.config/hypr && touch ~/.config/hypr/settings.json && inotifywait -m -e modify,close_write ~/.config/hypr/settings.json"]
         running: true
         stdout: StdioCollector {
-            onStreamFinished: {
-                // 1. Read the new data
+            onLineRead: {
                 scaleReader.running = false;
                 scaleReader.running = true;
-                // 2. Restart the watcher for the next event
-                scaleWatcher.running = false;
-                scaleWatcher.running = true;
             }
         }
     }

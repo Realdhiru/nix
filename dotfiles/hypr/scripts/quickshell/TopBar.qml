@@ -101,15 +101,16 @@ Variants {
                 }
             }
 
+            // FIXED: Standardized to explicit long-term monitoring streaming process block
             Process {
                 id: widgetWatcher
-                command: ["bash", "-c", "while [ ! -f " + paths.runDir + "/current_widget ]; do sleep 1; done; inotifywait -qq -e modify,close_write " + paths.runDir + "/current_widget"]
+                command: ["bash", "-c", "mkdir -p " + paths.runDir + " && touch " + paths.runDir + "/current_widget && inotifywait -m -e modify,close_write " + paths.runDir + "/current_widget"]
                 running: true
-                onExited: {
-                    widgetPoller.running = false;
-                    widgetPoller.running = true;
-                    running = false;
-                    running = true;
+                stdout: StdioCollector {
+                    onLineRead: {
+                        widgetPoller.running = false;
+                        widgetPoller.running = true;
+                    }
                 }
             }
             
@@ -126,12 +127,12 @@ Variants {
             Process {
                 id: recWatcher
                 running: true
-                command: ["bash", "-c", "inotifywait -qq -e create,delete,modify,close_write " + paths.getCacheDir("recording") + "/ 2>/dev/null || sleep 2"]
-                onExited: {
-                    recPoller.running = false;
-                    recPoller.running = true;
-                    running = false;
-                    running = true;
+                command: ["bash", "-c", "inotifywait -m -e create,delete,modify,close_write " + paths.getCacheDir("recording") + "/"]
+                stdout: StdioCollector {
+                    onLineRead: {
+                        recPoller.running = false;
+                        recPoller.running = true;
+                    }
                 }
             }     
             Process {
@@ -148,12 +149,12 @@ Variants {
             Process {
                 id: updateWatcher
                 running: true
-                command: ["bash", "-c", "inotifywait -qq -e create,delete,close_write " + paths.getCacheDir("updater") + "/ 2>/dev/null || sleep 5"]
-                onExited: {
-                    updatePoller.running = false;
-                    updatePoller.running = true;
-                    running = false;
-                    running = true;
+                command: ["bash", "-c", "inotifywait -m -e create,delete,close_write " + paths.getCacheDir("updater") + "/"]
+                stdout: StdioCollector {
+                    onLineRead: {
+                        updatePoller.running = false;
+                        updatePoller.running = true;
+                    }
                 }
             }
                         
@@ -182,17 +183,15 @@ Variants {
                 }
             }
 
+            // FIXED: Cleaned streaming line handlers to avoid resource-heavy process fork loops
             Process {
                 id: settingsWatcher
-                command: ["bash", "-c", "while [ ! -f ~/.config/hypr/settings.json ]; do sleep 1; done; inotifywait -qq -e modify,close_write ~/.config/hypr/settings.json"]
+                command: ["bash", "-c", "mkdir -p ~/.config/hypr && touch ~/.config/hypr/settings.json && inotifywait -m -e modify,close_write ~/.config/hypr/settings.json"]
                 running: true
                 stdout: StdioCollector {
-                    onStreamFinished: {
+                    onLineRead: {
                         settingsReader.running = false;
                         settingsReader.running = true;
-                        
-                        settingsWatcher.running = false;
-                        settingsWatcher.running = true;
                     }
                 }
             }
@@ -336,12 +335,12 @@ Variants {
             Process {
                 id: wsWatcher
                 running: true
-                command: ["bash", "-c", "inotifywait -qq -e close_write,modify " + paths.getRunDir("workspaces") + "/workspaces.json"]
-                onExited: {
-                    wsReader.running = false;
-                    wsReader.running = true;
-                    running = false;
-                    running = true;
+                command: ["bash", "-c", "inotifywait -m -e close_write,modify " + paths.getRunDir("workspaces") + "/workspaces.json"]
+                stdout: StdioCollector {
+                    onLineRead: {
+                        wsReader.running = false;
+                        wsReader.running = true;
+                    }
                 }
             }
 
