@@ -3,7 +3,6 @@ import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import QtQuick.VectorImage
 import Quickshell.Wayland
 import Quickshell.Io
 import "../"
@@ -56,7 +55,6 @@ PanelWindow {
     focusable: false
     color: "transparent"
 
-    // FIXED: Swapped deprecated geometry constraints for explicit layer-shell properties
     implicitWidth: popupWindow.layoutConfig.w
     implicitHeight: Math.min(popupList.contentHeight, Screen.height * 0.8)
 
@@ -170,7 +168,8 @@ PanelWindow {
                         easing.type: Easing.OutCubic
                     }
                     SequentialAnimation {
-                        privacyPause: PauseAnimation { duration: 150 }
+                        // FIXED: Stripped the syntax error "privacyPause:" property label string override
+                        PauseAnimation { duration: 150 }
                         NumberAnimation {
                             target: delegateRoot; property: "typeLenBody"
                             from: 0; to: fullBody.length
