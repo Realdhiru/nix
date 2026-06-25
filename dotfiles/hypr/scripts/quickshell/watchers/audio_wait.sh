@@ -10,4 +10,8 @@ trap 'rm -f "$PIPE"; kill $MONITOR_PID 2>/dev/null; exit 0' EXIT INT TERM
 LC_ALL=C pactl subscribe 2>/dev/null > "$PIPE" &
 MONITOR_PID=$!
 
-grep -m 1 -E "sink|server" < "$PIPE" > /dev/null
+# FIXED: Case-insensitive broad event tracking with a 10-second fail-safe timeout
+if ! timeout 10 grep -m 1 -iE "sink|server|change|remove|new" < "$PIPE" > /dev/null; then
+    # Fallback delay prevents QuickShell from rapid-fire thwacking your CPU if pactl hangs
+    sleep 2.0
+fi
