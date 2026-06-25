@@ -1080,6 +1080,7 @@ Variants {
                                 property int pillHeight: barWindow.s(34)
 
                                 Rectangle {
+                                    id: sysBatPill
                                     property bool isHovered: batMouse.containsMouse
                                     color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6) : Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.4)
                                     radius: barWindow.s(10); height: sysLayout.pillHeight;
