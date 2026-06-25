@@ -3,6 +3,7 @@ import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import QtQuick.VectorImage
 import Quickshell.Wayland
 import Quickshell.Io
 import "../"
@@ -55,10 +56,11 @@ PanelWindow {
     focusable: false
     color: "transparent"
 
-    width: popupWindow.layoutConfig.w
-    height: Math.min(popupList.contentHeight, Screen.height * 0.8)
+    // FIXED: Swapped deprecated geometry constraints for explicit layer-shell properties
+    implicitWidth: popupWindow.layoutConfig.w
+    implicitHeight: Math.min(popupList.contentHeight, Screen.height * 0.8)
 
-    Behavior on height {
+    Behavior on implicitHeight {
         NumberAnimation { duration: 400; easing.type: Easing.OutQuint }
     }
 
@@ -105,7 +107,7 @@ PanelWindow {
             add: Transition {
                 ParallelAnimation {
                     NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 400; easing.type: Easing.OutQuint }
-                    NumberAnimation { property: "x"; from: popupWindow.width * 0.4; to: 0; duration: 500; easing.type: Easing.OutQuint }
+                    NumberAnimation { property: "x"; from: popupWindow.implicitWidth * 0.4; to: 0; duration: 500; easing.type: Easing.OutQuint }
                     NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 500; easing.type: Easing.OutQuint }
                 }
             }
@@ -113,7 +115,7 @@ PanelWindow {
             remove: Transition {
                 ParallelAnimation {
                     NumberAnimation { property: "opacity"; to: 0.0; duration: 350; easing.type: Easing.OutQuint }
-                    NumberAnimation { property: "x"; to: popupWindow.width * 0.4; duration: 400; easing.type: Easing.OutQuint }
+                    NumberAnimation { property: "x"; to: popupWindow.implicitWidth * 0.4; duration: 400; easing.type: Easing.OutQuint }
                     NumberAnimation { property: "scale"; to: 0.9; duration: 400; easing.type: Easing.OutQuint }
                 }
             }
@@ -133,11 +135,8 @@ PanelWindow {
                 property int typeLenBody: 0
                 property int popupUid: model.uid
 
-                // Resolved fresh each time via function — no binding across windows
                 property var sourceNotif: popupWindow.getNotif(model.uid)
 
-                // actionArray is built from the JSON we constructed ourselves in Main.qml
-                // so "id" key is correct here — it's our own data, not the QObject
                 property var actionArray: {
                     try {
                         let parsed = model.actionsJson ? JSON.parse(model.actionsJson) : []
@@ -171,7 +170,7 @@ PanelWindow {
                         easing.type: Easing.OutCubic
                     }
                     SequentialAnimation {
-                        PauseAnimation { duration: 150 }
+                        privacyPause: PauseAnimation { duration: 150 }
                         NumberAnimation {
                             target: delegateRoot; property: "typeLenBody"
                             from: 0; to: fullBody.length
@@ -215,7 +214,6 @@ PanelWindow {
                         onTriggered: popupWindow.removeNotif(delegateRoot.popupUid)
                     }
 
-                    // Card body click — invokes "default" action
                     MouseArea {
                         anchors.fill: parent
                         hoverEnabled: true
@@ -312,7 +310,6 @@ PanelWindow {
                             }
                         }
 
-                        // --- INLINE ACTION BUTTONS ---
                         RowLayout {
                             Layout.fillWidth: true
                             Layout.topMargin: delegateRoot.actionArray.length > 0 ? (6 * popupWindow.uiScale) : 0
@@ -359,8 +356,6 @@ PanelWindow {
                                         z: 10
 
                                         onClicked: {
-                                            // modelData.id is from our own JSON (key "id") — correct
-                                            // n.actions[i].identifier is the QObject property — correct
                                             var n = popupWindow.getNotif(delegateRoot.popupUid);
                                             if (n && n.actions) {
                                                 for (var i = 0; i < n.actions.length; i++) {
