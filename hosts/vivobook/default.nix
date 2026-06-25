@@ -12,6 +12,13 @@
     ../../modules/system/memory.nix
   ];
 
+  # --- HARDWARE POWER OPTIMIZATION (PHASE 4) ---
+  # Enforces aggressive sleep states down to storage planes and PCIe buses
+  boot.kernelParams = [
+    "ahci.mobile_lpm_policy=3" 
+    "pcie_aspm=force"          
+  ];
+
   systemd.tmpfiles.rules = [
     "w /sys/class/power_supply/BAT0/charge_control_end_threshold - - - - 80"
   ];
@@ -31,9 +38,18 @@
     LIBVA_DRIVER_NAME = "iHD";
   };
 
+  # --- CRITICAL SYSTEM DEPENDENCIES ---
+  # Installs psmisc (killall) to stop hung wallpaper and QuickShell loops
+  environment.systemPackages = with pkgs; [
+    psmisc
+    curl
+    file
+  ];
+
   programs.zsh.enable = true;
 
-  networking.hostName = "nixos";
+  # FIXED: Aligned hostName string to match your flake build descriptor target (vivobook)
+  networking.hostName = "vivobook";
   networking.networkmanager.enable = true;
 
   time.timeZone = "Asia/Kolkata";
