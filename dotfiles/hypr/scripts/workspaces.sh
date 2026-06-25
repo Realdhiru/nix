@@ -4,10 +4,8 @@
 source "$(dirname "${BASH_SOURCE[0]}")/caching.sh"
 qs_ensure_cache "workspaces"
 
-# Trim down from 69 to a standard layout maximum to minimize jq iteration overhead
-SEQ_END=10
+SEQ_END=69
 
-# De-duplicate historical runtime thread pools to prevent process leaking
 for pid in $(pgrep -f "workspaces.sh"); do
     if [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ]; then
         kill -9 "$pid" 2>/dev/null
@@ -18,7 +16,6 @@ cleanup() { pkill -P $$ 2>/dev/null; }
 trap cleanup EXIT SIGTERM SIGINT
 
 print_workspaces() {
-    # Atomic retrieval of both workspaces and active workspace layout in one execution pass
     raw_spaces=$(hyprctl workspaces -j 2>/dev/null)
     raw_active=$(hyprctl activeworkspace -j 2>/dev/null)
 
@@ -26,7 +23,6 @@ print_workspaces() {
 
     active=$(echo "$raw_active" | jq '.id')
 
-    # Fast map transformation directly matching active and occupied indices
     echo "$raw_spaces" | jq --unbuffered --argjson a "$active" --arg end "$SEQ_END" -c '
         (map( { (.id|tostring): . } ) | add) as $s |
         [range(1; ($end|tonumber) + 1)] | map(
@@ -42,14 +38,29 @@ print_workspaces() {
     mv "$QS_RUN_WORKSPACES/workspaces.tmp" "$QS_RUN_WORKSPACES/workspaces.json"
 }
 
-initial synchronization checkpoint run
 print_workspaces
 
 handle_event_stream() {
-    # Listen to raw stream without clearing or dropping adjacent thread frames
-    socat -u UNIX-CONNECT:"$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock" - 2>/dev/null | while read -r line; do
+    socat -u UNIX-CONNECT:"$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock" - 2>/dev/null | while IFS= read -r line; do
         case "$line" in
-            workspace*|focusedmon*|activewindow*|createwindow*|closewindow*|movewindow*|destroyworkspace*)
+            workspace>>*)
+                active_id="${line#*>>}"
+                # Instant visual update: Override JSON state immediately in microseconds without querying hyprctl
+                jq --arg a "$active_id" -c 'map(
+                    if (.id|tostring) == $a then .state = "active"
+                    elif .state == "active" then .state = "occupied"
+                    else . end
+                )' "$QS_RUN_WORKSPACES/workspaces.json" > "$QS_RUN_WORKSPACES/workspaces.tmp" && mv "$QS_RUN_WORKSPACES/workspaces.tmp" "$QS_RUN_WORKSPACES/workspaces.json"
+                ;;
+            focusedmon>>*)
+                active_id="${line##*,}"
+                jq --arg a "$active_id" -c 'map(
+                    if (.id|tostring) == $a then .state = "active"
+                    elif .state == "active" then .state = "occupied"
+                    else . end
+                )' "$QS_RUN_WORKSPACES/workspaces.json" > "$QS_RUN_WORKSPACES/workspaces.tmp" && mv "$QS_RUN_WORKSPACES/workspaces.tmp" "$QS_RUN_WORKSPACES/workspaces.json"
+                ;;
+            createworkspace*|destroyworkspace*|openwindow*|closewindow*|movewindow*|windowtitle*)
                 print_workspaces
                 ;;
         esac
