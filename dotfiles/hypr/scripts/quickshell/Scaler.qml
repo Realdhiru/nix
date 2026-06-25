@@ -35,15 +35,16 @@ Item {
         }
     }
 
-    // FIXED: Continuous streaming file descriptor synchronization loop drops overhead
     Process {
         id: scaleWatcher
-        command: ["bash", "-c", "mkdir -p ~/.config/hypr && touch ~/.config/hypr/settings.json && inotifywait -m -e modify,close_write ~/.config/hypr/settings.json"]
+        command: ["bash", "-c", "while [ ! -f ~/.config/hypr/settings.json ]; do sleep 1; done; inotifywait -qq -e modify,close_write ~/.config/hypr/settings.json || sleep 2; sleep 0.2"]
         running: true
         stdout: StdioCollector {
-            onLineRead: {
+            onStreamFinished: {
                 scaleReader.running = false;
                 scaleReader.running = true;
+                scaleWatcher.running = false;
+                scaleWatcher.running = true;
             }
         }
     }
