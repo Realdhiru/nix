@@ -336,12 +336,13 @@ Variants {
             Process {
                 id: wsWatcher
                 running: true
-                command: ["bash", "-c", "inotifywait -qq -e close_write,modify " + paths.getRunDir("workspaces") + "/workspaces.json || sleep 2; sleep 0.2"]
-                onExited: {
-                    wsReader.running = false;
-                    wsReader.running = true;
-                    running = false;
-                    running = true;
+                // FIXED: Use a continuous stream instead of restarting the Process object
+                command: ["bash", "-c", "tail -F " + paths.getRunDir("workspaces") + "/workspaces.json 2>/dev/null"]
+                stdout: StdioCollector {
+                    onLineRead: {
+                        wsReader.running = false;
+                        wsReader.running = true;
+                    }
                 }
             }
 
