@@ -55,7 +55,6 @@ Variants {
 
             property int barHeight: s(48)
 
-            // FIXED: Using implicitHeight as required by WlrLayershell
             implicitHeight: barHeight
             margins { top: s(2); bottom: 0; left: s(4); right: s(4) }
             exclusiveZone: barHeight - s(4)
@@ -908,44 +907,44 @@ Variants {
                         }
 
                         RowLayout {
-                        id: centerLayout
-                        anchors.centerIn: parent
-                        spacing: barWindow.s(12)
-
-                        Text {
-                            text: barWindow.timeStr
-                            font.family: "JetBrains Mono"
-                            font.pixelSize: barWindow.s(18)
-                            font.weight: Font.Black
-                            color: mocha.mauve
-                            Layout.alignment: Qt.AlignVCenter
-                        }
-
-                        ColumnLayout {
-                            spacing: 0 
-                            Layout.alignment: Qt.AlignVCenter
+                            id: centerLayout
+                            anchors.centerIn: parent
+                            spacing: barWindow.s(12)
 
                             Text {
-                                text: barWindow.dateStr.split(',')[0] || ""
+                                text: barWindow.timeStr
                                 font.family: "JetBrains Mono"
-                                font.pixelSize: barWindow.s(10)
+                                font.pixelSize: barWindow.s(18)
                                 font.weight: Font.Black
-                                color: mocha.text
-                                horizontalAlignment: Text.AlignLeft 
-                                Layout.fillWidth: true
+                                color: mocha.mauve
+                                Layout.alignment: Qt.AlignVCenter
                             }
 
-                            Text {
-                                text: (barWindow.dateStr.split(',')[1] || "").trim()
-                                font.family: "JetBrains Mono"
-                                font.pixelSize: barWindow.s(10)
-                                font.weight: Font.Bold
-                                color: mocha.subtext0
-                                horizontalAlignment: Text.AlignLeft 
-                                Layout.fillWidth: true
+                            ColumnLayout {
+                                spacing: 0 
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: barWindow.dateStr.split(',')[0] || ""
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: barWindow.s(10)
+                                    font.weight: Font.Black
+                                    color: mocha.text
+                                    horizontalAlignment: Text.AlignLeft 
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: (barWindow.dateStr.split(',')[1] || "").trim()
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: barWindow.s(10)
+                                    font.weight: Font.Bold
+                                    color: mocha.subtext0
+                                    horizontalAlignment: Text.AlignLeft 
+                                    Layout.fillWidth: true
+                                }
                             }
                         }
-                    }
                     }
 
                     Row {
@@ -1107,10 +1106,9 @@ Variants {
                                     Behavior on color { ColorAnimation { duration: 200 } }
 
                                     property bool initAnimTrigger: false
-                                    // FIXED: Target the root component directly by ID instead of calling a naked parent property binding
-                                    Timer { running: rightContent.showLayout && !parent.initAnimTrigger; interval: 200; onTriggered: parent.initAnimTrigger = true }
+                                    Timer { running: rightContent.showLayout && !sysBatPill.initAnimTrigger; interval: 200; onTriggered: sysBatPill.initAnimTrigger = true }
                                     opacity: initAnimTrigger ? 1 : 0
-                                    transform: Translate { y: parent.initAnimTrigger ? 0 : barWindow.s(15); Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } } }
+                                    transform: Translate { y: sysBatPill.initAnimTrigger ? 0 : barWindow.s(15); Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } } }
                                     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
                                     Row { 

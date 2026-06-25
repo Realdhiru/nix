@@ -16,6 +16,12 @@
     '';
   };
 
+  # Hardware Acceleration Flags for Brave
+  home.file.".config/brave-flags.conf".text = ''
+    --ozone-platform-hint=auto
+    --enable-features=AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder
+  '';
+
   xdg.configFile."hypr" = {
     source = ./dotfiles/hypr;
     force = true;
