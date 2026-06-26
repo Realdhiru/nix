@@ -267,6 +267,7 @@ Item {
     // --- DATA FETCHING ROUTING ---
     function requestDataUpdate() {
         if (window.selectedAppClass === "" && getIsoDate(window.activeDate) === getIsoDate(new Date())) {
+            liveFileReader.running = false;
             liveFileReader.running = true;
         } else {
             let cmd = ["python3", window.scriptsDir + "/get_stats.py", getIsoDate(window.activeDate)];
@@ -276,6 +277,7 @@ Item {
             }
             cmd.push("--db-dir");
             cmd.push(paths.getStateDir("focustime"));
+            statsPoller.running = false;
             statsPoller.command = cmd;
             statsPoller.running = true;
         }
