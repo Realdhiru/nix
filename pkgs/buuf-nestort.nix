@@ -6,7 +6,7 @@ stdenvNoCC.mkDerivation {
 
   src = fetchgit {
     url = "https://gitlab.com/beucismis/buuf-nestort.git";
-    rev = "master";
+    rev = "refs/heads/master";
     hash = lib.fakeHash;
   };
 
