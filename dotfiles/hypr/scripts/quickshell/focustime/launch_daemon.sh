@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
-qs_ensure_cache "focustime"
 
-# FIXED: Explicitly export variables so the Python subshell receives them
-export QS_STATE_FOCUSTIME="$QS_STATE_FOCUSTIME"
-export QS_RUN_FOCUSTIME="$QS_RUN_FOCUSTIME"
+# 1. Define the exact paths QML uses
+export QS_STATE_FOCUSTIME="$HOME/.local/state/quickshell/focustime"
+export QS_RUN_FOCUSTIME="/run/user/$(id -u)/quickshell/focustime"
 
+# 2. Ensure directories exist
+mkdir -p "$QS_STATE_FOCUSTIME"
+mkdir -p "$QS_RUN_FOCUSTIME"
+
+# 3. Launch the daemon
 exec python3 "$(dirname "$0")/focus_daemon.py"
