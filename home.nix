@@ -1,5 +1,5 @@
 # ~/nix/home.nix
-{ config, ... }:
+{ config, pkgs, ... }:
 
 {
   imports = [
@@ -7,6 +7,15 @@
     ./modules/home/quickshell.nix
     ./modules/home/spicetify.nix
   ];
+
+  # Global Cursor Configuration
+  home.pointerCursor = {
+    gtk.enable = true;
+    x11.enable = true;
+    name = "Bibata-Modern-Ice";
+    package = pkgs.bibata-cursors;
+    size = 24;
+  };
 
   # Explicitly configure the internal activation option at the user level
   home.activation = {
