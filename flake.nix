@@ -20,11 +20,7 @@
     };
   };
 
-  outputs = inputs@{
-    nixpkgs,
-    home-manager,
-    ...
-  }: {
+  outputs = inputs@{ nixpkgs, home-manager, ... }: {
     nixosConfigurations.vivobook = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
 
@@ -33,6 +29,16 @@
       };
 
       modules = [
+        # --- INJECT CUSTOM PACKAGES VIA OVERLAY ---
+        ({ config, pkgs, ... }: {
+          nixpkgs.overlays = [
+            (final: prev: {
+              buuf-nestort-icon-theme = prev.callPackage ./pkgs/buuf-nestort.nix {};
+            })
+          ];
+        })
+        # ------------------------------------------
+
         ./hosts/vivobook/default.nix
 
         home-manager.nixosModules.home-manager

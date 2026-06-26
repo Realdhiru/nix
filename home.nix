@@ -6,6 +6,7 @@
     ./modules/home/shell.nix
     ./modules/home/quickshell.nix
     ./modules/home/spicetify.nix
+    ./modules/home/theme.nix
   ];
 
   # Global Cursor Configuration
