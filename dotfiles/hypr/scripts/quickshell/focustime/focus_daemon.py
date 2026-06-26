@@ -18,10 +18,14 @@ from collections import defaultdict
 current_app_class = "Desktop"
 current_app_title = "Desktop"
 
-# Use standardized dynamic paths securely
-DB_DIR = os.environ.get("QS_STATE_FOCUSTIME", os.path.expanduser("~/.local/state/quickshell/focustime"))
+# Fully Reproducible NixOS Paths - Bypasses bash environment entirely
+DB_DIR = os.path.expanduser("~/.local/state/quickshell/focustime")
 os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, "focustime.db")
+
+RUN_DIR = "/tmp/quickshell/focustime"
+os.makedirs(RUN_DIR, exist_ok=True)
+STATE_FILE = os.path.join(RUN_DIR, "focustime_state.json")
 
 # Database Migration Fallback
 OLD_DB_DIR = os.path.expanduser("~/.local/share/focustime")
@@ -34,12 +38,6 @@ if not os.path.exists(DB_PATH) and os.path.exists(OLD_DB_BASE):
             shutil.move(old_file, DB_DIR)
     except Exception:
         pass
-
-# Force exact runtime directory alignment matching Quickshell natively
-uid = os.getuid()
-RUN_DIR = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{uid}") + "/quickshell/focustime"
-os.makedirs(RUN_DIR, exist_ok=True)
-STATE_FILE = os.path.join(RUN_DIR, "focustime_state.json")
 
 DESKTOP_CACHE_NAME = {}
 DESKTOP_CACHE_ICON = {}
@@ -379,7 +377,6 @@ class DaemonTracker:
             day_idx = now.weekday()
             if 0 <= hr < 24: d["week_heatmap"][day_idx][hr] += 1
                 
-        # Conditionally write to tmpfs
         if write_to_disk:
             temp_file = STATE_FILE + ".tmp"
             try:
@@ -455,7 +452,6 @@ def main():
         time.sleep(1)
         tick_counter += 1
         if current_app_class and current_app_class not in [""]:
-            # Only dump JSON to memory/disk every 5 seconds
             tracker.fast_tick(current_app_class, current_app_title, write_to_disk=(tick_counter % 5 == 0))
 
 if __name__ == "__main__":

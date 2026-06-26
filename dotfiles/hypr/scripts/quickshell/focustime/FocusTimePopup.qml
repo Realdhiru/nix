@@ -18,6 +18,8 @@ Item {
     property real layoutHeight: 0
     // -----------------------------------------
 
+    Caching { id: paths }
+
     // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler
@@ -113,7 +115,6 @@ Item {
     readonly property bool isTodaySelected: window.selectedDateStr === getIsoDate(new Date())
 
     readonly property string scriptsDir: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/focustime"
-    readonly property string stateFilePath: Quickshell.env("XDG_RUNTIME_DIR") + "/quickshell/focustime/focustime_state.json"
 
     // --- ENHANCED CHOREOGRAPHED STARTUP STATES ---
     property real introMain: 0.0
@@ -204,7 +205,6 @@ Item {
         window.weekAppsData = data.week_apps || [];
         syncWeekAppsModel();
 
-        // Calculate maximum hourly segment and Peak Usage for the week heatmap
         window.weekHeatmapData = data.week_heatmap || [[],[],[],[],[],[],[]];
         let mwh = 1;
         let hourSums = new Array(24).fill(0);
@@ -218,7 +218,6 @@ Item {
         }
         window.maxWeekHour = mwh;
 
-        // Custom Peak Hours Block Calculation (One UI Style)
         let max2HourVal = -1;
         let peakStart = 0;
         for (let h = 0; h < 23; h++) {
@@ -262,11 +261,31 @@ Item {
         window.maxHourlyTotal = currentMaxHour;
     }
 
-    // --- DATA FETCHING ROUTING ---
+    // --- ROCK SOLID DATA FETCHING ROUTING ---
+    readonly property string liveFileUrl: "file:///tmp/quickshell/focustime/focustime_state.json"
+
+    function readLiveFile() {
+        let xhr = new XMLHttpRequest();
+        xhr.open("GET", window.liveFileUrl, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                try {
+                    let raw = xhr.responseText.trim();
+                    if (raw !== "") {
+                        let data = JSON.parse(raw);
+                        window.updateFromData(data);
+                    }
+                } catch(e) {}
+            }
+        }
+        xhr.send();
+    }
+
     function requestDataUpdate() {
-        if (window.selectedAppClass === "" && getIsoDate(window.activeDate) === getIsoDate(new Date())) {
-            liveFileReader.running = false;
-            liveFileReader.running = true;
+        let isToday = getIsoDate(window.activeDate) === getIsoDate(new Date());
+        
+        if (window.selectedAppClass === "" && isToday) {
+            readLiveFile();
         } else {
             let cmd = ["python3", window.scriptsDir + "/get_stats.py", getIsoDate(window.activeDate)];
             if (window.selectedAppClass !== "") {
@@ -276,34 +295,18 @@ Item {
             cmd.push("--db-dir");
             cmd.push(Quickshell.env("HOME") + "/.local/state/quickshell/focustime");
             statsPoller.running = false;
-            statsPoller.command = cmd;
-            statsPoller.running = true;
-        }
-    }
-
-    // --- LIVE FILE READER (For Global Today) ---
-    Process {
-        id: liveFileReader
-        command: ["cat", window.stateFilePath]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let lines = this.text.trim().split('\n');
-                let raw = lines[lines.length - 1];
-                this.text = ""; // Explicitly flush buffer
-                if (!raw || raw === "") return;
-                try {
-                    let data = JSON.parse(raw);
-                    window.updateFromData(data);
-                } catch(e) {}
-            }
+            Qt.callLater(() => {
+                statsPoller.command = cmd;
+                statsPoller.running = true;
+            });
         }
     }
 
     Timer { 
         interval: 1000
-        running: window.isTodaySelected 
+        running: window.selectedAppClass === "" && (getIsoDate(window.activeDate) === getIsoDate(new Date()))
         repeat: true
-        onTriggered: window.requestDataUpdate()
+        onTriggered: readLiveFile()
     }
 
     // --- PYTHON STATS FETCHER (For History & Specific Apps) ---
@@ -313,7 +316,7 @@ Item {
             onStreamFinished: {
                 let lines = this.text.trim().split('\n');
                 let raw = lines[lines.length - 1];
-                this.text = ""; // Explicitly flush buffer
+                this.text = ""; 
                 if (!raw || raw === "") return;
                 try {
                     let data = JSON.parse(raw);
