@@ -2,11 +2,11 @@
 
 stdenvNoCC.mkDerivation {
   pname = "buuf-nestort-icon-theme";
-  version = "48cbf7b8";
+  version = "master";
 
   src = fetchgit {
     url = "https://gitlab.com/beucismis/buuf-nestort.git";
-    rev = "48cbf7b8";
+    rev = "master";
     hash = lib.fakeHash;
   };
 
