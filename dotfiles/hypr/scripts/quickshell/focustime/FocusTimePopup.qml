@@ -128,30 +128,25 @@ Item {
     ParallelAnimation {
         running: true
 
-        // Base window fades, scales slightly
         NumberAnimation { target: window; property: "introMain"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutQuart }
 
-        // Header drops down
         SequentialAnimation {
             PauseAnimation { duration: 100 }
             NumberAnimation { target: window; property: "introHeader"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutBack; easing.overshoot: 1.0 }
         }
 
-        // Stats Row scales and springs up
         SequentialAnimation {
             PauseAnimation { duration: 250 }
             NumberAnimation { target: window; property: "introStats"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
         }
 
-        // Mid Charts slide in from opposite sides
         SequentialAnimation {
             PauseAnimation { duration: 350 }
             NumberAnimation { target: window; property: "introMidLeft"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuart }
         }
         
-        // Universal Bar Fill starts early, runs slow and smooth
         SequentialAnimation {
-            PauseAnimation { duration: 300 } // Starts slightly before the charts finish entering
+            PauseAnimation { duration: 300 }
             NumberAnimation { target: window; property: "introAppBars"; from: 0; to: 1.0; duration: 1300; easing.type: Easing.OutQuart }
         }
         
@@ -160,7 +155,6 @@ Item {
             NumberAnimation { target: window; property: "introMidRight"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuart }
         }
 
-        // Bottom List / Chart sweeps up with internal cascading
         SequentialAnimation {
             PauseAnimation { duration: 550 }
             NumberAnimation { target: window; property: "introBottom"; from: 0; to: 1.0; duration: 1000; easing.type: Easing.OutExpo }
@@ -171,7 +165,6 @@ Item {
         requestDataUpdate();
     }
 
-    // Clean, unified exit animation for when an action is clicked
     ParallelAnimation {
         id: exitAnim
         NumberAnimation { target: window; property: "introMain"; to: 0; duration: 400; easing.type: Easing.InQuart }
@@ -262,30 +255,12 @@ Item {
     }
 
     // --- ROCK SOLID DATA FETCHING ROUTING ---
-    readonly property string liveFileUrl: "file:///tmp/quickshell/focustime/focustime_state.json"
-
-    function readLiveFile() {
-        let xhr = new XMLHttpRequest();
-        xhr.open("GET", window.liveFileUrl, true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                try {
-                    let raw = xhr.responseText.trim();
-                    if (raw !== "") {
-                        let data = JSON.parse(raw);
-                        window.updateFromData(data);
-                    }
-                } catch(e) {}
-            }
-        }
-        xhr.send();
-    }
-
     function requestDataUpdate() {
         let isToday = getIsoDate(window.activeDate) === getIsoDate(new Date());
         
         if (window.selectedAppClass === "" && isToday) {
-            readLiveFile();
+            liveFileReader.running = false;
+            liveFileReader.running = true;
         } else {
             let cmd = ["python3", window.scriptsDir + "/get_stats.py", getIsoDate(window.activeDate)];
             if (window.selectedAppClass !== "") {
@@ -294,11 +269,28 @@ Item {
             }
             cmd.push("--db-dir");
             cmd.push(Quickshell.env("HOME") + "/.local/state/quickshell/focustime");
+            
             statsPoller.running = false;
-            Qt.callLater(() => {
-                statsPoller.command = cmd;
-                statsPoller.running = true;
-            });
+            statsPoller.command = cmd;
+            statsPoller.running = true;
+        }
+    }
+
+    // --- LIVE FILE READER (For Global Today) ---
+    Process {
+        id: liveFileReader
+        command: ["cat", "/tmp/quickshell/focustime/focustime_state.json"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // FIXED: Extracts the newest line without throwing a read-only variable assignment error
+                let lines = this.text.trim().split('\n');
+                let raw = lines[lines.length - 1];
+                if (!raw || raw === "") return;
+                try {
+                    let data = JSON.parse(raw);
+                    window.updateFromData(data);
+                } catch(e) {}
+            }
         }
     }
 
@@ -306,7 +298,10 @@ Item {
         interval: 1000
         running: window.selectedAppClass === "" && (getIsoDate(window.activeDate) === getIsoDate(new Date()))
         repeat: true
-        onTriggered: readLiveFile()
+        onTriggered: {
+            liveFileReader.running = false;
+            liveFileReader.running = true;
+        }
     }
 
     // --- PYTHON STATS FETCHER (For History & Specific Apps) ---
@@ -316,7 +311,6 @@ Item {
             onStreamFinished: {
                 let lines = this.text.trim().split('\n');
                 let raw = lines[lines.length - 1];
-                this.text = ""; 
                 if (!raw || raw === "") return;
                 try {
                     let data = JSON.parse(raw);
