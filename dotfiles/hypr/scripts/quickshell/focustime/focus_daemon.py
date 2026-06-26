@@ -338,7 +338,8 @@ class DaemonTracker:
         self.last_date = target_date
         
     def fast_tick(self, app_class, app_title, write_to_disk=True):
-        now = datetime.now()
+        # FIXED: Enforce local system timezone explicitly to prevent UTC rollover bugs
+        now = datetime.now().astimezone()
         target_date = now.date()
         
         self.buffer.append((target_date.isoformat(), app_class, app_title, now))
