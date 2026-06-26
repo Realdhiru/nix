@@ -11,6 +11,13 @@ import "../"
 Item {
     id: window
 
+    // --- REQUIRED INJECTIONS FROM MAIN.QML ---
+    property var notifModel: null
+    property var liveNotifs: ({})
+    property real layoutWidth: 0
+    property real layoutHeight: 0
+    // -----------------------------------------
+
     Caching { id: paths }
 
     // --- Responsive Scaling Logic ---
