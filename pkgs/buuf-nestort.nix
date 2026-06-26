@@ -1,14 +1,13 @@
-{ stdenvNoCC, fetchFromGitLab, lib }:
+{ stdenvNoCC, fetchgit, lib }:
 
 stdenvNoCC.mkDerivation {
   pname = "buuf-nestort-icon-theme";
   version = "48cbf7b8";
 
-  src = fetchFromGitLab {
-    owner = "beucismis";
-    repo = "buuf-nestort";
+  src = fetchgit {
+    url = "https://gitlab.com/beucismis/buuf-nestort.git";
     rev = "48cbf7b8";
-    hash = lib.fakeHash; # Forces Nix to download and print the real hash
+    hash = lib.fakeHash;
   };
 
   dontBuild = true;
