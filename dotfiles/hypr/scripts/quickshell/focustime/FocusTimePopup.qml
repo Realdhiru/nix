@@ -289,8 +289,10 @@ Item {
         command: ["cat", window.stateFilePath]
         stdout: StdioCollector {
             onStreamFinished: {
-                let raw = this.text.trim();
-                if (raw === "") return;
+                // FIXED: Extract only the newest line to prevent JSON concatenation crashes
+                let lines = this.text.trim().split('\n');
+                let raw = lines[lines.length - 1];
+                if (!raw || raw === "") return;
                 try {
                     let data = JSON.parse(raw);
                     window.updateFromData(data);
@@ -311,8 +313,10 @@ Item {
         id: statsPoller
         stdout: StdioCollector {
             onStreamFinished: {
-                let raw = this.text.trim();
-                if (raw === "") return;
+                // FIXED: Extract only the newest line
+                let lines = this.text.trim().split('\n');
+                let raw = lines[lines.length - 1];
+                if (!raw || raw === "") return;
                 try {
                     let data = JSON.parse(raw);
                     window.updateFromData(data);
