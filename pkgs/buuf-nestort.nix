@@ -8,8 +8,7 @@ stdenvNoCC.mkDerivation {
     owner = "beucismis";
     repo = "buuf-nestort";
     rev = "48cbf7b8";
-    # Run: nix-prefetch-url --unpack https://gitlab.com/beucismis/buuf-nestort/-/archive/48cbf7b8/buuf-nestort-48cbf7b8.tar.gz
-    sha256 = ""; # Paste the output here
+    hash = lib.fakeHash; # Forces Nix to download and print the real hash
   };
 
   dontBuild = true;
