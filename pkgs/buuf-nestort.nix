@@ -15,6 +15,9 @@ stdenvNoCC.mkDerivation {
   installPhase = ''
     mkdir -p $out/share/icons/buuf-nestort
     cp -r * $out/share/icons/buuf-nestort/
+
+    # Strip out broken symlinks from the upstream repository
+    find $out -xtype l -delete
   '';
 
   meta = with lib; {
