@@ -18,8 +18,6 @@ Item {
     property real layoutHeight: 0
     // -----------------------------------------
 
-    Caching { id: paths }
-
     // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler
@@ -115,7 +113,7 @@ Item {
     readonly property bool isTodaySelected: window.selectedDateStr === getIsoDate(new Date())
 
     readonly property string scriptsDir: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/focustime"
-    readonly property string stateFilePath: paths.getRunDir("focustime") + "/focustime_state.json"
+    readonly property string stateFilePath: Quickshell.env("XDG_RUNTIME_DIR") + "/quickshell/focustime/focustime_state.json"
 
     // --- ENHANCED CHOREOGRAPHED STARTUP STATES ---
     property real introMain: 0.0
@@ -276,7 +274,7 @@ Item {
                 cmd.push(window.selectedAppClass);
             }
             cmd.push("--db-dir");
-            cmd.push(paths.getStateDir("focustime"));
+            cmd.push(Quickshell.env("HOME") + "/.local/state/quickshell/focustime");
             statsPoller.running = false;
             statsPoller.command = cmd;
             statsPoller.running = true;
@@ -289,9 +287,9 @@ Item {
         command: ["cat", window.stateFilePath]
         stdout: StdioCollector {
             onStreamFinished: {
-                // FIXED: Extract only the newest line to prevent JSON concatenation crashes
                 let lines = this.text.trim().split('\n');
                 let raw = lines[lines.length - 1];
+                this.text = ""; // Explicitly flush buffer
                 if (!raw || raw === "") return;
                 try {
                     let data = JSON.parse(raw);
@@ -313,9 +311,9 @@ Item {
         id: statsPoller
         stdout: StdioCollector {
             onStreamFinished: {
-                // FIXED: Extract only the newest line
                 let lines = this.text.trim().split('\n');
                 let raw = lines[lines.length - 1];
+                this.text = ""; // Explicitly flush buffer
                 if (!raw || raw === "") return;
                 try {
                     let data = JSON.parse(raw);

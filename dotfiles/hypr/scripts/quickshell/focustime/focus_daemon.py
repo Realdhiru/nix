@@ -35,7 +35,9 @@ if not os.path.exists(DB_PATH) and os.path.exists(OLD_DB_BASE):
     except Exception:
         pass
 
-RUN_DIR = os.environ.get("QS_RUN_FOCUSTIME", "/tmp/quickshell/focustime")
+# Force exact runtime directory alignment matching Quickshell natively
+uid = os.getuid()
+RUN_DIR = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{uid}") + "/quickshell/focustime"
 os.makedirs(RUN_DIR, exist_ok=True)
 STATE_FILE = os.path.join(RUN_DIR, "focustime_state.json")
 
@@ -152,7 +154,6 @@ def init_db():
 
 def get_active_window_hyprctl():
     try:
-        # Added timeout=2 to prevent the daemon from silently dying if hyprctl hangs
         output = subprocess.check_output(['hyprctl', 'activewindow', '-j'], text=True, timeout=2)
         if output.strip() == "{}": return "Desktop", "Desktop"
         data = json.loads(output)
@@ -205,7 +206,6 @@ def listen_hyprland_ipc():
                             current_app_class, current_app_title = cls, clean_title
         except Exception:
             time.sleep(2) 
-
 
 class DaemonTracker:
     def __init__(self):
@@ -338,7 +338,6 @@ class DaemonTracker:
         self.last_date = target_date
         
     def fast_tick(self, app_class, app_title, write_to_disk=True):
-        # FIXED: Enforce local system timezone explicitly to prevent UTC rollover bugs
         now = datetime.now().astimezone()
         target_date = now.date()
         
