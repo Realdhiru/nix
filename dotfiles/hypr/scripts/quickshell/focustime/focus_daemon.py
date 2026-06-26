@@ -152,16 +152,17 @@ def init_db():
 
 def get_active_window_hyprctl():
     try:
-        output = subprocess.check_output(['hyprctl', 'activewindow', '-j'], text=True)
+        # Added timeout=2 to prevent the daemon from silently dying if hyprctl hangs
+        output = subprocess.check_output(['hyprctl', 'activewindow', '-j'], text=True, timeout=2)
         if output.strip() == "{}": return "Desktop", "Desktop"
         data = json.loads(output)
-        
+
         app_cls = data.get('initialClass') or data.get('class') or ''
         raw_title = data.get('initialTitle') or data.get('title') or ''
 
         if "quickshell" in app_cls.lower() or "qs-master" in raw_title.lower() or "qs-master" in app_cls.lower():
             return "Quickshell", "Quickshell"
-            
+
         app_cls = app_cls if app_cls else "Unknown"
         raw_title = raw_title if raw_title else app_cls
         clean_name = resolve_app_name(app_cls, raw_title)
