@@ -1138,14 +1138,14 @@ Variants {
                                 SequentialAnimation on opacity {
                                     running: barWindow.isRecording && !recButton.isHovered
                                     loops: Animation.Infinite
-                                    numberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
-                                    numberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
                                 }
                                 SequentialAnimation on scale {
                                     running: barWindow.isRecording && !recButton.isHovered
                                     loops: Animation.Infinite
-                                    numberAnimation { to: 1.15; duration: 600; easing.type: Easing.InOutSine }
-                                    numberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.15; duration: 600; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
                                 }
                             }
                             
