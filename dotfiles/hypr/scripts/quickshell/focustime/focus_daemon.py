@@ -18,14 +18,10 @@ from collections import defaultdict
 current_app_class = "Desktop"
 current_app_title = "Desktop"
 
-# Fully Reproducible NixOS Paths - Bypasses bash environment entirely
-DB_DIR = os.path.expanduser("~/.local/state/quickshell/focustime")
+# Use standardized dynamic paths securely
+DB_DIR = os.environ.get("QS_STATE_FOCUSTIME", os.path.expanduser("~/.local/state/quickshell/focustime"))
 os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, "focustime.db")
-
-RUN_DIR = "/tmp/quickshell/focustime"
-os.makedirs(RUN_DIR, exist_ok=True)
-STATE_FILE = os.path.join(RUN_DIR, "focustime_state.json")
 
 # Database Migration Fallback
 OLD_DB_DIR = os.path.expanduser("~/.local/share/focustime")
@@ -38,6 +34,10 @@ if not os.path.exists(DB_PATH) and os.path.exists(OLD_DB_BASE):
             shutil.move(old_file, DB_DIR)
     except Exception:
         pass
+
+RUN_DIR = os.environ.get("QS_RUN_FOCUSTIME", "/tmp/quickshell/focustime")
+os.makedirs(RUN_DIR, exist_ok=True)
+STATE_FILE = os.path.join(RUN_DIR, "focustime_state.json")
 
 DESKTOP_CACHE_NAME = {}
 DESKTOP_CACHE_ICON = {}
@@ -152,16 +152,16 @@ def init_db():
 
 def get_active_window_hyprctl():
     try:
-        output = subprocess.check_output(['hyprctl', 'activewindow', '-j'], text=True, timeout=2)
+        output = subprocess.check_output(['hyprctl', 'activewindow', '-j'], text=True)
         if output.strip() == "{}": return "Desktop", "Desktop"
         data = json.loads(output)
-
+        
         app_cls = data.get('initialClass') or data.get('class') or ''
         raw_title = data.get('initialTitle') or data.get('title') or ''
 
         if "quickshell" in app_cls.lower() or "qs-master" in raw_title.lower() or "qs-master" in app_cls.lower():
             return "Quickshell", "Quickshell"
-
+            
         app_cls = app_cls if app_cls else "Unknown"
         raw_title = raw_title if raw_title else app_cls
         clean_name = resolve_app_name(app_cls, raw_title)
@@ -204,6 +204,7 @@ def listen_hyprland_ipc():
                             current_app_class, current_app_title = cls, clean_title
         except Exception:
             time.sleep(2) 
+
 
 class DaemonTracker:
     def __init__(self):
@@ -336,7 +337,7 @@ class DaemonTracker:
         self.last_date = target_date
         
     def fast_tick(self, app_class, app_title, write_to_disk=True):
-        now = datetime.now().astimezone()
+        now = datetime.now()
         target_date = now.date()
         
         self.buffer.append((target_date.isoformat(), app_class, app_title, now))
@@ -377,6 +378,7 @@ class DaemonTracker:
             day_idx = now.weekday()
             if 0 <= hr < 24: d["week_heatmap"][day_idx][hr] += 1
                 
+        # Conditionally write to tmpfs
         if write_to_disk:
             temp_file = STATE_FILE + ".tmp"
             try:
@@ -452,6 +454,7 @@ def main():
         time.sleep(1)
         tick_counter += 1
         if current_app_class and current_app_class not in [""]:
+            # Only dump JSON to memory/disk every 5 seconds
             tracker.fast_tick(current_app_class, current_app_title, write_to_disk=(tick_counter % 5 == 0))
 
 if __name__ == "__main__":

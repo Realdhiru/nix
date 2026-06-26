@@ -11,13 +11,6 @@ import "../"
 Item {
     id: window
 
-    // --- REQUIRED INJECTIONS FROM MAIN.QML ---
-    property var notifModel: null
-    property var liveNotifs: ({})
-    property real layoutWidth: 0
-    property real layoutHeight: 0
-    // -----------------------------------------
-
     Caching { id: paths }
 
     // --- Responsive Scaling Logic ---
@@ -115,6 +108,7 @@ Item {
     readonly property bool isTodaySelected: window.selectedDateStr === getIsoDate(new Date())
 
     readonly property string scriptsDir: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/focustime"
+    readonly property string stateFilePath: paths.getRunDir("focustime") + "/focustime_state.json"
 
     // --- ENHANCED CHOREOGRAPHED STARTUP STATES ---
     property real introMain: 0.0
@@ -128,25 +122,30 @@ Item {
     ParallelAnimation {
         running: true
 
+        // Base window fades, scales slightly
         NumberAnimation { target: window; property: "introMain"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutQuart }
 
+        // Header drops down
         SequentialAnimation {
             PauseAnimation { duration: 100 }
             NumberAnimation { target: window; property: "introHeader"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutBack; easing.overshoot: 1.0 }
         }
 
+        // Stats Row scales and springs up
         SequentialAnimation {
             PauseAnimation { duration: 250 }
             NumberAnimation { target: window; property: "introStats"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
         }
 
+        // Mid Charts slide in from opposite sides
         SequentialAnimation {
             PauseAnimation { duration: 350 }
             NumberAnimation { target: window; property: "introMidLeft"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuart }
         }
         
+        // Universal Bar Fill starts early, runs slow and smooth
         SequentialAnimation {
-            PauseAnimation { duration: 300 }
+            PauseAnimation { duration: 300 } // Starts slightly before the charts finish entering
             NumberAnimation { target: window; property: "introAppBars"; from: 0; to: 1.0; duration: 1300; easing.type: Easing.OutQuart }
         }
         
@@ -155,6 +154,7 @@ Item {
             NumberAnimation { target: window; property: "introMidRight"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuart }
         }
 
+        // Bottom List / Chart sweeps up with internal cascading
         SequentialAnimation {
             PauseAnimation { duration: 550 }
             NumberAnimation { target: window; property: "introBottom"; from: 0; to: 1.0; duration: 1000; easing.type: Easing.OutExpo }
@@ -165,6 +165,7 @@ Item {
         requestDataUpdate();
     }
 
+    // Clean, unified exit animation for when an action is clicked
     ParallelAnimation {
         id: exitAnim
         NumberAnimation { target: window; property: "introMain"; to: 0; duration: 400; easing.type: Easing.InQuart }
@@ -198,6 +199,7 @@ Item {
         window.weekAppsData = data.week_apps || [];
         syncWeekAppsModel();
 
+        // Calculate maximum hourly segment and Peak Usage for the week heatmap
         window.weekHeatmapData = data.week_heatmap || [[],[],[],[],[],[],[]];
         let mwh = 1;
         let hourSums = new Array(24).fill(0);
@@ -211,6 +213,7 @@ Item {
         }
         window.maxWeekHour = mwh;
 
+        // Custom Peak Hours Block Calculation (One UI Style)
         let max2HourVal = -1;
         let peakStart = 0;
         for (let h = 0; h < 23; h++) {
@@ -254,12 +257,9 @@ Item {
         window.maxHourlyTotal = currentMaxHour;
     }
 
-    // --- ROCK SOLID DATA FETCHING ROUTING ---
+    // --- DATA FETCHING ROUTING ---
     function requestDataUpdate() {
-        let isToday = getIsoDate(window.activeDate) === getIsoDate(new Date());
-        
-        if (window.selectedAppClass === "" && isToday) {
-            liveFileReader.running = false;
+        if (window.selectedAppClass === "" && getIsoDate(window.activeDate) === getIsoDate(new Date())) {
             liveFileReader.running = true;
         } else {
             let cmd = ["python3", window.scriptsDir + "/get_stats.py", getIsoDate(window.activeDate)];
@@ -268,9 +268,7 @@ Item {
                 cmd.push(window.selectedAppClass);
             }
             cmd.push("--db-dir");
-            cmd.push(Quickshell.env("HOME") + "/.local/state/quickshell/focustime");
-            
-            statsPoller.running = false;
+            cmd.push(paths.getStateDir("focustime"));
             statsPoller.command = cmd;
             statsPoller.running = true;
         }
@@ -279,13 +277,11 @@ Item {
     // --- LIVE FILE READER (For Global Today) ---
     Process {
         id: liveFileReader
-        command: ["cat", "/tmp/quickshell/focustime/focustime_state.json"]
+        command: ["cat", window.stateFilePath]
         stdout: StdioCollector {
             onStreamFinished: {
-                // FIXED: Extracts the newest line without throwing a read-only variable assignment error
-                let lines = this.text.trim().split('\n');
-                let raw = lines[lines.length - 1];
-                if (!raw || raw === "") return;
+                let raw = this.text.trim();
+                if (raw === "") return;
                 try {
                     let data = JSON.parse(raw);
                     window.updateFromData(data);
@@ -296,12 +292,9 @@ Item {
 
     Timer { 
         interval: 1000
-        running: window.selectedAppClass === "" && (getIsoDate(window.activeDate) === getIsoDate(new Date()))
+        running: window.isTodaySelected 
         repeat: true
-        onTriggered: {
-            liveFileReader.running = false;
-            liveFileReader.running = true;
-        }
+        onTriggered: window.requestDataUpdate()
     }
 
     // --- PYTHON STATS FETCHER (For History & Specific Apps) ---
@@ -309,9 +302,8 @@ Item {
         id: statsPoller
         stdout: StdioCollector {
             onStreamFinished: {
-                let lines = this.text.trim().split('\n');
-                let raw = lines[lines.length - 1];
-                if (!raw || raw === "") return;
+                let raw = this.text.trim();
+                if (raw === "") return;
                 try {
                     let data = JSON.parse(raw);
                     window.updateFromData(data);
