@@ -171,15 +171,12 @@ Variants {
             property string displayTitle: ""
             property string displayTime: ""
             property string displayArtUrl: ""
-            
-            property string artCacheBuster: ""
 
             onMusicDataChanged: {
                 if (musicData && musicData.status !== "Stopped" && musicData.title !== "") {
                     displayTitle = musicData.title;
                     displayTime = musicData.timeStr;
                     displayArtUrl = musicData.artUrl;
-                    artCacheBuster = "?t=" + Date.now();
                 }
             }
 
@@ -675,10 +672,10 @@ Variants {
                                             
                                             Image { 
                                                 anchors.fill: parent
-                                                source: barWindow.displayArtUrl ? (barWindow.displayArtUrl + barWindow.artCacheBuster) : ""
+                                                source: barWindow.displayArtUrl ? barWindow.displayArtUrl : ""
                                                 fillMode: Image.PreserveAspectCrop 
                                                 asynchronous: true
-                                                cache: true
+                                                cache: false
                                                 sourceSize.width: barWindow.s(32)
                                                 sourceSize.height: barWindow.s(32)
                                                 
