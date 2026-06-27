@@ -20,7 +20,7 @@ next_day_cache_file="${cache_dir}/next_day_precache.json"
 # SECRETS MANAGEMENT (NIXOS SAFE)
 # Read directly from the gitignored JSON file in your home directory
 # -----------------------------------------------------------------------------
-SECRET_FILE="$HOME/.config/openweather.json"
+SECRET_FILE="$HOME/nix/dotfiles/secrets/openweather.json"
 
 if [ -f "$SECRET_FILE" ]; then
     KEY=$(jq -r '.api_key // empty' "$SECRET_FILE")
