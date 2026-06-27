@@ -33,7 +33,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/caching.sh"
 qs_ensure_cache "workspaces"
 qs_ensure_cache "network"
 qs_ensure_cache "wallpaper_picker"
-qs_ensure_cache "music" 
+qs_ensure_cache "music"
 
 BT_PID_FILE="$QS_RUN_DIR/bt_scan_pid"
 BT_SCAN_LOG="$QS_LOG_DIR/bt_scan.log"
@@ -58,10 +58,10 @@ MANIFEST="$THUMB_DIR/.manifest"
 if ! pgrep -f "quickshell.*Shell.qml" >/dev/null; then
     # 1. Prepare volatile IPC named pipe infrastructure matching your cava config
     CAVA_FIFO_PATH="/run/user/1000/quickshell/runtime/music/qml_cava.fifo"
-    
+
     # Ensure the parent directory is fully constructed before making the pipe
     mkdir -p "$(dirname "$CAVA_FIFO_PATH")"
-    
+
     if [ ! -p "$CAVA_FIFO_PATH" ]; then
         rm -f "$CAVA_FIFO_PATH"
         mkfifo "$CAVA_FIFO_PATH"
