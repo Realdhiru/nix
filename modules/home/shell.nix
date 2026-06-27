@@ -54,8 +54,11 @@
       ff() {
         fastfetch
       }
-
     '';
+
+    shellAliases = {
+      opencode = "npx --yes opencode-ai";
+    };
   };
 
   programs.starship.enable = true;

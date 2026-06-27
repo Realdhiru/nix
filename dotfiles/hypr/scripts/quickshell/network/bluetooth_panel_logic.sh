@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # --- CONFIGURATION ---
-STRICT_SPAM_FILTER=true
+STRICT_SPAM_FILTER=false
 # ---------------------
 
 SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
