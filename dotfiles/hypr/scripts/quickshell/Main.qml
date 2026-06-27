@@ -123,7 +123,6 @@ PanelWindow {
     }
 
     Component.onCompleted: {
-        Qt.callLater(() => preloadWidget("settings"));
         preloadStaggerTimer.start();
     }
 
@@ -181,7 +180,7 @@ PanelWindow {
                 break;
             }
         }
-    } 
+    }
 
     NotificationServer {
         id: globalNotificationServer
