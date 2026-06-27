@@ -49,6 +49,7 @@ Item {
             
             // Re-center horizontally to keep the popup perfectly in the middle when scaling changes
             let newX = Math.floor((Screen.width / 2) - (window.targetMasterWidth / 2));
+            masterWindow.targetX = newX;
             masterWindow.animX = newX;
         }
     }
@@ -377,14 +378,20 @@ Item {
     property real centerOffset: window.scheduleModuleExists ? Math.round(-100 * window.sf) : 0
     Behavior on centerOffset { NumberAnimation { duration: 600; easing.type: Easing.OutQuart } }
 
-    // FORCE DISABLED TO SAVE RAM AND PREVENT UI ERRORS
+    // Check if the schedule manager script actually exists before doing anything
     Process {
         id: schedulePathChecker
-        command: ["bash", "-c", "echo 0"] 
+        command: ["bash", "-c", "[ -f '" + window.scriptsDir + "/schedule/schedule_manager.sh' ] && echo 1 || echo 0"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
-                window.scheduleModuleExists = false;
+                if (this.text.trim() === "1") {
+                    window.scheduleModuleExists = true;
+                    schedulePoller.running = true; // Safe to start polling
+                } else {
+                    window.scheduleModuleExists = false;
+                    // Shrinking is now automatically handled by the onTargetMasterHeightChanged watcher
+                }
             }
         }
     }
@@ -541,7 +548,6 @@ Item {
 
             // Big Parallax Weather Icon (Tied to Weather Transition)
             Text {
-                id: heroIcon
                 anchors.centerIn: parent
                 anchors.verticalCenterOffset: window.centerOffset
                 text: {
@@ -565,8 +571,8 @@ Item {
                 }
                 
                 transform: [
-                    Translate { y: heroIcon.drift }, 
-                    Translate { x: window.weatherContentOffset * 2 } 
+                    Translate { y: parent.drift },
+                    Translate { x: window.weatherContentOffset * 2 } // Exaggerated shift for background depth
                 ]
             }
 
@@ -628,11 +634,13 @@ Item {
                     Rotation { axis { x: 0; y: 0; z: 1 } angle: centralHub.rollBreath }
                 ]
 
+                // OPTIMIZATION: Moved scale property out of the onPaint function to prevent redrawing every frame.
+                // It now draws once, and scales using the GPU.
                 Canvas {
                     id: orbitCanvas
                     z: -10
-                    x: Math.round(-400 * window.sf)   
-                    y: Math.round(-200 * window.sf)   
+                    x: Math.round(-400 * window.sf)   // Widened to prevent clipping when scaled
+                    y: Math.round(-200 * window.sf)   // Heightened to prevent clipping when scaled
                     width: Math.round(800 * window.sf)
                     height: Math.round(400 * window.sf)
                     opacity: 0.25
@@ -703,11 +711,12 @@ Item {
                     }
                 }
 
-                // TRUE 3D ORBITAL HOURLY FORECAST 
+                // TRUE 3D ORBITAL HOURLY FORECAST (Tied to Spin Transition)
                 Item {
                     anchors.fill: parent
                     opacity: window.weatherContentOpacity
                     
+                    // Added Scale property to give a z-depth shrink effect when spinning
                     scale: window.transitionScale 
                     transform: Translate { x: window.weatherContentOffset * 1.5 }
 
@@ -730,6 +739,7 @@ Item {
                             property real orbitOffset: isToday ? 0 : (window.globalOrbitAngle * (180 / Math.PI) * -1.5)
                             property real osc: isToday ? (Math.sin(window.globalOrbitAngle * 10 + index) * 5) : 0 
                             
+                            // Integrated window.transitionSpin directly into the final angle calculation
                             property real rad: (targetAngleDeg + orbitOffset + osc + window.transitionSpin) * (Math.PI / 180)
 
                             x: Math.cos(rad) * rx - width/2
@@ -1168,6 +1178,353 @@ Item {
                                 }
                                 
                                 MouseArea { id: gaugeMa; anchors.fill: parent; hoverEnabled: true }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // =======================================================
+            // BOTTOM SECTION: FRAMELESS FLUID DATA STREAM (SCHEDULE)
+            // =======================================================
+            Item {
+                id: bottomSection
+                
+                // CONDITIONAL RENDERING BINDING
+                visible: window.scheduleModuleExists
+                
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: Math.round(240 * window.sf)
+                z: 20 
+
+                opacity: introSchedule
+                transform: Translate { y: Math.round(50 * window.sf) * (1.0 - introSchedule) }
+
+                Rectangle {
+                    anchors.fill: parent
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: "transparent" }
+                        GradientStop { position: 1.0; color: Qt.alpha(window.crust, 0.6) }
+                    }
+                }
+
+                Rectangle { anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right; height: 1; color: Qt.alpha(window.surface1, 0.5) }
+
+                // OPTIMIZATION: Separated the massive continuous Canvas path-drawing loop into three pre-rendered hardware-accelerated static layers.
+                Item {
+                    anchors.fill: parent
+                    z: -1
+                    opacity: 0.15
+                    clip: true
+
+                    // Wave 1 - Mauve
+                    Canvas {
+                        id: wave1
+                        property real wLen: Math.round(100 * window.sf) * 2 * Math.PI
+                        width: parent.width + wLen
+                        height: parent.height
+                        
+                        NumberAnimation on x { from: 0; to: -wave1.wLen; duration: 4000; loops: Animation.Infinite; running: window.scheduleModuleExists }
+                        
+                        onWidthChanged: requestPaint()
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            ctx.clearRect(0, 0, width, height);
+                            var cy = height / 2;
+                            ctx.beginPath();
+                            ctx.moveTo(0, cy);
+                            for(var i = 0; i <= width + Math.round(20 * window.sf); i += Math.round(10 * window.sf)) {
+                                ctx.lineTo(i, cy + Math.sin(i/Math.round(100 * window.sf)) * Math.round(30 * window.sf));
+                            }
+                            ctx.strokeStyle = window.mauve;
+                            ctx.lineWidth = Math.round(2 * window.sf);
+                            ctx.stroke();
+                        }
+                    }
+
+                    // Wave 2 - Sapphire
+                    Canvas {
+                        id: wave2
+                        property real wLen: Math.round(120 * window.sf) * 2 * Math.PI
+                        width: parent.width + wLen
+                        height: parent.height
+                        
+                        NumberAnimation on x { from: -wave2.wLen; to: 0; duration: 5500; loops: Animation.Infinite; running: window.scheduleModuleExists }
+                        
+                        onWidthChanged: requestPaint()
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            ctx.clearRect(0, 0, width, height);
+                            var cy = height / 2;
+                            ctx.beginPath();
+                            ctx.moveTo(0, cy);
+                            for(var i = 0; i <= width + Math.round(20 * window.sf); i += Math.round(10 * window.sf)) {
+                                ctx.lineTo(i, cy + Math.sin(i/Math.round(120 * window.sf)) * Math.round(40 * window.sf));
+                            }
+                            ctx.strokeStyle = window.sapphire;
+                            ctx.lineWidth = Math.round(2 * window.sf);
+                            ctx.stroke();
+                        }
+                    }
+
+                    // Wave 3 - Peach
+                    Canvas {
+                        id: wave3
+                        property real wLen: Math.round(80 * window.sf) * 2 * Math.PI
+                        width: parent.width + wLen
+                        height: parent.height
+                        
+                        NumberAnimation on x { from: 0; to: -wave3.wLen; duration: 7000; loops: Animation.Infinite; running: window.scheduleModuleExists }
+                        
+                        onWidthChanged: requestPaint()
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            ctx.clearRect(0, 0, width, height);
+                            var cy = height / 2;
+                            ctx.beginPath();
+                            ctx.moveTo(0, cy);
+                            for(var i = 0; i <= width + Math.round(20 * window.sf); i += Math.round(10 * window.sf)) {
+                                ctx.lineTo(i, cy + Math.sin(i/Math.round(80 * window.sf)) * Math.round(20 * window.sf));
+                            }
+                            ctx.strokeStyle = window.peach;
+                            ctx.lineWidth = Math.round(2 * window.sf);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: Math.round(25 * window.sf)
+                    spacing: Math.round(15 * window.sf)
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Math.round(15 * window.sf)
+                        
+                        Rectangle {
+                            Layout.preferredWidth: Math.round(40 * window.sf); Layout.preferredHeight: Math.round(40 * window.sf); radius: Math.round(20 * window.sf); color: window.surface0
+                            Text { anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(18 * window.sf); color: window.textAccent }
+                        }
+                        
+                        Text { 
+                            Layout.fillWidth: true // FIX: Ensures text shrinks/elides instead of expanding layout infinitely
+                            text: window.scheduleData ? window.scheduleData.header : "Loading Schedule..."
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: Math.round(16 * window.sf)
+                            color: window.overlay0
+                            elide: Text.ElideRight
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+                        
+                        Rectangle {
+                            Layout.preferredWidth: Math.round(120 * window.sf); Layout.preferredHeight: Math.round(36 * window.sf); radius: Math.round(10 * window.sf)
+                            color: schLinkMa.containsMouse ? window.mauve : Qt.alpha(window.surface1, 0.5)
+                            border.color: window.mauve; border.width: 1
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: Math.round(6 * window.sf)
+                                Text { text: "Open Web"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: Math.round(14 * window.sf); color: schLinkMa.containsMouse ? window.base : window.text }
+                                Text { text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(14 * window.sf); color: schLinkMa.containsMouse ? window.base : window.text }
+                            }
+                            
+                            MouseArea {
+                                id: schLinkMa; anchors.fill: parent; hoverEnabled: true
+                                onClicked: if(window.scheduleData && window.scheduleData.link) Quickshell.execDetached(["xdg-open", window.scheduleData.link])
+                            }
+                        }
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        Text {
+                            text: "Data stream offline. No scheduled events."
+                            font.family: "JetBrains Mono"
+                            font.italic: true
+                            font.pixelSize: Math.round(14 * window.sf)
+                            color: window.overlay0
+                            visible: window.scheduleData && window.scheduleData.lessons.length === 0
+                            anchors.centerIn: parent
+                        }
+
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            height: Math.round(2 * window.sf)
+                            color: Qt.alpha(window.surface1, 0.4)
+                            visible: window.scheduleData && window.scheduleData.lessons.length > 0
+                        }
+
+                        ScrollView {
+                            id: schedScroll
+                            anchors.fill: parent
+                            clip: true
+                            ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+                            ScrollBar.horizontal.policy: ScrollBar.AsNeeded
+                            visible: window.scheduleData && window.scheduleData.lessons.length > 0
+                            contentWidth: scheduleRow.width
+                            contentHeight: parent.height
+
+                            Row {
+                                id: scheduleRow
+                                height: parent.height
+                                spacing: 0
+                                
+                                // Divide the actual rendered width of the scroll area by the 430 minutes in a standard school day 
+                                // to get the dynamic Pixels Per Minute ratio that stretches perfectly across the entire space.
+                                property real ppm: schedScroll.width / 430.0
+
+                                Repeater {
+                                    model: window.scheduleData ? window.scheduleData.lessons : []
+
+                                    delegate: Item {
+                                        property bool isClass: modelData.type === "class"
+                                        
+                                        // Calculate the exact duration in minutes directly from the start and end epochs 
+                                        property real durationMinutes: ((modelData.end || 0) - (modelData.start || 0)) / 60.0
+                                        
+                                        // Multiply duration by PPM and round to the nearest whole pixel to avoid sub-pixel gaps entirely
+                                        width: Math.max(1, Math.round(durationMinutes * scheduleRow.ppm))
+                                        height: parent.height
+                                        
+                                        Item {
+                                            id: classNode
+                                            anchors.fill: parent
+                                            anchors.topMargin: Math.round(10 * window.sf)
+                                            anchors.bottomMargin: Math.round(10 * window.sf)
+                                            visible: parent.isClass
+                                            
+                                            property bool isActive: parent.isClass && window.currentEpoch >= (modelData.start || 0) && window.currentEpoch <= (modelData.end || 0)
+                                            property bool isPast: parent.isClass && window.currentEpoch > (modelData.end || 0)
+                                            
+                                            Canvas {
+                                                anchors.fill: parent
+                                                visible: classMa.containsMouse || classNode.isActive
+                                                opacity: classMa.containsMouse ? 0.2 : 0.08
+                                                Behavior on opacity { NumberAnimation { duration: 200 } }
+                                                
+                                                property real wavePhase: 0
+                                                NumberAnimation on wavePhase {
+                                                    from: 0; to: Math.PI * 2; duration: 2000; loops: Animation.Infinite; running: parent.visible
+                                                }
+                                                onWavePhaseChanged: requestPaint()
+                                                onPaint: {
+                                                    var ctx = getContext("2d");
+                                                    ctx.clearRect(0, 0, width, height);
+                                                    ctx.beginPath();
+                                                    ctx.moveTo(0, height);
+                                                    for(var x = 0; x <= width; x += Math.round(10 * window.sf)) {
+                                                        ctx.lineTo(x, height/2 + Math.sin(x/Math.round(25 * window.sf) + wavePhase) * Math.round(20 * window.sf));
+                                                    }
+                                                    ctx.lineTo(width, height);
+                                                    ctx.lineTo(0, height);
+                                                    var grad = ctx.createLinearGradient(0, 0, width, 0);
+                                                    grad.addColorStop(0, window.mauve);
+                                                    grad.addColorStop(1, "transparent");
+                                                    ctx.fillStyle = grad;
+                                                    ctx.fill();
+                                                }
+                                            }
+
+                                            Rectangle {
+                                                id: accentLine
+                                                width: classNode.isActive || classMa.containsMouse ? Math.round(4 * window.sf) : Math.round(2 * window.sf)
+                                                anchors.left: parent.left
+                                                anchors.top: parent.top
+                                                anchors.bottom: parent.bottom
+                                                radius: Math.round(2 * window.sf)
+                                                color: classNode.isActive ? window.mauve : (classNode.isPast ? window.surface1 : window.surface2)
+                                                Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                                                Behavior on color { ColorAnimation { duration: 200 } }
+                                            }
+
+                                            ColumnLayout {
+                                                anchors.left: accentLine.right
+                                                anchors.right: parent.right
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                anchors.leftMargin: classMa.containsMouse ? Math.round(25 * window.sf) : Math.round(15 * window.sf)
+                                                Behavior on anchors.leftMargin { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                                                spacing: Math.round(6 * window.sf)
+
+                                                Text {
+                                                    text: modelData.subject || ""
+                                                    font.family: "JetBrains Mono"
+                                                    font.weight: Font.Black
+                                                    font.pixelSize: Math.round(16 * window.sf)
+                                                    color: classNode.isActive ? window.mauve : (classNode.isPast ? window.overlay0 : window.text)
+                                                    elide: Text.ElideRight
+                                                    Layout.fillWidth: true
+                                                }
+
+                                                RowLayout {
+                                                    visible: !modelData.is_compact
+                                                    spacing: Math.round(8 * window.sf)
+                                                    Text { text: "󰅐"; font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(14 * window.sf); color: classNode.isActive ? window.mauve : window.overlay1 }
+                                                    Text { text: modelData.time || ""; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: Math.round(14 * window.sf); color: classNode.isActive ? window.text : window.overlay1 }
+                                                }
+
+                                                RowLayout {
+                                                    visible: !modelData.is_compact && (modelData.room || "") !== ""
+                                                    spacing: Math.round(8 * window.sf)
+                                                    Text { text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(14 * window.sf); color: classNode.isPast ? window.surface2 : window.peach }
+                                                    Text { text: modelData.room || ""; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: Math.round(14 * window.sf); color: window.subtext1; elide: Text.ElideRight; Layout.fillWidth: true }
+                                                }
+                                            }
+
+                                            MouseArea { id: classMa; anchors.fill: parent; hoverEnabled: parent.visible }
+                                        }
+
+                                        Item {
+                                            anchors.fill: parent
+                                            visible: !parent.isClass
+                                            
+                                            Rectangle {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                anchors.left: parent.left
+                                                anchors.right: parent.right
+                                                height: gapMa.containsMouse ? Math.round(4 * window.sf) : Math.round(2 * window.sf)
+                                                color: gapMa.containsMouse ? window.mauve : "transparent"
+                                                Behavior on height { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                                                Behavior on color { ColorAnimation { duration: 150 } }
+                                            }
+
+                                            Rectangle {
+                                                anchors.centerIn: parent
+                                                width: breakText.width + Math.round(16 * window.sf)
+                                                height: Math.round(24 * window.sf)
+                                                radius: Math.round(6 * window.sf)
+                                                color: window.mantle
+                                                border.color: window.surface2
+                                                border.width: 1
+                                                opacity: gapMa.containsMouse ? 1.0 : 0.0
+                                                scale: gapMa.containsMouse ? 1.0 : 0.8
+                                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+
+                                                Text {
+                                                    id: breakText
+                                                    anchors.centerIn: parent
+                                                    text: modelData.desc || ""
+                                                    font.family: "JetBrains Mono"
+                                                    font.weight: Font.Bold
+                                                    font.pixelSize: Math.round(14 * window.sf)
+                                                    color: window.mauve
+                                                }
+                                            }
+
+                                            MouseArea { id: gapMa; anchors.fill: parent; hoverEnabled: parent.visible }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
