@@ -66,7 +66,7 @@ fi
 
 # AWK processes the entire network list natively, zero sub-shells
 # Reverted back to SSID-only deduplication, but passing conn="$ssid" to cleanly exclude the connected network
-NETWORKS_JSON=$(LC_ALL=C nmcli -t -f active,ssid,signal,security device wifi list --rescan no | awk -F: -v conn="$ssid" '
+NETWORKS_JSON=$(LC_ALL=C nmcli -t -f active,ssid,signal,security device wifi list | awk -F: -v conn="$ssid" '
     $2 != "" && $2 != conn && !seen[$2]++ {
         ssid=$2; signal=$3; security=$4;
         
