@@ -20,8 +20,8 @@ trap cleanup EXIT SIGTERM SIGINT
 
 print_workspaces() {
     # Extract structural compositor state streams cleanly
-    spaces=$(timeout 2 hyprctl workspaces -j 2>/dev/null)
-    active=$(timeout 2 hyprctl activeworkspace -j 2>/dev/null | jq '.id')
+    spaces=$(hyprctl workspaces -j 2>/dev/null)
+    active=$(hyprctl activeworkspace -j 2>/dev/null | jq '.id')
 
     # Guard clause to abort lookup map generation if IPC payload is corrupted
     if [ -z "$spaces" ] || [ -z "$active" ]; then return; fi
@@ -38,7 +38,7 @@ print_workspaces() {
             { id: $i, state: $state, tooltip: $win }
         )
     ' > "$QS_RUN_WORKSPACES/workspaces.tmp"
-    
+
     mv "$QS_RUN_WORKSPACES/workspaces.tmp" "$QS_RUN_WORKSPACES/workspaces.json"
 }
 
@@ -51,18 +51,10 @@ handle_event_stream() {
         case "$line" in
             workspace*|focusedmon*|activewindow*|createwindow*|closewindow*|movewindow*|destroyworkspace*)
                 print_workspaces
-                
-                # Drain event storms instantly within a strict 5ms edge window
-                while read -t 0.005 -r extra_line; do
-                    continue
-                done
                 ;;
         esac
     done
 }
 
-# Persistent execution pipeline container
-while true; do
-    handle_event_stream
-    sleep 0.05
-done
+# Execute persistent stream monitor without artificial sleep delays
+handle_event_stream

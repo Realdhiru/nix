@@ -22,11 +22,7 @@ Variants {
                     Quickshell.reload(true) 
                 }
                 function queueReload() {
-                    if (!barWindow.isSettingsOpen) {
-                        Quickshell.reload(true)
-                    } else {
-                        barWindow.pendingReload = true
-                    }
+                    Quickshell.reload(true)
                 }
                 function toggleUpdate() {
                     barWindow.forceUpdateShow = !barWindow.forceUpdateShow
@@ -74,42 +70,27 @@ Variants {
             property int workspaceCount: 69
             
             property string activeWidget: "" 
-            property bool isSettingsOpen: activeWidget === "settings"
 
-            property real settingsSlideProgress: isSettingsOpen ? 1.0 : 0.0
-            Behavior on settingsSlideProgress { 
-                enabled: barWindow.startupCascadeFinished
-                NumberAnimation { duration: 600; easing.type: Easing.OutExpo } 
-            }
-
-            onIsSettingsOpenChanged: {
-                if (!barWindow.isSettingsOpen && barWindow.pendingReload) {
-                    barWindow.pendingReload = false;
-                    Quickshell.reload(true);
+            // Consolidated System Poller - Replaces heavy inotifywait loop
+            Timer {
+                interval: 2000
+                running: true
+                repeat: true
+                onTriggered: {
+                    widgetPoller.running = false; widgetPoller.running = true;
+                    recPoller.running = false; recPoller.running = true;
+                    updatePoller.running = false; updatePoller.running = true;
                 }
             }
 
             Process {
                 id: widgetPoller
                 command: ["bash", "-c", "cat " + paths.runDir + "/current_widget 2>/dev/null || echo ''"]
-                running: true
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();
                         if (barWindow.activeWidget !== txt) barWindow.activeWidget = txt;
                     }
-                }
-            }
-
-            Process {
-                id: widgetWatcher
-                command: ["bash", "-c", "while [ ! -f " + paths.runDir + "/current_widget ]; do sleep 1; done; inotifywait -qq -e modify,close_write " + paths.runDir + "/current_widget || sleep 2; sleep 0.2"]
-                running: true
-                onExited: {
-                    widgetPoller.running = false;
-                    widgetPoller.running = true;
-                    running = false;
-                    running = true;
                 }
             }
             
@@ -124,79 +105,15 @@ Variants {
             }
 
             Process {
-                id: recWatcher
-                running: true
-                command: ["bash", "-c", "inotifywait -qq -e create,delete,modify,close_write " + paths.getCacheDir("recording") + "/ 2>/dev/null || sleep 2"]
-                onExited: {
-                    recPoller.running = false;
-                    recPoller.running = true;
-                    running = false;
-                    running = true;
-                }
-            }     
-            Process {
                 id: updatePoller
                 command: ["bash", "-c", "if [ -f " + paths.getCacheDir("updater") + "/update_pending ]; then echo '1'; else echo '0'; fi"]
-                running: true
                 stdout: StdioCollector {
                     onStreamFinished: {
                         barWindow.updateAvailable = (this.text.trim() === "1");
                     }
                 }
             }
-            
-            Process {
-                id: updateWatcher
-                running: true
-                command: ["bash", "-c", "inotifywait -qq -e create,delete,close_write " + paths.getCacheDir("updater") + "/ 2>/dev/null || sleep 5"]
-                onExited: {
-                    updatePoller.running = false;
-                    updatePoller.running = true;
-                    running = false;
-                    running = true;
-                }
-            }
-                        
-            Process {
-                id: settingsReader
-                command: ["bash", "-c", "cat ~/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
-                running: true
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        try {
-                            if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
-                                let parsed = JSON.parse(this.text);
-                                
-                                if (parsed.topbarHelpIcon !== undefined && barWindow.showHelpIcon !== parsed.topbarHelpIcon) {
-                                    barWindow.showHelpIcon = parsed.topbarHelpIcon;
-                                }
-                                
-                                if (parsed.workspaceCount !== undefined && barWindow.workspaceCount !== parsed.workspaceCount) {
-                                    barWindow.workspaceCount = parsed.workspaceCount;
-                                    wsDaemon.running = false;
-                                    wsDaemon.running = true;
-                                }
-                            }
-                        } catch (e) {}
-                    }
-                }
-            }
 
-            Process {
-                id: settingsWatcher
-                command: ["bash", "-c", "while [ ! -f ~/.config/hypr/settings.json ]; do sleep 1; done; inotifywait -qq -e modify,close_write ~/.config/hypr/settings.json || sleep 2; sleep 0.2"]
-                running: true
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        settingsReader.running = false;
-                        settingsReader.running = true;
-                        
-                        settingsWatcher.running = false;
-                        settingsWatcher.running = true;
-                    }
-                }
-            }
-            
             property bool isDesktop: false
             property string ethStatus: "Ethernet"
 
@@ -225,10 +142,6 @@ Variants {
             property string fullDateStr: ""
             property int typeInIndex: 0
             property string dateStr: fullDateStr.substring(0, typeInIndex)
-
-            property string weatherIcon: ""
-            property string weatherTemp: "--°"
-            property string weatherHex: mocha.yellow
             
             property string wifiStatus: "Off"
             property string wifiIcon: "󰤮"
@@ -358,7 +271,6 @@ Variants {
                     }
                 }
             }
-            
 
             Timer {
                 interval: 1000
@@ -534,27 +446,6 @@ Variants {
             }
             Process { id: batteryWaiter; command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/battery_wait.sh"]; onExited: { batteryPoller.running = false; batteryPoller.running = true; } }
 
-            Process {
-                id: weatherPoller
-                command: ["bash", "-c", `
-                    echo "$(~/.config/hypr/scripts/quickshell/calendar/weather.sh --current-icon)"
-                    echo "$(~/.config/hypr/scripts/quickshell/calendar/weather.sh --current-temp)"
-                    echo "$(~/.config/hypr/scripts/quickshell/calendar/weather.sh --current-hex)"
-                `]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        let lines = this.text.trim().split("\n");
-                        if (lines.length >= 3) {
-                            barWindow.weatherIcon = lines[0];
-                            barWindow.weatherTemp = lines[1];
-                            barWindow.weatherHex = lines[2] || mocha.yellow;
-                        }
-                    }
-                }
-            }
-            Timer { interval: 150000; running: true; repeat: true; triggeredOnStart: true; onTriggered: { weatherPoller.running = false; weatherPoller.running = true; } }
-
-
             Timer {
                 interval: 1000; running: true; repeat: true; triggeredOnStart: true
                 onTriggered: {
@@ -613,7 +504,7 @@ Variants {
                             return tensPrefix + ten + onesSuffix;
                         }
 
-                        property bool limitActive: barWindow.isSettingsOpen && barWindow.isMediaActive
+                        property bool limitActive: false
 
                         visible: width > 0 || opacity > 0
                         opacity: workspacesModel.count > 0 ? 1 : 0
@@ -786,6 +677,10 @@ Variants {
                                                 anchors.fill: parent
                                                 source: barWindow.displayArtUrl ? (barWindow.displayArtUrl + barWindow.artCacheBuster) : ""
                                                 fillMode: Image.PreserveAspectCrop 
+                                                asynchronous: true
+                                                cache: true
+                                                sourceSize.width: barWindow.s(32)
+                                                sourceSize.height: barWindow.s(32)
                                                 
                                                 onStatusChanged: {
                                                     if (status === Image.Error && barWindow.displayArtUrl !== "") {
@@ -1119,64 +1014,64 @@ Variants {
                                         Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.base; Behavior on color { ColorAnimation { duration: 300 } } }
                                     }
                                     MouseArea { id: batMouse; hoverEnabled: true; anchors.fill: parent; onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle battery"]) }
-                                }                        
+                                } 
                             }
                         }
-                    }
 
-                    Rectangle {
-                        id: recButton
-                        property bool isHovered: recMouse.containsMouse
-                        
-                        color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.95) : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
-                        radius: barWindow.s(14)
-                        border.width: 1
-                        border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.15 : 0.05)
-
-                        property real targetWidth: barWindow.isRecording ? barWindow.barHeight : 0
-                        width: targetWidth
-                        height: barWindow.barHeight 
-
-                        visible: targetWidth > 0 || opacity > 0
-                        opacity: barWindow.isRecording ? 1.0 : 0.0
-                        clip: true
-
-                        Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
-                        Behavior on opacity { NumberAnimation { duration: 300 } }
-                        
-                        scale: isHovered ? 1.05 : 1.0
-                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
-                        Behavior on color { ColorAnimation { duration: 200 } }
-
-                        Text {
-                            id: recIcon
-                            anchors.centerIn: parent
-                            text: "" 
-                            font.family: "Iosevka Nerd Font"
-                            font.pixelSize: barWindow.s(20)
-                            color: mocha.red
+                        Rectangle {
+                            id: recButton
+                            property bool isHovered: recMouse.containsMouse
                             
-                            SequentialAnimation on opacity {
-                                running: barWindow.isRecording && !recButton.isHovered
-                                loops: Animation.Infinite
-                                NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
-                                NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                            color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.95) : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
+                            radius: barWindow.s(14)
+                            border.width: 1
+                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.15 : 0.05)
+
+                            property real targetWidth: barWindow.isRecording ? barWindow.barHeight : 0
+                            width: targetWidth
+                            height: barWindow.barHeight 
+
+                            visible: targetWidth > 0 || opacity > 0
+                            opacity: barWindow.isRecording ? 1.0 : 0.0
+                            clip: true
+
+                            Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                            Behavior on opacity { NumberAnimation { duration: 300 } }
+                            
+                            scale: isHovered ? 1.05 : 1.0
+                            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
+                            Behavior on color { ColorAnimation { duration: 200 } }
+
+                            Text {
+                                id: recIcon
+                                anchors.centerIn: parent
+                                text: "" 
+                                font.family: "Iosevka Nerd Font"
+                                font.pixelSize: barWindow.s(20)
+                                color: mocha.red
+                                
+                                SequentialAnimation on opacity {
+                                    running: barWindow.isRecording && !recButton.isHovered
+                                    loops: Animation.Infinite
+                                    NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                                }
+                                SequentialAnimation on scale {
+                                    running: barWindow.isRecording && !recButton.isHovered
+                                    loops: Animation.Infinite
+                                    NumberAnimation { to: 1.15; duration: 600; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                                }
                             }
-                            SequentialAnimation on scale {
-                                running: barWindow.isRecording && !recButton.isHovered
-                                loops: Animation.Infinite
-                                NumberAnimation { to: 1.15; duration: 600; easing.type: Easing.InOutSine }
-                                NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
-                            }
-                        }
-                        
-                        MouseArea {
-                            id: recMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: {
-                                barWindow.isRecording = false; 
-                                Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/screenshot.sh"]); 
+                            
+                            MouseArea {
+                                id: recMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: {
+                                    barWindow.isRecording = false; 
+                                    Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/screenshot.sh"]); 
+                                }
                             }
                         }
                     }

@@ -132,7 +132,6 @@ PanelWindow {
         repeat: false
         onTriggered: {
             preloadWidget("search");
-            preloadWidget("help");
         }
     }
 

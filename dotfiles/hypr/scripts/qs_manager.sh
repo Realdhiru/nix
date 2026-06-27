@@ -51,26 +51,10 @@ NETWORK_MODE_FILE="$QS_NETWORK_CACHE/mode"
 MANIFEST="$THUMB_DIR/.manifest"
 
 # -----------------------------------------------------------------------------
-# ZOMBIE WATCHDOG & CAVA RUNTIME ENGINE
-# Only runs on slow path — not on every workspace switch
+# ZOMBIE WATCHDOG
 # -----------------------------------------------------------------------------
 
 if ! pgrep -f "quickshell.*Shell.qml" >/dev/null; then
-    # 1. Prepare volatile IPC named pipe infrastructure matching your cava config
-    CAVA_FIFO_PATH="/run/user/1000/quickshell/runtime/music/qml_cava.fifo"
-
-    # Ensure the parent directory is fully constructed before making the pipe
-    mkdir -p "$(dirname "$CAVA_FIFO_PATH")"
-
-    if [ ! -p "$CAVA_FIFO_PATH" ]; then
-        rm -f "$CAVA_FIFO_PATH"
-        mkfifo "$CAVA_FIFO_PATH"
-    fi
-
-    # 2. Clear lingering audio visualizer nodes and bind background daemon to pipe
-    pkill -x cava 2>/dev/null
-    cava -p "$HOME/.config/cava/config" > /dev/null 2>&1 &
-
     quickshell -p "$SHELL_QML_PATH" >/dev/null 2>&1 &
     disown
 fi
@@ -159,11 +143,12 @@ handle_wallpaper_prep() {
     ) </dev/null >/dev/null 2>&1 &
 }
 
+# Controlled scan initialization relying on internal daemons rather than an infinite shell lock
 handle_network_prep() {
     echo "" > "$BT_SCAN_LOG"
-    { echo "scan on"; sleep infinity; } | stdbuf -oL bluetoothctl > "$BT_SCAN_LOG" 2>&1 &
+    timeout 30 bluetoothctl scan on > "$BT_SCAN_LOG" 2>&1 &
     echo $! > "$BT_PID_FILE"
-    (nmcli device wifi rescan) >/dev/null 2>&1 &
+    nmcli device wifi rescan >/dev/null 2>&1 &
 }
 
 # -----------------------------------------------------------------------------
@@ -171,17 +156,33 @@ handle_network_prep() {
 # -----------------------------------------------------------------------------
 if [[ "$ACTION" == "close" ]]; then
     qs ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
+    
+    # Destruct Background Audio Visualization if it was running
+    pkill -x cava 2>/dev/null
+    
     if [[ "$TARGET" == "network" || "$TARGET" == "all" || -z "$TARGET" ]]; then
         if [ -f "$BT_PID_FILE" ]; then
             kill $(cat "$BT_PID_FILE") 2>/dev/null
             rm -f "$BT_PID_FILE"
         fi
-        (bluetoothctl scan off > /dev/null 2>&1) &
     fi
     exit 0
 fi
 
 if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
+
+    # Provision Pipeline if Audio Visualizer triggered
+    if [[ "$TARGET" == "music" ]]; then
+        CAVA_FIFO_PATH="/run/user/1000/quickshell/runtime/music/qml_cava.fifo"
+        mkdir -p "$(dirname "$CAVA_FIFO_PATH")"
+        if [ ! -p "$CAVA_FIFO_PATH" ]; then
+            rm -f "$CAVA_FIFO_PATH"
+            mkfifo "$CAVA_FIFO_PATH"
+        fi
+        pkill -x cava 2>/dev/null
+        cava -p "$HOME/.config/cava/config" > /dev/null 2>&1 &
+    fi
+
     if [[ "$TARGET" == "network" ]]; then
         handle_network_prep
         [[ -n "$SUBTARGET" ]] && echo "$SUBTARGET" > "$NETWORK_MODE_FILE"
