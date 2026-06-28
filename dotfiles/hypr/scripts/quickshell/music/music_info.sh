@@ -29,14 +29,14 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
     rawUrl=$($PT metadata mpris:artUrl 2>/dev/null)
     title=$($PT metadata xesam:title 2>/dev/null)
     artist=$($PT metadata xesam:artist 2>/dev/null)
-    
+
     if [ -n "$rawUrl" ]; then
         trackHash=$(echo "$rawUrl" | md5sum | cut -d" " -f1)
     else
         idStr="${title:-unknown}-${artist:-unknown}"
         trackHash=$(echo "$idStr" | md5sum | cut -d" " -f1)
     fi
-    
+
     finalArt="$TMP_DIR/${trackHash}_art.jpg"
     blurPath="$TMP_DIR/${trackHash}_blur.png"
     colorPath="$TMP_DIR/${trackHash}_grad.txt"
@@ -76,18 +76,18 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
                     cp "$PLACEHOLDER" "$tempArt"
                 fi
 
-                # REMOVED IMAGEMAGICK HOOKS TO BYPASS SECURITY TIMEOUTS
-                # Generate fallback styles instantly without blocking the disk I/O pipe
                 echo "linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)" > "$colorPath"
                 echo "#cdd6f4" > "$textPath"
                 cp "$tempArt" "$blurPath"
                 mv "$tempArt" "$finalArt"
 
-                rm "$lockFile"
-                (cd "$TMP_DIR" && ls -1t | tail -n +21 | xargs -r rm 2>/dev/null)
-            ) </dev/null >/dev/null 2>&1 & 
+                rm -f "$lockFile"
+                (cd "$TMP_DIR" && ls -1t | tail -n +21 | xargs -r rm -f 2>/dev/null)
 
-            # Force an immediate, non-blocking UI synchronization refresh cycle pass
+                # TRIGGER D-BUS WAKEUP: Tells TopBar.qml that the async image is ready
+                dbus-send --session --type=signal /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Seeked int64:0 2>/dev/null
+            ) </dev/null >/dev/null 2>&1 &
+
             ( sleep 0.1 && touch "$QS_RUN_WORKSPACES/workspaces.json" ) &
         fi
     fi
@@ -100,8 +100,13 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
 
     if [ "$STATUS" = "Playing" ]; then
         pos_micro=$($PT metadata --format '{{position}}' 2>/dev/null)
-        if [ -z "$pos_micro" ]; then pos_micro=0; fi
-        pos_sec=$((pos_micro / 1000000))
+        
+        # VALIDATE NUMBER: Prevents math crashes from bad mpris outputs
+        if ! [[ "$pos_micro" =~ ^[0-9]+$ ]]; then
+            if [ -f "$STATE_FILE" ]; then pos_sec=$(jq -r '.pos_sec' "$STATE_FILE"); else pos_sec=0; fi
+        else
+            pos_sec=$((pos_micro / 1000000))
+        fi
 
         jq -n -c \
             --argjson pos_sec "$pos_sec" \
@@ -127,7 +132,6 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
     player_raw=$($PT status -f "{{playerName}}" 2>/dev/null | head -n 1)
     player_nice="${player_raw^}"
 
-    # THE FIX: Use native WirePlumber (wpctl) instead of pactl to prevent D-Bus deadlocks
     dev_icon="󰓃"; dev_name="Speaker"
     node_name=$(timeout 0.5 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk -F'"' '/node\.name/ {print $2}')
     node_desc=$(timeout 0.5 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk -F'"' '/node\.description/ {print $2}')
@@ -142,6 +146,9 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
     elif [ -n "$node_desc" ]; then
         dev_name="$node_desc"
     fi
+
+    # CACHE BUSTER: Forces QtQuick to reload the image immediately instead of using stale cache
+    finalArtUrl="file://${displayArt}?t=$(date +%s%N)"
 
     # --- 7. JSON OUTPUT ---
     jq -n -c \
@@ -161,7 +168,7 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
         --arg txtColor "$displayText" \
         --arg devIcon "$dev_icon" \
         --arg devName "$dev_name" \
-        --arg finalArt "$displayArt" \
+        --arg finalArt "$finalArtUrl" \
         '{
             title: $title,
             artist: $artist,
@@ -199,8 +206,10 @@ else
     last_len_str=$(printf "%02d:%02d" $((last_len_sec/60)) $((last_len_sec%60)))
     last_time_str="${last_pos_str} / ${last_len_str}"
 
+    finalArtUrl="file://${PLACEHOLDER}?t=$(date +%s%N)"
+
     jq -n -c \
-    --arg placeholder "$PLACEHOLDER" \
+    --arg placeholder "$finalArtUrl" \
     --arg pos_str "$last_pos_str" \
     --arg len_str "$last_len_str" \
     --arg time_str "$last_time_str" \
