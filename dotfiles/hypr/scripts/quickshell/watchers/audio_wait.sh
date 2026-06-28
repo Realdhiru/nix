@@ -15,3 +15,6 @@ if ! timeout 10 grep -m 1 -iE "sink|server|change|remove|new" < "$PIPE" > /dev/n
     # Fallback delay prevents QuickShell from rapid-fire thwacking your CPU if pactl hangs
     sleep 2.0
 fi
+
+# Unconditional throttle prevents UI from thrashing the CPU during rapid scroll-wheel volume changes
+sleep 0.5
