@@ -12,7 +12,9 @@
 
     # Browsers
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
-    brave
+    
+    # POWER OPTIMIZATION: Hardware-accelerated Brave override
+    (brave.override { commandLineArgs = "--enable-features=VaapiVideoDecodeLinuxGL --use-gl=angle"; })
 
     # File Management
     fsearch ntfs3g xfce4-exo
