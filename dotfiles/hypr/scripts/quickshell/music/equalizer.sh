@@ -10,11 +10,6 @@ PRESET_FILE="$PRESET_DIR/${PRESET_NAME}.json"
 
 mkdir -p "$PRESET_DIR"
 
-# Default state (Now includes "pending": false)
-if [ ! -f "$STATE_FILE" ]; then
-    echo '{"b1": -2, "b2": -1, "b3": 1, "b4": 3, "b5": 5, "b6": 5, "b7": 4, "b8": 2, "b9": 1, "b10": 0, "preset": "Vocal", "pending": false}' > "$STATE_FILE"
-fi
-
 apply_eq() {
     vals=$(cat "$STATE_FILE")
     python3 -c "
@@ -42,7 +37,6 @@ except:
     easyeffects -l "$PRESET_NAME" >/dev/null 2>&1 &
 }
 
-# Save state helper (Always sets pending to false because Presets apply instantly)
 save_preset() {
     jq -n -c --arg b1 "$1" --arg b2 "$2" --arg b3 "$3" --arg b4 "$4" --arg b5 "$5" \
           --arg b6 "$6" --arg b7 "$7" --arg b8 "$8" --arg b9 "$9" --arg b10 "${10}" --arg p "${11}" \
@@ -55,12 +49,17 @@ arg2=$3
 
 case $cmd in
     "--init")
-        # DAEMON SYNC SYNC LOOP: Wait up to 20 seconds for the engine to stand up
+        # EXPLICIT ENFORCEMENT: Write Vocal preset state to disk on every startup
+        save_preset -2 -1 1 3 5 5 4 2 1 0 "Vocal"
+
+        # DAEMON SYNC LOOP: Wait up to 30 seconds for the engine to stand up
         (
-            for retry in {1..20}; do
+            for retry in {1..30}; do
                 if pgrep -x "easyeffects" >/dev/null; then
-                    sleep 3 # Give the DSP engine a moment to hook into PipeWire sinks
+                    sleep 4 # Give the DSP engine a moment to hook into PipeWire sinks
                     apply_eq
+                    sleep 2 # Failsafe secondary apply
+                    easyeffects -l "$PRESET_NAME" >/dev/null 2>&1
                     break
                 fi
                 sleep 1
@@ -69,20 +68,17 @@ case $cmd in
         ;;
     "get") cat "$STATE_FILE" ;;
     "set_band")
-        # SLIDER MOVE: Set pending = true, Preset = Custom. DO NOT APPLY.
         tmp=$(cat "$STATE_FILE")
         updated=$(echo "$tmp" | jq -c --arg val "$arg2" ".b$arg1 = \$val | .preset = \"Custom\" | .pending = true")
         echo "$updated" > "$STATE_FILE"
         ;;
     "apply")
-        # APPLY BUTTON: Set pending = false, then Apply.
         tmp=$(cat "$STATE_FILE")
         updated=$(echo "$tmp" | jq -c ".pending = false")
         echo "$updated" > "$STATE_FILE"
         apply_eq
         ;;
     "preset")
-        # PRESET CLICK: Save values (pending=false) and Apply Instantly.
         case $arg1 in
             "Flat")    save_preset 0 0 0 0 0 0 0 0 0 0 "Flat" ;;
             "Bass")    save_preset 5 7 5 2 1 0 0 0 1 2 "Bass" ;;

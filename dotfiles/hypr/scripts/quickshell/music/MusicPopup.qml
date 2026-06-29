@@ -17,10 +17,10 @@ Item {
         // Uses the physical screen width so the popup scales synchronously
         currentWidth: Screen.width
     }
-    
+
     // Helper function scoped to the root Item for easy access
-    function s(val) { 
-        return scaler.s(val); 
+    function s(val) {
+        return scaler.s(val);
     }
 
     // Theme Colors
@@ -67,9 +67,22 @@ Item {
     // UI State for debouncing the slider and play button
     property bool userIsSeeking: false
     property bool userToggledPlay: false
-    
+
     // ANTI-JITTER LOCK: Prevents background polling from reverting UI during processing
     property real lastEqUpdate: 0
+
+    Component.onCompleted: {
+        // Enforce "Vocal" default state instantly in QML to prevent UI flicker
+        var temp = Object.assign({}, root.eqData);
+        temp.b1 = -2; temp.b2 = -1; temp.b3 = 1; temp.b4 = 3; temp.b5 = 5;
+        temp.b6 = 5; temp.b7 = 4; temp.b8 = 2; temp.b9 = 1; temp.b10 = 0;
+        temp.preset = "Vocal";
+        temp.pending = false;
+        root.eqData = temp;
+
+        // Force the equalizer daemon to physically sync with our saved UI state on startup
+        root.execCmd("$HOME/.config/hypr/scripts/quickshell/music/equalizer.sh --init");
+    }
 
     // Decoupled Global Animation States
     property real catppuccinFlowOffset: 0
@@ -96,18 +109,18 @@ Item {
         id: eqLightningAnim
         running: false
         ScriptAction { script: { root.eqLightningFade = 0.0; root.eqLightningProgress = 0.0; } }
-        NumberAnimation { 
-            target: root; property: "eqLightningProgress"; 
+        NumberAnimation {
+            target: root; property: "eqLightningProgress";
             from: 0.0; to: 10.0; // 10 points = 9 segments
             duration: 650; // Fast, snappy, energetic strike
-            easing.type: Easing.OutSine 
+            easing.type: Easing.OutSine
         }
         PauseAnimation { duration: 150 } // Hold the core flash at the end
-        NumberAnimation { 
-            target: root; property: "eqLightningFade"; 
-            from: 0.0; to: 1.0; 
+        NumberAnimation {
+            target: root; property: "eqLightningFade";
+            from: 0.0; to: 1.0;
             duration: 800; // Smooth dissipation
-            easing.type: Easing.OutQuad 
+            easing.type: Easing.OutQuad
         }
         ScriptAction { script: { root.eqLightningProgress = 0.0; } }
     }
@@ -190,10 +203,10 @@ Item {
     property var borderColors: {
         var defaultColors = [root.mauve, root.blue, root.red, root.mauve];
         if (!root.musicData || !root.musicData.grad) return defaultColors;
-        
+
         var hexRegex = /#[0-9a-fA-F]{6}/g;
         var matches = root.musicData.grad.match(hexRegex);
-        
+
         if (matches && matches.length >= 3) {
             return [matches[0], matches[1], matches[2], matches[0]]; // Wrap around for looping
         }
@@ -246,12 +259,12 @@ Item {
                 temp["b" + (i + 1)] = presets[presetName][i];
             }
             temp.preset = presetName;
-            temp.pending = false; 
-            root.eqData = temp; 
-            
+            temp.pending = false;
+            root.eqData = temp;
+
             // Blind the polling process to stop it from fetching old data
-            root.lastEqUpdate = Date.now(); 
-            
+            root.lastEqUpdate = Date.now();
+
             root.triggerEqLightning();
             execCmd(`$HOME/.config/hypr/scripts/quickshell/music/equalizer.sh preset ${presetName}`);
         }
@@ -260,7 +273,7 @@ Item {
     // --- DATA POLLING ---
     Timer {
         id: seekDebounceTimer
-        interval: 2500 
+        interval: 2500
         onTriggered: root.userIsSeeking = false
     }
 
@@ -290,12 +303,12 @@ Item {
                 if (this.text) {
                     var outStr = this.text.trim();
                     if (outStr.length > 0) {
-                        try { 
-                            var newData = JSON.parse(outStr); 
+                        try {
+                            var newData = JSON.parse(outStr);
                             if (root.userToggledPlay) {
-                                newData.status = root.musicData.status; 
+                                newData.status = root.musicData.status;
                             }
-                            root.musicData = newData; 
+                            root.musicData = newData;
                         } catch(e) {}
                     }
                 }
@@ -326,7 +339,7 @@ Item {
     Item {
         id: mainWrapper
         anchors.fill: parent
-        
+
         // Deepened scale effect and introduced a gentle Y-axis translation for the main container
         scale: 0.92 + (0.08 * root.introMain)
         opacity: root.introMain
@@ -344,11 +357,11 @@ Item {
                 preferredRendererType: Shape.GeometryRenderer // Fixes lag by hardware accelerating the stroke
 
                 property real sw: root.s(6)
-                property real inset: (sw / 2) + root.s(0.5) 
+                property real inset: (sw / 2) + root.s(0.5)
                 property real w: width
                 property real h: height
                 property real r: root.s(14) - inset
-                
+
                 // Mathematical perimeter
                 property real straightLines: 2 * (w - 2 * inset - 2 * r) + 2 * (h - 2 * inset - 2 * r)
                 property real arcLines: 2 * Math.PI * r
@@ -367,11 +380,11 @@ Item {
 
                 ShapePath {
                     strokeWidth: maskRectOuter.sw
-                    strokeColor: "black" 
+                    strokeColor: "black"
                     fillColor: "transparent"
-                    capStyle: ShapePath.FlatCap 
+                    capStyle: ShapePath.FlatCap
 
-                    // QML Shape dash patterns are measured in units of strokeWidth! 
+                    // QML Shape dash patterns are measured in units of strokeWidth!
                     dashPattern: [maskRectOuter.perimeter / maskRectOuter.sw, maskRectOuter.perimeter / maskRectOuter.sw]
                     dashOffset: (maskRectOuter.perimeter - maskRectOuter.drawProgress) / maskRectOuter.sw
 
@@ -382,30 +395,30 @@ Item {
                     // 1. Up to top-left corner
                     PathLine { x: maskRectOuter.inset; y: maskRectOuter.inset + maskRectOuter.r }
                     // 2. Arc top-left
-                    PathArc { 
-                        x: maskRectOuter.inset + maskRectOuter.r; y: maskRectOuter.inset 
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise 
+                    PathArc {
+                        x: maskRectOuter.inset + maskRectOuter.r; y: maskRectOuter.inset
+                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise
                     }
                     // 3. Right to top-right corner
                     PathLine { x: maskRectOuter.w - maskRectOuter.inset - maskRectOuter.r; y: maskRectOuter.inset }
                     // 4. Arc top-right
-                    PathArc { 
-                        x: maskRectOuter.w - maskRectOuter.inset; y: maskRectOuter.inset + maskRectOuter.r 
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise 
+                    PathArc {
+                        x: maskRectOuter.w - maskRectOuter.inset; y: maskRectOuter.inset + maskRectOuter.r
+                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise
                     }
                     // 5. Down to bottom-right corner
                     PathLine { x: maskRectOuter.w - maskRectOuter.inset; y: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.r }
                     // 6. Arc bottom-right
-                    PathArc { 
-                        x: maskRectOuter.w - maskRectOuter.inset - maskRectOuter.r; y: maskRectOuter.h - maskRectOuter.inset 
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise 
+                    PathArc {
+                        x: maskRectOuter.w - maskRectOuter.inset - maskRectOuter.r; y: maskRectOuter.h - maskRectOuter.inset
+                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise
                     }
                     // 7. Left to bottom-left corner
                     PathLine { x: maskRectOuter.inset + maskRectOuter.r; y: maskRectOuter.h - maskRectOuter.inset }
                     // 8. Arc bottom-left to finish
-                    PathArc { 
-                        x: maskRectOuter.inset; y: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.r 
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise 
+                    PathArc {
+                        x: maskRectOuter.inset; y: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.r
+                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise
                     }
                 }
             }
@@ -420,7 +433,7 @@ Item {
                     width: Math.max(parent.width, parent.height) * 2
                     height: width
                     anchors.centerIn: parent
-                    
+
                     NumberAnimation on rotation {
                         from: 0; to: 360; duration: 5000
                         loops: Animation.Infinite
@@ -464,15 +477,15 @@ Item {
                 anchors.fill: parent
                 radius: root.s(10)
                 visible: false
-                
+
                 // FIX: Masks in MultiEffect strictly require layer.enabled to correctly capture the radius during scaling!
-                layer.enabled: true 
+                layer.enabled: true
             }
 
             Item {
                 id: bgEffectsLayer
                 anchors.fill: parent
-                
+
                 // This correctly clamps the blur and orbit circles to the 10px radius corners
                 layer.enabled: true
                 layer.effect: MultiEffect {
@@ -485,7 +498,7 @@ Item {
                 //    anchors.fill: parent
                 //   source: root.musicData.blur ? "file://" + root.musicData.blur : ""
                 //    fillMode: Image.PreserveAspectCrop
-                //    
+                //
                     // Fixed: Ensures blur is completely hidden when stopped so the pure base color matches the calendar
                 //    opacity: (status === Image.Ready && root.musicData.status !== "Stopped" && root.musicData.status !== "Offline") ? 0.9 : 0.0
                 //    Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.InOutQuad } }
@@ -496,19 +509,19 @@ Item {
                     width: parent.width * 0.8; height: width; radius: width / 2
                     x: (parent.width / 2 - width / 2) + Math.cos(root.globalOrbitAngle * 2) * root.s(150)
                     y: (parent.height / 2 - height / 2) + Math.sin(root.globalOrbitAngle * 2) * root.s(100)
-                    
+
                     // Fixed: Hides orbits when stopped
                     opacity: root.musicData.status === "Playing" ? 0.08 : (root.musicData.status === "Paused" ? 0.04 : 0.0)
                     color: root.musicData.status === "Playing" ? root.mauve : root.surface2
                     Behavior on color { ColorAnimation { duration: 1000 } }
                     Behavior on opacity { NumberAnimation { duration: 1000 } }
                 }
-                
+
                 Rectangle {
                     width: parent.width * 0.9; height: width; radius: width / 2
                     x: (parent.width / 2 - width / 2) + Math.sin(root.globalOrbitAngle * 1.5) * root.s(-150)
                     y: (parent.height / 2 - height / 2) + Math.cos(root.globalOrbitAngle * 1.5) * root.s(-100)
-                    
+
                     // Fixed: Hides orbits when stopped
                     opacity: root.musicData.status === "Playing" ? 0.08 : (root.musicData.status === "Paused" ? 0.02 : 0.0)
                     color: root.musicData.status === "Playing" ? root.blue : root.surface1
@@ -579,14 +592,14 @@ Item {
                                     anchors.fill: parent
                                     source: root.musicData.artUrl ? "file://" + root.musicData.artUrl : ""
                                     fillMode: Image.PreserveAspectCrop
-                                    visible: false 
+                                    visible: false
                                 }
                                 Rectangle {
                                     id: maskRect
                                     anchors.fill: parent
                                     radius: width / 2
                                     visible: false
-                                    layer.enabled: true 
+                                    layer.enabled: true
                                 }
                                 MultiEffect {
                                     anchors.fill: parent
@@ -596,7 +609,7 @@ Item {
                                     opacity: artImg.status === Image.Ready ? 1.0 : 0.0
                                     Behavior on opacity { NumberAnimation { duration: 800 } }
                                 }
-                                
+
                                 // NEW: Dimmed slightly by tinting with the primary mauve accent, as requested
                                 Rectangle {
                                     anchors.fill: parent
@@ -612,7 +625,7 @@ Item {
                                     opacity: 0.8; anchors.centerIn: parent
                                 }
                             }
-                            
+
                             NumberAnimation on rotation {
                                 from: 0; to: 360; duration: 8000
                                 loops: Animation.Infinite
@@ -632,12 +645,12 @@ Item {
                             spacing: root.s(6)
                             opacity: root.introText
                             transform: Translate { x: root.s(30) * (1 - root.introText) }
-                            
+
                             // HARD-LOCKED SEAMLESS INFINITE MARQUEE
                             Item {
                                 id: titleClipRect
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: root.s(28) 
+                                Layout.preferredHeight: root.s(28)
                                 clip: true
 
                                 // This is the distance between the end of the text and the clone
@@ -687,7 +700,7 @@ Item {
 
                                         // 1. Stop for a few seconds in the initial position
                                         PauseAnimation { duration: 3000 }
-                                        
+
                                         // 2. Smoothly run left until the clone is exactly where the original started
                                         NumberAnimation {
                                             from: 0
@@ -695,7 +708,7 @@ Item {
                                             // The duration calculates dynamically to maintain a constant scroll speed
                                             duration: (titleTextMain.implicitWidth + titleClipRect.marqueeSpacing) * 25
                                         }
-                                        
+
                                         // 3. Instantly snap back to 0 without stopping (creating the seamless loop)
                                         PropertyAction { target: marqueeContainer; property: "x"; value: 0 }
                                     }
@@ -749,7 +762,7 @@ Item {
                             Slider {
                                 id: progBar
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: root.s(20) 
+                                Layout.preferredHeight: root.s(20)
                                 from: 0; to: 100
 
                                 Connections {
@@ -780,7 +793,7 @@ Item {
 
                                         var safePlayer = root.musicData.playerName ? root.musicData.playerName : "";
                                         root.execCmd(`$HOME/.config/hypr/scripts/quickshell/music/player_control.sh seek ${value.toFixed(2)} ${root.musicData.length} "${safePlayer}"`);
-                                        
+
                                         seekDebounceTimer.restart();
                                     }
                                 }
@@ -812,7 +825,7 @@ Item {
                                     Item {
                                         width: progBar.handle.x - progBar.leftPadding + (progBar.handle.width / 2)
                                         height: parent.height
-                                        
+
                                         layer.enabled: true
                                         layer.effect: MultiEffect {
                                             maskEnabled: true
@@ -825,14 +838,14 @@ Item {
                                             height: parent.height
                                             radius: root.s(6)
                                             visible: false
-                                            layer.enabled: true 
+                                            layer.enabled: true
                                         }
 
                                         Rectangle {
                                             width: root.s(2000)
                                             height: parent.height
                                             // Sliding the gradient perfectly by exactly half its width (1000px)
-                                            x: -(root.catppuccinFlowOffset * root.s(1000)) 
+                                            x: -(root.catppuccinFlowOffset * root.s(1000))
                                             gradient: Gradient {
                                                 orientation: Gradient.Horizontal
                                                 // Mathematically precise loops with lighter, cooler colors & theme change support
@@ -851,7 +864,7 @@ Item {
                                 handle: Rectangle {
                                     x: progBar.leftPadding + progBar.visualPosition * (progBar.availableWidth - width)
                                     y: progBar.topPadding + (progBar.availableHeight - height) / 2
-                                    implicitWidth: root.s(18) 
+                                    implicitWidth: root.s(18)
                                     implicitHeight: root.s(18)
                                     width: root.s(18); height: root.s(18)
                                     radius: root.s(9); color: root.text
@@ -928,12 +941,12 @@ Item {
                                     }
                                 }
 
-                                Text { 
+                                Text {
                                     anchors.centerIn: parent
                                     text: root.musicData.status === "Playing" ? "" : ""
                                     color: parent.pressed ? root.pink : root.mauve
                                     font.family: "Iosevka Nerd Font"
-                                    font.pixelSize: root.s(42) 
+                                    font.pixelSize: root.s(42)
                                     scale: parent.pressed ? 0.8 : 1.0
                                     Behavior on color { ColorAnimation { duration: 150 } }
                                     Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
@@ -978,7 +991,7 @@ Item {
                         transform: Translate { y: root.s(15) * (1 - root.introEqHeader) }
 
                         Text { text: "Equalizer"; color: root.mauve; font.family: "JetBrains Mono"; font.pixelSize: root.s(16); font.bold: true; Layout.fillWidth: true }
-                        
+
                         // Redesigned Apply Button
                         Rectangle {
                             Layout.preferredHeight: root.s(28)
@@ -987,7 +1000,7 @@ Item {
                             color: root.eqData.pending ? root.mauve : root.surface1
                             border.color: root.eqData.pending ? root.mauve : root.surface2
                             border.width: 1
-                            
+
                             Behavior on color { ColorAnimation { duration: 300; easing.type: Easing.OutCubic } }
                             Behavior on border.color { ColorAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
@@ -1014,10 +1027,10 @@ Item {
                                         var temp = Object.assign({}, root.eqData);
                                         temp.pending = false;
                                         root.eqData = temp;
-                                        
+
                                         // Blind the polling process to stop it from fetching old data
-                                        root.lastEqUpdate = Date.now(); 
-                                        
+                                        root.lastEqUpdate = Date.now();
+
                                         root.triggerEqLightning();
                                         root.execCmd("$HOME/.config/hypr/scripts/quickshell/music/equalizer.sh apply");
                                     }
@@ -1046,7 +1059,7 @@ Item {
                                 ]
                                 delegate: Item {
                                     id: sliderDelegate
-                                    width: eqSliderRow.width / 10 
+                                    width: eqSliderRow.width / 10
                                     height: eqSliderRow.height
 
                                     // --- ENHANCED SLIDER CASCADING ANIMATION ---
@@ -1058,7 +1071,7 @@ Item {
                                     // Mathematical evaluation mapping to the exact timeline of the strike
                                     property real dist: root.eqLightningProgress - (modelData.idx - 1)
                                     property real hitPulse: dist >= 0 && dist < 1.0 ? Math.sin((dist) * Math.PI) : 0.0
-                                    
+
                                     // Massive Energy Pulses
                                     property real trackPulse: 0.0
                                     property real ringPulse: 0.0
@@ -1132,10 +1145,10 @@ Item {
                                                     temp.preset = "Custom";
                                                     temp.pending = true;
                                                     root.eqData = temp;
-                                                    
+
                                                     // Set lock here too to protect individual slider tweaks
                                                     root.lastEqUpdate = Date.now();
-                                                    
+
                                                     root.execCmd(`$HOME/.config/hypr/scripts/quickshell/music/equalizer.sh set_band ${modelData.idx} ${Math.round(value)}`);
                                                 }
                                             }
@@ -1144,11 +1157,11 @@ Item {
                                                 id: trackBg
                                                 x: eqSlider.leftPadding + (eqSlider.availableWidth - width) / 2
                                                 y: eqSlider.topPadding
-                                                implicitWidth: root.s(10) 
+                                                implicitWidth: root.s(10)
                                                 implicitHeight: root.s(150)
                                                 width: root.s(10); height: eqSlider.availableHeight
-                                                radius: root.s(4); 
-                                                
+                                                radius: root.s(4);
+
                                                 // Dynamic tint: surface0 with 70% opacity for a softer dark look
                                                 color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.7)
 
@@ -1162,7 +1175,7 @@ Item {
                                                     shadowVerticalOffset: 1
                                                 }
 
-                                                // MASSIVE Outer Energy Shockwave Ring 
+                                                // MASSIVE Outer Energy Shockwave Ring
                                                 Rectangle {
                                                     z: -1
                                                     anchors.centerIn: parent
@@ -1173,7 +1186,7 @@ Item {
                                                     border.color: root.mauve
                                                     border.width: root.s(2) + sliderDelegate.ringPulse * root.s(4)
                                                     opacity: sliderDelegate.ringPulse * 0.8 * (1.0 - root.eqLightningFade)
-                                                    
+
                                                     layer.enabled: true
                                                     layer.effect: MultiEffect { blurEnabled: true; blurMax: 32; blur: 1.0 }
                                                 }
@@ -1183,7 +1196,7 @@ Item {
                                                     width: parent.width
                                                     height: (1 - eqSlider.visualPosition) * parent.height
                                                     y: eqSlider.visualPosition * parent.height
-                                                    
+
                                                     layer.enabled: true
                                                     layer.effect: MultiEffect {
                                                         maskEnabled: true
@@ -1195,7 +1208,7 @@ Item {
                                                         anchors.fill: parent
                                                         radius: root.s(4)
                                                         visible: false
-                                                        layer.enabled: true 
+                                                        layer.enabled: true
                                                     }
 
                                                     Rectangle {
@@ -1214,13 +1227,13 @@ Item {
                                                             }
                                                         }
 
-                                                        // The Internal Charging Surge Bolt 
+                                                        // The Internal Charging Surge Bolt
                                                         Rectangle {
                                                             width: parent.width
                                                             height: root.s(80) // Massive physical bolt
                                                             y: (sliderDelegate.trackPulse * (parent.height + height)) - height
                                                             opacity: Math.sin(sliderDelegate.trackPulse * Math.PI) * 2.0 * (1.0 - root.eqLightningFade)
-                                                            
+
                                                             gradient: Gradient {
                                                                 orientation: Gradient.Vertical
                                                                 GradientStop { position: 0.0; color: "transparent" }
@@ -1229,7 +1242,7 @@ Item {
                                                                 GradientStop { position: 0.8; color: root.mauve }
                                                                 GradientStop { position: 1.0; color: "transparent" }
                                                             }
-                                                            
+
                                                             layer.enabled: true
                                                             layer.effect: MultiEffect {
                                                                 shadowEnabled: true; shadowColor: root.blue; shadowBlur: 1.0; shadowOpacity: 1.0
@@ -1286,7 +1299,7 @@ Item {
                             z: 0 // Draw securely behind the sliders
 
                             // Force hardware FBO backend instead of slow software rendering
-                            renderTarget: Canvas.FramebufferObject 
+                            renderTarget: Canvas.FramebufferObject
 
                             // GPU Layer effect to provide bloom WITHOUT locking up the CPU via ctx.shadowBlur
                             layer.enabled: true
@@ -1323,9 +1336,9 @@ Item {
                                 for (var i = 1; i <= 10; i++) {
                                     var val = root.eqData["b" + i] !== undefined ? Number(root.eqData["b" + i]) : 0;
                                     var norm = 1.0 - ((val + 12) / 24);
-                                    
+
                                     // Py uses margins rough mapping to the handles visible track
-                                    var py = root.s(10) + norm * (height - root.s(35)); 
+                                    var py = root.s(10) + norm * (height - root.s(35));
                                     var px = (i - 0.5) * (width / 10);
                                     pts.push({ x: px, y: py });
                                 }
@@ -1335,7 +1348,7 @@ Item {
                                 // Strand 1: Complex pink glow
                                 // Strand 2: Crackling secondary core
                                 // Strand 3: Hot white center core
-                                for (var s = 0; s < 4; s++) { 
+                                for (var s = 0; s < 4; s++) {
                                     ctx.beginPath();
                                     ctx.moveTo(pts[0].x, pts[0].y);
 
@@ -1363,9 +1376,9 @@ Item {
                                             var envelope = Math.sin(t * Math.PI);
 
                                             // s=3 core noise (straightest) to s=0 outer glow noise (most waves)
-                                            var noiseAmpX = s === 3 ? 1.0 : (4 - s) * 4; 
-                                            var noiseAmpY = s === 3 ? 1.0 : (4 - s) * 5; 
-                                            
+                                            var noiseAmpX = s === 3 ? 1.0 : (4 - s) * 4;
+                                            var noiseAmpY = s === 3 ? 1.0 : (4 - s) * 5;
+
                                             // Combine multiple frequencies for complex branching/crackle appearance
                                             // Glow strands (0, 1) also get a sweeping sine wave applied to create distinct separating waves
                                             var sepWaveX = (s < 2) ? Math.sin(time * 3 + i + j + s) * root.s(10) * envelope : 0;
@@ -1410,7 +1423,7 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: root.s(8)
-                        
+
                         opacity: root.introPresets
                         transform: Translate { y: root.s(20) * (1 - root.introPresets) }
 
@@ -1442,7 +1455,7 @@ Item {
         Layout.fillWidth: true
         Layout.preferredHeight: root.s(32)
         radius: root.s(8)
-        
+
         property bool isActivePreset: root.eqData && root.eqData.preset === name
         property bool isHovered: hoverMa.containsMouse
 
