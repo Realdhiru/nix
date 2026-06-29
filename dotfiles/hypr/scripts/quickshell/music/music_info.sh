@@ -11,21 +11,15 @@ STATE_FILE="$QS_STATE_MUSIC/last_state.json"
 
 mkdir -p "$TMP_DIR"
 PLACEHOLDER="$TMP_DIR/placeholder_blank.png"
-
-# Prevent cold-boot D-Bus hangs from keeping the script alive
 PT="timeout 1.5 playerctl"
 
-# --- 1. ENSURE PLACEHOLDER EXISTS ---
 if [ ! -f "$PLACEHOLDER" ]; then
     convert -size 500x500 xc:"#313244" "$PLACEHOLDER"
 fi
 
-# --- 2. CHECK STATUS ---
 STATUS=$($PT status 2>/dev/null)
 
 if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
-
-    # --- 3. GET INFO ---
     rawUrl=$($PT metadata mpris:artUrl 2>/dev/null)
     title=$($PT metadata xesam:title 2>/dev/null)
     artist=$($PT metadata xesam:artist 2>/dev/null)
@@ -48,7 +42,6 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
     displayGrad="linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)"
     displayText="#cdd6f4"
 
-    # --- 4. ASYNC BACKGROUND LOGIC ---
     if [ -f "$finalArt" ] && [ -s "$finalArt" ]; then
         displayArt="$finalArt"
         if [ -f "$blurPath" ]; then displayBlur="$blurPath"; fi
@@ -84,7 +77,6 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
                 rm -f "$lockFile"
                 (cd "$TMP_DIR" && ls -1t | tail -n +21 | xargs -r rm -f 2>/dev/null)
 
-                # TRIGGER D-BUS WAKEUP: Tells TopBar.qml that the async image is ready
                 dbus-send --session --type=signal /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Seeked int64:0 2>/dev/null
             ) </dev/null >/dev/null 2>&1 &
 
@@ -92,7 +84,6 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
         fi
     fi
 
-    # --- 5. TIMING ---
     len_micro=$($PT metadata mpris:length 2>/dev/null)
     if [ -z "$len_micro" ] || [ "$len_micro" -eq 0 ]; then len_micro=1000000; fi
     len_sec=$((len_micro / 1000000))
@@ -100,19 +91,13 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
 
     if [ "$STATUS" = "Playing" ]; then
         pos_micro=$($PT metadata --format '{{position}}' 2>/dev/null)
-        
-        # VALIDATE NUMBER: Prevents math crashes from bad mpris outputs
         if ! [[ "$pos_micro" =~ ^[0-9]+$ ]]; then
             if [ -f "$STATE_FILE" ]; then pos_sec=$(jq -r '.pos_sec' "$STATE_FILE"); else pos_sec=0; fi
         else
             pos_sec=$((pos_micro / 1000000))
         fi
 
-        jq -n -c \
-            --argjson pos_sec "$pos_sec" \
-            --argjson len_sec "$len_sec" \
-            '{pos_sec: $pos_sec, len_sec: $len_sec}' \
-            > "$STATE_FILE"
+        jq -n -c --argjson pos_sec "$pos_sec" --argjson len_sec "$len_sec" '{pos_sec: $pos_sec, len_sec: $len_sec}' > "$STATE_FILE"
     else
         pos_sec=0
         if [ -f "$STATE_FILE" ]; then
@@ -128,7 +113,6 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
     pos_str=$(printf "%02d:%02d" $((pos_sec/60)) $((pos_sec%60)))
     time_str="${pos_str} / ${len_str}"
 
-    # --- 6. DEVICE INFO ---
     player_raw=$($PT status -f "{{playerName}}" 2>/dev/null | head -n 1)
     player_nice="${player_raw^}"
 
@@ -147,10 +131,8 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
         dev_name="$node_desc"
     fi
 
-    # CACHE BUSTER: Forces QtQuick to reload the image immediately instead of using stale cache
     finalArtUrl="file://${displayArt}?t=$(date +%s%N)"
 
-    # --- 7. JSON OUTPUT ---
     jq -n -c \
         --arg title "$title" \
         --arg artist "$artist" \
@@ -188,9 +170,7 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
             deviceName: $devName,
             artUrl: $finalArt
         }'
-
 else
-    # --- FALLBACK (Stopped) ---
     if [ -f "$STATE_FILE" ]; then
         last_pos_sec=$(jq -r '.pos_sec' "$STATE_FILE")
         last_len_sec=$(jq -r '.len_sec' "$STATE_FILE")
