@@ -100,7 +100,7 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
 
     if [ "$STATUS" = "Playing" ]; then
         pos_micro=$($PT metadata --format '{{position}}' 2>/dev/null)
-        
+
         # VALIDATE NUMBER: Prevents math crashes from bad mpris outputs
         if ! [[ "$pos_micro" =~ ^[0-9]+$ ]]; then
             if [ -f "$STATE_FILE" ]; then pos_sec=$(jq -r '.pos_sec' "$STATE_FILE"); else pos_sec=0; fi
@@ -147,8 +147,8 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
         dev_name="$node_desc"
     fi
 
-    # CACHE BUSTER: Forces QtQuick to reload the image immediately instead of using stale cache
-    finalArtUrl="file://${displayArt}?t=$(date +%s%N)"
+    # RESTORED: Raw path assignment to prevent file:// collision crash in QML
+    finalArtUrl="${displayArt}"
 
     # --- 7. JSON OUTPUT ---
     jq -n -c \
@@ -206,7 +206,7 @@ else
     last_len_str=$(printf "%02d:%02d" $((last_len_sec/60)) $((last_len_sec%60)))
     last_time_str="${last_pos_str} / ${last_len_str}"
 
-    finalArtUrl="file://${PLACEHOLDER}?t=$(date +%s%N)"
+    finalArtUrl="${PLACEHOLDER}"
 
     jq -n -c \
     --arg placeholder "$finalArtUrl" \
