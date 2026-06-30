@@ -1,4 +1,6 @@
+pragma Singleton
 import QtQuick
+import Quickshell
 import Quickshell.Io
 
 Item {
@@ -27,12 +29,15 @@ Item {
     property string maroon: "#eba0ac"
     property string teal: "#94e2d5"
 
+    property string colorsFile: "/home/realdhiru/.cache/matugen/qs_colors.json"
+
+    // Load colors using a highly efficient, single-instance process
     Process {
         id: colorReader
-        command: ["cat", "/home/realdhiru/.cache/matugen/qs_colors.json"]
+        command: ["cat", root.colorsFile]
         stdout: StdioCollector {
             onStreamFinished: {
-                let txt = this.text.trim();
+                let txt = this.text ? this.text.trim() : "";
                 if (txt !== "") {
                     try {
                         let data = JSON.parse(txt);
@@ -47,19 +52,16 @@ Item {
         }
     }
 
-    Process {
-        id: colorWatcher
+    // Process-less polling checking: completely eliminates expensive inotify loops!
+    Timer {
+        id: colorPollTimer
+        interval: 3000
         running: true
-        command: ["bash", "-c", "while [ ! -f /home/realdhiru/.cache/matugen/qs_colors.json ]; do sleep 1; done; inotifywait -qq -e close_write,modify /home/realdhiru/.cache/matugen/qs_colors.json || sleep 2; sleep 0.2"]
-        onExited: {
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
             colorReader.running = false;
             colorReader.running = true;
-            running = false;
-            running = true;
         }
-    }
-    
-    Component.onCompleted: {
-        colorReader.running = true;
     }
 }

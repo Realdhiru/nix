@@ -167,6 +167,7 @@ PanelWindow {
 
     property bool isStartup: true
     Timer {
+        id: startupTimer
         interval: 500
         running: true
         onTriggered: masterWindow.isStartup = false
@@ -254,17 +255,16 @@ PanelWindow {
         }
     }
 
-    Process {
-        id: settingsWatcher
-        command: ["bash", "-c", "while [ ! -f ~/.config/hypr/settings.json ]; do sleep 1; done; inotifywait -qq -e modify,close_write ~/.config/hypr/settings.json || sleep 2; sleep 0.2"]
+    // Process-less settings polling: completely removes CPU wakeups and background bash loops!
+    Timer {
+        id: settingsPollTimer
+        interval: 3000
         running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                settingsReader.running = false;
-                settingsReader.running = true;
-                settingsWatcher.running = false;
-                settingsWatcher.running = true;
-            }
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            settingsReader.running = false;
+            settingsReader.running = true;
         }
     }
 
@@ -369,13 +369,13 @@ PanelWindow {
                         NumberAnimation {
                             property: "opacity"
                             from: 0.0; to: 1.0
-                            duration: masterWindow.morphDurationSwitch
+                            duration: masterWindow.morphDurationShift
                             easing.type: Easing.OutQuint
                         }
                         NumberAnimation {
                             property: "scale"
                             from: 0.98; to: 1.0
-                            duration: masterWindow.morphDurationSwitch
+                            duration: masterWindow.morphDurationShift
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -386,13 +386,13 @@ PanelWindow {
                         NumberAnimation {
                             property: "opacity"
                             from: 1.0; to: 0.0
-                            duration: masterWindow.morphDurationSwitch
+                            duration: masterWindow.morphDurationShift
                             easing.type: Easing.InQuint
                         }
                         NumberAnimation {
                             property: "scale"
                             from: 1.0; to: 0.98
-                            duration: masterWindow.morphDurationSwitch
+                            duration: masterWindow.morphDurationShift
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -428,7 +428,7 @@ PanelWindow {
                 masterWindow.targetW = t.w;
                 masterWindow.targetH = t.h;
             } else {
-                masterWindow.morphDuration = masterWindow.morphDurationSwitch;
+                masterWindow.morphDuration = masterWindow.morphDurationShift;
                 masterWindow.disableMorph = false;
             }
 
