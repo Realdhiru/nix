@@ -48,16 +48,16 @@
 
   # Power
   services.upower.enable = true;
-  services.power-profiles-daemon.enable = true;
+ # services.power-profiles-daemon.enable = true;
 
   # Automate Power Profiles and Asus Fan Curves based on Charger Status
-  services.udev.extraRules = ''
+ # services.udev.extraRules = ''
     # On AC Plug-in: Switch to Performance (Max Fan Curve, Max Power)
-    SUBSYSTEM=="power_supply", ATTR{online}=="1", RUN+="${pkgs.power-profiles-daemon}/bin/powerprofilesctl set performance"
+ #   SUBSYSTEM=="power_supply", ATTR{online}=="1", RUN+="${pkgs.power-profiles-daemon}/bin/powerprofilesctl set performance"
     
     # On Battery (Unplug): Switch to Balanced (Race to Idle, Best Battery/Heat Ratio)
-    SUBSYSTEM=="power_supply", ATTR{online}=="0", RUN+="${pkgs.power-profiles-daemon}/bin/powerprofilesctl set balanced"
-  '';
+ #   SUBSYSTEM=="power_supply", ATTR{online}=="0", RUN+="${pkgs.power-profiles-daemon}/bin/powerprofilesctl set balanced"
+ # '';
 
   # Drives
   services.udisks2.enable = true;
