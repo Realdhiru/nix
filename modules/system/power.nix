@@ -1,11 +1,19 @@
 { config, lib, pkgs, ... }:
 
 {
+
+--- 1. KERNEL-LEVEL POWER FIXES ---
+
 boot.kernelParams = [ "nmi_watchdog=0" ];
 
 boot.kernel.sysctl = {
 "vm.dirty_writeback_centisecs" = 6000;
 };
+
+--- 2. TLP & THERMALD CONFIGURATION ---
+
+services.power-profiles-daemon.enable = lib.mkForce false;
+services.thermald.enable = true;
 
 services.tlp = {
 enable = true;
