@@ -10,6 +10,8 @@
     ../../modules/system/packages.nix
     ../../modules/system/fonts.nix
     ../../modules/system/memory.nix
+    ../../modules/system/power.nix
+
   ];
 
   # --- HARDWARE POWER OPTIMIZATION (PHASE 4) ---
