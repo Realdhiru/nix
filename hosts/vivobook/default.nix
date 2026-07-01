@@ -55,6 +55,7 @@
   networking.networkmanager.enable = true;
 
   time.timeZone = "Asia/Kolkata";
+  hardware.customPower.usbDenylist = "3554:fc00";
 
   nix.settings.experimental-features = [
     "nix-command"
