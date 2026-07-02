@@ -1,52 +1,58 @@
 #!/usr/bin/env bash
 
-# POWER OPTIMIZATION: Uses pure Bash built-ins to read kernel nodes. No sub-process forks!
 get_battery_percent() {
-    local cap_file
-    for cap_file in /sys/class/power_supply/BAT*/capacity; do
-        if [ -f "$cap_file" ]; then
-            read -r percent < "$cap_file"
-            echo "${percent:-100}"
-            return 0
-        fi
+    local file percent
+    for file in /sys/class/power_supply/BAT*/capacity; do
+        [[ -r "$file" ]] || continue
+        read -r percent < "$file"
+        printf '%s\n' "${percent:-100}"
+        return
     done
-    echo "100"
+    printf '100\n'
 }
 
 get_battery_status() {
-    local stat_file
-    for stat_file in /sys/class/power_supply/BAT*/status; do
-        if [ -f "$stat_file" ]; then
-            read -r status < "$stat_file"
-            echo "${status:-Full}"
-            return 0
-        fi
+    local file status
+    for file in /sys/class/power_supply/BAT*/status; do
+        [[ -r "$file" ]] || continue
+        read -r status < "$file"
+        printf '%s\n' "${status:-Unknown}"
+        return
     done
-    echo "Full"
+    printf 'Unknown\n'
 }
 
 get_battery_icon() {
-    local percent=$(get_battery_percent)
-    local status=$(get_battery_status)
-    if [ "$status" = "Charging" ] || [ "$status" = "Full" ]; then
-        if [ "$percent" -ge 90 ]; then echo "󰂅"
-        elif [ "$percent" -ge 80 ]; then echo "󰂋"
-        elif [ "$percent" -ge 60 ]; then echo "󰂊"
-        elif [ "$percent" -ge 40 ]; then echo "󰢞"
-        elif [ "$percent" -ge 20 ]; then echo "󰂆"
-        else echo "󰢜"; fi
+    local percent=$1
+    local status=$2
+
+    if [[ "$status" == "Charging" || "$status" == "Full" ]]; then
+        (( percent >= 90 )) && printf '󰂅\n' && return
+        (( percent >= 80 )) && printf '󰂋\n' && return
+        (( percent >= 60 )) && printf '󰂊\n' && return
+        (( percent >= 40 )) && printf '󰢞\n' && return
+        (( percent >= 20 )) && printf '󰂆\n' && return
+        printf '󰢜\n'
     else
-        if [ "$percent" -ge 90 ]; then echo "󰁹"
-        elif [ "$percent" -ge 80 ]; then echo "󰂂"
-        elif [ "$percent" -ge 70 ]; then echo "󰂁"
-        elif [ "$percent" -ge 60 ]; then echo "󰂀"
-        elif [ "$percent" -ge 50 ]; then echo "󰁿"
-        elif [ "$percent" -ge 40 ]; then echo "󰁾"
-        elif [ "$percent" -ge 30 ]; then echo "󰁽"
-        elif [ "$percent" -ge 20 ]; then echo "󰁼"
-        elif [ "$percent" -ge 10 ]; then echo "󰁻"
-        else echo "󰁺"; fi
+        (( percent >= 90 )) && printf '󰁹\n' && return
+        (( percent >= 80 )) && printf '󰂂\n' && return
+        (( percent >= 70 )) && printf '󰂁\n' && return
+        (( percent >= 60 )) && printf '󰂀\n' && return
+        (( percent >= 50 )) && printf '󰁿\n' && return
+        (( percent >= 40 )) && printf '󰁾\n' && return
+        (( percent >= 30 )) && printf '󰁽\n' && return
+        (( percent >= 20 )) && printf '󰁼\n' && return
+        (( percent >= 10 )) && printf '󰁻\n' && return
+        printf '󰁺\n'
     fi
 }
 
-jq -n -c --arg percent "$(get_battery_percent)" --arg status "$(get_battery_status)" --arg icon "$(get_battery_icon)" '{percent: $percent, status: $status, icon: $icon}'
+percent=$(get_battery_percent)
+status=$(get_battery_status)
+icon=$(get_battery_icon "$percent" "$status")
+
+jq -nc \
+    --arg percent "$percent" \
+    --arg status "$status" \
+    --arg icon "$icon" \
+    '{percent:$percent,status:$status,icon:$icon}'
