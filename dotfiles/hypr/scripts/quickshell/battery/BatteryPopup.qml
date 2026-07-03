@@ -184,46 +184,56 @@ Item {
     }
 
     Process {
-        id: sysPoller
-        command: ["bash", "-c", 
-            "cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1 || echo '0'; " +
-            "cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1 || echo 'Unknown'; " +
-            "powerprofilesctl get 2>/dev/null || echo 'balanced'; " +
-            "awk '{print int($1/3600)\"h \"int(($1%3600)/60)\"m\"}' /proc/uptime 2>/dev/null || echo '0h 0m'; " +
-            "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100), ($3==\"[MUTED]\"?\"off\":\"on\")}' || echo '0 on'; " +
-            "brightnessctl -m 2>/dev/null | awk -F, '{print substr($4, 1, length($4)-1)}' || echo '0'"
-        ]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let lines = this.text.trim().split("\n");
-                if (lines.length >= 6) {
-                    if (window.batCapacity !== parseInt(lines[0])) {
-                        window.batCapacity = parseInt(lines[0]);
-                        window.animCapacity = window.batCapacity;
-                    }
-                    window.batStatus = lines[1];
-                    window.powerProfile = lines[2];
-                    
-                    let upParts = lines[3].split("h ");
-                    if (upParts.length === 2) {
-                        window.upHours = parseInt(upParts[0]) || 0;
-                        window.upMins = parseInt(upParts[1].replace("m", "")) || 0;
-                    }
+    id: sysPoller
+    command: ["bash", "-c",
+        "cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1 || echo '0'; " +
+        "cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1 || echo 'Unknown'; " +
+        "src=$(cat /sys/class/power_supply/AC*/online 2>/dev/null | head -n1 || echo '0'); " +
+        "if [ \"$src\" = '1' ]; then echo 'performance'; else echo 'balanced'; fi; " +
+        "en=$(cat /sys/class/power_supply/BAT0/energy_now 2>/dev/null || echo '0'); " +
+        "ef=$(cat /sys/class/power_supply/BAT0/energy_full 2>/dev/null || echo '1'); " +
+        "pw=$(cat /sys/class/power_supply/BAT0/power_now 2>/dev/null || echo '0'); " +
+        "st=$(cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo 'Unknown'); " +
+        "if [ \"$pw\" -gt 1000 ] 2>/dev/null; then " +
+        "  if [ \"$st\" = 'Charging' ]; then " +
+        "    echo $(( ($ef - $en) * 3600 / $pw )); " +
+        "  else " +
+        "    echo $(( $en * 3600 / $pw )); " +
+        "  fi; " +
+        "else echo '0'; fi; " +
+        "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100), ($3==\"[MUTED]\"?\"off\":\"on\")}' || echo '0 on'; " +
+        "brightnessctl -m 2>/dev/null | awk -F, '{print substr($4, 1, length($4)-1)}' || echo '0'"
+    ]
+    running: true
+    stdout: StdioCollector {
+        onStreamFinished: {
+            let lines = this.text.trim().split("\n");
+            if (lines.length >= 6) {
+                if (window.batCapacity !== parseInt(lines[0])) {
+                    window.batCapacity = parseInt(lines[0]);
+                    window.animCapacity = window.batCapacity;
+                }
+                window.batStatus = lines[1];
+                window.powerProfile = lines[2];
 
-                    if (!window.isDraggingVol) {
-                        let volParts = (lines[4] || "0 on").trim().split(" ");
-                        window.sysVolume = parseInt(volParts[0]) || 0;
-                        window.sysMuted = (volParts[1] === "off");
-                    }
-                    
-                    if (!window.isDraggingBri) {
-                        window.sysBrightness = parseInt(lines[5]) || 0;
-                    }
+                // Battery remaining time in seconds
+                let remSeconds = parseInt(lines[3]) || 0;
+                window.upHours = Math.floor(remSeconds / 3600);
+                window.upMins = Math.floor((remSeconds % 3600) / 60);
+
+                if (!window.isDraggingVol) {
+                    let volParts = (lines[4] || "0 on").trim().split(" ");
+                    window.sysVolume = parseInt(volParts[0]) || 0;
+                    window.sysMuted = (volParts[1] === "off");
+                }
+
+                if (!window.isDraggingBri) {
+                    window.sysBrightness = parseInt(lines[5]) || 0;
                 }
             }
         }
     }
+}
     Timer {
         interval: 1500; running: true; repeat: true; triggeredOnStart: true;
         onTriggered: sysPoller.running = true
@@ -1624,8 +1634,17 @@ Item {
                                             MouseArea {
                                                 id: profileMa
                                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                onClicked: { Quickshell.execDetached(["powerprofilesctl", "set", name]); sysPoller.running = true; }
-                                            }
+                                                onClicked: {
+    // TLP uses ac/bat modes not three profiles.
+    // performance → force AC profile
+    // balanced → force BAT profile (balanced behaviour)
+    // power-saver → force BAT profile (same underlying mode, minimum EPP)
+    let tlpMode = (name === "performance") ? "ac" : "bat";
+    Quickshell.execDetached(["bash", "-c", "sudo tlp " + tlpMode]);
+    // Optimistic UI update — don't wait for poller
+    window.powerProfile = name;
+    Qt.callLater(() => { sysPoller.running = false; sysPoller.running = true; });
+}                                            }
                                         }
                                     }
                                 }

@@ -48,24 +48,28 @@ arg1=$2
 arg2=$3
 
 case $cmd in
-    "--init")
-        # EXPLICIT ENFORCEMENT: Write Vocal preset state to disk on every startup
-        save_preset -2 -1 1 3 5 5 4 2 1 0 "Vocal"
+    # In equalizer.sh, replace the --init case with:
+"--init")
+    # Write Vocal preset to disk immediately
+    save_preset -2 -1 1 3 5 5 4 2 1 0 "Vocal"
 
-        # DAEMON SYNC LOOP: Wait up to 30 seconds for the engine to stand up
-        (
-            for retry in {1..30}; do
-                if pgrep -x "easyeffects" >/dev/null; then
-                    sleep 4 # Give the DSP engine a moment to hook into PipeWire sinks
-                    apply_eq
-                    sleep 2 # Failsafe secondary apply
-                    easyeffects -l "$PRESET_NAME" >/dev/null 2>&1
-                    break
-                fi
-                sleep 1
-            done
-        ) &
-        ;;
+    # Extended daemon sync — waits for EasyEffects then applies twice
+    # with a longer gap to survive EasyEffects' own preset-load delay
+    (
+        for retry in {1..60}; do
+            if pgrep -x "easyeffects" >/dev/null 2>&1; then
+                sleep 5  # Wait for EasyEffects DSP engine to hook PipeWire
+                apply_eq
+                sleep 4  # Wait for EasyEffects to finish loading its own presets
+                apply_eq  # Apply again to override whatever EasyEffects loaded
+                sleep 3
+                easyeffects -l "$PRESET_NAME" >/dev/null 2>&1
+                break
+            fi
+            sleep 1
+        done
+    ) &
+    ;;
     "get") cat "$STATE_FILE" ;;
     "set_band")
         tmp=$(cat "$STATE_FILE")
