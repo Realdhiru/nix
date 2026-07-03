@@ -90,7 +90,7 @@ Item {
         from: 0; to: 1.0
         duration: 8000 // Slowed down significantly for a graceful, constant flow
         loops: Animation.Infinite
-        running: true
+        running: root.visible
     }
 
     property real globalOrbitAngle: 0
@@ -98,7 +98,7 @@ Item {
         from: 0; to: Math.PI * 2
         duration: 90000
         loops: Animation.Infinite
-        running: true
+        running: root.visible
     }
 
     // --- CANVAS LIGHTNING ANIMATION STATE ---

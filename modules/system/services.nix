@@ -37,9 +37,9 @@
 
   programs.gpu-screen-recorder.enable = true;
 
-  # power-profiles-daemon + its AC/battery udev rules removed —
-  # modules/system/power.nix now handles all of this via TLP, which
-  # switches AC/battery profiles natively without needing udev at all.
+  # power-profiles-daemon removed — replaced by TLP in modules/system/power.nix
+  # The udev rules that called powerprofilesctl are also removed —
+  # TLP handles AC/battery profile switching natively without udev
   services.upower.enable = true;
 
   services.udisks2.enable = true;
@@ -71,7 +71,6 @@
     };
   };
 
-  # zramSwap removed from here — it's already declared in memory.nix,
-  # which is the correct single home for it. Having it in both files
-  # was a silent duplicate.
+  # zramSwap removed from here — it lives in memory.nix
+  # Having it in both files causes a duplicate declaration
 }

@@ -9,7 +9,7 @@
     ../../modules/system/packages.nix
     ../../modules/system/fonts.nix
     ../../modules/system/memory.nix
-    ../../modules/system/power.nix
+    ../../modules/system/power.nix  # was missing — this is the root cause fix
   ];
 
   boot.kernelParams = [

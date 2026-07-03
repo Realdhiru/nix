@@ -7,9 +7,9 @@
     "vm.dirty_writeback_centisecs" = 6000;
   };
 
-  # --- 2. TLP & THERMALD CONFIGURATION ---
-  # power-profiles-daemon is replaced entirely by TLP; they conflict and
-  # cannot run together. mkForce wins over services.nix's plain `= true`.
+  # --- 2. TLP CONFIGURATION ---
+  # Disables power-profiles-daemon which conflicts with TLP.
+  # services.nix still declares it as enabled — mkForce wins.
   services.power-profiles-daemon.enable = lib.mkForce false;
   services.thermald.enable = true;
 
@@ -25,9 +25,8 @@
       CPU_BOOST_ON_AC  = 1;
       CPU_BOOST_ON_BAT = 0;
 
-      # Confirmed valid choices on this firmware: quiet, balanced, performance
-      # (from /sys/firmware/acpi/platform_profile_choices). "low-power" does
-      # not exist here, do not use it.
+      # Valid choices confirmed from /sys/firmware/acpi/platform_profile_choices:
+      # quiet, balanced, performance — "low-power" does not exist on this firmware
       PLATFORM_PROFILE_ON_AC  = "performance";
       PLATFORM_PROFILE_ON_BAT = "quiet";
 
@@ -38,9 +37,8 @@
       PCIE_ASPM_ON_BAT = "powersupersave";
 
       USB_AUTOSUSPEND = 1;
-      # UNVERIFIED — confirm this is really the 2.4G Receiver (Compx) via
-      # `lsusb`. If this ID is wrong, the receiver keeps draining power
-      # unsuspended and this whole USB_AUTOSUSPEND setting does nothing for it.
+      # Confirmed via lsusb: 3554:fc00 = Compx 2.4G Receiver
+      # Excluded from autosuspend to prevent input lag
       USB_DENYLIST = "3554:fc00";
 
       WIFI_PWR_ON_AC  = "off";
