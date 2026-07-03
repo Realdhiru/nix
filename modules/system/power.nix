@@ -8,8 +8,6 @@
   };
 
   # --- 2. TLP CONFIGURATION ---
-  # Disables power-profiles-daemon which conflicts with TLP.
-  # services.nix still declares it as enabled — mkForce wins.
   services.power-profiles-daemon.enable = lib.mkForce false;
   services.thermald.enable = true;
 
@@ -25,8 +23,6 @@
       CPU_BOOST_ON_AC  = 1;
       CPU_BOOST_ON_BAT = 0;
 
-      # Valid choices confirmed from /sys/firmware/acpi/platform_profile_choices:
-      # quiet, balanced, performance — "low-power" does not exist on this firmware
       PLATFORM_PROFILE_ON_AC  = "performance";
       PLATFORM_PROFILE_ON_BAT = "quiet";
 
@@ -37,8 +33,6 @@
       PCIE_ASPM_ON_BAT = "powersupersave";
 
       USB_AUTOSUSPEND = 1;
-      # Confirmed via lsusb: 3554:fc00 = Compx 2.4G Receiver
-      # Excluded from autosuspend to prevent input lag
       USB_DENYLIST = "3554:fc00";
 
       WIFI_PWR_ON_AC  = "off";
@@ -47,6 +41,24 @@
       SOUND_POWER_SAVE_ON_AC      = 0;
       SOUND_POWER_SAVE_ON_BAT     = 1;
       SOUND_POWER_SAVE_CONTROLLER = "Y";
+
+      # Battery charge threshold managed by TLP directly
+      # This replaces the systemd.tmpfiles rule in vivobook/default.nix
+      # ASUS only accepts 40, 60, or 80 — 80 is confirmed working on this model
+      START_CHARGE_THRESH_BAT0 = 75;
+      STOP_CHARGE_THRESH_BAT0  = 80;
     };
   };
+
+  # --- 3. ASUS CHARGER-CONNECTED PERFORMANCE FIX ---
+  # When battery is capped at 80%, ASUS firmware reports power source as
+  # "Battery" even though charger is physically connected. TLP drops to
+  # battery profile. This udev rule forces TLP into AC/performance mode
+  # whenever the charger is plugged in, overriding the battery report.
+  services.udev.extraRules = ''
+    SUBSYSTEM=="power_supply", ATTR{type}=="Mains", ATTR{online}=="1", \
+      RUN+="${pkgs.tlp}/bin/tlp ac"
+    SUBSYSTEM=="power_supply", ATTR{type}=="Mains", ATTR{online}=="0", \
+      RUN+="${pkgs.tlp}/bin/tlp bat"
+  '';
 }

@@ -9,7 +9,7 @@
     ../../modules/system/packages.nix
     ../../modules/system/fonts.nix
     ../../modules/system/memory.nix
-    ../../modules/system/power.nix  # was missing — this is the root cause fix
+    ../../modules/system/power.nix
   ];
 
   boot.kernelParams = [
@@ -17,9 +17,8 @@
     "pcie_aspm=force"
   ];
 
-  systemd.tmpfiles.rules = [
-    "w /sys/class/power_supply/BAT0/charge_control_end_threshold - - - - 80"
-  ];
+  # systemd.tmpfiles charge threshold rule removed —
+  # TLP now manages this via START/STOP_CHARGE_THRESH_BAT0
 
   hardware.graphics = {
     enable = true;

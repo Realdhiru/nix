@@ -285,7 +285,7 @@ Item {
 
     Timer {
         interval: 500
-        running: true
+        running: root.visible
         repeat: true
         triggeredOnStart: true
         onTriggered: {
