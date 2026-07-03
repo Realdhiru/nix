@@ -1,13 +1,10 @@
-# Build results
 result
 result-*
 
-# Local envs / Cache
 .direnv/
 .devenv/
 .direnv.rc
 
-# Secrets (Add sops/agenix files here if you ever use them)
 *.secret
 secrets.nix
 dotfiles/secrets/
