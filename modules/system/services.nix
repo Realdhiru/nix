@@ -71,6 +71,4 @@
     };
   };
 
-  # zramSwap removed from here — it lives in memory.nix
-  # Having it in both files causes a duplicate declaration
 }
