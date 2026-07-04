@@ -57,7 +57,6 @@
     '';
 
     shellAliases = {
-      repomix = "npx --yes repomix";
     };
   };
 
