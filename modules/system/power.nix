@@ -20,7 +20,7 @@
       CPU_ENERGY_PERF_POLICY_ON_AC  = "performance";
       CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
 
-      CPU_BOOST_ON_AC  = 1;
+      CPU_BOOST_ON_AC  = 0;
       CPU_BOOST_ON_BAT = 0;
 
       PLATFORM_PROFILE_ON_AC  = "performance";

@@ -132,6 +132,11 @@ PanelWindow {
         repeat: false
         onTriggered: {
             preloadWidget("search");
+            preloadWidget("battery");
+            preloadWidget("network");
+            preloadWidget("volume");
+            preloadWidget("music");
+            preloadWidget("clipboard");
         }
     }
 
@@ -145,7 +150,7 @@ PanelWindow {
     property string activeArg: ""
     property bool disableMorph: false
 
-    property int morphDuration: 230
+    property int morphDuration: 160
     property int morphDurationSwitch: 210
     property int exitDuration: 160
 
