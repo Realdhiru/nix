@@ -57,7 +57,7 @@
     '';
 
     shellAliases = {
-      opencode = "npx --yes opencode-ai";
+      repomix = "npx --yes repomix";
     };
   };
 

@@ -40,6 +40,6 @@
     # Desktop Integration
     libnotify polkit_gnome hypridle hyprlock quickshell qt6Packages.qtmultimedia matugen
 
-    powertop psmisc hyprsunset nodejs banner usbutils wlogout
+    powertop psmisc hyprsunset nodejs banner usbutils wlogout opencode
   ];
 }
