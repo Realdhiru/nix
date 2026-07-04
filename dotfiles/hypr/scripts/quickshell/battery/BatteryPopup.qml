@@ -852,7 +852,7 @@ Item {
                                     anchors.horizontalCenter: parent.horizontalCenter 
                                 }
                                 Text { 
-                                    text: "HR"; font.pixelSize: window.s(8); font.family: "JetBrains Mono"; font.weight: Font.Bold
+                                    text: window.batStatus === "Charging" ? "TO FULL" : "LEFT"; font.pixelSize: window.s(8); font.family: "JetBrains Mono"; font.weight: Font.Bold
                                     color: window.subtext0; anchors.horizontalCenter: parent.horizontalCenter 
                                 }
                             }
