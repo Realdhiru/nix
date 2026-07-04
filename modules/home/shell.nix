@@ -58,7 +58,6 @@
 
     shellAliases = {
       opencode = "npx --yes opencode-ai";
-      repomix="nix shell nixpkgs#nodejs -c npx repomix@latest"
     };
   };
 
