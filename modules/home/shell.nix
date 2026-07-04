@@ -35,7 +35,7 @@
           fi
         fi
 
-        sudo nixos-rebuild switch --flake .#vivobook
+        sudo nixos-rebuild switch --flake .#nixos
       }
 
       update() {

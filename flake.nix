@@ -21,7 +21,7 @@
   };
 
   outputs = inputs@{ nixpkgs, home-manager, ... }: {
-    nixosConfigurations.vivobook = nixpkgs.lib.nixosSystem {
+    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
 
       specialArgs = {
@@ -39,7 +39,7 @@
         })
         # ------------------------------------------
 
-        ./hosts/vivobook/default.nix
+        ./hosts/nixos/default.nix
 
         home-manager.nixosModules.home-manager
 
