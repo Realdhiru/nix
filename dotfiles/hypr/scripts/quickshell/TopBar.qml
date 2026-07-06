@@ -1055,7 +1055,7 @@ Variants {
                                 text: ""
                                 font.family: "Iosevka Nerd Font"
                                 font.pixelSize: barWindow.s(20)
-                                color: mocha.red
+                                color: mocha.mauve
 
                                 SequentialAnimation on opacity {
                                     running: barWindow.isRecording && !recButton.isHovered
