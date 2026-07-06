@@ -350,88 +350,85 @@ Item {
                         filterClips(text);
                     }
 
-                    Keys.onTabPressed: (event) => {
-                        if (clipModel.count > 0) {
-                            window.previewMode = !window.previewMode;
-                            if (window.previewMode) {
-                                window.updatePreviewText();
+                    // --- CONSOLIDATED FIX: Universal Keys.onPressed block ---
+                    Keys.onPressed: (event) => {
+                        if (event.key === Qt.Key_Tab) {
+                            if (clipModel.count > 0) {
+                                window.previewMode = !window.previewMode;
+                                if (window.previewMode) {
+                                    window.updatePreviewText();
+                                }
                             }
-                        }
-                        event.accepted = true;
-                    }
-
-                    Keys.onRightPressed: (event) => {
-                        window.previewMode = false;
-                        window.navDuration = 250; 
-                        window.pendingIndex = -1;
-                        
-                        let targetIdx = clipList.currentIndex + 1;
-                        if (targetIdx < clipModel.count) { 
-                            clipList.currentIndex = targetIdx; 
-                        } else if (window.hasMore) {
-                            window.pendingIndex = targetIdx;
-                            window.loadMore();
-                        }
-                        event.accepted = true;
-                    }
-                    
-                    Keys.onLeftPressed: (event) => {
-                        window.previewMode = false;
-                        window.navDuration = 250;
-                        window.pendingIndex = -1;
-                        
-                        if (clipList.currentIndex > 0) { clipList.currentIndex--; }
-                        event.accepted = true;
-                    }
-                    
-                    Keys.onDownPressed: (event) => {
-                        if (window.previewMode && textPreviewFlickable.visible) {
-                            textPreviewFlickable.contentY = Math.min(textPreviewFlickable.contentY + window.s(60), Math.max(0, textPreviewFlickable.contentHeight - textPreviewFlickable.height));
-                        } else {
+                            event.accepted = true;
+                        } 
+                        else if (event.key === Qt.Key_Right) {
                             window.previewMode = false;
-                            window.navDuration = 250;
+                            window.navDuration = 250; 
                             window.pendingIndex = -1;
                             
-                            let targetIdx = clipList.currentIndex + mainBg.cols;
-                            if (targetIdx < clipModel.count) {
-                                clipList.currentIndex = targetIdx;
+                            let targetIdx = clipList.currentIndex + 1;
+                            if (targetIdx < clipModel.count) { 
+                                clipList.currentIndex = targetIdx; 
                             } else if (window.hasMore) {
                                 window.pendingIndex = targetIdx;
                                 window.loadMore();
-                            } else {
-                                clipList.currentIndex = clipModel.count - 1;
                             }
-                        }
-                        event.accepted = true;
-                    }
-                    
-                    Keys.onUpPressed: (event) => {
-                        if (window.previewMode && textPreviewFlickable.visible) {
-                            textPreviewFlickable.contentY = Math.max(textPreviewFlickable.contentY - window.s(60), 0);
-                        } else {
+                            event.accepted = true;
+                        } 
+                        else if (event.key === Qt.Key_Left) {
                             window.previewMode = false;
                             window.navDuration = 250;
                             window.pendingIndex = -1;
                             
-                            if (clipList.currentIndex - mainBg.cols >= 0) { clipList.currentIndex -= mainBg.cols; }
+                            if (clipList.currentIndex > 0) { clipList.currentIndex--; }
+                            event.accepted = true;
+                        } 
+                        else if (event.key === Qt.Key_Down) {
+                            if (window.previewMode && textPreviewFlickable.visible) {
+                                textPreviewFlickable.contentY = Math.min(textPreviewFlickable.contentY + window.s(60), Math.max(0, textPreviewFlickable.contentHeight - textPreviewFlickable.height));
+                            } else {
+                                window.previewMode = false;
+                                window.navDuration = 250;
+                                window.pendingIndex = -1;
+                                
+                                let targetIdx = clipList.currentIndex + mainBg.cols;
+                                if (targetIdx < clipModel.count) {
+                                    clipList.currentIndex = targetIdx;
+                                } else if (window.hasMore) {
+                                    window.pendingIndex = targetIdx;
+                                    window.loadMore();
+                                } else {
+                                    clipList.currentIndex = clipModel.count - 1;
+                                }
+                            }
+                            event.accepted = true;
+                        } 
+                        else if (event.key === Qt.Key_Up) {
+                            if (window.previewMode && textPreviewFlickable.visible) {
+                                textPreviewFlickable.contentY = Math.max(textPreviewFlickable.contentY - window.s(60), 0);
+                            } else {
+                                window.previewMode = false;
+                                window.navDuration = 250;
+                                window.pendingIndex = -1;
+                                
+                                if (clipList.currentIndex - mainBg.cols >= 0) { clipList.currentIndex -= mainBg.cols; }
+                            }
+                            event.accepted = true;
+                        } 
+                        else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            if (clipList.currentIndex >= 0 && clipList.currentIndex < clipModel.count) {
+                                copyToClipboard(clipModel.get(clipList.currentIndex).id);
+                            }
+                            event.accepted = true;
+                        } 
+                        else if (event.key === Qt.Key_Escape) {
+                            if (window.previewMode) {
+                                window.previewMode = false;
+                            } else {
+                                Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
+                            }
+                            event.accepted = true;
                         }
-                        event.accepted = true;
-                    }
-                    
-                    Keys.onReturnPressed: (event) => {
-                        if (clipList.currentIndex >= 0 && clipList.currentIndex < clipModel.count) {
-                            copyToClipboard(clipModel.get(clipList.currentIndex).id);
-                        }
-                        event.accepted = true;
-                    }
-                    
-                    Keys.onEscapePressed: (event) => {
-                        if (window.previewMode) {
-                            window.previewMode = false;
-                        } else {
-                            Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
-                        }
-                        event.accepted = true;
                     }
                 }
             }
@@ -662,6 +659,7 @@ Item {
             }
         }
 
+        // FULL SCREEN PREVIEW OVERLAY
         Rectangle {
             id: previewMorph
             z: 100
