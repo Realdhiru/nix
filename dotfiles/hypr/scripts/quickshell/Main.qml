@@ -109,11 +109,6 @@ PanelWindow {
         onClicked: switchWidget("hidden", "")
     }
 
-    Item {
-        id: preloaderContainer
-        visible: false
-    }
-
     property var widgetCache: ({})
 
     property var componentCache: ({})
@@ -136,7 +131,9 @@ PanelWindow {
         if (widgetCache[name]) return;
         let t = getLayout(name);
         if (!t || !t.comp) return;
-        let obj = t.comp.createObject(preloaderContainer, {
+        
+        // Attached directly to masterWindow instead of a dummy invisible container to prevent focus scope corruption
+        let obj = t.comp.createObject(masterWindow, {
             "notifModel": masterWindow.notifModel,
             "liveNotifs": masterWindow.liveNotifs,
             "visible": false
@@ -340,8 +337,23 @@ PanelWindow {
         masterWindow.targetH = finalH;
     }
 
+    // Timer ensures activeFocus is forced only AFTER Wayland compositor maps the visible surface
+    Timer {
+        id: focusTimer
+        interval: 50
+        onTriggered: {
+            if (masterWindow.isVisible && widgetStack.currentItem) {
+                widgetStack.forceActiveFocus();
+                widgetStack.currentItem.focus = false;
+                widgetStack.currentItem.focus = true;
+                widgetStack.currentItem.forceActiveFocus();
+            }
+        }
+    }
+
     onIsVisibleChanged: {
-        if (isVisible) widgetStack.forceActiveFocus();
+        if (isVisible) focusTimer.restart();
+        else focusTimer.stop();
     }
 
     Item {
@@ -528,12 +540,7 @@ PanelWindow {
         }
 
         masterWindow.isVisible = true;
-
-        // Force focus evaluation after visibility changes to sync widget-to-widget transitions
-        widgetStack.forceActiveFocus();
-        if (widgetStack.currentItem) {
-            widgetStack.currentItem.forceActiveFocus();
-        }
+        focusTimer.restart();
     }
 
     Timer {
