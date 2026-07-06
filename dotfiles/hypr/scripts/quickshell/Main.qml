@@ -90,22 +90,18 @@ PanelWindow {
 
         Behavior on anchors.leftMargin {
             enabled: masterWindow.currentActive !== "hidden"
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutQuad }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
         Behavior on anchors.rightMargin {
             enabled: masterWindow.currentActive !== "hidden"
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutQuad }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
     }
 
     MouseArea {
         anchors.fill: parent
         enabled: masterWindow.isVisible
-        onClicked: {
-            if (masterWindow.currentActive !== "wallpaper") {
-                switchWidget("hidden", "");
-            }
-        }
+        onClicked: switchWidget("hidden", "")
     }
 
     property var componentCache: ({})
@@ -125,6 +121,7 @@ PanelWindow {
     }
 
     function preloadWidget(name) {
+        // Calling getLayout triggers resolveComponent, forcing ahead-of-time compilation into componentCache
         getLayout(name);
     }
 
@@ -134,7 +131,7 @@ PanelWindow {
 
     Timer {
         id: preloadStaggerTimer
-        interval: 500
+        interval: 900
         repeat: false
         onTriggered: {
             preloadWidget("search");
@@ -156,10 +153,9 @@ PanelWindow {
     property string activeArg: ""
     property bool disableMorph: false
 
-    // Snappy Performance Profiles (reduced latency from 160ms/210ms/230ms down to 100ms/120ms/130ms)
-    property int morphDuration: 110
-    property int morphDurationShift: 125
-    property int exitDuration: 100
+    property int morphDuration: 160
+    property int morphDurationShift: 210
+    property int exitDuration: 160
 
     property real animW: 1
     property real animH: 1
@@ -336,29 +332,28 @@ PanelWindow {
         height: masterWindow.animH
         clip: true
 
-        // Replaced high-overhead OutCubic curves with lightweight OutQuad for smooth rendering across layout recalculations
         Behavior on x {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutQuad }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
         Behavior on y {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutQuad }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
         Behavior on width {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutQuad }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
         Behavior on height {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutQuad }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
 
         opacity: masterWindow.isVisible ? 1.0 : 0.0
         Behavior on opacity {
             NumberAnimation {
-                duration: masterWindow.exitDuration
-                easing.type: masterWindow.isVisible ? Easing.OutQuad : Easing.InQuad
+                duration: 160
+                easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic
             }
         }
 
@@ -372,14 +367,9 @@ PanelWindow {
                 anchors.fill: parent
                 focus: true
 
-                // Dynamic Escape validation block: isolates 'wallpaper' widget from standard escape closing events
                 Keys.onEscapePressed: (event) => {
-                    if (masterWindow.currentActive !== "wallpaper") {
-                        switchWidget("hidden", "");
-                        event.accepted = true;
-                    } else {
-                        event.accepted = false;
-                    }
+                    switchWidget("hidden", "");
+                    event.accepted = true;
                 }
 
                 onCurrentItemChanged: {
@@ -392,13 +382,13 @@ PanelWindow {
                             property: "opacity"
                             from: 0.0; to: 1.0
                             duration: masterWindow.morphDurationShift
-                            easing.type: Easing.OutQuad
+                            easing.type: Easing.OutQuint
                         }
                         NumberAnimation {
                             property: "scale"
-                            from: 0.99; to: 1.0
+                            from: 0.98; to: 1.0
                             duration: masterWindow.morphDurationShift
-                            easing.type: Easing.OutQuad
+                            easing.type: Easing.OutCubic
                         }
                     }
                 }
@@ -409,13 +399,13 @@ PanelWindow {
                             property: "opacity"
                             from: 1.0; to: 0.0
                             duration: masterWindow.morphDurationShift
-                            easing.type: Easing.InQuad
+                            easing.type: Easing.InQuint
                         }
                         NumberAnimation {
                             property: "scale"
-                            from: 1.0; to: 0.99
+                            from: 1.0; to: 0.98
                             duration: masterWindow.morphDurationShift
-                            easing.type: Easing.OutQuad
+                            easing.type: Easing.OutCubic
                         }
                     }
                 }
@@ -440,7 +430,7 @@ PanelWindow {
             }
         } else {
             if (currentActive === "hidden" || !masterWindow.isVisible) {
-                masterWindow.morphDuration = 120;
+                masterWindow.morphDuration = 230;
                 masterWindow.disableMorph = false;
 
                 let t = getLayout(newWidget);
@@ -475,7 +465,7 @@ PanelWindow {
         let props = {};
         props["notifModel"]   = masterWindow.notifModel;
         props["liveNotifs"]   = masterWindow.liveNotifs;
-        props["props"]        = t.w;
+        props["props"]        = t.w; // keeping layout width assignments safe
         props["layoutWidth"]  = t.w;
         props["layoutHeight"] = t.h;
         if (newWidget === "wallpaper") props["widgetArg"] = arg;
@@ -505,7 +495,7 @@ PanelWindow {
 
     Timer {
         id: delayedClear
-        interval: 100
+        interval: 200
 
         onTriggered: {
             if (!masterWindow.isVisible) {
