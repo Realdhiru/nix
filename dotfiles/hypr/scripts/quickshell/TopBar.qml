@@ -1076,8 +1076,8 @@ Variants {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 onClicked: (event) => {
-                                    barWindow.isRecording = false;
-                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/screenshot.sh"]);
+                                    barWindow.isRecording = false; 
+                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/record.sh"]);
                                 }
                             }
                         }
