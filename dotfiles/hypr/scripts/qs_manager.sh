@@ -1,22 +1,36 @@
 #!/usr/bin/env bash
 
+# Strict execution environment
+set -uo pipefail
+
 # -----------------------------------------------------------------------------
 # GLOBAL VARS
 # -----------------------------------------------------------------------------
 SCRIPTS_DIR="$HOME/.config/hypr/scripts/quickshell"
 SHELL_QML_PATH="$SCRIPTS_DIR/Shell.qml"
 
+# Resolve the correct NixOS binary dynamically
+QS_BIN=""
+if command -v quickshell >/dev/null 2>&1; then
+    QS_BIN="quickshell"
+elif command -v qs >/dev/null 2>&1; then
+    QS_BIN="qs"
+else
+    # Failsafe abort if the binary isn't in PATH
+    exit 1
+fi
+
 # -----------------------------------------------------------------------------
 # FAST PATH: WORKSPACE SWITCHING
 # Must be first — before any sourcing, caching, or pgrep.
 # -----------------------------------------------------------------------------
-ACTION="$1"
-TARGET="$2"
-SUBTARGET="$3"
+ACTION="${1:-}"
+TARGET="${2:-}"
+SUBTARGET="${3:-}"
 
 if [[ "$ACTION" =~ ^[0-9]+$ ]]; then
     # Send IPC command directly to Main.qml via Quickshell's native IPC handler
-    qs ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
+    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
 
     CMD="workspace $ACTION"
     [[ "$TARGET" == "move" ]] && CMD="movetoworkspace $ACTION"
@@ -54,8 +68,9 @@ MANIFEST="$THUMB_DIR/.manifest"
 # ZOMBIE WATCHDOG
 # -----------------------------------------------------------------------------
 
-if ! pgrep -f "quickshell.*Shell.qml" >/dev/null; then
-    quickshell -p "$SHELL_QML_PATH" >/dev/null 2>&1 &
+# Safely catch wrapped NixOS binaries without regex misses
+if ! pgrep -f "Shell.qml" >/dev/null; then
+    "$QS_BIN" -p "$SHELL_QML_PATH" >/dev/null 2>&1 &
     disown
 fi
 
@@ -99,8 +114,8 @@ handle_wallpaper_prep() {
         SRC_LIST=$(mktemp)
         find "$SRC_DIR" -maxdepth 1 -type f \
             \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \
-               -o -iname "*.gif" -o -iname "*.mp4" -o -iname "*.mkv" \
-               -o -iname "*.mov" -o -iname "*.webm" \) \
+               -o -iname "*.gif" -o -iname "*.webp" -o -iname "*.mp4" \
+               -o -iname "*.mkv" -o -iname "*.mov" -o -iname "*.webm" \) \
             -printf "%f\n" | sort > "$SRC_LIST"
 
         comm -23 <(sed 's/^000_//' "$MANIFEST" | sort) "$SRC_LIST" | while read -r orphan; do
@@ -113,14 +128,6 @@ handle_wallpaper_prep() {
             [ -f "$img" ] || continue
 
             extension="${filename##*.}"
-
-            if [[ "${extension,,}" == "webp" ]]; then
-                new_img="${img%.*}.jpg"
-                magick "$img" "$new_img" && rm -f "$img"
-                img="$new_img"
-                filename="$(basename "$img")"
-                extension="jpg"
-            fi
 
             if [[ "${extension,,}" =~ ^(mp4|mkv|mov|webm)$ ]]; then
                 thumb="$THUMB_DIR/000_$filename"
@@ -155,14 +162,14 @@ handle_network_prep() {
 # IPC ROUTING
 # -----------------------------------------------------------------------------
 if [[ "$ACTION" == "close" ]]; then
-    qs ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
+    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
     
     # Destruct Background Audio Visualization if it was running
     pkill -x cava 2>/dev/null
     
     if [[ "$TARGET" == "network" || "$TARGET" == "all" || -z "$TARGET" ]]; then
         if [ -f "$BT_PID_FILE" ]; then
-            kill $(cat "$BT_PID_FILE") 2>/dev/null
+            kill "$(cat "$BT_PID_FILE")" 2>/dev/null
             rm -f "$BT_PID_FILE"
         fi
     fi
@@ -171,9 +178,9 @@ fi
 
 if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
 
-    # Provision Pipeline if Audio Visualizer triggered
+    # Provision Pipeline if Audio Visualizer triggered (UID Agnostic)
     if [[ "$TARGET" == "music" ]]; then
-        CAVA_FIFO_PATH="/run/user/1000/quickshell/runtime/music/qml_cava.fifo"
+        CAVA_FIFO_PATH="/run/user/$(id -u)/quickshell/runtime/music/qml_cava.fifo"
         mkdir -p "$(dirname "$CAVA_FIFO_PATH")"
         if [ ! -p "$CAVA_FIFO_PATH" ]; then
             rm -f "$CAVA_FIFO_PATH"
@@ -186,7 +193,7 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
     if [[ "$TARGET" == "network" ]]; then
         handle_network_prep
         [[ -n "$SUBTARGET" ]] && echo "$SUBTARGET" > "$NETWORK_MODE_FILE"
-        qs ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
+        "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
         exit 0
     fi
 
@@ -206,9 +213,9 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
             [[ "${EXT,,}" =~ ^(mp4|mkv|mov|webm)$ ]] && TARGET_THUMB="000_$BASE" || TARGET_THUMB="$BASE"
         fi
 
-        qs ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$TARGET_THUMB" >/dev/null 2>&1
+        "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$TARGET_THUMB" >/dev/null 2>&1
     else
-        qs ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
+        "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
     fi
     exit 0
 fi
