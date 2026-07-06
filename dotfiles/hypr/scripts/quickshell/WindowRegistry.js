@@ -29,48 +29,58 @@ function s(val, scale) {
 
 function getLayout(name, mx, my, mw, mh, userScale) {
     let scale = getScale(mw, mh, userScale);
+    let t = null;
 
-    let base = {
-        // --- Top Right Popups ---
-        "battery":   { w: s(801, scale), h: s(760, scale), rx: mw - s(805, scale), ry: s(60, scale), comp: "battery/BatteryPopup.qml" },
-        "network":   { w: s(900, scale), h: s(700, scale), rx: mw - s(904, scale), ry: s(60, scale), comp: "network/NetworkPopup.qml" },
-        "volume":    { w: s(450, scale), h: s(700, scale), rx: mw - s(455, scale), ry: s(60, scale), comp: "volume/VolumePopup.qml" },
-        
-        // --- Central Standard Tools ---
-        "clipboard": { w: s(800, scale), h: s(700, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(700, scale)/2)), comp: "clipboard/ClipboardManager.qml" },
-        "monitors":  { w: s(800, scale), h: s(650, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "monitors/MonitorPopup.qml" },
-        "stewart":   { w: s(800, scale), h: s(650, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "stewart/stewart.qml" },
+    // Use a switch block to execute math and allocate an object ONLY for the requested widget
+    switch (name) {
+        case "battery":
+            t = { w: s(801, scale), h: s(760, scale), rx: mw - s(805, scale), ry: s(60, scale), comp: "battery/BatteryPopup.qml" };
+            break;
+        case "network":
+            t = { w: s(900, scale), h: s(700, scale), rx: mw - s(904, scale), ry: s(60, scale), comp: "network/NetworkPopup.qml" };
+            break;
+        case "volume":
+            t = { w: s(450, scale), h: s(700, scale), rx: mw - s(455, scale), ry: s(60, scale), comp: "volume/VolumePopup.qml" };
+            break;
+        case "clipboard":
+            t = { w: s(800, scale), h: s(700, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(700, scale)/2)), comp: "clipboard/ClipboardManager.qml" };
+            break;
+        case "monitors":
+            t = { w: s(800, scale), h: s(650, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "monitors/MonitorPopup.qml" };
+            break;
+        case "stewart":
+            t = { w: s(800, scale), h: s(650, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "stewart/stewart.qml" };
+            break;
+        case "focustime":
+            t = { w: s(900, scale), h: s(700, scale), rx: Math.floor((mw/2)-(s(900, scale)/2)), ry: Math.floor((mh/2)-(s(700, scale)/2)), comp: "focustime/FocusTimePopup.qml" };
+            break;
+        case "guide":
+            t = { w: s(1200, scale), h: s(750, scale), rx: Math.floor((mw/2)-(s(1200, scale)/2)), ry: Math.floor((mh/2)-(s(750, scale)/2)), comp: "guide/GuidePopup.qml" };
+            break;
+        case "calendar":
+            t = { w: s(1450, scale), h: s(750, scale), rx: Math.floor((mw/2)-(s(1450, scale)/2)), ry: s(60, scale), comp: "calendar/CalendarPopup.qml" };
+            break;
+        case "updater":
+            t = { w: s(950, scale), h: s(850, scale), rx: Math.floor((mw/2)-(s(950, scale)/2)), ry: Math.floor((mh/2)-(s(850, scale)/2)), comp: "updater/UpdaterPopup.qml" };
+            break;
+        case "wallpaper":
+            t = { w: mw, h: s(650, scale), rx: 0, ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "wallpaper/WallpaperPicker.qml" };
+            break;
+        case "music":
+            t = { w: s(700, scale), h: s(650, scale), rx: s(5, scale), ry: s(60, scale), comp: "music/MusicPopup.qml" };
+            break;
+        case "movies":
+            t = { w: s(1370, scale), h: s(850, scale), rx: Math.floor((mw / 2) - (s(1370, scale) / 2)), ry: mh - s(850, scale), comp: "movies/MovieWidget.qml" };
+            break;
+        case "hidden":
+            t = { w: 1, h: 1, rx: -5000 - mx, ry: -5000 - my, comp: "" };
+            break;
+        default:
+            return null;
+    }
 
-        // --- Central Large Tools ---
-        "focustime": { w: s(900, scale), h: s(700, scale), rx: Math.floor((mw/2)-(s(900, scale)/2)), ry: Math.floor((mh/2)-(s(700, scale)/2)), comp: "focustime/FocusTimePopup.qml" },
-
-        // --- Extralarge / Custom Centered ---
-        "guide":     { w: s(1200, scale), h: s(750, scale), rx: Math.floor((mw/2)-(s(1200, scale)/2)), ry: Math.floor((mh/2)-(s(750, scale)/2)), comp: "guide/GuidePopup.qml" },
-        "calendar":  { w: s(1450, scale), h: s(750, scale), rx: Math.floor((mw/2)-(s(1450, scale)/2)), ry: s(60, scale), comp: "calendar/CalendarPopup.qml" },
-        "updater":   { w: s(950, scale), h: s(850, scale), rx: Math.floor((mw/2)-(s(950, scale)/2)), ry: Math.floor((mh/2)-(s(850, scale)/2)), comp: "updater/UpdaterPopup.qml" },
-        "wallpaper": { w: mw, h: s(650, scale), rx: 0, ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "wallpaper/WallpaperPicker.qml" },
-        
-        // --- Top Left Edge ---
-        "music":     { w: s(700, scale), h: s(650, scale), rx: s(5, scale), ry: s(60, scale), comp: "music/MusicPopup.qml" },
-
-        "movies": {
-            w: s(1370, scale),
-            h: s(850, scale),
-            rx: Math.floor((mw / 2) - (s(1370, scale) / 2)),
-            ry: mh - s(850, scale),
-            comp: "movies/MovieWidget.qml"
-        },
-        
-        // --- Utility ---
-        "hidden":    { w: 1, h: 1, rx: -5000 - mx, ry: -5000 - my, comp: "" } 
-    };
-
-    if (!base[name]) return null;
-    
-    let t = base[name];
     t.x = mx + t.rx;
     t.y = my + t.ry;
-    
     return t;
 }
 

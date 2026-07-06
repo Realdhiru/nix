@@ -114,12 +114,16 @@ PanelWindow {
         if (!name || widgetCache[name]) return;
         let t = getLayout(name);
         if (!t || !t.comp) return;
-        let obj = t.comp.createObject(preloaderContainer, {
-            "notifModel": masterWindow.notifModel,
-            "liveNotifs": masterWindow.liveNotifs,
-            "visible": false
-        });
-        if (obj) widgetCache[name] = obj;
+        
+        let component = Qt.createComponent(t.comp);
+        if (component.status === Component.Ready) {
+            let obj = component.createObject(preloaderContainer, {
+                "notifModel": masterWindow.notifModel,
+                "liveNotifs": masterWindow.liveNotifs,
+                "visible": false
+            });
+            if (obj) widgetCache[name] = obj;
+        }
     }
 
     Component.onCompleted: {
@@ -142,13 +146,17 @@ PanelWindow {
 
     property string currentActive: "hidden"
 
-    FileWriter {
-        id: stateWriter
-        path: paths.runDir + "/current_widget"
+    // Raw POSIX shell write bypasses full bash process profile loading overhead
+    Process {
+        id: stateCommandExecutor
+        command: ["/bin/sh", "-c", "echo '" + masterWindow.currentActive + "' > " + paths.runDir + "/current_widget"]
     }
 
     onCurrentActiveChanged: {
-        stateWriter.write(currentActive + "\n");
+        if (stateCommandExecutor.running) {
+            stateCommandExecutor.terminate();
+        }
+        stateCommandExecutor.start();
     }
 
     property bool isVisible: false
@@ -245,24 +253,36 @@ PanelWindow {
         onRemoveRequested: (uid) => masterWindow.removePopup(uid)
     }
 
-    FileReader {
-        id: settingsReader
-        path: Quickshell.env("HOME") + "/.config/hypr/settings.json"
-        track: true
-        readOnStart: true
-
-        onTextChanged: {
-            if (!text) return;
-            try {
-                let trimmed = text.trim();
-                if (trimmed.length > 0 && trimmed !== "{}") {
-                    let parsed = JSON.parse(trimmed);
-                    if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
-                        masterWindow.globalUiScale = parsed.uiScale;
+    Process {
+        id: settingsNativeReader
+        command: ["/bin/cat", Quickshell.env("HOME") + "/.config/hypr/settings.json"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (!this.text) return;
+                try {
+                    let trimmed = this.text.trim();
+                    if (trimmed.length > 0 && trimmed !== "{}") {
+                        let parsed = JSON.parse(trimmed);
+                        if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
+                            masterWindow.globalUiScale = parsed.uiScale;
+                        }
                     }
+                } catch (e) {
+                    console.log("Error parsing settings.json in main.qml:", e);
                 }
-            } catch (e) {
-                console.log("Error parsing settings.json in main.qml:", e);
+            }
+        }
+    }
+
+    Timer {
+        id: settingsPollTimer
+        interval: 3000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            if (!settingsNativeReader.running) {
+                settingsNativeReader.start();
             }
         }
     }
@@ -477,7 +497,14 @@ PanelWindow {
             cached.visible = true;
             widgetStack.replace(cached, {}, immediate ? StackView.Immediate : StackView.Normal);
         } else {
-            widgetStack.replace(t.comp, props, immediate ? StackView.Immediate : StackView.Normal);
+            let component = Qt.createComponent(t.comp);
+            if (component.status === Component.Ready) {
+                let obj = component.createObject(preloaderContainer, props);
+                if (obj) {
+                    widgetCache[newWidget] = obj;
+                    widgetStack.replace(obj, {}, immediate ? StackView.Immediate : StackView.Normal);
+                }
+            }
         }
 
         let currentItem = widgetStack.currentItem;
