@@ -78,14 +78,6 @@ PanelWindow {
 
     mask: Region { item: topBarHole; intersection: Intersection.Xor }
 
-    // Fallback key routing to intercept Escape even if child components encounter null-focus or layout errors
-    Keys.onEscapePressed: (event) => {
-        if (masterWindow.currentActive !== "hidden") {
-            switchWidget("hidden", "");
-            event.accepted = true;
-        }
-    }
-
     Item {
         id: topBarHole
         anchors.top: parent.top
@@ -471,7 +463,6 @@ PanelWindow {
         masterWindow.targetW = t.w;
         masterWindow.targetH = t.h;
 
-        // Instantiate natively via StackView to preserve the focus scope chain out-of-the-box
         if (immediate) {
             widgetStack.replace(t.comp, {}, StackView.Immediate);
         } else {
@@ -480,13 +471,12 @@ PanelWindow {
 
         let currentItem = widgetStack.currentItem;
         if (currentItem) {
-            // Check property existence using JavaScript reflection syntax to block console warning generation
-            if ("notifModel" in currentItem) currentItem.notifModel = masterWindow.notifModel;
-            if ("liveNotifs" in currentItem) currentItem.liveNotifs = masterWindow.liveNotifs;
-            if ("layoutWidth" in currentItem) currentItem.layoutWidth = t.w;
-            if ("layoutHeight" in currentItem) currentItem.layoutHeight = t.h;
-            if (newWidget === "wallpaper" && "widgetArg" in currentItem) currentItem.widgetArg = arg;
-            if (arg !== "" && "activeMode" in currentItem) currentItem.activeMode = arg;
+            if (currentItem.notifModel   !== undefined) currentItem.notifModel   = masterWindow.notifModel;
+            if (currentItem.liveNotifs   !== undefined) currentItem.liveNotifs   = masterWindow.liveNotifs;
+            if (currentItem.layoutWidth  !== undefined) currentItem.layoutWidth  = t.w;
+            if (currentItem.layoutHeight !== undefined) currentItem.layoutHeight = t.h;
+            if (newWidget === "wallpaper" && currentItem.widgetArg !== undefined) currentItem.widgetArg = arg;
+            if (arg !== "" && currentItem.activeMode !== undefined) currentItem.activeMode = arg;
 
             if (currentItem.targetMasterWidth !== undefined) {
                 let dynW = currentItem.targetMasterWidth;
@@ -498,6 +488,8 @@ PanelWindow {
                 masterWindow.animH = currentItem.targetMasterHeight;
                 masterWindow.targetH = currentItem.targetMasterHeight;
             }
+
+            currentItem.forceActiveFocus();
         }
 
         masterWindow.isVisible = true;
