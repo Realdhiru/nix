@@ -110,7 +110,6 @@ PanelWindow {
     }
 
     property var widgetCache: ({})
-
     property var componentCache: ({})
 
     function resolveComponent(path) {
@@ -339,6 +338,8 @@ PanelWindow {
         if (isVisible) {
             widgetStack.forceActiveFocus();
             if (widgetStack.currentItem) {
+                widgetStack.currentItem.focus = false;
+                widgetStack.currentItem.focus = true;
                 widgetStack.currentItem.forceActiveFocus();
             }
         }
@@ -492,10 +493,6 @@ PanelWindow {
 
         let cached = widgetCache[newWidget];
         if (cached) {
-            // Reuse the live, already-initialized instance: update its bound
-            // properties in place instead of destroying/recreating it, so
-            // internal state (scroll position, in-progress edits, already
-            // completed startup fetches) survives across opens.
             if (cached.notifModel   !== undefined) cached.notifModel   = masterWindow.notifModel;
             if (cached.liveNotifs   !== undefined) cached.liveNotifs   = masterWindow.liveNotifs;
             if (cached.layoutWidth  !== undefined) cached.layoutWidth  = t.w;
@@ -504,16 +501,13 @@ PanelWindow {
             if (arg !== "" && cached.activeMode !== undefined) cached.activeMode = arg;
 
             cached.visible = true;
+            cached.focus = true;
             if (immediate) {
                 widgetStack.replace(cached, {}, StackView.Immediate);
             } else {
                 widgetStack.replace(cached, {});
             }
         } else {
-            // No cached instance: create fresh, passing props as initial
-            // properties so they're set BEFORE Component.onCompleted runs.
-            // Setting them after creation would let the popup briefly render
-            // at its fallback width/height first, then jump — a visible flash.
             if (immediate) {
                 widgetStack.replace(t.comp, props, StackView.Immediate);
             } else {
