@@ -52,6 +52,115 @@ Item {
 
     property bool isInitialLoad: true
 
+    // -------------------------------------------------------------------------
+    // GLOBAL SHORTCUT INTERCEPTIONS
+    // Decoupled from TextField to prevent native QML text-cursor swallowing
+    // -------------------------------------------------------------------------
+    Shortcut {
+        sequence: "Tab"
+        enabled: window.visible
+        onActivated: {
+            if (clipModel.count > 0) {
+                window.previewMode = !window.previewMode;
+                if (window.previewMode) {
+                    window.updatePreviewText();
+                }
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: "Right"
+        enabled: window.visible
+        onActivated: {
+            window.previewMode = false;
+            window.navDuration = 250; 
+            window.pendingIndex = -1;
+            
+            let targetIdx = clipList.currentIndex + 1;
+            if (targetIdx < clipModel.count) { 
+                clipList.currentIndex = targetIdx; 
+            } else if (window.hasMore) {
+                window.pendingIndex = targetIdx;
+                window.loadMore();
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: "Left"
+        enabled: window.visible
+        onActivated: {
+            window.previewMode = false;
+            window.navDuration = 250;
+            window.pendingIndex = -1;
+            
+            if (clipList.currentIndex > 0) { clipList.currentIndex--; }
+        }
+    }
+
+    Shortcut {
+        sequence: "Down"
+        enabled: window.visible
+        onActivated: {
+            if (window.previewMode && textPreviewFlickable.visible) {
+                textPreviewFlickable.contentY = Math.min(textPreviewFlickable.contentY + window.s(60), Math.max(0, textPreviewFlickable.contentHeight - textPreviewFlickable.height));
+            } else {
+                window.previewMode = false;
+                window.navDuration = 250;
+                window.pendingIndex = -1;
+                
+                let targetIdx = clipList.currentIndex + mainBg.cols;
+                if (targetIdx < clipModel.count) {
+                    clipList.currentIndex = targetIdx;
+                } else if (window.hasMore) {
+                    window.pendingIndex = targetIdx;
+                    window.loadMore();
+                } else {
+                    clipList.currentIndex = clipModel.count - 1;
+                }
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: "Up"
+        enabled: window.visible
+        onActivated: {
+            if (window.previewMode && textPreviewFlickable.visible) {
+                textPreviewFlickable.contentY = Math.max(textPreviewFlickable.contentY - window.s(60), 0);
+            } else {
+                window.previewMode = false;
+                window.navDuration = 250;
+                window.pendingIndex = -1;
+                
+                if (clipList.currentIndex - mainBg.cols >= 0) { clipList.currentIndex -= mainBg.cols; }
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: "Return"
+        enabled: window.visible
+        onActivated: {
+            if (clipList.currentIndex >= 0 && clipList.currentIndex < clipModel.count) {
+                copyToClipboard(clipModel.get(clipList.currentIndex).id);
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        enabled: window.visible
+        onActivated: {
+            if (window.previewMode) {
+                window.previewMode = false;
+            } else {
+                Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
+            }
+        }
+    }
+
     onPreviewModeChanged: {
         if (!previewMode) {
             fullTextPreview = "";
@@ -349,87 +458,6 @@ Item {
                         window.pendingIndex = -1;
                         filterClips(text);
                     }
-
-                    // --- CONSOLIDATED FIX: Universal Keys.onPressed block ---
-                    Keys.onPressed: (event) => {
-                        if (event.key === Qt.Key_Tab) {
-                            if (clipModel.count > 0) {
-                                window.previewMode = !window.previewMode;
-                                if (window.previewMode) {
-                                    window.updatePreviewText();
-                                }
-                            }
-                            event.accepted = true;
-                        } 
-                        else if (event.key === Qt.Key_Right) {
-                            window.previewMode = false;
-                            window.navDuration = 250; 
-                            window.pendingIndex = -1;
-                            
-                            let targetIdx = clipList.currentIndex + 1;
-                            if (targetIdx < clipModel.count) { 
-                                clipList.currentIndex = targetIdx; 
-                            } else if (window.hasMore) {
-                                window.pendingIndex = targetIdx;
-                                window.loadMore();
-                            }
-                            event.accepted = true;
-                        } 
-                        else if (event.key === Qt.Key_Left) {
-                            window.previewMode = false;
-                            window.navDuration = 250;
-                            window.pendingIndex = -1;
-                            
-                            if (clipList.currentIndex > 0) { clipList.currentIndex--; }
-                            event.accepted = true;
-                        } 
-                        else if (event.key === Qt.Key_Down) {
-                            if (window.previewMode && textPreviewFlickable.visible) {
-                                textPreviewFlickable.contentY = Math.min(textPreviewFlickable.contentY + window.s(60), Math.max(0, textPreviewFlickable.contentHeight - textPreviewFlickable.height));
-                            } else {
-                                window.previewMode = false;
-                                window.navDuration = 250;
-                                window.pendingIndex = -1;
-                                
-                                let targetIdx = clipList.currentIndex + mainBg.cols;
-                                if (targetIdx < clipModel.count) {
-                                    clipList.currentIndex = targetIdx;
-                                } else if (window.hasMore) {
-                                    window.pendingIndex = targetIdx;
-                                    window.loadMore();
-                                } else {
-                                    clipList.currentIndex = clipModel.count - 1;
-                                }
-                            }
-                            event.accepted = true;
-                        } 
-                        else if (event.key === Qt.Key_Up) {
-                            if (window.previewMode && textPreviewFlickable.visible) {
-                                textPreviewFlickable.contentY = Math.max(textPreviewFlickable.contentY - window.s(60), 0);
-                            } else {
-                                window.previewMode = false;
-                                window.navDuration = 250;
-                                window.pendingIndex = -1;
-                                
-                                if (clipList.currentIndex - mainBg.cols >= 0) { clipList.currentIndex -= mainBg.cols; }
-                            }
-                            event.accepted = true;
-                        } 
-                        else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            if (clipList.currentIndex >= 0 && clipList.currentIndex < clipModel.count) {
-                                copyToClipboard(clipModel.get(clipList.currentIndex).id);
-                            }
-                            event.accepted = true;
-                        } 
-                        else if (event.key === Qt.Key_Escape) {
-                            if (window.previewMode) {
-                                window.previewMode = false;
-                            } else {
-                                Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
-                            }
-                            event.accepted = true;
-                        }
-                    }
                 }
             }
         }
@@ -659,7 +687,6 @@ Item {
             }
         }
 
-        // FULL SCREEN PREVIEW OVERLAY
         Rectangle {
             id: previewMorph
             z: 100
