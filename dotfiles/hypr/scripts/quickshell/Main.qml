@@ -111,9 +111,7 @@ PanelWindow {
     property var widgetCache: ({})
 
     function preloadWidget(name) {
-        if (widgetCache[name]) return;
-        if (!name)
-    return;
+        if (!name || widgetCache[name]) return;
         let t = getLayout(name);
         if (!t || !t.comp) return;
         let obj = t.comp.createObject(preloaderContainer, {
@@ -130,8 +128,8 @@ PanelWindow {
 
     Timer {
         id: preloadStaggerTimer
-        Component.onCompleted: preloadWidgets()
         repeat: false
+        interval: 10
         onTriggered: {
             preloadWidget("search");
             preloadWidget("battery");
@@ -144,8 +142,13 @@ PanelWindow {
 
     property string currentActive: "hidden"
 
+    FileWriter {
+        id: stateWriter
+        path: paths.runDir + "/current_widget"
+    }
+
     onCurrentActiveChanged: {
-        Quickshell.execDetached(["bash", "-c", "echo '" + currentActive + "' > " + paths.runDir + "/current_widget"]);
+        stateWriter.write(currentActive + "\n");
     }
 
     property bool isVisible: false
@@ -177,6 +180,7 @@ PanelWindow {
         id: startupTimer
         interval: 500
         running: true
+        repeat: false
         onTriggered: masterWindow.isStartup = false
     }
 
@@ -240,83 +244,66 @@ PanelWindow {
         uiScale: masterWindow.globalUiScale
         onRemoveRequested: (uid) => masterWindow.removePopup(uid)
     }
-    onGlobalUiScaleChanged: { handleNativeScreenChange(); }
 
-    Process {
+    FileReader {
         id: settingsReader
-        command: ["bash", "-c", "cat ~/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
-                        let parsed = JSON.parse(this.text);
-                        if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
-                            masterWindow.globalUiScale = parsed.uiScale;
-                        }
-                    }
-                } catch (e) {
-                    console.log("Error parsing settings.json in main.qml:", e);
-                }
-            }
-        }
-    }
+        path: Quickshell.env("HOME") + "/.config/hypr/settings.json"
+        track: true
+        readOnStart: true
 
-    // Process-less settings polling: completely removes CPU wakeups and background bash loops!
-    Timer {
-        id: settingsPollTimer
-        interval: 3000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
-            settingsReader.running = false;
-            settingsReader.running = true;
+        onTextChanged: {
+            if (!text) return;
+            try {
+                let trimmed = text.trim();
+                if (trimmed.length > 0 && trimmed !== "{}") {
+                    let parsed = JSON.parse(trimmed);
+                    if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
+                        masterWindow.globalUiScale = parsed.uiScale;
+                    }
+                }
+            } catch (e) {
+                console.log("Error parsing settings.json in main.qml:", e);
+            }
         }
     }
 
     property var _layoutCache: ({})
 
-function getLayout(name) {
-    let key = name + "|" +
-              masterWindow.width + "|" +
-              masterWindow.height + "|" +
-              masterWindow.globalUiScale;
+    function getLayout(name) {
+        if (_layoutCache[name] !== undefined)
+            return _layoutCache[name];
 
-    if (_layoutCache[key] !== undefined)
-        return _layoutCache[key];
+        let result = Registry.getLayout(
+            name,
+            0,
+            0,
+            masterWindow.width,
+            masterWindow.height,
+            masterWindow.globalUiScale
+        );
 
-    let result = Registry.getLayout(
-        name,
-        0,
-        0,
-        masterWindow.width,
-        masterWindow.height,
-        masterWindow.globalUiScale
-    );
-
-    _layoutCache[key] = result;
-    return result;
-}
-
-Connections {
-    target: masterWindow
-
-    function onWidthChanged() {
-        _layoutCache = {};
-        handleNativeScreenChange();
+        _layoutCache[name] = result;
+        return result;
     }
 
-    function onHeightChanged() {
-        _layoutCache = {};
-        handleNativeScreenChange();
-    }
+    Connections {
+        target: masterWindow
 
-    function onGlobalUiScaleChanged() {
-        _layoutCache = {};
-        handleNativeScreenChange();
+        function onWidthChanged() {
+            masterWindow._layoutCache = {};
+            masterWindow.handleNativeScreenChange();
+        }
+
+        function onHeightChanged() {
+            masterWindow._layoutCache = {};
+            masterWindow.handleNativeScreenChange();
+        }
+
+        function onGlobalUiScaleChanged() {
+            masterWindow._layoutCache = {};
+            masterWindow.handleNativeScreenChange();
+        }
     }
-}
 
     function handleNativeScreenChange() {
         if (masterWindow.currentActive === "hidden") return;
@@ -387,7 +374,7 @@ Connections {
                 focus: true
 
                 Keys.onEscapePressed: {
-                    switchWidget("hidden", "");
+                    masterWindow.switchWidget("hidden", "");
                     event.accepted = true;
                 }
 
@@ -431,8 +418,8 @@ Connections {
             }
         }
     }
+
     function switchWidget(newWidget, arg) {
-console.log("switchWidget:", newWidget)
         delayedClear.stop();
 
         if (newWidget === "hidden") {
@@ -450,14 +437,6 @@ console.log("switchWidget:", newWidget)
             if (currentActive === "hidden" || !masterWindow.isVisible) {
                 masterWindow.morphDuration = 230;
                 masterWindow.disableMorph = false;
-
-                let t = getLayout(newWidget);
-                masterWindow.animX = t.rx;
-                masterWindow.animY = t.ry;
-                masterWindow.animW = t.w;
-                masterWindow.animH = t.h;
-                masterWindow.targetW = t.w;
-                masterWindow.targetH = t.h;
             } else {
                 masterWindow.morphDuration = masterWindow.morphDurationShift;
                 masterWindow.disableMorph = false;
@@ -466,8 +445,8 @@ console.log("switchWidget:", newWidget)
             executeSwitch(newWidget, arg, false);
         }
     }
+
     function executeSwitch(newWidget, arg, immediate) {
-console.log("executeSwitch:", newWidget)
         masterWindow.currentActive = newWidget;
         masterWindow.activeArg = arg;
 
@@ -496,17 +475,9 @@ console.log("executeSwitch:", newWidget)
             if (arg !== "" && cached.activeMode !== undefined) cached.activeMode = arg;
 
             cached.visible = true;
-            if (immediate) {
-                widgetStack.replace(cached, {}, StackView.Immediate);
-            } else {
-                widgetStack.replace(cached, {});
-            }
+            widgetStack.replace(cached, {}, immediate ? StackView.Immediate : StackView.Normal);
         } else {
-            if (immediate) {
-                widgetStack.replace(t.comp, props, StackView.Immediate);
-            } else {
-                widgetStack.replace(t.comp, props);
-            }
+            widgetStack.replace(t.comp, props, immediate ? StackView.Immediate : StackView.Normal);
         }
 
         let currentItem = widgetStack.currentItem;
@@ -527,15 +498,16 @@ console.log("executeSwitch:", newWidget)
     }
 
     Timer {
-    id: delayedClear
-    interval: 200
+        id: delayedClear
+        interval: 200
+        repeat: false
 
-    onTriggered: {
-        if (!masterWindow.isVisible) {
-            masterWindow.currentActive = "hidden";
-            widgetStack.clear();
-            masterWindow.disableMorph = false;
+        onTriggered: {
+            if (!masterWindow.isVisible) {
+                masterWindow.currentActive = "hidden";
+                widgetStack.clear();
+                masterWindow.disableMorph = false;
+            }
         }
     }
-}
 }
