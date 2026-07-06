@@ -25,10 +25,9 @@ Item {
     property var rawEnvs: ({})
 
     // =========================================================================
-    // Generic Utilities (Use these in ANY widget!)
+    // Generic Utilities
     // =========================================================================
 
-    // Execute a background bash command easily
     function sh(cmd) {
         Quickshell.execDetached(["bash", "-c", cmd]);
     }
@@ -40,21 +39,22 @@ Item {
 
     function setSetting(key, value) {
         rawSettings[key] = value;
-        let safeValue = typeof value === "string" ? `"${value}"` : value;
-        if (typeof value === "object") safeValue = JSON.stringify(value).replace(/'/g, "'\\''");
-
+        let tempObj = {};
+        tempObj[key] = value;
+        let safeJson = JSON.stringify(tempObj).replace(/'/g, "'\\''");
+        
         let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" && ` +
                   `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
-                  `jq '. + {"${key}": ${safeValue}}' '${settingsJsonPath}' > '${settingsJsonPath}.tmp' && ` +
+                  `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
                   `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}'`;
         sh(cmd);
     }
 
     function updateJsonBulk(dataObj) {
-        let jsonStr = JSON.stringify(dataObj).replace(/'/g, "'\\''");
+        let safeJson = JSON.stringify(dataObj).replace(/'/g, "'\\''");
         let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" && ` +
                   `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
-                  `jq '. + ${jsonStr}' '${settingsJsonPath}' > '${settingsJsonPath}.tmp' && ` +
+                  `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
                   `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}'`;
         sh(cmd);
         
@@ -118,7 +118,8 @@ Item {
         sh("notify-send 'Quickshell' 'Settings Applied Successfully!'");
 
         if (config.workspaceCount !== config.initialWorkspaceCount) {
-            sh(`qs -p "${qsScriptsDir}/TopBar.qml" ipc call topbar queueReload`);
+            let reloadCmd = `if command -v qs >/dev/null 2>&1; then QS_BIN="qs"; else QS_BIN="quickshell"; fi; $QS_BIN -p "${qsScriptsDir}/TopBar.qml" ipc call topbar queueReload`;
+            sh(reloadCmd);
             config.initialWorkspaceCount = config.workspaceCount;
         }
     }
@@ -329,8 +330,8 @@ Item {
     // Boot Initialization (Runs once on start)
     // =========================================================================
     Component.onCompleted: {
-        settingsReader.running = true;
-        envReader.running = true;
+        settingsReader.running = false; settingsReader.running = true;
+        envReader.running = false; envReader.running = true;
     }
 
     Process {
@@ -414,7 +415,6 @@ Item {
                         config.startupData = [];
                     }
                 } catch (e) {
-                    console.log("Error parsing global settings:", e);
                     config.keybindsData = [];
                     config.startupData = [];
                 }
