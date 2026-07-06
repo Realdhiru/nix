@@ -105,6 +105,7 @@ PanelWindow {
     }
 
     property var componentCache: ({})
+    property var instanceCache: ({})
 
     function resolveComponent(path) {
         if (!path) return null;
@@ -121,7 +122,16 @@ PanelWindow {
     }
 
     function preloadWidget(name) {
-        getLayout(name);
+        if (instanceCache[name]) return;
+        let t = getLayout(name);
+        if (!t || !t.comp) return;
+        
+        let instance = t.comp.createObject(widgetStack, { "visible": false });
+        if (instance) {
+            if (instance.notifModel !== undefined) instance.notifModel = masterWindow.notifModel;
+            if (instance.liveNotifs !== undefined) instance.liveNotifs = masterWindow.liveNotifs;
+            instanceCache[name] = instance;
+        }
     }
 
     Component.onCompleted: {
@@ -465,18 +475,27 @@ PanelWindow {
         masterWindow.targetW = t.w;
         masterWindow.targetH = t.h;
 
-        let props = {};
-        props["notifModel"]   = masterWindow.notifModel;
-        props["liveNotifs"]   = masterWindow.liveNotifs;
-        props["props"]        = t.w;
-        props["layoutWidth"]  = t.w;
-        props["layoutHeight"] = t.h;
-        if (newWidget === "wallpaper") props["widgetArg"] = arg;
+        let instance = instanceCache[newWidget];
+        if (!instance) {
+            if (!t || !t.comp) return;
+            instance = t.comp.createObject(widgetStack, { "visible": false });
+            if (instance) instanceCache[newWidget] = instance;
+        }
 
-        if (immediate) {
-            widgetStack.replace(t.comp, props, StackView.Immediate);
-        } else {
-            widgetStack.replace(t.comp, props);
+        if (instance) {
+            if (instance.notifModel   !== undefined) instance.notifModel   = masterWindow.notifModel;
+            if (instance.liveNotifs   !== undefined) instance.liveNotifs   = masterWindow.liveNotifs;
+            if (instance.layoutWidth  !== undefined) instance.layoutWidth  = t.w;
+            if (instance.layoutHeight !== undefined) instance.layoutHeight = t.h;
+            if (newWidget === "wallpaper" && instance.widgetArg !== undefined) instance.widgetArg = arg;
+            if (arg !== "" && instance.activeMode !== undefined) instance.activeMode = arg;
+
+            instance.visible = true;
+            if (immediate) {
+                widgetStack.replace(instance, {}, StackView.Immediate);
+            } else {
+                widgetStack.replace(instance, {});
+            }
         }
 
         let currentItem = widgetStack.currentItem;
