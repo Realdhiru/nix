@@ -121,7 +121,6 @@ PanelWindow {
     }
 
     function preloadWidget(name) {
-        // Calling getLayout triggers resolveComponent, forcing ahead-of-time compilation into componentCache
         getLayout(name);
     }
 
@@ -368,8 +367,12 @@ PanelWindow {
                 focus: true
 
                 Keys.onEscapePressed: (event) => {
-                    switchWidget("hidden", "");
-                    event.accepted = true;
+                    if (masterWindow.currentActive !== "wallpaper") {
+                        switchWidget("hidden", "");
+                        event.accepted = true;
+                    } else {
+                        event.accepted = false;
+                    }
                 }
 
                 onCurrentItemChanged: {
@@ -465,7 +468,7 @@ PanelWindow {
         let props = {};
         props["notifModel"]   = masterWindow.notifModel;
         props["liveNotifs"]   = masterWindow.liveNotifs;
-        props["props"]        = t.w; // keeping layout width assignments safe
+        props["props"]        = t.w;
         props["layoutWidth"]  = t.w;
         props["layoutHeight"] = t.h;
         if (newWidget === "wallpaper") props["widgetArg"] = arg;
