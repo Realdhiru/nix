@@ -15,7 +15,7 @@ if [ -f "$PID_FILE" ]; then
     if kill -0 "$REC_PID" 2>/dev/null; then
         # Send SIGINT to gracefully stop encoding and flush the MP4 footer
         kill -SIGINT "$REC_PID"
-        notify-send -t 2500 -u normal "GPU Recorder" "Recording successfully saved to $TARGET_DIR"
+        notify-send -a "System" -t 2500 -u normal "GPU Recorder" "Recording successfully saved to $TARGET_DIR"
         exit 0
     else
         # Purge stale PID file if the recorder crashed previously
