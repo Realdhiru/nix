@@ -11,11 +11,9 @@ Item {
 
     Caching { id: paths }
 
-    // --- RECEIVE THE DBUS LIST FROM MAIN.QML ---
     property var notifModel
     property var liveNotifs
 
-    // Ensure actionable notifications are continually bubbled to the top
     onNotifModelChanged: Qt.callLater(window.enforceNotificationSort)
     
     Connections {
@@ -33,7 +31,6 @@ Item {
             let hasAction = false;
             try {
                 let parsed = item.actionsJson ? JSON.parse(item.actionsJson) : [];
-                // Fix: Removed filter so default actions (like "Open") correctly flag the notification as actionable
                 hasAction = parsed.length > 0;
             } catch(e) {}
 
@@ -50,21 +47,15 @@ Item {
         }
     }
 
-    // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler
-        // Uses the physical screen width so the popup scales synchronously with the TopBar
         currentWidth: Screen.width
     }
     
-    // Helper function scoped to the root Item for easy access in deeply nested elements and Canvases
     function s(val) { 
         return scaler.s(val); 
     }
 
-    // -------------------------------------------------------------------------
-    // COLORS (Dynamic Matugen Palette)
-    // -------------------------------------------------------------------------
     MatugenColors { id: _theme }
     readonly property color base: _theme.base
     readonly property color mantle: _theme.mantle
@@ -88,9 +79,6 @@ Item {
     readonly property color sapphire: _theme.sapphire
     readonly property color blue: _theme.blue
 
-    // -------------------------------------------------------------------------
-    // STATE & POLLING
-    // -------------------------------------------------------------------------
     property int batCapacity: 0
     property string batStatus: "Unknown"
     property string powerProfile: "balanced"
@@ -103,10 +91,8 @@ Item {
     property real sysBrightness: 0
     
     property string currentUserName: ""
-    
     property bool dndEnabled: false
 
-    // State object for collapsible notification groups
     property var collapsedGroups: ({})
 
     function toggleGroup(groupName) {
@@ -119,7 +105,6 @@ Item {
         return collapsedGroups[groupName] === true;
     }
 
-    // Anti-Jitter Sync States
     property bool isDraggingVol: false
     property bool isDraggingBri: false
 
@@ -128,7 +113,6 @@ Item {
 
     readonly property bool isCharging: batStatus === "Charging"
 
-    // Unified hue for Battery
     readonly property color batColorStart: {
         if (isCharging) return window.green;
         if (batCapacity >= 70) return window.blue;
@@ -137,7 +121,6 @@ Item {
     }
     readonly property color batColorEnd: Qt.lighter(batColorStart, 1.15)
 
-    // Unified hue for Performance Profile
     readonly property color profileStart: {
         if (powerProfile === "performance") return window.red;
         if (powerProfile === "power-saver") return window.green;
@@ -145,7 +128,6 @@ Item {
     }
     readonly property color profileEnd: Qt.lighter(profileStart, 1.15)
 
-    // Ambient Blobs - Based strictly on aesthetic pairs derived from battery state
     readonly property color ambientPrimary: window.batColorStart
     readonly property color ambientSecondary: {
         if (isCharging) return window.sapphire;
@@ -160,11 +142,10 @@ Item {
     onAnimCapacityChanged: batCanvas.requestPaint()
     onBatColorStartChanged: batCanvas.requestPaint()
 
-    // --- INIT DND STATE FROM CACHE ---
     Process {
         id: dndInit
         running: true
-        command: ["bash", "-c", "cat " + paths.getCacheDir("dnd") + "/state 2>/dev/null || echo '0'"]
+        command: ["bash", "-c", "cat '" + paths.getCacheDir("dnd") + "/state' 2>/dev/null || echo '0'"]
         stdout: StdioCollector {
             onStreamFinished: {
                 window.dndEnabled = (this.text.trim() === "1");
@@ -184,59 +165,76 @@ Item {
     }
 
     Process {
-    id: sysPoller
-    command: ["bash", "-c",
-        "cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1 || echo '0'; " +
-        "cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1 || echo 'Unknown'; " +
-        "src=$(cat /sys/class/power_supply/AC*/online 2>/dev/null | head -n1 || echo '0'); " +
-        "if [ \"$src\" = '1' ]; then echo 'performance'; else echo 'balanced'; fi; " +
-        "en=$(cat /sys/class/power_supply/BAT0/energy_now 2>/dev/null || echo '0'); " +
-        "ef=$(cat /sys/class/power_supply/BAT0/energy_full 2>/dev/null || echo '1'); " +
-        "pw=$(cat /sys/class/power_supply/BAT0/power_now 2>/dev/null || echo '0'); " +
-        "st=$(cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo 'Unknown'); " +
-        "if [ \"$pw\" -gt 1000 ] 2>/dev/null; then " +
-        "  if [ \"$st\" = 'Charging' ]; then " +
-        "    echo $(( ($ef - $en) * 3600 / $pw )); " +
-        "  else " +
-        "    echo $(( $en * 3600 / $pw )); " +
-        "  fi; " +
-        "else echo '0'; fi; " +
-        "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100), ($3==\"[MUTED]\"?\"off\":\"on\")}' || echo '0 on'; " +
-        "brightnessctl -m 2>/dev/null | awk -F, '{print substr($4, 1, length($4)-1)}' || echo '0'"
-    ]
-    running: true
-    stdout: StdioCollector {
-        onStreamFinished: {
-            let lines = this.text.trim().split("\n");
-            if (lines.length >= 6) {
-                if (window.batCapacity !== parseInt(lines[0])) {
-                    window.batCapacity = parseInt(lines[0]);
-                    window.animCapacity = window.batCapacity;
-                }
-                window.batStatus = lines[1];
-                window.powerProfile = lines[2];
+        id: sysPoller
+        command: [
+            "bash", "-c",
+            `
+            cap=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1 || echo '0')
+            stat=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1 || echo 'Unknown')
+            prof=$(powerprofilesctl get 2>/dev/null || echo 'balanced')
 
-                // Battery remaining time in seconds
-                let remSeconds = parseInt(lines[3]) || 0;
-                window.upHours = Math.floor(remSeconds / 3600);
-                window.upMins = Math.floor((remSeconds % 3600) / 60);
+            en=$(cat /sys/class/power_supply/BAT*/energy_now 2>/dev/null | head -n1 || cat /sys/class/power_supply/BAT*/charge_now 2>/dev/null | head -n1 || echo '0')
+            ef=$(cat /sys/class/power_supply/BAT*/energy_full 2>/dev/null | head -n1 || cat /sys/class/power_supply/BAT*/charge_full 2>/dev/null | head -n1 || echo '1')
+            pw=$(cat /sys/class/power_supply/BAT*/power_now 2>/dev/null | head -n1 || cat /sys/class/power_supply/BAT*/current_now 2>/dev/null | head -n1 || echo '0')
 
-                if (!window.isDraggingVol) {
-                    let volParts = (lines[4] || "0 on").trim().split(" ");
-                    window.sysVolume = parseInt(volParts[0]) || 0;
-                    window.sysMuted = (volParts[1] === "off");
-                }
+            if [ "$pw" -gt 500000 ] 2>/dev/null; then
+                if [ "$stat" = 'Charging' ]; then
+                    rem=$(( (ef - en) * 3600 / pw ))
+                else
+                    rem=$(( en * 3600 / pw ))
+                fi
+                if [ "$rem" -gt 356400 ]; then rem=356400; fi
+            else
+                rem=0
+            fi
 
-                if (!window.isDraggingBri) {
-                    window.sysBrightness = parseInt(lines[5]) || 0;
+            vol=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100), ($3=="[MUTED]"?"off":"on")}' || echo '0 on')
+            bri=$(brightnessctl -m 2>/dev/null | awk -F, '{print substr($4, 1, length($4)-1)}' || echo '0')
+
+            echo "$cap"
+            echo "$stat"
+            echo "$prof"
+            echo "$rem"
+            echo "$vol"
+            echo "$bri"
+            `
+        ]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let lines = this.text.trim().split("\n");
+                if (lines.length >= 6) {
+                    if (window.batCapacity !== parseInt(lines[0])) {
+                        window.batCapacity = parseInt(lines[0]);
+                        window.animCapacity = window.batCapacity;
+                    }
+                    window.batStatus = lines[1];
+                    window.powerProfile = lines[2];
+
+                    let remSeconds = parseInt(lines[3]) || 0;
+                    window.upHours = Math.floor(remSeconds / 3600);
+                    window.upMins = Math.floor((remSeconds % 3600) / 60);
+
+                    if (!window.isDraggingVol) {
+                        let volParts = (lines[4] || "0 on").trim().split(" ");
+                        window.sysVolume = parseInt(volParts[0]) || 0;
+                        window.sysMuted = (volParts[1] === "off");
+                    }
+
+                    if (!window.isDraggingBri) {
+                        window.sysBrightness = parseInt(lines[5]) || 0;
+                    }
                 }
             }
         }
     }
-}
+
     Timer {
         interval: 1500; running: true; repeat: true; triggeredOnStart: true;
-        onTriggered: sysPoller.running = true
+        onTriggered: {
+            sysPoller.running = false;
+            sysPoller.running = true;
+        }
     }
 
     property real globalOrbitAngle: 0
@@ -244,7 +242,6 @@ Item {
         from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: true
     }
 
-    // --- ENHANCED STARTUP ANIMATION STATES ---
     property real introMain: 0
     property real introTop: 0
     property real introNotifs: 0
@@ -255,41 +252,27 @@ Item {
 
     ParallelAnimation {
         running: true
-
-        // Base window fades, scales, and lifts
         NumberAnimation { target: window; property: "introMain"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutQuart }
-
-        // Top bar drops in
         SequentialAnimation {
             PauseAnimation { duration: 100 }
             NumberAnimation { target: window; property: "introTop"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutBack; easing.overshoot: 1.0 }
         }
-
-        // Notification List cascades in smoothly
         SequentialAnimation {
             PauseAnimation { duration: 150 }
             NumberAnimation { target: window; property: "introNotifs"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuart }
         }
-
-        // Central core pops out and breathes
         SequentialAnimation {
             PauseAnimation { duration: 250 }
             NumberAnimation { target: window; property: "introCore"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
         }
-
-        // Hardware sliders slide up
         SequentialAnimation {
             PauseAnimation { duration: 350 }
             NumberAnimation { target: window; property: "introSliders"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutQuart }
         }
-
-        // Actions waterfall
         SequentialAnimation {
             PauseAnimation { duration: 450 }
             NumberAnimation { target: window; property: "introActions"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutExpo }
         }
-
-        // Power profiles finish the wave
         SequentialAnimation {
             PauseAnimation { duration: 550 }
             NumberAnimation { target: window; property: "introProfiles"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutBack; easing.overshoot: 0.8 }
@@ -307,7 +290,6 @@ Item {
         NumberAnimation { target: window; property: "introProfiles"; to: 0; duration: 150; easing.type: Easing.InQuart }
     }
 
-    // Helper: Safely clear an entire group of notifications by AppName
     function clearGroup(appName) {
         if (!notifModel) return;
         for (let i = notifModel.count - 1; i >= 0; i--) {
@@ -321,16 +303,12 @@ Item {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // UI LAYOUT
-    // -------------------------------------------------------------------------
     Item {
         anchors.fill: parent
         scale: 0.92 + (0.08 * introMain)
         opacity: introMain
         transform: Translate { y: window.s(15) * (1 - introMain) }
 
-        // Unified Outer Background
         Rectangle {
             anchors.fill: parent
             radius: window.s(20)
@@ -339,7 +317,6 @@ Item {
             border.width: 1
             clip: true
 
-            // Rotating Background Blobs - Spanning across the whole widget natively
             Rectangle {
                 width: parent.width * 0.8; height: width; radius: width / 2
                 x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
@@ -360,11 +337,8 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                spacing: window.s(15) // Seamless separation instead of a line
+                spacing: window.s(15)
 
-                // ==========================================
-                // LEFT SIDE: NOTIFICATION CENTER
-                // ==========================================
                 Item {
                     Layout.preferredWidth: window.s(320)
                     Layout.fillHeight: true
@@ -374,7 +348,6 @@ Item {
                         anchors.margins: window.s(20)
                         spacing: window.s(15)
 
-                        // --- Notification Header & DND Toggle ---
                         RowLayout {
                             Layout.fillWidth: true
                             Layout.preferredHeight: window.s(38)
@@ -391,9 +364,8 @@ Item {
                                 color: window.text
                             }
 
-                            Item { Layout.fillWidth: true } // Spacer
+                            Item { Layout.fillWidth: true }
 
-                            // DND Toggle Button
                             Rectangle {
                                 Layout.preferredWidth: dndMa.containsMouse ? window.s(38) + dndText.implicitWidth + window.s(8) : window.s(38)
                                 Layout.preferredHeight: window.s(38)
@@ -440,13 +412,12 @@ Item {
                                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         window.dndEnabled = !window.dndEnabled;
-                                        Quickshell.execDetached(["sh", "-c", "echo '" + (window.dndEnabled ? "1" : "0") + "' > " + paths.getCacheDir("dnd") + "/state"]);
+                                        Quickshell.execDetached(["sh", "-c", "echo '" + (window.dndEnabled ? "1" : "0") + "' > '" + paths.getCacheDir("dnd") + "/state'"]);
                                     }
                                 }
                             }
                         }
 
-                        // --- Zero State ---
                         Text {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
@@ -461,7 +432,6 @@ Item {
                             opacity: introNotifs
                         }
 
-                        // --- Notification List ---
                         ListView {
                             id: notifList
                             Layout.fillWidth: true
@@ -480,7 +450,6 @@ Item {
                                 contentItem: Rectangle { implicitWidth: window.s(4); radius: window.s(2); color: window.surface2 }
                             }
 
-                            // Fluid Animations
                             add: Transition {
                                 ParallelAnimation {
                                     NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 400; easing.type: Easing.OutQuint }
@@ -498,7 +467,6 @@ Item {
                                 NumberAnimation { properties: "y"; duration: 400; easing.type: Easing.OutExpo }
                             }
 
-                            // --- Grouping Configuration ---
                             section.property: "appName"
                             section.criteria: ViewSection.FullString
                             section.delegate: Item {
@@ -519,7 +487,6 @@ Item {
                                         anchors.rightMargin: window.s(6)
                                         spacing: window.s(8)
 
-                                        // Clickable Area for Collapse Toggle
                                         MouseArea {
                                             id: headerMa
                                             Layout.fillWidth: true
@@ -552,7 +519,6 @@ Item {
                                             }
                                         }
 
-                                        // Clear Group Button
                                         Rectangle {
                                             Layout.preferredWidth: window.s(26)
                                             Layout.preferredHeight: window.s(26)
@@ -579,7 +545,6 @@ Item {
                                 }
                             }
 
-                            // --- Individual Notification Card ---
                             delegate: Item {
                                 id: delegateWrapper
                                 width: ListView.view.width
@@ -594,7 +559,6 @@ Item {
 
                                 property var realNotif: window.liveNotifs ? window.liveNotifs[model.uid] : null
 
-                                // Auto-clean linkage to DBus so if it's accepted via hotkey/elsewhere, it deletes here
                                 Connections {
                                     target: delegateWrapper.realNotif || null
                                     function onClosed() {
@@ -662,7 +626,6 @@ Item {
                                         }
                                     }
 
-                                    // Left side accent stripe
                                     Rectangle {
                                         width: window.s(4)
                                         height: parent.height
@@ -676,7 +639,7 @@ Item {
                                         anchors.right: parent.right
                                         anchors.top: parent.top
                                         anchors.margins: window.s(14)
-                                        anchors.leftMargin: window.s(18) // make room for the accent stripe
+                                        anchors.leftMargin: window.s(18) 
                                         spacing: window.s(6)
 
                                         RowLayout {
@@ -694,7 +657,6 @@ Item {
                                                 textFormat: Text.StyledText
                                             }
 
-                                            // Individual Dismiss Button
                                             Rectangle {
                                                 Layout.preferredWidth: window.s(22)
                                                 Layout.preferredHeight: window.s(22)
@@ -732,7 +694,6 @@ Item {
                                             onLinkActivated: (link) => Quickshell.execDetached(["xdg-open", link])
                                         }
 
-                                        // Action Buttons Dock 
                                         RowLayout {
                                             Layout.fillWidth: true
                                             Layout.topMargin: delegateWrapper.actionArray.length > 0 ? window.s(6) : 0
@@ -750,9 +711,9 @@ Item {
 
                                                     color: {
                                                         if (isPrimary) {
-                                                            return actionMouseArea.containsMouse ? window.blue : Qt.darker(window.blue, 1.2)
+                                                            return actionBtnMa.containsMouse ? window.blue : Qt.darker(window.blue, 1.2)
                                                         } else {
-                                                            return actionMouseArea.containsMouse ? window.surface2 : window.surface1
+                                                            return actionBtnMa.containsMouse ? window.surface2 : window.surface1
                                                         }
                                                     }
                                                     
@@ -771,7 +732,7 @@ Item {
                                                     }
 
                                                     MouseArea {
-                                                        id: actionMouseArea
+                                                        id: actionBtnMa
                                                         anchors.fill: parent
                                                         hoverEnabled: true
                                                         cursorShape: Qt.PointingHandCursor
@@ -798,14 +759,10 @@ Item {
                     }
                 }
 
-                // ==========================================
-                // RIGHT SIDE: HARDWARE & BATTERY CORE
-                // ==========================================
                 Item {
                     Layout.preferredWidth: window.s(480)
                     Layout.fillHeight: true
 
-                    // Radar Rings (Centered on the Hardware Panel so it aligns perfectly with the gauge)
                     Item {
                         anchors.fill: parent
                         
@@ -826,7 +783,6 @@ Item {
                         }
                     }
 
-                    // TOP: UPTIME COMPONENT
                     Row {
                         anchors.top: parent.top
                         anchors.left: parent.left
@@ -836,7 +792,6 @@ Item {
                         transform: Translate { y: window.s(-20) * (1.0 - introTop) }
                         opacity: introTop
                         
-                        // Hours Box
                         Rectangle {
                             width: window.s(44); height: window.s(48); radius: window.s(10)
                             color: window.surface0; border.color: window.surface1; border.width: 1
@@ -845,7 +800,7 @@ Item {
                             Column {
                                 anchors.centerIn: parent
                                 Text { 
-                                    text: window.upHours.toString().padStart(2, '0')
+                                    text: window.upHours > 0 || window.upMins > 0 ? window.upHours.toString().padStart(2, '0') : "--"
                                     font.pixelSize: window.s(18); font.family: "JetBrains Mono"; font.weight: Font.Black
                                     color: window.ambientPrimary
                                     Behavior on color { ColorAnimation { duration: 1000 } }
@@ -858,7 +813,6 @@ Item {
                             }
                         }
 
-                        // Pulsing Colon
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             text: ":"
@@ -875,7 +829,6 @@ Item {
                             }
                         }
 
-                        // Mins Box
                         Rectangle {
                             width: window.s(44); height: window.s(48); radius: window.s(10)
                             color: window.surface0; border.color: window.surface1; border.width: 1
@@ -884,7 +837,7 @@ Item {
                             Column {
                                 anchors.centerIn: parent
                                 Text { 
-                                    text: window.upMins.toString().padStart(2, '0')
+                                    text: window.upHours > 0 || window.upMins > 0 ? window.upMins.toString().padStart(2, '0') : "--"
                                     font.pixelSize: window.s(18); font.family: "JetBrains Mono"; font.weight: Font.Black
                                     color: window.ambientSecondary
                                     Behavior on color { ColorAnimation { duration: 1000 } }
@@ -898,7 +851,6 @@ Item {
                         }
                     }
 
-                    // Expanding top-right logout icon
                     Rectangle {
                         id: logoutBtn
                         anchors.top: parent.top; anchors.right: parent.right
@@ -947,14 +899,13 @@ Item {
                             id: logoutMa
                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: { 
-                                exitAnim.start(); // Trigger graceful UI exit
+                                exitAnim.start(); 
                                 Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/exit.sh"]); 
-                                Quickshell.execDetached(["sh", "-c", "echo 'close' > " + paths.runDir + "/widget_state"]); 
+                                Quickshell.execDetached(["sh", "-c", "echo 'close' > '" + paths.getRunDir("widget_state") + "'"]); 
                             }
                         }
                     }
 
-                    // CENTRAL CORE & BATTERY RING 
                     Item {
                         anchors.fill: parent
                         z: 1
@@ -963,7 +914,6 @@ Item {
                         transform: Translate { y: window.s(25) * (1 - introCore) }
                         scale: 0.9 + (0.1 * introCore)
 
-                        // CLEAN OUTSIDE GLOW HALO
                         Rectangle {
                             anchors.centerIn: centralCore
                             width: centralCore.width + window.s(45)
@@ -1194,7 +1144,6 @@ Item {
                             }
                         }
 
-                        // BOTTOM DOCKS
                         ColumnLayout {
                             anchors.bottom: parent.bottom
                             anchors.left: parent.left
@@ -1202,7 +1151,6 @@ Item {
                             anchors.margins: window.s(25)
                             spacing: window.s(15)
 
-                            // 1. HARDWARE CONTROLS DOCK (Sliders)
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: window.s(96)
@@ -1219,7 +1167,6 @@ Item {
                                     anchors.margins: window.s(14)
                                     spacing: window.s(12)
 
-                                    // Brightness Slider
                                     RowLayout {
                                         Layout.fillWidth: true
                                         spacing: window.s(15)
@@ -1295,7 +1242,6 @@ Item {
                                         }
                                     }
 
-                                    // Volume Slider
                                     RowLayout {
                                         Layout.fillWidth: true
                                         spacing: window.s(15)
@@ -1396,7 +1342,6 @@ Item {
                                 }
                             }
 
-                            // 2. SYSTEM ACTIONS DOCK
                             RowLayout {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: window.s(75)
@@ -1549,7 +1494,7 @@ Item {
                                             duration: (550 * weight) * (1.0 - actionCapsule.fillLevel); easing.type: Easing.InSine
                                             onFinished: {
                                                 actionCapsule.triggered = true; actionCapsule.flashOpacity = 0.6; cardFlashAnim.start();
-                                                exitAnim.start(); exitTimer.start(); // Start graceful exit sequence
+                                                exitAnim.start(); exitTimer.start();
                                             }
                                         }
                                         
@@ -1560,13 +1505,15 @@ Item {
 
                                         Timer {
                                             id: exitTimer; interval: 500 
-                                            onTriggered: { Quickshell.execDetached(["sh", "-c", cmd]); Quickshell.execDetached(["sh", "-c", "echo 'close' > " + paths.runDir + "/widget_state"]); }
+                                            onTriggered: { 
+                                                Quickshell.execDetached(["bash", "-c", cmd]); 
+                                                Quickshell.execDetached(["sh", "-c", "echo 'close' > '" + paths.getRunDir("widget_state") + "'"]); 
+                                            }
                                         }
                                     }
                                 }
                             }
 
-                            // 3. POWER PROFILES DOCK
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: window.s(54)
@@ -1635,16 +1582,21 @@ Item {
                                                 id: profileMa
                                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
-    // TLP uses ac/bat modes not three profiles.
-    // performance → force AC profile
-    // balanced → force BAT profile (balanced behaviour)
-    // power-saver → force BAT profile (same underlying mode, minimum EPP)
-    let tlpMode = (name === "performance") ? "ac" : "bat";
-    Quickshell.execDetached(["bash", "-c", "sudo tlp " + tlpMode]);
-    // Optimistic UI update — don't wait for poller
-    window.powerProfile = name;
-    Qt.callLater(() => { sysPoller.running = false; sysPoller.running = true; });
-}                                            }
+                                                    window.powerProfile = name;
+                                                    
+                                                    let bashCmd = "";
+                                                    if (name === "power-saver") {
+                                                        bashCmd = "powerprofilesctl set power-saver 2>/dev/null; sudo tlp bat 2>/dev/null; rfkill block bluetooth 2>/dev/null; brightnessctl set 15% 2>/dev/null; echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null";
+                                                    } else if (name === "balanced") {
+                                                        bashCmd = "powerprofilesctl set balanced 2>/dev/null; sudo tlp bat 2>/dev/null; rfkill unblock bluetooth 2>/dev/null; echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null";
+                                                    } else if (name === "performance") {
+                                                        bashCmd = "powerprofilesctl set performance 2>/dev/null; sudo tlp ac 2>/dev/null; rfkill unblock bluetooth 2>/dev/null; echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null";
+                                                    }
+                                                    
+                                                    Quickshell.execDetached(["bash", "-c", bashCmd]);
+                                                    Qt.callLater(() => { sysPoller.running = false; sysPoller.running = true; });
+                                                }
+                                            }
                                         }
                                     }
                                 }
