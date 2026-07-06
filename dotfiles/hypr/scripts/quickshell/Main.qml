@@ -29,6 +29,7 @@ PanelWindow {
 
             let isClosing = (masterWindow.currentActive !== "hidden" && !masterWindow.isVisible);
             let effectivelyActive = isClosing ? "hidden" : masterWindow.currentActive;
+            console.log("IPC", cmd, targetWidget, effectivelyActive);
 
             if (cmd === "close") {
                 switchWidget("hidden", "");
@@ -110,29 +111,16 @@ PanelWindow {
 
     property var widgetCache: ({})
 
-    function safelyInjectProperties(obj, t, arg, isWallpaper) {
-        if (!obj) return;
-        if (obj.notifModel   !== undefined) obj.notifModel   = masterWindow.notifModel;
-        if (obj.liveNotifs   !== undefined) obj.liveNotifs   = masterWindow.liveNotifs;
-        if (obj.layoutWidth  !== undefined) obj.layoutWidth  = t.w;
-        if (obj.layoutHeight !== undefined) obj.layoutHeight = t.h;
-        if (isWallpaper && obj.widgetArg !== undefined) obj.widgetArg = arg;
-        if (arg !== "" && obj.activeMode !== undefined) obj.activeMode = arg;
-    }
-
     function preloadWidget(name) {
-        if (!name || widgetCache[name]) return;
+        if (widgetCache[name]) return;
         let t = getLayout(name);
         if (!t || !t.comp) return;
-        
-        let component = Qt.createComponent(t.comp);
-        if (component.status === Component.Ready) {
-            let obj = component.createObject(preloaderContainer, { "visible": false });
-            if (obj) {
-                safelyInjectProperties(obj, t, "", (name === "wallpaper"));
-                widgetCache[name] = obj;
-            }
-        }
+        let obj = t.comp.createObject(preloaderContainer, {
+            "notifModel": masterWindow.notifModel,
+            "liveNotifs": masterWindow.liveNotifs,
+            "visible": false
+        });
+        if (obj) widgetCache[name] = obj;
     }
 
     Component.onCompleted: {
@@ -141,8 +129,8 @@ PanelWindow {
 
     Timer {
         id: preloadStaggerTimer
+        interval: 900
         repeat: false
-        interval: 10
         onTriggered: {
             preloadWidget("search");
             preloadWidget("battery");
@@ -155,14 +143,8 @@ PanelWindow {
 
     property string currentActive: "hidden"
 
-    Process {
-        id: stateCommandExecutor
-        command: ["sh", "-c", "echo '" + masterWindow.currentActive + "' > " + paths.runDir + "/current_widget"]
-    }
-
     onCurrentActiveChanged: {
-        stateCommandExecutor.running = false;
-        stateCommandExecutor.running = true;
+        Quickshell.execDetached(["bash", "-c", "echo '" + currentActive + "' > " + paths.runDir + "/current_widget"]);
     }
 
     property bool isVisible: false
@@ -194,7 +176,6 @@ PanelWindow {
         id: startupTimer
         interval: 500
         running: true
-        repeat: false
         onTriggered: masterWindow.isStartup = false
     }
 
@@ -258,17 +239,17 @@ PanelWindow {
         uiScale: masterWindow.globalUiScale
         onRemoveRequested: (uid) => masterWindow.removePopup(uid)
     }
+    onGlobalUiScaleChanged: { handleNativeScreenChange(); }
 
     Process {
-        id: settingsNativeReader
-        command: ["cat", Quickshell.env("HOME") + "/.config/hypr/settings.json"]
+        id: settingsReader
+        command: ["bash", "-c", "cat ~/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
+        running: true
         stdout: StdioCollector {
             onStreamFinished: {
-                if (!this.text) return;
                 try {
-                    let trimmed = this.text.trim();
-                    if (trimmed.length > 0 && trimmed !== "{}") {
-                        let parsed = JSON.parse(trimmed);
+                    if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
+                        let parsed = JSON.parse(this.text);
                         if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
                             masterWindow.globalUiScale = parsed.uiScale;
                         }
@@ -280,6 +261,7 @@ PanelWindow {
         }
     }
 
+    // Process-less settings polling: completely removes CPU wakeups and background bash loops!
     Timer {
         id: settingsPollTimer
         interval: 3000
@@ -287,47 +269,28 @@ PanelWindow {
         repeat: true
         triggeredOnStart: true
         onTriggered: {
-            settingsNativeReader.running = false;
-            settingsNativeReader.running = true;
+            settingsReader.running = false;
+            settingsReader.running = true;
         }
     }
 
-    property var _layoutCache: ({})
+    property var    _layoutCache:    ({})
+    property string _layoutCacheKey: ""
 
     function getLayout(name) {
-        if (_layoutCache[name] !== undefined)
-            return _layoutCache[name];
-
-        let result = Registry.getLayout(
-            name,
-            0,
-            0,
-            masterWindow.width,
-            masterWindow.height,
-            masterWindow.globalUiScale
-        );
-
-        _layoutCache[name] = result;
+        let key = name + "|" + masterWindow.width + "|" + masterWindow.height + "|" + masterWindow.globalUiScale;
+        if (_layoutCacheKey === key) return _layoutCache[key];
+        let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
+        _layoutCache = {};
+        _layoutCache[key] = result;
+        _layoutCacheKey = key;
         return result;
     }
 
     Connections {
         target: masterWindow
-
-        function onWidthChanged() {
-            masterWindow._layoutCache = {};
-            masterWindow.handleNativeScreenChange();
-        }
-
-        function onHeightChanged() {
-            masterWindow._layoutCache = {};
-            masterWindow.handleNativeScreenChange();
-        }
-
-        function onGlobalUiScaleChanged() {
-            masterWindow._layoutCache = {};
-            masterWindow.handleNativeScreenChange();
-        }
+        function onWidthChanged()  { _layoutCacheKey = ""; handleNativeScreenChange(); }
+        function onHeightChanged() { _layoutCacheKey = ""; handleNativeScreenChange(); }
     }
 
     function handleNativeScreenChange() {
@@ -398,8 +361,8 @@ PanelWindow {
                 anchors.fill: parent
                 focus: true
 
-                Keys.onEscapePressed: (event) => {
-                    masterWindow.switchWidget("hidden", "");
+                Keys.onEscapePressed: {
+                    switchWidget("hidden", "");
                     event.accepted = true;
                 }
 
@@ -443,8 +406,8 @@ PanelWindow {
             }
         }
     }
-
     function switchWidget(newWidget, arg) {
+console.log("switchWidget:", newWidget)
         delayedClear.stop();
 
         if (newWidget === "hidden") {
@@ -462,6 +425,14 @@ PanelWindow {
             if (currentActive === "hidden" || !masterWindow.isVisible) {
                 masterWindow.morphDuration = 230;
                 masterWindow.disableMorph = false;
+
+                let t = getLayout(newWidget);
+                masterWindow.animX = t.rx;
+                masterWindow.animY = t.ry;
+                masterWindow.animW = t.w;
+                masterWindow.animH = t.h;
+                masterWindow.targetW = t.w;
+                masterWindow.targetH = t.h;
             } else {
                 masterWindow.morphDuration = masterWindow.morphDurationShift;
                 masterWindow.disableMorph = false;
@@ -470,8 +441,8 @@ PanelWindow {
             executeSwitch(newWidget, arg, false);
         }
     }
-
     function executeSwitch(newWidget, arg, immediate) {
+console.log("executeSwitch:", newWidget)
         masterWindow.currentActive = newWidget;
         masterWindow.activeArg = arg;
 
@@ -483,21 +454,33 @@ PanelWindow {
         masterWindow.targetW = t.w;
         masterWindow.targetH = t.h;
 
+        let props = {};
+        props["notifModel"]   = masterWindow.notifModel;
+        props["liveNotifs"]   = masterWindow.liveNotifs;
+        props["layoutWidth"]  = t.w;
+        props["layoutHeight"] = t.h;
+        if (newWidget === "wallpaper") props["widgetArg"] = arg;
+
         let cached = widgetCache[newWidget];
         if (cached) {
-            safelyInjectProperties(cached, t, arg, (newWidget === "wallpaper"));
+            if (cached.notifModel   !== undefined) cached.notifModel   = masterWindow.notifModel;
+            if (cached.liveNotifs   !== undefined) cached.liveNotifs   = masterWindow.liveNotifs;
+            if (cached.layoutWidth  !== undefined) cached.layoutWidth  = t.w;
+            if (cached.layoutHeight !== undefined) cached.layoutHeight = t.h;
+            if (newWidget === "wallpaper" && cached.widgetArg !== undefined) cached.widgetArg = arg;
+            if (arg !== "" && cached.activeMode !== undefined) cached.activeMode = arg;
+
             cached.visible = true;
-            widgetStack.replace(cached, {}, immediate ? StackView.Immediate : StackView.Normal);
+            if (immediate) {
+                widgetStack.replace(cached, {}, StackView.Immediate);
+            } else {
+                widgetStack.replace(cached, {});
+            }
         } else {
-            let component = Qt.createComponent(t.comp);
-            if (component.status === Component.Ready) {
-                let obj = component.createObject(preloaderContainer, { "visible": false });
-                if (obj) {
-                    safelyInjectProperties(obj, t, arg, (newWidget === "wallpaper"));
-                    widgetCache[newWidget] = obj;
-                    obj.visible = true;
-                    widgetStack.replace(obj, {}, immediate ? StackView.Immediate : StackView.Normal);
-                }
+            if (immediate) {
+                widgetStack.replace(t.comp, props, StackView.Immediate);
+            } else {
+                widgetStack.replace(t.comp, props);
             }
         }
 
@@ -519,16 +502,15 @@ PanelWindow {
     }
 
     Timer {
-        id: delayedClear
-        interval: 200
-        repeat: false
+    id: delayedClear
+    interval: 200
 
-        onTriggered: {
-            if (!masterWindow.isVisible) {
-                masterWindow.currentActive = "hidden";
-                widgetStack.clear();
-                masterWindow.disableMorph = false;
-            }
+    onTriggered: {
+        if (!masterWindow.isVisible) {
+            masterWindow.currentActive = "hidden";
+            widgetStack.clear();
+            masterWindow.disableMorph = false;
         }
     }
+}
 }
