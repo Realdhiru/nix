@@ -110,6 +110,16 @@ PanelWindow {
 
     property var widgetCache: ({})
 
+    function safelyInjectProperties(obj, t, arg, isWallpaper) {
+        if (!obj) return;
+        if (obj.notifModel   !== undefined) obj.notifModel   = masterWindow.notifModel;
+        if (obj.liveNotifs   !== undefined) obj.liveNotifs   = masterWindow.liveNotifs;
+        if (obj.layoutWidth  !== undefined) obj.layoutWidth  = t.w;
+        if (obj.layoutHeight !== undefined) obj.layoutHeight = t.h;
+        if (isWallpaper && obj.widgetArg !== undefined) obj.widgetArg = arg;
+        if (arg !== "" && obj.activeMode !== undefined) obj.activeMode = arg;
+    }
+
     function preloadWidget(name) {
         if (!name || widgetCache[name]) return;
         let t = getLayout(name);
@@ -117,12 +127,11 @@ PanelWindow {
         
         let component = Qt.createComponent(t.comp);
         if (component.status === Component.Ready) {
-            let obj = component.createObject(preloaderContainer, {
-                "notifModel": masterWindow.notifModel,
-                "liveNotifs": masterWindow.liveNotifs,
-                "visible": false
-            });
-            if (obj) widgetCache[name] = obj;
+            let obj = component.createObject(preloaderContainer, { "visible": false });
+            if (obj) {
+                safelyInjectProperties(obj, t, "", (name === "wallpaper"));
+                widgetCache[name] = obj;
+            }
         }
     }
 
@@ -146,17 +155,14 @@ PanelWindow {
 
     property string currentActive: "hidden"
 
-    // Raw POSIX shell write bypasses full bash process profile loading overhead
     Process {
         id: stateCommandExecutor
         command: ["/bin/sh", "-c", "echo '" + masterWindow.currentActive + "' > " + paths.runDir + "/current_widget"]
     }
 
     onCurrentActiveChanged: {
-        if (stateCommandExecutor.running) {
-            stateCommandExecutor.terminate();
-        }
-        stateCommandExecutor.start();
+        stateCommandExecutor.running = false;
+        stateCommandExecutor.running = true;
     }
 
     property bool isVisible: false
@@ -281,9 +287,8 @@ PanelWindow {
         repeat: true
         triggeredOnStart: true
         onTriggered: {
-            if (!settingsNativeReader.running) {
-                settingsNativeReader.start();
-            }
+            settingsNativeReader.running = false;
+            settingsNativeReader.running = true;
         }
     }
 
@@ -393,7 +398,7 @@ PanelWindow {
                 anchors.fill: parent
                 focus: true
 
-                Keys.onEscapePressed: {
+                Keys.onEscapePressed: (event) => {
                     masterWindow.switchWidget("hidden", "");
                     event.accepted = true;
                 }
@@ -478,30 +483,19 @@ PanelWindow {
         masterWindow.targetW = t.w;
         masterWindow.targetH = t.h;
 
-        let props = {};
-        props["notifModel"]   = masterWindow.notifModel;
-        props["liveNotifs"]   = masterWindow.liveNotifs;
-        props["layoutWidth"]  = t.w;
-        props["layoutHeight"] = t.h;
-        if (newWidget === "wallpaper") props["widgetArg"] = arg;
-
         let cached = widgetCache[newWidget];
         if (cached) {
-            if (cached.notifModel   !== undefined) cached.notifModel   = masterWindow.notifModel;
-            if (cached.liveNotifs   !== undefined) cached.liveNotifs   = masterWindow.liveNotifs;
-            if (cached.layoutWidth  !== undefined) cached.layoutWidth  = t.w;
-            if (cached.layoutHeight !== undefined) cached.layoutHeight = t.h;
-            if (newWidget === "wallpaper" && cached.widgetArg !== undefined) cached.widgetArg = arg;
-            if (arg !== "" && cached.activeMode !== undefined) cached.activeMode = arg;
-
+            safelyInjectProperties(cached, t, arg, (newWidget === "wallpaper"));
             cached.visible = true;
             widgetStack.replace(cached, {}, immediate ? StackView.Immediate : StackView.Normal);
         } else {
             let component = Qt.createComponent(t.comp);
             if (component.status === Component.Ready) {
-                let obj = component.createObject(preloaderContainer, props);
+                let obj = component.createObject(preloaderContainer, { "visible": false });
                 if (obj) {
+                    safelyInjectProperties(obj, t, arg, (newWidget === "wallpaper"));
                     widgetCache[newWidget] = obj;
+                    obj.visible = true;
                     widgetStack.replace(obj, {}, immediate ? StackView.Immediate : StackView.Normal);
                 }
             }
