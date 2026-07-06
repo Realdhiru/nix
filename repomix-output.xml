@@ -30660,101 +30660,6 @@ Timer {
 }
 </file>
 
-<file path="dotfiles/hypr/scripts/quickshell/WindowRegistry.js">
-.pragma library
-
-function getScale(mw, mh, userScale) {
-    if (arguments.length === 2) {
-        userScale = mh;
-        mh = mw * (1080.0 / 1920.0);
-    }
-
-    if (mw <= 0 || mh <= 0) return 1.0;
-    
-    let rw = mw / 1920.0;
-    let rh = mh / 1080.0;
-    let r = Math.min(rw, rh);
-    
-    let baseScale = 1.0;
-    
-    if (r <= 1.0) {
-        baseScale = Math.max(0.35, Math.pow(r, 0.85));
-    } else {
-        baseScale = Math.pow(r, 0.5);
-    }
-    
-    return baseScale * (userScale !== undefined ? userScale : 1.0);
-}
-
-function s(val, scale) {
-    return Math.round(val * scale);
-}
-
-function getLayout(name, mx, my, mw, mh, userScale) {
-    let scale = getScale(mw, mh, userScale);
-
-    let base = {
-        // --- Top Right Popups ---
-        "battery":   { w: s(801, scale), h: s(760, scale), rx: mw - s(805, scale), ry: s(60, scale), comp: "battery/BatteryPopup.qml" },
-        "network":   { w: s(900, scale), h: s(700, scale), rx: mw - s(904, scale), ry: s(60, scale), comp: "network/NetworkPopup.qml" },
-        "volume":    { w: s(450, scale), h: s(700, scale), rx: mw - s(455, scale), ry: s(60, scale), comp: "volume/VolumePopup.qml" },
-        
-        // --- Central Standard Tools ---
-        "clipboard": { w: s(800, scale), h: s(700, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(700, scale)/2)), comp: "clipboard/ClipboardManager.qml" },
-        "monitors":  { w: s(800, scale), h: s(650, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "monitors/MonitorPopup.qml" },
-        "stewart":   { w: s(800, scale), h: s(650, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "stewart/stewart.qml" },
-
-        // --- Central Large Tools ---
-        "focustime": { w: s(900, scale), h: s(700, scale), rx: Math.floor((mw/2)-(s(900, scale)/2)), ry: Math.floor((mh/2)-(s(700, scale)/2)), comp: "focustime/FocusTimePopup.qml" },
-
-        // --- Extralarge / Custom Centered ---
-        "guide":     { w: s(1200, scale), h: s(750, scale), rx: Math.floor((mw/2)-(s(1200, scale)/2)), ry: Math.floor((mh/2)-(s(750, scale)/2)), comp: "guide/GuidePopup.qml" },
-        "calendar":  { w: s(1450, scale), h: s(750, scale), rx: Math.floor((mw/2)-(s(1450, scale)/2)), ry: s(60, scale), comp: "calendar/CalendarPopup.qml" },
-        "updater":   { w: s(950, scale), h: s(850, scale), rx: Math.floor((mw/2)-(s(950, scale)/2)), ry: Math.floor((mh/2)-(s(850, scale)/2)), comp: "updater/UpdaterPopup.qml" },
-        "wallpaper": { w: mw, h: s(650, scale), rx: 0, ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "wallpaper/WallpaperPicker.qml" },
-        
-        // --- Top Left Edge ---
-        "music":     { w: s(700, scale), h: s(650, scale), rx: s(5, scale), ry: s(60, scale), comp: "music/MusicPopup.qml" },
-
-        "movies": {
-            w: s(1370, scale),
-            h: s(850, scale),
-            rx: Math.floor((mw / 2) - (s(1370, scale) / 2)),
-            ry: mh - s(850, scale),
-            comp: "movies/MovieWidget.qml"
-        },
-        
-        // --- Utility ---
-        "hidden":    { w: 1, h: 1, rx: -5000 - mx, ry: -5000 - my, comp: "" } 
-    };
-
-    if (!base[name]) return null;
-    
-    let t = base[name];
-    t.x = mx + t.rx;
-    t.y = my + t.ry;
-    
-    return t;
-}
-
-function getPopupLayout(mw, mh, userScale) {
-    if (arguments.length === 2) {
-        userScale = mh;
-        mh = mw * (1080.0 / 1920.0);
-    }
-    
-    let scale = getScale(mw, mh, userScale);
-    return {
-        w: s(350, scale),
-        marginTop: s(60, scale),
-        marginRight: s(20, scale),
-        spacing: s(12, scale),
-        radius: s(14, scale),
-        padding: s(12, scale)
-    };
-}
-</file>
-
 <file path="dotfiles/hypr/scripts/qs_manager.sh">
 #!/usr/bin/env bash
 
@@ -32341,6 +32246,470 @@ Item {
 }
 </file>
 
+<file path="dotfiles/hypr/scripts/quickshell/focustime/focus_daemon.py">
+#!/usr/bin/env python3
+import subprocess
+import sqlite3
+import time
+import os
+import socket
+import json
+import threading
+import calendar
+import re
+import signal
+import sys
+import shutil
+import glob
+from datetime import date, datetime, timedelta
+from collections import defaultdict
+
+current_app_class = "Desktop"
+current_app_title = "Desktop"
+
+# Use standardized dynamic paths securely
+DB_DIR = os.environ.get("QS_STATE_FOCUSTIME", os.path.expanduser("~/.local/state/quickshell/focustime"))
+os.makedirs(DB_DIR, exist_ok=True)
+DB_PATH = os.path.join(DB_DIR, "focustime.db")
+
+# Database Migration Fallback
+OLD_DB_DIR = os.path.expanduser("~/.local/share/focustime")
+OLD_DB_BASE = os.path.join(OLD_DB_DIR, "focustime.db")
+
+if not os.path.exists(DB_PATH) and os.path.exists(OLD_DB_BASE):
+    try:
+        # Move the main db and any shm/wal/journal files safely
+        for old_file in glob.glob(OLD_DB_BASE + "*"):
+            shutil.move(old_file, DB_DIR)
+    except Exception:
+        pass
+
+RUN_DIR = os.environ.get("QS_RUN_FOCUSTIME", "/tmp/quickshell/focustime")
+os.makedirs(RUN_DIR, exist_ok=True)
+STATE_FILE = os.path.join(RUN_DIR, "focustime_state.json")
+
+DESKTOP_CACHE_NAME = {}
+DESKTOP_CACHE_ICON = {}
+CACHE_BUILT = False
+SYSTEM_STATES = {"Desktop", "Locked", "Quickshell", "Unknown"}
+
+def get_xdg_search_dirs():
+    search_dirs = []
+    xdg_data_home = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+    search_dirs.append(os.path.join(xdg_data_home, "applications"))
+    
+    xdg_data_dirs = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
+    for d in xdg_data_dirs.split(":"):
+        if d.strip():
+            search_dirs.append(os.path.join(d, "applications"))
+
+    fallback_dirs = [
+        "/var/lib/flatpak/exports/share/applications",
+        "/var/lib/snapd/desktop/applications"
+    ]
+    for d in fallback_dirs:
+        if d not in search_dirs:
+            search_dirs.append(d)
+    return search_dirs
+
+def build_desktop_cache():
+    global CACHE_BUILT
+    if CACHE_BUILT: return
+    
+    for directory in get_xdg_search_dirs():
+        if not os.path.exists(directory): continue
+        try:
+            for f in os.listdir(directory):
+                if f.endswith(".desktop"):
+                    path = os.path.join(directory, f)
+                    try:
+                        name, icon, wmclass = None, "", None
+                        with open(path, 'r', encoding='utf-8') as file:
+                            for line in file:
+                                line = line.strip()
+                                if line.startswith("Name=") and not name:
+                                    name = line.split("=", 1)[1].strip()
+                                elif line.startswith("Icon=") and not icon:
+                                    icon = line.split("=", 1)[1].strip()
+                                elif line.startswith("StartupWMClass="):
+                                    wmclass = line.split("=", 1)[1].strip().lower()
+                        
+                        if name:
+                            base = f[:-8].lower()
+                            DESKTOP_CACHE_NAME[base] = name
+                            DESKTOP_CACHE_ICON[base] = icon
+                            if wmclass:
+                                DESKTOP_CACHE_NAME[wmclass] = name
+                                DESKTOP_CACHE_ICON[wmclass] = icon
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+    CACHE_BUILT = True
+
+def resolve_app_name(app_class, raw_title):
+    if not app_class or app_class in SYSTEM_STATES:
+        return app_class if app_class else "Unknown"
+        
+    build_desktop_cache()
+    app_class_lower = app_class.lower()
+    base_class = re.sub(r'[-_ ]?updater$', '', app_class_lower)
+    base_class = base_class.replace('.exe', '')
+
+    if app_class_lower in DESKTOP_CACHE_NAME: return DESKTOP_CACHE_NAME[app_class_lower]
+    if base_class in DESKTOP_CACHE_NAME: return DESKTOP_CACHE_NAME[base_class]
+
+    clean_title = re.sub(r'^\(\d+\)\s*|^\[\d+\]\s*', '', raw_title)
+    clean_title = re.sub(r'\s*\(\d+\)$', '', clean_title)
+    parts = re.split(r'\s+[-—|]\s+', clean_title)
+    name = parts[-1].strip() if len(parts) > 1 else clean_title.strip()
+
+    if len(name) > 25: name = app_class.capitalize()
+
+    DESKTOP_CACHE_NAME[app_class_lower] = name
+    return name
+
+def get_app_icon(app_class):
+    if not app_class or app_class in SYSTEM_STATES:
+        return ""
+        
+    build_desktop_cache()
+    app_class_lower = app_class.lower()
+    base_class = re.sub(r'[-_ ]?updater$', '', app_class_lower)
+    base_class = base_class.replace('.exe', '')
+
+    if app_class_lower in DESKTOP_CACHE_ICON: return DESKTOP_CACHE_ICON[app_class_lower]
+    if base_class in DESKTOP_CACHE_ICON: return DESKTOP_CACHE_ICON[base_class]
+
+    return ""
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS focus_log (log_date TEXT, app_class TEXT, seconds INTEGER, app_title TEXT, PRIMARY KEY (log_date, app_class))''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_log_date ON focus_log(log_date)')
+    c.execute('''CREATE TABLE IF NOT EXISTS focus_hourly (log_date TEXT, hour INTEGER, app_class TEXT, seconds INTEGER, PRIMARY KEY (log_date, hour, app_class))''')
+    c.execute('''CREATE TABLE IF NOT EXISTS focus_intervals (log_date TEXT, interval_idx INTEGER, app_class TEXT, seconds INTEGER, PRIMARY KEY (log_date, interval_idx, app_class))''')
+    c.execute('''CREATE TABLE IF NOT EXISTS focus_minutes (log_date TEXT, minute_idx INTEGER, app_class TEXT, seconds INTEGER, PRIMARY KEY (log_date, minute_idx, app_class))''')
+    
+    c.execute("PRAGMA table_info(focus_log)")
+    if 'app_title' not in [row[1] for row in c.fetchall()]:
+        c.execute('ALTER TABLE focus_log ADD COLUMN app_title TEXT')
+        
+    conn.commit()
+    return conn
+
+def get_active_window_hyprctl():
+    try:
+        output = subprocess.check_output(['hyprctl', 'activewindow', '-j'], text=True)
+        if output.strip() == "{}": return "Desktop", "Desktop"
+        data = json.loads(output)
+        
+        app_cls = data.get('initialClass') or data.get('class') or ''
+        raw_title = data.get('initialTitle') or data.get('title') or ''
+
+        if "quickshell" in app_cls.lower() or "qs-master" in raw_title.lower() or "qs-master" in app_cls.lower():
+            return "Quickshell", "Quickshell"
+            
+        app_cls = app_cls if app_cls else "Unknown"
+        raw_title = raw_title if raw_title else app_cls
+        clean_name = resolve_app_name(app_cls, raw_title)
+        return app_cls, clean_name
+    except Exception:
+        return "Unknown", "Unknown"
+
+def is_locked():
+    try:
+        subprocess.check_output(['pgrep', '-x', 'hyprlock'])
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def listen_hyprland_ipc():
+    global current_app_class, current_app_title
+    hypr_sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+    if not hypr_sig: return
+
+    sock_path = f"{os.environ.get('XDG_RUNTIME_DIR', '/tmp')}/hypr/{hypr_sig}/.socket2.sock"
+    if not os.path.exists(sock_path):
+        sock_path = f"/tmp/hypr/{hypr_sig}/.socket2.sock"
+
+    while True:
+        try:
+            client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            client.connect(sock_path)
+            buffer = ""
+            while True:
+                data = client.recv(4096).decode('utf-8')
+                if not data: break
+                buffer += data
+                while '\n' in buffer:
+                    line, buffer = buffer.split('\n', 1)
+                    if line.startswith('activewindow>>'):
+                        cls, clean_title = get_active_window_hyprctl()
+                        if is_locked() or cls == "hyprlock":
+                            current_app_class, current_app_title = "Locked", "Locked"
+                        else:
+                            current_app_class, current_app_title = cls, clean_title
+        except Exception:
+            time.sleep(2) 
+
+
+class DaemonTracker:
+    def __init__(self):
+        self.conn = init_db()
+        self.buffer = []
+        self.cached_json = None
+        self.last_sync = 0
+        self.last_date = date.today()
+        
+    def full_sync(self, target_date):
+        c = self.conn.cursor()
+        
+        yesterday = target_date - timedelta(days=1)
+        c.execute('SELECT SUM(seconds) FROM focus_log WHERE log_date = ?', (yesterday.isoformat(),))
+        yesterday_seconds = c.fetchone()[0] or 0
+
+        monday = target_date - timedelta(days=target_date.weekday())
+        sunday = monday + timedelta(days=6)
+        week_range_str = f"{monday.strftime('%b')} {monday.day} - {sunday.strftime('%b')} {sunday.day}"
+
+        c.execute('''SELECT COUNT(DISTINCT log_date), SUM(seconds) FROM focus_log 
+                     WHERE log_date >= ? AND log_date <= ? AND seconds > 0''', (monday.isoformat(), sunday.isoformat()))
+        row = c.fetchone()
+        days_count = row[0] or 0
+        total_week = row[1] or 0
+        average_seconds = total_week // days_count if days_count > 0 else 0
+        
+        c.execute('SELECT SUM(seconds) FROM focus_log WHERE log_date = ?', (target_date.isoformat(),))
+        total_seconds = c.fetchone()[0] or 0
+
+        c.execute('''SELECT app_class, COALESCE(app_title, app_class), SUM(seconds) as secs 
+                     FROM focus_log WHERE log_date = ? GROUP BY app_class ORDER BY secs DESC''', (target_date.isoformat(),))
+        all_apps = []
+        for row in c.fetchall():
+            app_class, app_title, secs = row
+            all_apps.append({
+                "class": app_class, "name": app_title, "icon": get_app_icon(app_class),
+                "seconds": secs, "percent": round((secs / total_seconds) * 100, 1) if total_seconds > 0 else 0
+            })
+
+        c.execute('''SELECT app_class, COALESCE(app_title, app_class), SUM(seconds) as secs FROM focus_log 
+                     WHERE log_date >= ? AND log_date <= ? GROUP BY app_class ORDER BY secs DESC LIMIT 50''', 
+                  (monday.isoformat(), sunday.isoformat()))
+        week_apps_rows = c.fetchall()
+        week_apps_total = sum([r[2] for r in week_apps_rows])
+        week_apps = []
+        for r in week_apps_rows:
+            cls, title, secs = r
+            week_apps.append({
+                "class": cls, "name": title, "icon": get_app_icon(cls),
+                "seconds": secs, "percent": round((secs / week_apps_total) * 100, 1) if week_apps_total > 0 else 0
+            })
+
+        c.execute('SELECT log_date, SUM(seconds) FROM focus_log WHERE log_date >= ? AND log_date <= ? GROUP BY log_date', 
+                 (monday.isoformat(), sunday.isoformat()))
+        week_map = {r[0]: r[1] for r in c.fetchall()}
+        days_str = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        week_data = []
+        for i in range(7):
+            d_str = (monday + timedelta(days=i)).isoformat()
+            week_data.append({"date": d_str, "day": days_str[i], "total": week_map.get(d_str, 0), "is_target": d_str == target_date.isoformat()})
+
+        first_day = target_date.replace(day=1)
+        _, num_days = calendar.monthrange(target_date.year, target_date.month)
+        last_day = target_date.replace(day=num_days)
+        c.execute('SELECT log_date, SUM(seconds) FROM focus_log WHERE log_date >= ? AND log_date <= ? GROUP BY log_date', 
+                 (first_day.isoformat(), last_day.isoformat()))
+        month_map = {r[0]: r[1] for r in c.fetchall()}
+        
+        month_data = [{"date": "", "total": -1, "is_target": False} for _ in range(first_day.weekday())]
+        for i in range(1, num_days + 1):
+            d_str = target_date.replace(day=i).isoformat()
+            month_data.append({"date": d_str, "total": month_map.get(d_str, 0), "is_target": d_str == target_date.isoformat()})
+
+        hourly_data = [0] * 48
+        try:
+            c.execute('SELECT hour, SUM(seconds) FROM focus_hourly WHERE log_date = ? GROUP BY hour', (target_date.isoformat(),))
+            for hr, secs in c.fetchall():
+                if 0 <= hr <= 23: hourly_data[hr * 2] += secs
+            c.execute('SELECT interval_idx, SUM(seconds) FROM focus_intervals WHERE log_date = ? GROUP BY interval_idx', (target_date.isoformat(),))
+            for idx, secs in c.fetchall():
+                if 0 <= idx < 96: hourly_data[idx // 2] += secs
+        except sqlite3.OperationalError:
+            pass 
+
+        week_heatmap = [[0]*24 for _ in range(7)]
+        try:
+            c.execute('''SELECT log_date, hour, SUM(seconds) FROM focus_hourly WHERE log_date >= ? AND log_date <= ? GROUP BY log_date, hour''', 
+                      (monday.isoformat(), sunday.isoformat()))
+            for ldate, hr, secs in c.fetchall():
+                day_idx = date.fromisoformat(ldate).weekday()
+                if 0 <= hr <= 23: week_heatmap[day_idx][hr] += secs
+        except sqlite3.OperationalError:
+            pass
+
+        minute_data = [0] * 1440
+        try:
+            c.execute('''SELECT minute_idx, SUM(seconds) FROM focus_minutes WHERE log_date >= ? AND log_date <= ? GROUP BY minute_idx''', 
+                      (monday.isoformat(), sunday.isoformat()))
+            for idx, secs in c.fetchall():
+                if 0 <= idx < 1440: minute_data[idx] += secs
+        except sqlite3.OperationalError:
+            pass
+
+        peak_str = "N/A"
+        max_sum = 0
+        best_window = None
+        for i in range(1440 - 60):
+            w_sum = sum(minute_data[i:i+60])
+            if w_sum > max_sum and w_sum > 0:
+                max_sum = w_sum
+                best_window = (i, i+60)
+
+        if best_window:
+            start_idx, end_idx = best_window
+            while start_idx < end_idx and minute_data[start_idx] == 0: start_idx += 1
+            actual_end = end_idx - 1
+            while actual_end > start_idx and minute_data[actual_end] == 0: actual_end -= 1
+            s_h, s_m = divmod(start_idx, 60)
+            e_h, e_m = divmod(actual_end, 60)
+            peak_str = f"{s_h:02d}:{s_m:02d} - {e_h:02d}:{e_m:02d}"
+
+        self.cached_json = {
+            "selected_date": target_date.isoformat(), "total": total_seconds, "average": average_seconds,
+            "week_range": week_range_str, "yesterday": yesterday_seconds, "current": current_app_title,
+            "apps": all_apps, "week_apps": week_apps, "week": week_data, "month": month_data,
+            "hourly": hourly_data, "week_heatmap": week_heatmap, "peak_usage_str": peak_str
+        }
+        self.last_sync = time.time()
+        self.last_date = target_date
+        
+    def fast_tick(self, app_class, app_title, write_to_disk=True):
+        now = datetime.now()
+        target_date = now.date()
+        
+        self.buffer.append((target_date.isoformat(), app_class, app_title, now))
+        
+        if self.cached_json is None or target_date != self.last_date or (time.time() - self.last_sync > 60):
+            self.flush()
+            self.full_sync(target_date)
+        else:
+            d = self.cached_json
+            d["total"] += 1
+            d["current"] = app_title
+            
+            found = False
+            for app in d["apps"]:
+                if app["class"] == app_class:
+                    app["seconds"] += 1
+                    found = True
+                    break
+            if not found:
+                d["apps"].append({
+                    "class": app_class, "name": app_title, 
+                    "icon": get_app_icon(app_class), "seconds": 1, "percent": 0
+                })
+                
+            for app in d["apps"]:
+                app["percent"] = round((app["seconds"] / d["total"]) * 100, 1) if d["total"] > 0 else 0
+            d["apps"].sort(key=lambda x: x["seconds"], reverse=True)
+            
+            for w in d["week"]:
+                if w["is_target"]: w["total"] += 1
+            for m in d["month"]:
+                if m["is_target"]: m["total"] += 1
+                
+            hr = now.hour
+            idx = hr * 2 + (1 if now.minute >= 30 else 0)
+            if 0 <= idx < 48: d["hourly"][idx] += 1
+                
+            day_idx = now.weekday()
+            if 0 <= hr < 24: d["week_heatmap"][day_idx][hr] += 1
+                
+        # Conditionally write to tmpfs
+        if write_to_disk:
+            temp_file = STATE_FILE + ".tmp"
+            try:
+                with open(temp_file, "w") as f:
+                    json.dump(self.cached_json, f)
+                os.rename(temp_file, STATE_FILE)
+            except Exception:
+                pass
+            
+        if len(self.buffer) >= 15:
+            self.flush()
+            
+    def flush(self):
+        if not self.buffer: return
+        c = self.conn.cursor()
+        
+        logs = defaultdict(int)
+        titles = {}
+        hours = defaultdict(int)
+        intervals = defaultdict(int)
+        minutes = defaultdict(int)
+        
+        for d_str, cls, title, dt in self.buffer:
+            logs[(d_str, cls)] += 1
+            titles[cls] = title
+            hr = dt.hour
+            hours[(d_str, hr, cls)] += 1
+            minute = hr * 60 + dt.minute
+            intervals[(d_str, minute // 15, cls)] += 1
+            minutes[(d_str, minute, cls)] += 1
+            
+        for (d_str, cls), secs in logs.items():
+            c.execute('''INSERT INTO focus_log (log_date, app_class, seconds, app_title) VALUES (?, ?, ?, ?)
+                         ON CONFLICT(log_date, app_class) DO UPDATE SET seconds = seconds + ?, app_title = ?''',
+                      (d_str, cls, secs, titles[cls], secs, titles[cls]))
+                      
+        for (d_str, hr, cls), secs in hours.items():
+            c.execute('''INSERT INTO focus_hourly (log_date, hour, app_class, seconds) VALUES (?, ?, ?, ?)
+                         ON CONFLICT(log_date, hour, app_class) DO UPDATE SET seconds = seconds + ?''',
+                      (d_str, hr, cls, secs, secs))
+                      
+        for (d_str, itv, cls), secs in intervals.items():
+            c.execute('''INSERT INTO focus_intervals (log_date, interval_idx, app_class, seconds) VALUES (?, ?, ?, ?)
+                         ON CONFLICT(log_date, interval_idx, app_class) DO UPDATE SET seconds = seconds + ?''',
+                      (d_str, itv, cls, secs, secs))
+                      
+        for (d_str, min_idx, cls), secs in minutes.items():
+            c.execute('''INSERT INTO focus_minutes (log_date, minute_idx, app_class, seconds) VALUES (?, ?, ?, ?)
+                         ON CONFLICT(log_date, minute_idx, app_class) DO UPDATE SET seconds = seconds + ?''',
+                      (d_str, min_idx, cls, secs, secs))
+                      
+        self.conn.commit()
+        self.buffer.clear()
+
+tracker = DaemonTracker()
+
+def exit_handler(sig, frame):
+    tracker.flush()
+    sys.exit(0)
+
+def main():
+    global current_app_class, current_app_title
+    signal.signal(signal.SIGINT, exit_handler)
+    signal.signal(signal.SIGTERM, exit_handler)
+
+    current_app_class, current_app_title = get_active_window_hyprctl()
+    
+    ipc_thread = threading.Thread(target=listen_hyprland_ipc, daemon=True)
+    ipc_thread.start()
+
+    tick_counter = 0
+    while True:
+        time.sleep(1)
+        tick_counter += 1
+        if current_app_class and current_app_class not in [""]:
+            # Only dump JSON to memory/disk every 5 seconds
+            tracker.fast_tick(current_app_class, current_app_title, write_to_disk=(tick_counter % 5 == 0))
+
+if __name__ == "__main__":
+    main()
+</file>
+
 <file path="dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml">
 import QtQuick
 import QtQuick.Window
@@ -33830,6 +34199,111 @@ Item {
 }
 </file>
 
+<file path="dotfiles/hypr/scripts/quickshell/WindowRegistry.js">
+.pragma library
+
+function getScale(mw, mh, userScale) {
+    if (arguments.length === 2) {
+        userScale = mh;
+        mh = mw * (1080.0 / 1920.0);
+    }
+
+    if (mw <= 0 || mh <= 0) return 1.0;
+    
+    let rw = mw / 1920.0;
+    let rh = mh / 1080.0;
+    let r = Math.min(rw, rh);
+    
+    let baseScale = 1.0;
+    
+    if (r <= 1.0) {
+        baseScale = Math.max(0.35, Math.pow(r, 0.85));
+    } else {
+        baseScale = Math.pow(r, 0.5);
+    }
+    
+    return baseScale * (userScale !== undefined ? userScale : 1.0);
+}
+
+function s(val, scale) {
+    return Math.round(val * scale);
+}
+
+function getLayout(name, mx, my, mw, mh, userScale) {
+    let scale = getScale(mw, mh, userScale);
+    let t = null;
+
+    // Use a switch block to execute math and allocate an object ONLY for the requested widget
+    switch (name) {
+        case "battery":
+            t = { w: s(801, scale), h: s(760, scale), rx: mw - s(805, scale), ry: s(60, scale), comp: "battery/BatteryPopup.qml" };
+            break;
+        case "network":
+            t = { w: s(900, scale), h: s(700, scale), rx: mw - s(904, scale), ry: s(60, scale), comp: "network/NetworkPopup.qml" };
+            break;
+        case "volume":
+            t = { w: s(450, scale), h: s(700, scale), rx: mw - s(455, scale), ry: s(60, scale), comp: "volume/VolumePopup.qml" };
+            break;
+        case "clipboard":
+            t = { w: s(800, scale), h: s(700, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(700, scale)/2)), comp: "clipboard/ClipboardManager.qml" };
+            break;
+        case "monitors":
+            t = { w: s(800, scale), h: s(650, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "monitors/MonitorPopup.qml" };
+            break;
+        case "stewart":
+            t = { w: s(800, scale), h: s(650, scale), rx: Math.floor((mw/2)-(s(800, scale)/2)), ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "stewart/stewart.qml" };
+            break;
+        case "focustime":
+            t = { w: s(900, scale), h: s(700, scale), rx: Math.floor((mw/2)-(s(900, scale)/2)), ry: Math.floor((mh/2)-(s(700, scale)/2)), comp: "focustime/FocusTimePopup.qml" };
+            break;
+        case "guide":
+            t = { w: s(1200, scale), h: s(750, scale), rx: Math.floor((mw/2)-(s(1200, scale)/2)), ry: Math.floor((mh/2)-(s(750, scale)/2)), comp: "guide/GuidePopup.qml" };
+            break;
+        case "calendar":
+            t = { w: s(1450, scale), h: s(750, scale), rx: Math.floor((mw/2)-(s(1450, scale)/2)), ry: s(60, scale), comp: "calendar/CalendarPopup.qml" };
+            break;
+        case "updater":
+            t = { w: s(950, scale), h: s(850, scale), rx: Math.floor((mw/2)-(s(950, scale)/2)), ry: Math.floor((mh/2)-(s(850, scale)/2)), comp: "updater/UpdaterPopup.qml" };
+            break;
+        case "wallpaper":
+            t = { w: mw, h: s(650, scale), rx: 0, ry: Math.floor((mh/2)-(s(650, scale)/2)), comp: "wallpaper/WallpaperPicker.qml" };
+            break;
+        case "music":
+            t = { w: s(700, scale), h: s(650, scale), rx: s(5, scale), ry: s(60, scale), comp: "music/MusicPopup.qml" };
+            break;
+        case "movies":
+            t = { w: s(1370, scale), h: s(850, scale), rx: Math.floor((mw / 2) - (s(1370, scale) / 2)), ry: mh - s(850, scale), comp: "movies/MovieWidget.qml" };
+            break;
+        case "hidden":
+            t = { w: 1, h: 1, rx: -5000 - mx, ry: -5000 - my, comp: "" };
+            break;
+        default:
+            return null;
+    }
+
+    t.x = mx + t.rx;
+    t.y = my + t.ry;
+    return t;
+}
+
+function getPopupLayout(mw, mh, userScale) {
+    if (arguments.length === 2) {
+        userScale = mh;
+        mh = mw * (1080.0 / 1920.0);
+    }
+    
+    let scale = getScale(mw, mh, userScale);
+    return {
+        w: s(350, scale),
+        marginTop: s(60, scale),
+        marginRight: s(20, scale),
+        spacing: s(12, scale),
+        radius: s(14, scale),
+        padding: s(12, scale)
+    };
+}
+</file>
+
 <file path="dotfiles/hypr/scripts/quickshell/music/music_info.sh">
 #!/usr/bin/env bash
 
@@ -34067,521 +34541,6 @@ else
 fi
 </file>
 
-<file path="dotfiles/hypr/scripts/quickshell/Main.qml">
-import QtQuick
-import QtQuick.Window
-import QtQuick.Controls
-import Quickshell
-import Quickshell.Io
-import Quickshell.Wayland
-import Quickshell.Services.Notifications
-import "WindowRegistry.js" as Registry
-
-import "notifications" as Notifs
-
-PanelWindow {
-    id: masterWindow
-    color: "transparent"
-
-    Caching { id: paths }
-
-    IpcHandler {
-        target: "main"
-
-        function forceReload(): void {
-            Quickshell.reload(true)
-        }
-
-        function handleCommand(cmd: string, targetWidget: string, arg: string): void {
-            cmd = cmd || "";
-            targetWidget = targetWidget || "";
-            arg = arg || "";
-
-            let isClosing = (masterWindow.currentActive !== "hidden" && !masterWindow.isVisible);
-            let effectivelyActive = isClosing ? "hidden" : masterWindow.currentActive;
-
-            if (cmd === "close") {
-                switchWidget("hidden", "");
-            } else if (cmd === "toggle" || cmd === "open") {
-                delayedClear.stop();
-
-                if (targetWidget === effectivelyActive) {
-                    let currentItem = widgetStack.currentItem;
-
-                    if (arg !== "" && currentItem && currentItem.activeMode !== undefined && currentItem.activeMode !== arg) {
-                        currentItem.activeMode = arg;
-                    } else if (cmd === "toggle") {
-                        switchWidget("hidden", "");
-                    }
-                } else if (getLayout(targetWidget)) {
-                    switchWidget(targetWidget, arg);
-                }
-            } else if (getLayout(cmd)) {
-                let legacyArg = targetWidget;
-                delayedClear.stop();
-
-                if (cmd === effectivelyActive) {
-                    let currentItem = widgetStack.currentItem;
-                    if (legacyArg !== "" && currentItem && currentItem.activeMode !== undefined && currentItem.activeMode !== legacyArg) {
-                        currentItem.activeMode = legacyArg;
-                    } else {
-                        switchWidget("hidden", "");
-                    }
-                } else {
-                    switchWidget(cmd, legacyArg);
-                }
-            }
-        }
-    }
-
-    WlrLayershell.namespace: "qs-master"
-    WlrLayershell.layer: WlrLayer.Overlay
-
-    exclusionMode: ExclusionMode.Ignore
-    focusable: true
-
-    implicitWidth: masterWindow.screen.width
-    implicitHeight: masterWindow.screen.height
-
-    visible: isVisible
-
-    mask: Region { item: topBarHole; intersection: Intersection.Xor }
-
-    Item {
-        id: topBarHole
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: 48
-
-        anchors.leftMargin: (masterWindow.currentActive !== "hidden" && masterWindow.animX < 10 && masterWindow.animY < height) ? masterWindow.animW : 0
-        anchors.rightMargin: (masterWindow.currentActive !== "hidden" && (masterWindow.animX + masterWindow.animW) > (parent.width - 10) && masterWindow.animY < height) ? masterWindow.animW : 0
-
-        Behavior on anchors.leftMargin {
-            enabled: masterWindow.currentActive !== "hidden"
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-        Behavior on anchors.rightMargin {
-            enabled: masterWindow.currentActive !== "hidden"
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        enabled: masterWindow.isVisible
-        onClicked: switchWidget("hidden", "")
-    }
-
-    Item {
-        id: preloaderContainer
-        visible: false
-    }
-
-    property var widgetCache: ({})
-
-    function preloadWidget(name) {
-        if (widgetCache[name]) return;
-        let t = getLayout(name);
-        if (!t || !t.comp) return;
-        let obj = t.comp.createObject(preloaderContainer, {
-            "notifModel": masterWindow.notifModel,
-            "liveNotifs": masterWindow.liveNotifs,
-            "visible": false
-        });
-        if (obj) widgetCache[name] = obj;
-    }
-
-    Component.onCompleted: {
-        preloadStaggerTimer.start();
-    }
-
-    Timer {
-        id: preloadStaggerTimer
-        interval: 900
-        repeat: false
-        onTriggered: {
-            preloadWidget("search");
-            preloadWidget("battery");
-            preloadWidget("network");
-            preloadWidget("volume");
-            preloadWidget("music");
-            preloadWidget("clipboard");
-        }
-    }
-
-    property string currentActive: "hidden"
-
-    onCurrentActiveChanged: {
-        Quickshell.execDetached(["bash", "-c", "echo '" + currentActive + "' > " + paths.runDir + "/current_widget"]);
-    }
-
-    property bool isVisible: false
-    property string activeArg: ""
-    property bool disableMorph: false
-
-    property int morphDuration: 160
-    property int morphDurationSwitch: 210
-    property int exitDuration: 160
-
-    property real animW: 1
-    property real animH: 1
-    property real animX: 0
-    property real animY: 0
-
-    property real targetW: 1
-    property real targetH: 1
-
-    property real globalUiScale: 1.0
-
-    ListModel { id: globalNotificationHistory }
-    ListModel { id: activePopupsModel }
-
-    property var liveNotifs: ({})
-    property int _popupCounter: 0
-
-    property bool isStartup: true
-    Timer {
-        id: startupTimer
-        interval: 500
-        running: true
-        onTriggered: masterWindow.isStartup = false
-    }
-
-    function removePopup(uid) {
-        for (let i = 0; i < activePopupsModel.count; i++) {
-            if (activePopupsModel.get(i).uid === uid) {
-                activePopupsModel.remove(i);
-                break;
-            }
-        }
-    }
-
-    NotificationServer {
-        id: globalNotificationServer
-        bodySupported: true
-        actionsSupported: true
-        imageSupported: true
-
-        onNotification: (n) => {
-            n.tracked = true;
-
-            let extractedActions = [];
-            if (n.actions) {
-                for (let i = 0; i < n.actions.length; i++) {
-                    extractedActions.push({
-                        "id": n.actions[i].identifier || "",
-                        "text": n.actions[i].text || n.actions[i].name || "Action"
-                    });
-                }
-            }
-
-            masterWindow._popupCounter++;
-            let currentUid = masterWindow._popupCounter;
-
-            masterWindow.liveNotifs[currentUid] = n;
-
-            let notifData = {
-                "appName":     n.appName  !== "" ? n.appName  : "System",
-                "summary":     n.summary  !== "" ? n.summary  : "No Title",
-                "body":        n.body     !== "" ? n.body     : "",
-                "iconPath":    n.appIcon  !== "" ? n.appIcon  : "",
-                "actionsJson": JSON.stringify(extractedActions),
-                "uid":         currentUid,
-                "notif":       n
-            };
-
-            globalNotificationHistory.insert(0, notifData);
-
-            if (!masterWindow.isStartup) {
-                activePopupsModel.append(notifData);
-                osdPopups.storeNotif(currentUid, n);
-            }
-        }
-    }
-
-    property var notifModel: globalNotificationHistory
-
-    Notifs.NotificationPopups {
-        id: osdPopups
-        popupModel: activePopupsModel
-        uiScale: masterWindow.globalUiScale
-        onRemoveRequested: (uid) => masterWindow.removePopup(uid)
-    }
-    onGlobalUiScaleChanged: { handleNativeScreenChange(); }
-
-    Process {
-        id: settingsReader
-        command: ["bash", "-c", "cat ~/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
-                        let parsed = JSON.parse(this.text);
-                        if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
-                            masterWindow.globalUiScale = parsed.uiScale;
-                        }
-                    }
-                } catch (e) {
-                    console.log("Error parsing settings.json in main.qml:", e);
-                }
-            }
-        }
-    }
-
-    // Process-less settings polling: completely removes CPU wakeups and background bash loops!
-    Timer {
-        id: settingsPollTimer
-        interval: 3000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
-            settingsReader.running = false;
-            settingsReader.running = true;
-        }
-    }
-
-    property var    _layoutCache:    ({})
-    property string _layoutCacheKey: ""
-
-    function getLayout(name) {
-        let key = name + "|" + masterWindow.width + "|" + masterWindow.height + "|" + masterWindow.globalUiScale;
-        if (_layoutCacheKey === key) return _layoutCache[key];
-        let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
-        _layoutCache = {};
-        _layoutCache[key] = result;
-        _layoutCacheKey = key;
-        return result;
-    }
-
-    Connections {
-        target: masterWindow
-        function onWidthChanged()  { _layoutCacheKey = ""; handleNativeScreenChange(); }
-        function onHeightChanged() { _layoutCacheKey = ""; handleNativeScreenChange(); }
-    }
-
-    function handleNativeScreenChange() {
-        if (masterWindow.currentActive === "hidden") return;
-
-        let t = getLayout(masterWindow.currentActive);
-        if (!t) return;
-
-        let currentItem = widgetStack.currentItem;
-        let finalW = (currentItem && currentItem.targetMasterWidth  !== undefined) ? currentItem.targetMasterWidth  : t.w;
-        let finalH = (currentItem && currentItem.targetMasterHeight !== undefined) ? currentItem.targetMasterHeight : t.h;
-        let finalX = t.rx;
-        if (currentItem && currentItem.targetMasterWidth !== undefined && finalW !== t.w) {
-            finalX = Math.floor((masterWindow.width / 2) - (finalW / 2));
-        }
-
-        masterWindow.animX = finalX;
-        masterWindow.animY = t.ry;
-        masterWindow.animW = finalW;
-        masterWindow.animH = finalH;
-        masterWindow.targetW = finalW;
-        masterWindow.targetH = finalH;
-    }
-
-    onIsVisibleChanged: {
-        if (isVisible) widgetStack.forceActiveFocus();
-    }
-
-    Item {
-        x: masterWindow.animX
-        y: masterWindow.animY
-        width:  masterWindow.animW
-        height: masterWindow.animH
-        clip: true
-
-        Behavior on x {
-            enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-        Behavior on y {
-            enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-        Behavior on width {
-            enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-        Behavior on height {
-            enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-
-        opacity: masterWindow.isVisible ? 1.0 : 0.0
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 160
-                easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic
-            }
-        }
-
-        MouseArea { anchors.fill: parent }
-
-        Item {
-            anchors.fill: parent
-
-            StackView {
-                id: widgetStack
-                anchors.fill: parent
-                focus: true
-
-                Keys.onEscapePressed: {
-                    switchWidget("hidden", "");
-                    event.accepted = true;
-                }
-
-                onCurrentItemChanged: {
-                    if (currentItem) currentItem.forceActiveFocus();
-                }
-
-                replaceEnter: Transition {
-                    ParallelAnimation {
-                        NumberAnimation {
-                            property: "opacity"
-                            from: 0.0; to: 1.0
-                            duration: masterWindow.morphDurationShift
-                            easing.type: Easing.OutQuint
-                        }
-                        NumberAnimation {
-                            property: "scale"
-                            from: 0.98; to: 1.0
-                            duration: masterWindow.morphDurationShift
-                            easing.type: Easing.OutCubic
-                        }
-                    }
-                }
-
-                replaceExit: Transition {
-                    ParallelAnimation {
-                        NumberAnimation {
-                            property: "opacity"
-                            from: 1.0; to: 0.0
-                            duration: masterWindow.morphDurationShift
-                            easing.type: Easing.InQuint
-                        }
-                        NumberAnimation {
-                            property: "scale"
-                            from: 1.0; to: 0.98
-                            duration: masterWindow.morphDurationShift
-                            easing.type: Easing.OutCubic
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    function switchWidget(newWidget, arg) {
-        delayedClear.stop();
-
-        if (newWidget === "hidden") {
-            if (currentActive !== "hidden") {
-                masterWindow.morphDuration = masterWindow.exitDuration;
-                masterWindow.disableMorph = false;
-
-                masterWindow.animW = 1;
-                masterWindow.animH = 1;
-                masterWindow.isVisible = false;
-
-                delayedClear.start();
-            }
-        } else {
-            if (currentActive === "hidden" || !masterWindow.isVisible) {
-                masterWindow.morphDuration = 230;
-                masterWindow.disableMorph = false;
-
-                let t = getLayout(newWidget);
-                masterWindow.animX = t.rx;
-                masterWindow.animY = t.ry;
-                masterWindow.animW = t.w;
-                masterWindow.animH = t.h;
-                masterWindow.targetW = t.w;
-                masterWindow.targetH = t.h;
-            } else {
-                masterWindow.morphDuration = masterWindow.morphDurationShift;
-                masterWindow.disableMorph = false;
-            }
-
-            Qt.callLater(() => executeSwitch(newWidget, arg, false));
-        }
-    }
-
-    function executeSwitch(newWidget, arg, immediate) {
-        masterWindow.currentActive = newWidget;
-        masterWindow.activeArg = arg;
-
-        let t = getLayout(newWidget);
-        masterWindow.animX = t.rx;
-        masterWindow.animY = t.ry;
-        masterWindow.animW = t.w;
-        masterWindow.animH = t.h;
-        masterWindow.targetW = t.w;
-        masterWindow.targetH = t.h;
-
-        let props = {};
-        props["notifModel"]   = masterWindow.notifModel;
-        props["liveNotifs"]   = masterWindow.liveNotifs;
-        props["layoutWidth"]  = t.w;
-        props["layoutHeight"] = t.h;
-        if (newWidget === "wallpaper") props["widgetArg"] = arg;
-
-        let cached = widgetCache[newWidget];
-        if (cached) {
-            if (cached.notifModel   !== undefined) cached.notifModel   = masterWindow.notifModel;
-            if (cached.liveNotifs   !== undefined) cached.liveNotifs   = masterWindow.liveNotifs;
-            if (cached.layoutWidth  !== undefined) cached.layoutWidth  = t.w;
-            if (cached.layoutHeight !== undefined) cached.layoutHeight = t.h;
-            if (newWidget === "wallpaper" && cached.widgetArg !== undefined) cached.widgetArg = arg;
-            if (arg !== "" && cached.activeMode !== undefined) cached.activeMode = arg;
-
-            cached.visible = true;
-            if (immediate) {
-                widgetStack.replace(cached, {}, StackView.Immediate);
-            } else {
-                widgetStack.replace(cached, {});
-            }
-        } else {
-            if (immediate) {
-                widgetStack.replace(t.comp, props, StackView.Immediate);
-            } else {
-                widgetStack.replace(t.comp, props);
-            }
-        }
-
-        let currentItem = widgetStack.currentItem;
-        if (currentItem) {
-            if (currentItem.targetMasterWidth !== undefined) {
-                let dynW = currentItem.targetMasterWidth;
-                masterWindow.animW = dynW;
-                masterWindow.targetW = dynW;
-                masterWindow.animX = Math.floor((masterWindow.width / 2) - (dynW / 2));
-            }
-            if (currentItem.targetMasterHeight !== undefined) {
-                masterWindow.animH = currentItem.targetMasterHeight;
-                masterWindow.targetH = currentItem.targetMasterHeight;
-            }
-        }
-
-        masterWindow.isVisible = true;
-    }
-
-    Timer {
-        id: delayedClear
-        interval: 200
-        onTriggered: {
-            masterWindow.currentActive = "hidden";
-            widgetStack.clear();
-            masterWindow.disableMorph = false;
-        }
-    }
-}
-</file>
-
 <file path="dotfiles/hypr/appearance.conf">
 general {
     gaps_in = 5
@@ -34656,588 +34615,6 @@ animations {
     animation = workspaces, 1, 6, menu_decel, slidefade 15%
     animation = specialWorkspace, 1, 3, md3_decel, slidefadevert 15%
     # animation = specialWorkspace, 1, 2, menu_decel, fade
-}
-</file>
-
-<file path="dotfiles/hypr/scripts/quickshell/focustime/focus_daemon.py">
-#!/usr/bin/env python3
-import subprocess
-import sqlite3
-import time
-import os
-import socket
-import json
-import threading
-import calendar
-import re
-import signal
-import sys
-import shutil
-import glob
-from datetime import date, datetime, timedelta
-from collections import defaultdict
-
-current_app_class = "Desktop"
-current_app_title = "Desktop"
-
-# Use standardized dynamic paths securely
-DB_DIR = os.environ.get("QS_STATE_FOCUSTIME", os.path.expanduser("~/.local/state/quickshell/focustime"))
-os.makedirs(DB_DIR, exist_ok=True)
-DB_PATH = os.path.join(DB_DIR, "focustime.db")
-
-# Database Migration Fallback
-OLD_DB_DIR = os.path.expanduser("~/.local/share/focustime")
-OLD_DB_BASE = os.path.join(OLD_DB_DIR, "focustime.db")
-
-if not os.path.exists(DB_PATH) and os.path.exists(OLD_DB_BASE):
-    try:
-        # Move the main db and any shm/wal/journal files safely
-        for old_file in glob.glob(OLD_DB_BASE + "*"):
-            shutil.move(old_file, DB_DIR)
-    except Exception:
-        pass
-
-RUN_DIR = os.environ.get("QS_RUN_FOCUSTIME", "/tmp/quickshell/focustime")
-os.makedirs(RUN_DIR, exist_ok=True)
-STATE_FILE = os.path.join(RUN_DIR, "focustime_state.json")
-
-DESKTOP_CACHE_NAME = {}
-DESKTOP_CACHE_ICON = {}
-CACHE_BUILT = False
-SYSTEM_STATES = {"Desktop", "Locked", "Quickshell", "Unknown"}
-
-def get_xdg_search_dirs():
-    search_dirs = []
-    xdg_data_home = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
-    search_dirs.append(os.path.join(xdg_data_home, "applications"))
-    
-    xdg_data_dirs = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
-    for d in xdg_data_dirs.split(":"):
-        if d.strip():
-            search_dirs.append(os.path.join(d, "applications"))
-
-    fallback_dirs = [
-        "/var/lib/flatpak/exports/share/applications",
-        "/var/lib/snapd/desktop/applications"
-    ]
-    for d in fallback_dirs:
-        if d not in search_dirs:
-            search_dirs.append(d)
-    return search_dirs
-
-def build_desktop_cache():
-    global CACHE_BUILT
-    if CACHE_BUILT: return
-    
-    for directory in get_xdg_search_dirs():
-        if not os.path.exists(directory): continue
-        try:
-            for f in os.listdir(directory):
-                if f.endswith(".desktop"):
-                    path = os.path.join(directory, f)
-                    try:
-                        name, icon, wmclass = None, "", None
-                        with open(path, 'r', encoding='utf-8') as file:
-                            for line in file:
-                                line = line.strip()
-                                if line.startswith("Name=") and not name:
-                                    name = line.split("=", 1)[1].strip()
-                                elif line.startswith("Icon=") and not icon:
-                                    icon = line.split("=", 1)[1].strip()
-                                elif line.startswith("StartupWMClass="):
-                                    wmclass = line.split("=", 1)[1].strip().lower()
-                        
-                        if name:
-                            base = f[:-8].lower()
-                            DESKTOP_CACHE_NAME[base] = name
-                            DESKTOP_CACHE_ICON[base] = icon
-                            if wmclass:
-                                DESKTOP_CACHE_NAME[wmclass] = name
-                                DESKTOP_CACHE_ICON[wmclass] = icon
-                    except Exception:
-                        pass
-        except Exception:
-            pass
-    CACHE_BUILT = True
-
-def resolve_app_name(app_class, raw_title):
-    if not app_class or app_class in SYSTEM_STATES:
-        return app_class if app_class else "Unknown"
-        
-    build_desktop_cache()
-    app_class_lower = app_class.lower()
-    base_class = re.sub(r'[-_ ]?updater$', '', app_class_lower)
-    base_class = base_class.replace('.exe', '')
-
-    if app_class_lower in DESKTOP_CACHE_NAME: return DESKTOP_CACHE_NAME[app_class_lower]
-    if base_class in DESKTOP_CACHE_NAME: return DESKTOP_CACHE_NAME[base_class]
-
-    clean_title = re.sub(r'^\(\d+\)\s*|^\[\d+\]\s*', '', raw_title)
-    clean_title = re.sub(r'\s*\(\d+\)$', '', clean_title)
-    parts = re.split(r'\s+[-—|]\s+', clean_title)
-    name = parts[-1].strip() if len(parts) > 1 else clean_title.strip()
-
-    if len(name) > 25: name = app_class.capitalize()
-
-    DESKTOP_CACHE_NAME[app_class_lower] = name
-    return name
-
-def get_app_icon(app_class):
-    if not app_class or app_class in SYSTEM_STATES:
-        return ""
-        
-    build_desktop_cache()
-    app_class_lower = app_class.lower()
-    base_class = re.sub(r'[-_ ]?updater$', '', app_class_lower)
-    base_class = base_class.replace('.exe', '')
-
-    if app_class_lower in DESKTOP_CACHE_ICON: return DESKTOP_CACHE_ICON[app_class_lower]
-    if base_class in DESKTOP_CACHE_ICON: return DESKTOP_CACHE_ICON[base_class]
-
-    return ""
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS focus_log (log_date TEXT, app_class TEXT, seconds INTEGER, app_title TEXT, PRIMARY KEY (log_date, app_class))''')
-    c.execute('CREATE INDEX IF NOT EXISTS idx_log_date ON focus_log(log_date)')
-    c.execute('''CREATE TABLE IF NOT EXISTS focus_hourly (log_date TEXT, hour INTEGER, app_class TEXT, seconds INTEGER, PRIMARY KEY (log_date, hour, app_class))''')
-    c.execute('''CREATE TABLE IF NOT EXISTS focus_intervals (log_date TEXT, interval_idx INTEGER, app_class TEXT, seconds INTEGER, PRIMARY KEY (log_date, interval_idx, app_class))''')
-    c.execute('''CREATE TABLE IF NOT EXISTS focus_minutes (log_date TEXT, minute_idx INTEGER, app_class TEXT, seconds INTEGER, PRIMARY KEY (log_date, minute_idx, app_class))''')
-    
-    c.execute("PRAGMA table_info(focus_log)")
-    if 'app_title' not in [row[1] for row in c.fetchall()]:
-        c.execute('ALTER TABLE focus_log ADD COLUMN app_title TEXT')
-        
-    conn.commit()
-    return conn
-
-def get_active_window_hyprctl():
-    try:
-        output = subprocess.check_output(['hyprctl', 'activewindow', '-j'], text=True)
-        if output.strip() == "{}": return "Desktop", "Desktop"
-        data = json.loads(output)
-        
-        app_cls = data.get('initialClass') or data.get('class') or ''
-        raw_title = data.get('initialTitle') or data.get('title') or ''
-
-        if "quickshell" in app_cls.lower() or "qs-master" in raw_title.lower() or "qs-master" in app_cls.lower():
-            return "Quickshell", "Quickshell"
-            
-        app_cls = app_cls if app_cls else "Unknown"
-        raw_title = raw_title if raw_title else app_cls
-        clean_name = resolve_app_name(app_cls, raw_title)
-        return app_cls, clean_name
-    except Exception:
-        return "Unknown", "Unknown"
-
-def is_locked():
-    try:
-        subprocess.check_output(['pgrep', '-x', 'hyprlock'])
-        return True
-    except subprocess.CalledProcessError:
-        return False
-
-def listen_hyprland_ipc():
-    global current_app_class, current_app_title
-    hypr_sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
-    if not hypr_sig: return
-
-    sock_path = f"{os.environ.get('XDG_RUNTIME_DIR', '/tmp')}/hypr/{hypr_sig}/.socket2.sock"
-    if not os.path.exists(sock_path):
-        sock_path = f"/tmp/hypr/{hypr_sig}/.socket2.sock"
-
-    while True:
-        try:
-            client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            client.connect(sock_path)
-            buffer = ""
-            while True:
-                data = client.recv(4096).decode('utf-8')
-                if not data: break
-                buffer += data
-                while '\n' in buffer:
-                    line, buffer = buffer.split('\n', 1)
-                    if line.startswith('activewindow>>'):
-                        cls, clean_title = get_active_window_hyprctl()
-                        if is_locked() or cls == "hyprlock":
-                            current_app_class, current_app_title = "Locked", "Locked"
-                        else:
-                            current_app_class, current_app_title = cls, clean_title
-        except Exception:
-            time.sleep(2) 
-
-
-class DaemonTracker:
-    def __init__(self):
-        self.conn = init_db()
-        self.buffer = []
-        self.cached_json = None
-        self.last_sync = 0
-        self.last_date = date.today()
-        
-    def full_sync(self, target_date):
-        c = self.conn.cursor()
-        
-        yesterday = target_date - timedelta(days=1)
-        c.execute('SELECT SUM(seconds) FROM focus_log WHERE log_date = ?', (yesterday.isoformat(),))
-        yesterday_seconds = c.fetchone()[0] or 0
-
-        monday = target_date - timedelta(days=target_date.weekday())
-        sunday = monday + timedelta(days=6)
-        week_range_str = f"{monday.strftime('%b')} {monday.day} - {sunday.strftime('%b')} {sunday.day}"
-
-        c.execute('''SELECT COUNT(DISTINCT log_date), SUM(seconds) FROM focus_log 
-                     WHERE log_date >= ? AND log_date <= ? AND seconds > 0''', (monday.isoformat(), sunday.isoformat()))
-        row = c.fetchone()
-        days_count = row[0] or 0
-        total_week = row[1] or 0
-        average_seconds = total_week // days_count if days_count > 0 else 0
-        
-        c.execute('SELECT SUM(seconds) FROM focus_log WHERE log_date = ?', (target_date.isoformat(),))
-        total_seconds = c.fetchone()[0] or 0
-
-        c.execute('''SELECT app_class, COALESCE(app_title, app_class), SUM(seconds) as secs 
-                     FROM focus_log WHERE log_date = ? GROUP BY app_class ORDER BY secs DESC''', (target_date.isoformat(),))
-        all_apps = []
-        for row in c.fetchall():
-            app_class, app_title, secs = row
-            all_apps.append({
-                "class": app_class, "name": app_title, "icon": get_app_icon(app_class),
-                "seconds": secs, "percent": round((secs / total_seconds) * 100, 1) if total_seconds > 0 else 0
-            })
-
-        c.execute('''SELECT app_class, COALESCE(app_title, app_class), SUM(seconds) as secs FROM focus_log 
-                     WHERE log_date >= ? AND log_date <= ? GROUP BY app_class ORDER BY secs DESC LIMIT 50''', 
-                  (monday.isoformat(), sunday.isoformat()))
-        week_apps_rows = c.fetchall()
-        week_apps_total = sum([r[2] for r in week_apps_rows])
-        week_apps = []
-        for r in week_apps_rows:
-            cls, title, secs = r
-            week_apps.append({
-                "class": cls, "name": title, "icon": get_app_icon(cls),
-                "seconds": secs, "percent": round((secs / week_apps_total) * 100, 1) if week_apps_total > 0 else 0
-            })
-
-        c.execute('SELECT log_date, SUM(seconds) FROM focus_log WHERE log_date >= ? AND log_date <= ? GROUP BY log_date', 
-                 (monday.isoformat(), sunday.isoformat()))
-        week_map = {r[0]: r[1] for r in c.fetchall()}
-        days_str = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        week_data = []
-        for i in range(7):
-            d_str = (monday + timedelta(days=i)).isoformat()
-            week_data.append({"date": d_str, "day": days_str[i], "total": week_map.get(d_str, 0), "is_target": d_str == target_date.isoformat()})
-
-        first_day = target_date.replace(day=1)
-        _, num_days = calendar.monthrange(target_date.year, target_date.month)
-        last_day = target_date.replace(day=num_days)
-        c.execute('SELECT log_date, SUM(seconds) FROM focus_log WHERE log_date >= ? AND log_date <= ? GROUP BY log_date', 
-                 (first_day.isoformat(), last_day.isoformat()))
-        month_map = {r[0]: r[1] for r in c.fetchall()}
-        
-        month_data = [{"date": "", "total": -1, "is_target": False} for _ in range(first_day.weekday())]
-        for i in range(1, num_days + 1):
-            d_str = target_date.replace(day=i).isoformat()
-            month_data.append({"date": d_str, "total": month_map.get(d_str, 0), "is_target": d_str == target_date.isoformat()})
-
-        hourly_data = [0] * 48
-        try:
-            c.execute('SELECT hour, SUM(seconds) FROM focus_hourly WHERE log_date = ? GROUP BY hour', (target_date.isoformat(),))
-            for hr, secs in c.fetchall():
-                if 0 <= hr <= 23: hourly_data[hr * 2] += secs
-            c.execute('SELECT interval_idx, SUM(seconds) FROM focus_intervals WHERE log_date = ? GROUP BY interval_idx', (target_date.isoformat(),))
-            for idx, secs in c.fetchall():
-                if 0 <= idx < 96: hourly_data[idx // 2] += secs
-        except sqlite3.OperationalError:
-            pass 
-
-        week_heatmap = [[0]*24 for _ in range(7)]
-        try:
-            c.execute('''SELECT log_date, hour, SUM(seconds) FROM focus_hourly WHERE log_date >= ? AND log_date <= ? GROUP BY log_date, hour''', 
-                      (monday.isoformat(), sunday.isoformat()))
-            for ldate, hr, secs in c.fetchall():
-                day_idx = date.fromisoformat(ldate).weekday()
-                if 0 <= hr <= 23: week_heatmap[day_idx][hr] += secs
-        except sqlite3.OperationalError:
-            pass
-
-        minute_data = [0] * 1440
-        try:
-            c.execute('''SELECT minute_idx, SUM(seconds) FROM focus_minutes WHERE log_date >= ? AND log_date <= ? GROUP BY minute_idx''', 
-                      (monday.isoformat(), sunday.isoformat()))
-            for idx, secs in c.fetchall():
-                if 0 <= idx < 1440: minute_data[idx] += secs
-        except sqlite3.OperationalError:
-            pass
-
-        peak_str = "N/A"
-        max_sum = 0
-        best_window = None
-        for i in range(1440 - 60):
-            w_sum = sum(minute_data[i:i+60])
-            if w_sum > max_sum and w_sum > 0:
-                max_sum = w_sum
-                best_window = (i, i+60)
-
-        if best_window:
-            start_idx, end_idx = best_window
-            while start_idx < end_idx and minute_data[start_idx] == 0: start_idx += 1
-            actual_end = end_idx - 1
-            while actual_end > start_idx and minute_data[actual_end] == 0: actual_end -= 1
-            s_h, s_m = divmod(start_idx, 60)
-            e_h, e_m = divmod(actual_end, 60)
-            peak_str = f"{s_h:02d}:{s_m:02d} - {e_h:02d}:{e_m:02d}"
-
-        self.cached_json = {
-            "selected_date": target_date.isoformat(), "total": total_seconds, "average": average_seconds,
-            "week_range": week_range_str, "yesterday": yesterday_seconds, "current": current_app_title,
-            "apps": all_apps, "week_apps": week_apps, "week": week_data, "month": month_data,
-            "hourly": hourly_data, "week_heatmap": week_heatmap, "peak_usage_str": peak_str
-        }
-        self.last_sync = time.time()
-        self.last_date = target_date
-        
-    def fast_tick(self, app_class, app_title, write_to_disk=True):
-        now = datetime.now()
-        target_date = now.date()
-        
-        self.buffer.append((target_date.isoformat(), app_class, app_title, now))
-        
-        if self.cached_json is None or target_date != self.last_date or (time.time() - self.last_sync > 60):
-            self.flush()
-            self.full_sync(target_date)
-        else:
-            d = self.cached_json
-            d["total"] += 1
-            d["current"] = app_title
-            
-            found = False
-            for app in d["apps"]:
-                if app["class"] == app_class:
-                    app["seconds"] += 1
-                    found = True
-                    break
-            if not found:
-                d["apps"].append({
-                    "class": app_class, "name": app_title, 
-                    "icon": get_app_icon(app_class), "seconds": 1, "percent": 0
-                })
-                
-            for app in d["apps"]:
-                app["percent"] = round((app["seconds"] / d["total"]) * 100, 1) if d["total"] > 0 else 0
-            d["apps"].sort(key=lambda x: x["seconds"], reverse=True)
-            
-            for w in d["week"]:
-                if w["is_target"]: w["total"] += 1
-            for m in d["month"]:
-                if m["is_target"]: m["total"] += 1
-                
-            hr = now.hour
-            idx = hr * 2 + (1 if now.minute >= 30 else 0)
-            if 0 <= idx < 48: d["hourly"][idx] += 1
-                
-            day_idx = now.weekday()
-            if 0 <= hr < 24: d["week_heatmap"][day_idx][hr] += 1
-                
-        # Conditionally write to tmpfs
-        if write_to_disk:
-            temp_file = STATE_FILE + ".tmp"
-            try:
-                with open(temp_file, "w") as f:
-                    json.dump(self.cached_json, f)
-                os.rename(temp_file, STATE_FILE)
-            except Exception:
-                pass
-            
-        if len(self.buffer) >= 15:
-            self.flush()
-            
-    def flush(self):
-        if not self.buffer: return
-        c = self.conn.cursor()
-        
-        logs = defaultdict(int)
-        titles = {}
-        hours = defaultdict(int)
-        intervals = defaultdict(int)
-        minutes = defaultdict(int)
-        
-        for d_str, cls, title, dt in self.buffer:
-            logs[(d_str, cls)] += 1
-            titles[cls] = title
-            hr = dt.hour
-            hours[(d_str, hr, cls)] += 1
-            minute = hr * 60 + dt.minute
-            intervals[(d_str, minute // 15, cls)] += 1
-            minutes[(d_str, minute, cls)] += 1
-            
-        for (d_str, cls), secs in logs.items():
-            c.execute('''INSERT INTO focus_log (log_date, app_class, seconds, app_title) VALUES (?, ?, ?, ?)
-                         ON CONFLICT(log_date, app_class) DO UPDATE SET seconds = seconds + ?, app_title = ?''',
-                      (d_str, cls, secs, titles[cls], secs, titles[cls]))
-                      
-        for (d_str, hr, cls), secs in hours.items():
-            c.execute('''INSERT INTO focus_hourly (log_date, hour, app_class, seconds) VALUES (?, ?, ?, ?)
-                         ON CONFLICT(log_date, hour, app_class) DO UPDATE SET seconds = seconds + ?''',
-                      (d_str, hr, cls, secs, secs))
-                      
-        for (d_str, itv, cls), secs in intervals.items():
-            c.execute('''INSERT INTO focus_intervals (log_date, interval_idx, app_class, seconds) VALUES (?, ?, ?, ?)
-                         ON CONFLICT(log_date, interval_idx, app_class) DO UPDATE SET seconds = seconds + ?''',
-                      (d_str, itv, cls, secs, secs))
-                      
-        for (d_str, min_idx, cls), secs in minutes.items():
-            c.execute('''INSERT INTO focus_minutes (log_date, minute_idx, app_class, seconds) VALUES (?, ?, ?, ?)
-                         ON CONFLICT(log_date, minute_idx, app_class) DO UPDATE SET seconds = seconds + ?''',
-                      (d_str, min_idx, cls, secs, secs))
-                      
-        self.conn.commit()
-        self.buffer.clear()
-
-tracker = DaemonTracker()
-
-def exit_handler(sig, frame):
-    tracker.flush()
-    sys.exit(0)
-
-def main():
-    global current_app_class, current_app_title
-    signal.signal(signal.SIGINT, exit_handler)
-    signal.signal(signal.SIGTERM, exit_handler)
-
-    current_app_class, current_app_title = get_active_window_hyprctl()
-    
-    ipc_thread = threading.Thread(target=listen_hyprland_ipc, daemon=True)
-    ipc_thread.start()
-
-    tick_counter = 0
-    while True:
-        time.sleep(1)
-        tick_counter += 1
-        if current_app_class and current_app_class not in [""]:
-            # Only dump JSON to memory/disk every 5 seconds
-            tracker.fast_tick(current_app_class, current_app_title, write_to_disk=(tick_counter % 5 == 0))
-
-if __name__ == "__main__":
-    main()
-</file>
-
-<file path="modules/home/shell.nix">
-{ ... }:
-
-{
-  programs.zsh = {
-    enable = true;
-
-    enableCompletion = true;
-
-    autosuggestion.enable = true;
-
-    syntaxHighlighting.enable = true;
-
-    history = {
-      size = 10000;
-      path = "$HOME/.zsh_history";
-    };
-
-    initContent = ''
-      if [ -z "$DISPLAY" ] && [ "$XDG_VTNR" -eq 1 ]; then
-          exec start-hyprland
-      fi
-
-      rebuild() {
-        cd ~/nix || return
-
-        git add -A
-
-        if git diff --cached --quiet && git diff --quiet; then
-          echo "Nothing to commit."
-        else
-          if [ $# -eq 0 ]; then
-            git commit -m "Update configuration"
-          else
-            git commit -m "$*"
-          fi
-        fi
-
-        sudo nixos-rebuild switch --flake .#nixos
-      }
-
-      update() {
-        cd ~/nix || return
-
-        git pull
-        nix flake update
-
-        rebuild "flake update"
-      }
-
-      clean() {
-        sudo nix-collect-garbage -d
-      }
-
-      ff() {
-        fastfetch
-      }
-    '';
-
-    shellAliases = {
-    };
-  };
-
-  programs.starship.enable = true;
-
-  xdg.configFile."starship.toml".source =
-    ../../dotfiles/starship/starship.toml;
-}
-</file>
-
-<file path="modules/system/packages.nix">
-{ pkgs, inputs, ... }:
-
-{
-  environment.systemPackages = with pkgs; [
-    # CLI & Core Utilities
-    vim git curl wget tree jq yq-go bc socat python3 btop weathr
-
-    # Development & Terminal
-    vscodium
-    wezterm
-    fastfetch
-
-    # Browsers
-    inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
-    
-    # POWER OPTIMIZATION: Hardware-accelerated Brave override
-    (brave.override { commandLineArgs = "--enable-features=VaapiVideoDecodeLinuxGL --use-gl=angle"; })
-
-    # File Management
-    fsearch ntfs3g xfce4-exo
-
-    # Launchers & Clipboard
-    rofi wl-clipboard cliphist
-
-    # Screenshots & Recording
-    grim slurp grimblast wf-recorder gpu-screen-recorder gpu-screen-recorder-gtk
-
-    # Media & Display
-    mpv mpvpaper awww playerctl brightnessctl easyeffects cava loupe ffmpeg imagemagick zbar
-
-    # Documents & Creative
-    kdePackages.okular onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic
-
-    # Audio & Networking
-    pwvucontrol networkmanagerapplet blueman bluetuith
-
-    # Power & Sensors
-    acpi iw lm_sensors
-
-    # Desktop Integration
-    libnotify polkit_gnome hypridle hyprlock quickshell qt6Packages.qtmultimedia matugen
-
-    powertop psmisc hyprsunset nodejs banner usbutils wlogout opencode repomix
-  ];
 }
 </file>
 
@@ -36778,6 +36155,136 @@ Item {
 }
 </file>
 
+<file path="modules/home/shell.nix">
+{ ... }:
+
+{
+  programs.zsh = {
+    enable = true;
+
+    enableCompletion = true;
+
+    autosuggestion.enable = true;
+
+    syntaxHighlighting.enable = true;
+
+    history = {
+      size = 10000;
+      path = "$HOME/.zsh_history";
+    };
+
+    initContent = ''
+      if [ -z "$DISPLAY" ] && [ "$XDG_VTNR" -eq 1 ]; then
+          exec start-hyprland
+      fi
+
+      rebuild() {
+        cd ~/nix || return
+
+        git add -A
+
+        if git diff --cached --quiet && git diff --quiet; then
+          echo "Nothing to commit."
+        else
+          if [ $# -eq 0 ]; then
+            git commit -m "Update configuration"
+          else
+            git commit -m "$*"
+          fi
+        fi
+
+        sudo nixos-rebuild switch --flake .#nixos
+      }
+
+      update() {
+        cd ~/nix || return
+
+        git pull
+        nix flake update
+
+        rebuild "flake update"
+      }
+
+      clean() {
+        sudo nix-collect-garbage -d
+      }
+
+      ff() {
+        fastfetch
+      }
+    '';
+
+    shellAliases = {
+    };
+  };
+
+  programs.starship.enable = true;
+
+  xdg.configFile."starship.toml".source =
+    ../../dotfiles/starship/starship.toml;
+}
+</file>
+
+<file path="modules/system/packages.nix">
+{ pkgs, inputs, ... }:
+
+{
+  environment.systemPackages = with pkgs; [
+    # CLI & Core Utilities
+    vim git curl wget tree jq yq-go bc socat python3 btop weathr
+
+    # Development & Terminal
+    vscodium
+    wezterm
+    fastfetch
+
+    # Browsers
+    inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
+    
+    # POWER OPTIMIZATION: Hardware-accelerated Brave override
+    (brave.override { commandLineArgs = "--enable-features=VaapiVideoDecodeLinuxGL --use-gl=angle"; })
+
+    # File Management
+    fsearch ntfs3g xfce4-exo
+
+    # Launchers & Clipboard
+    rofi wl-clipboard cliphist
+
+    # Screenshots & Recording
+    grim slurp grimblast wf-recorder gpu-screen-recorder gpu-screen-recorder-gtk
+
+    # Media & Display
+    mpv mpvpaper awww playerctl brightnessctl easyeffects cava loupe ffmpeg imagemagick zbar
+
+    # Documents & Creative
+    kdePackages.okular onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic
+
+    # Audio & Networking
+    pwvucontrol networkmanagerapplet blueman bluetuith
+
+    # Power & Sensors
+    acpi iw lm_sensors
+
+    # Desktop Integration
+    libnotify polkit_gnome hypridle hyprlock quickshell qt6Packages.qtmultimedia matugen
+
+    powertop psmisc hyprsunset nodejs banner usbutils wlogout opencode repomix
+  ];
+}
+</file>
+
+<file path="dotfiles/hypr/scripts/quickshell/focustime/launch_daemon.sh">
+#!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
+
+pkill -f focus_daemon.py
+
+while true; do
+    python3 "$(dirname "$0")/focus_daemon.py"
+    sleep 2
+done
+</file>
+
 <file path="modules/system/services.nix">
 { pkgs, ... }:
 
@@ -36900,18 +36407,6 @@ stdenvNoCC.mkDerivation {
     platforms = platforms.linux;
   };
 }
-</file>
-
-<file path="dotfiles/hypr/scripts/quickshell/focustime/launch_daemon.sh">
-#!/usr/bin/env bash
-source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
-
-pkill -f focus_daemon.py
-
-while true; do
-    python3 "$(dirname "$0")/focus_daemon.py"
-    sleep 2
-done
 </file>
 
 <file path="dotfiles/hypr/rules.conf">
@@ -38357,6 +37852,525 @@ bindn = $mainMod, mouse_down, exec, hyprctl keyword cursor:zoom_factor 1.0
 # bindel = , XF86AudioRaiseVolume, exec, swayosd-client --output-volume raise
 
 # bindl = , Caps_Lock, exec, sleep 0.1 && swayosd-client --caps-lock
+</file>
+
+<file path="dotfiles/hypr/scripts/quickshell/Main.qml">
+import QtQuick
+import QtQuick.Window
+import QtQuick.Controls
+import Quickshell
+import Quickshell.Io
+import Quickshell.Wayland
+import Quickshell.Services.Notifications
+import "WindowRegistry.js" as Registry
+
+import "notifications" as Notifs
+
+PanelWindow {
+    id: masterWindow
+    color: "transparent"
+
+    Caching { id: paths }
+
+    IpcHandler {
+        target: "main"
+
+        function forceReload(): void {
+            Quickshell.reload(true)
+        }
+
+        function handleCommand(cmd: string, targetWidget: string, arg: string): void {
+            cmd = cmd || "";
+            targetWidget = targetWidget || "";
+            arg = arg || "";
+
+            let isClosing = (masterWindow.currentActive !== "hidden" && !masterWindow.isVisible);
+            let effectivelyActive = isClosing ? "hidden" : masterWindow.currentActive;
+            console.log("IPC", cmd, targetWidget, effectivelyActive);
+
+            if (cmd === "close") {
+                switchWidget("hidden", "");
+            } else if (cmd === "toggle" || cmd === "open") {
+                delayedClear.stop();
+
+                if (targetWidget === effectivelyActive) {
+                    let currentItem = widgetStack.currentItem;
+
+                    if (arg !== "" && currentItem && currentItem.activeMode !== undefined && currentItem.activeMode !== arg) {
+                        currentItem.activeMode = arg;
+                    } else if (cmd === "toggle") {
+                        switchWidget("hidden", "");
+                    }
+                } else if (getLayout(targetWidget)) {
+                    switchWidget(targetWidget, arg);
+                }
+            } else if (getLayout(cmd)) {
+                let legacyArg = targetWidget;
+                delayedClear.stop();
+
+                if (cmd === effectivelyActive) {
+                    let currentItem = widgetStack.currentItem;
+                    if (legacyArg !== "" && currentItem && currentItem.activeMode !== undefined && currentItem.activeMode !== legacyArg) {
+                        currentItem.activeMode = legacyArg;
+                    } else {
+                        switchWidget("hidden", "");
+                    }
+                } else {
+                    switchWidget(cmd, legacyArg);
+                }
+            }
+        }
+    }
+
+    WlrLayershell.namespace: "qs-master"
+    WlrLayershell.layer: WlrLayer.Overlay
+
+    exclusionMode: ExclusionMode.Ignore
+    focusable: true
+
+    implicitWidth: masterWindow.screen.width
+    implicitHeight: masterWindow.screen.height
+
+    visible: isVisible
+
+    mask: Region { item: topBarHole; intersection: Intersection.Xor }
+
+    Item {
+        id: topBarHole
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 48
+
+        anchors.leftMargin: (masterWindow.currentActive !== "hidden" && masterWindow.animX < 10 && masterWindow.animY < height) ? masterWindow.animW : 0
+        anchors.rightMargin: (masterWindow.currentActive !== "hidden" && (masterWindow.animX + masterWindow.animW) > (parent.width - 10) && masterWindow.animY < height) ? masterWindow.animW : 0
+
+        Behavior on anchors.leftMargin {
+            enabled: masterWindow.currentActive !== "hidden"
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+        Behavior on anchors.rightMargin {
+            enabled: masterWindow.currentActive !== "hidden"
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        enabled: masterWindow.isVisible
+        onClicked: switchWidget("hidden", "")
+    }
+
+    Item {
+        id: preloaderContainer
+        visible: false
+    }
+
+    property var widgetCache: ({})
+
+    function preloadWidget(name) {
+        if (widgetCache[name]) return;
+        let t = getLayout(name);
+        if (!t || !t.comp) return;
+        let obj = t.comp.createObject(preloaderContainer, {
+            "notifModel": masterWindow.notifModel,
+            "liveNotifs": masterWindow.liveNotifs,
+            "visible": false
+        });
+        if (obj) widgetCache[name] = obj;
+    }
+
+    Component.onCompleted: {
+        preloadStaggerTimer.start();
+    }
+
+    Timer {
+        id: preloadStaggerTimer
+        interval: 900
+        repeat: false
+        onTriggered: {
+            preloadWidget("search");
+            preloadWidget("battery");
+            preloadWidget("network");
+            preloadWidget("volume");
+            preloadWidget("music");
+            preloadWidget("clipboard");
+        }
+    }
+
+    property string currentActive: "hidden"
+
+    onCurrentActiveChanged: {
+        Quickshell.execDetached(["bash", "-c", "echo '" + currentActive + "' > " + paths.runDir + "/current_widget"]);
+    }
+
+    property bool isVisible: false
+    property string activeArg: ""
+    property bool disableMorph: false
+
+    property int morphDuration: 160
+    property int morphDurationShift: 210
+    property int exitDuration: 160
+
+    property real animW: 1
+    property real animH: 1
+    property real animX: 0
+    property real animY: 0
+
+    property real targetW: 1
+    property real targetH: 1
+
+    property real globalUiScale: 1.0
+
+    ListModel { id: globalNotificationHistory }
+    ListModel { id: activePopupsModel }
+
+    property var liveNotifs: ({})
+    property int _popupCounter: 0
+
+    property bool isStartup: true
+    Timer {
+        id: startupTimer
+        interval: 500
+        running: true
+        onTriggered: masterWindow.isStartup = false
+    }
+
+    function removePopup(uid) {
+        for (let i = 0; i < activePopupsModel.count; i++) {
+            if (activePopupsModel.get(i).uid === uid) {
+                activePopupsModel.remove(i);
+                break;
+            }
+        }
+    }
+
+    NotificationServer {
+        id: globalNotificationServer
+        bodySupported: true
+        actionsSupported: true
+        imageSupported: true
+
+        onNotification: (n) => {
+            n.tracked = true;
+
+            let extractedActions = [];
+            if (n.actions) {
+                for (let i = 0; i < n.actions.length; i++) {
+                    extractedActions.push({
+                        "id": n.actions[i].identifier || "",
+                        "text": n.actions[i].text || n.actions[i].name || "Action"
+                    });
+                }
+            }
+
+            masterWindow._popupCounter++;
+            let currentUid = masterWindow._popupCounter;
+
+            masterWindow.liveNotifs[currentUid] = n;
+
+            let notifData = {
+                "appName":     n.appName  !== "" ? n.appName  : "System",
+                "summary":     n.summary  !== "" ? n.summary  : "No Title",
+                "body":        n.body     !== "" ? n.body     : "",
+                "iconPath":    n.appIcon  !== "" ? n.appIcon  : "",
+                "actionsJson": JSON.stringify(extractedActions),
+                "uid":         currentUid,
+                "notif":       n
+            };
+
+            globalNotificationHistory.insert(0, notifData);
+
+            if (!masterWindow.isStartup) {
+                activePopupsModel.append(notifData);
+                osdPopups.storeNotif(currentUid, n);
+            }
+        }
+    }
+
+    property var notifModel: globalNotificationHistory
+
+    Notifs.NotificationPopups {
+        id: osdPopups
+        popupModel: activePopupsModel
+        uiScale: masterWindow.globalUiScale
+        onRemoveRequested: (uid) => masterWindow.removePopup(uid)
+    }
+    onGlobalUiScaleChanged: { handleNativeScreenChange(); }
+
+    Process {
+        id: settingsReader
+        command: ["bash", "-c", "cat ~/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
+                        let parsed = JSON.parse(this.text);
+                        if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
+                            masterWindow.globalUiScale = parsed.uiScale;
+                        }
+                    }
+                } catch (e) {
+                    console.log("Error parsing settings.json in main.qml:", e);
+                }
+            }
+        }
+    }
+
+    // Process-less settings polling: completely removes CPU wakeups and background bash loops!
+    Timer {
+        id: settingsPollTimer
+        interval: 3000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            settingsReader.running = false;
+            settingsReader.running = true;
+        }
+    }
+
+    property var    _layoutCache:    ({})
+    property string _layoutCacheKey: ""
+
+    function getLayout(name) {
+        let key = name + "|" + masterWindow.width + "|" + masterWindow.height + "|" + masterWindow.globalUiScale;
+        if (_layoutCacheKey === key) return _layoutCache[key];
+        let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
+        _layoutCache = {};
+        _layoutCache[key] = result;
+        _layoutCacheKey = key;
+        return result;
+    }
+
+    Connections {
+        target: masterWindow
+        function onWidthChanged()  { _layoutCacheKey = ""; handleNativeScreenChange(); }
+        function onHeightChanged() { _layoutCacheKey = ""; handleNativeScreenChange(); }
+    }
+
+    function handleNativeScreenChange() {
+        if (masterWindow.currentActive === "hidden") return;
+
+        let t = getLayout(masterWindow.currentActive);
+        if (!t) return;
+
+        let currentItem = widgetStack.currentItem;
+        let finalW = (currentItem && currentItem.targetMasterWidth  !== undefined) ? currentItem.targetMasterWidth  : t.w;
+        let finalH = (currentItem && currentItem.targetMasterHeight !== undefined) ? currentItem.targetMasterHeight : t.h;
+        let finalX = t.rx;
+        if (currentItem && currentItem.targetMasterWidth !== undefined && finalW !== t.w) {
+            finalX = Math.floor((masterWindow.width / 2) - (finalW / 2));
+        }
+
+        masterWindow.animX = finalX;
+        masterWindow.animY = t.ry;
+        masterWindow.animW = finalW;
+        masterWindow.animH = finalH;
+        masterWindow.targetW = finalW;
+        masterWindow.targetH = finalH;
+    }
+
+    onIsVisibleChanged: {
+        if (isVisible) widgetStack.forceActiveFocus();
+    }
+
+    Item {
+        x: masterWindow.animX
+        y: masterWindow.animY
+        width:  masterWindow.animW
+        height: masterWindow.animH
+        clip: true
+
+        Behavior on x {
+            enabled: !masterWindow.disableMorph
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+        Behavior on y {
+            enabled: !masterWindow.disableMorph
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+        Behavior on width {
+            enabled: !masterWindow.disableMorph
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+        Behavior on height {
+            enabled: !masterWindow.disableMorph
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+
+        opacity: masterWindow.isVisible ? 1.0 : 0.0
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 160
+                easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic
+            }
+        }
+
+        MouseArea { anchors.fill: parent }
+
+        Item {
+            anchors.fill: parent
+
+            StackView {
+                id: widgetStack
+                anchors.fill: parent
+                focus: true
+
+                Keys.onEscapePressed: {
+                    switchWidget("hidden", "");
+                    event.accepted = true;
+                }
+
+                onCurrentItemChanged: {
+                    if (currentItem) currentItem.forceActiveFocus();
+                }
+
+                replaceEnter: Transition {
+                    ParallelAnimation {
+                        NumberAnimation {
+                            property: "opacity"
+                            from: 0.0; to: 1.0
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.OutQuint
+                        }
+                        NumberAnimation {
+                            property: "scale"
+                            from: 0.98; to: 1.0
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                }
+
+                replaceExit: Transition {
+                    ParallelAnimation {
+                        NumberAnimation {
+                            property: "opacity"
+                            from: 1.0; to: 0.0
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.InQuint
+                        }
+                        NumberAnimation {
+                            property: "scale"
+                            from: 1.0; to: 0.98
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                }
+            }
+        }
+    }
+    function switchWidget(newWidget, arg) {
+console.log("switchWidget:", newWidget)
+        delayedClear.stop();
+
+        if (newWidget === "hidden") {
+            if (currentActive !== "hidden") {
+                masterWindow.morphDuration = masterWindow.exitDuration;
+                masterWindow.disableMorph = false;
+
+                masterWindow.animW = 1;
+                masterWindow.animH = 1;
+                masterWindow.isVisible = false;
+
+                delayedClear.start();
+            }
+        } else {
+            if (currentActive === "hidden" || !masterWindow.isVisible) {
+                masterWindow.morphDuration = 230;
+                masterWindow.disableMorph = false;
+
+                let t = getLayout(newWidget);
+                masterWindow.animX = t.rx;
+                masterWindow.animY = t.ry;
+                masterWindow.animW = t.w;
+                masterWindow.animH = t.h;
+                masterWindow.targetW = t.w;
+                masterWindow.targetH = t.h;
+            } else {
+                masterWindow.morphDuration = masterWindow.morphDurationShift;
+                masterWindow.disableMorph = false;
+            }
+
+            executeSwitch(newWidget, arg, false);
+        }
+    }
+    function executeSwitch(newWidget, arg, immediate) {
+console.log("executeSwitch:", newWidget)
+        masterWindow.currentActive = newWidget;
+        masterWindow.activeArg = arg;
+
+        let t = getLayout(newWidget);
+        masterWindow.animX = t.rx;
+        masterWindow.animY = t.ry;
+        masterWindow.animW = t.w;
+        masterWindow.animH = t.h;
+        masterWindow.targetW = t.w;
+        masterWindow.targetH = t.h;
+
+        let props = {};
+        props["notifModel"]   = masterWindow.notifModel;
+        props["liveNotifs"]   = masterWindow.liveNotifs;
+        props["layoutWidth"]  = t.w;
+        props["layoutHeight"] = t.h;
+        if (newWidget === "wallpaper") props["widgetArg"] = arg;
+
+        let cached = widgetCache[newWidget];
+        if (cached) {
+            if (cached.notifModel   !== undefined) cached.notifModel   = masterWindow.notifModel;
+            if (cached.liveNotifs   !== undefined) cached.liveNotifs   = masterWindow.liveNotifs;
+            if (cached.layoutWidth  !== undefined) cached.layoutWidth  = t.w;
+            if (cached.layoutHeight !== undefined) cached.layoutHeight = t.h;
+            if (newWidget === "wallpaper" && cached.widgetArg !== undefined) cached.widgetArg = arg;
+            if (arg !== "" && cached.activeMode !== undefined) cached.activeMode = arg;
+
+            cached.visible = true;
+            if (immediate) {
+                widgetStack.replace(cached, {}, StackView.Immediate);
+            } else {
+                widgetStack.replace(cached, {});
+            }
+        } else {
+            if (immediate) {
+                widgetStack.replace(t.comp, props, StackView.Immediate);
+            } else {
+                widgetStack.replace(t.comp, props);
+            }
+        }
+
+        let currentItem = widgetStack.currentItem;
+        if (currentItem) {
+            if (currentItem.targetMasterWidth !== undefined) {
+                let dynW = currentItem.targetMasterWidth;
+                masterWindow.animW = dynW;
+                masterWindow.targetW = dynW;
+                masterWindow.animX = Math.floor((masterWindow.width / 2) - (dynW / 2));
+            }
+            if (currentItem.targetMasterHeight !== undefined) {
+                masterWindow.animH = currentItem.targetMasterHeight;
+                masterWindow.targetH = currentItem.targetMasterHeight;
+            }
+        }
+
+        masterWindow.isVisible = true;
+    }
+
+    Timer {
+    id: delayedClear
+    interval: 200
+
+    onTriggered: {
+        if (!masterWindow.isVisible) {
+            masterWindow.currentActive = "hidden";
+            widgetStack.clear();
+            masterWindow.disableMorph = false;
+        }
+    }
+}
+}
 </file>
 
 </files>

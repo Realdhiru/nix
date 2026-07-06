@@ -110,6 +110,21 @@ PanelWindow {
     }
 
     property var widgetCache: ({})
+    property var componentCache: ({})
+
+    function resolveComponent(path) {
+        if (!path) return null;
+        if (componentCache[path]) return componentCache[path];
+        
+        let comp = Qt.createComponent(path);
+        if (comp.status === Component.Ready) {
+            componentCache[path] = comp;
+            return comp;
+        } else {
+            console.log("QML Component compilation error for path:", path, comp.errorString());
+            return null;
+        }
+    }
 
     function preloadWidget(name) {
         if (widgetCache[name]) return;
@@ -261,7 +276,6 @@ PanelWindow {
         }
     }
 
-    // Process-less settings polling: completely removes CPU wakeups and background bash loops!
     Timer {
         id: settingsPollTimer
         interval: 3000
@@ -281,6 +295,11 @@ PanelWindow {
         let key = name + "|" + masterWindow.width + "|" + masterWindow.height + "|" + masterWindow.globalUiScale;
         if (_layoutCacheKey === key) return _layoutCache[key];
         let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
+        
+        if (result && result.comp && typeof result.comp === "string") {
+            result.comp = resolveComponent(result.comp);
+        }
+        
         _layoutCache = {};
         _layoutCache[key] = result;
         _layoutCacheKey = key;
@@ -361,7 +380,7 @@ PanelWindow {
                 anchors.fill: parent
                 focus: true
 
-                Keys.onEscapePressed: {
+                Keys.onEscapePressed: (event) => {
                     switchWidget("hidden", "");
                     event.accepted = true;
                 }
@@ -406,8 +425,9 @@ PanelWindow {
             }
         }
     }
+    
     function switchWidget(newWidget, arg) {
-console.log("switchWidget:", newWidget)
+        console.log("switchWidget:", newWidget)
         delayedClear.stop();
 
         if (newWidget === "hidden") {
@@ -441,8 +461,9 @@ console.log("switchWidget:", newWidget)
             executeSwitch(newWidget, arg, false);
         }
     }
+    
     function executeSwitch(newWidget, arg, immediate) {
-console.log("executeSwitch:", newWidget)
+        console.log("executeSwitch:", newWidget)
         masterWindow.currentActive = newWidget;
         masterWindow.activeArg = arg;
 
@@ -502,15 +523,15 @@ console.log("executeSwitch:", newWidget)
     }
 
     Timer {
-    id: delayedClear
-    interval: 200
+        id: delayedClear
+        interval: 200
 
-    onTriggered: {
-        if (!masterWindow.isVisible) {
-            masterWindow.currentActive = "hidden";
-            widgetStack.clear();
-            masterWindow.disableMorph = false;
+        onTriggered: {
+            if (!masterWindow.isVisible) {
+                masterWindow.currentActive = "hidden";
+                widgetStack.clear();
+                masterWindow.disableMorph = false;
+            }
         }
     }
-}
 }
