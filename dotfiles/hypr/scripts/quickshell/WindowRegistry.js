@@ -14,7 +14,7 @@ const WIDGETS = {
     "stewart":   { w: 800,  h: 650, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "stewart/stewart.qml" },
     "focustime": { w: 900,  h: 700, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "focustime/FocusTimePopup.qml" },
     "guide":     { w: 1200, h: 750, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "guide/GuidePopup.qml" },
-    "calendar":  { w: 1450, h: 750, anchor: "top-center",    mx: 0, my: 60, mr: 0, mb: 0, path: "calendar/CalendarPopup.qml" },
+    "calender":  { w: 1450, h: 750, anchor: "top-center",    mx: 0, my: 60, mr: 0, mb: 0, path: "calender/CalenderPopup.qml" },
     "updater":   { w: 950,  h: 850, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "updater/UpdaterPopup.qml" },
     "wallpaper": { w: -1,   h: 650, anchor: "center-fill",   mx: 0, my: 0,  mr: 0, mb: 0, path: "wallpaper/WallpaperPicker.qml" },
     "music":     { w: 700,  h: 650, anchor: "top-left",      mx: 5, my: 60, mr: 0, mb: 0, path: "music/MusicPopup.qml" },
