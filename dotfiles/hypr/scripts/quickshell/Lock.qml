@@ -117,8 +117,9 @@ ShellRoot {
                 property string currentUser: "User"
                 property string faceIconPath: ""
                 property string kbLayout: "US"
-                property string weatherIcon: ""
-                property string weatherTemp: "--°C"
+                
+                property string mediaStatus: "Stopped"
+                property string mediaTrack: ""
 
                 // UI States
                 property real introState: 0.0
@@ -198,6 +199,22 @@ ShellRoot {
                 }
 
                 Process {
+                    id: mediaPoller
+                    command: ["bash", "-c", "echo \"$(playerctl status 2>/dev/null)|$(playerctl metadata --format '{{ title }} - {{ artist }}' 2>/dev/null)\""]
+                    stdout: StdioCollector {
+                        onStreamFinished: {
+                            let parts = this.text.trim().split("|");
+                            screenRoot.mediaStatus = parts[0] || "Stopped";
+                            screenRoot.mediaTrack = parts[1] || "";
+                        }
+                    }
+                }
+                Timer { 
+                    interval: 1000; running: true; repeat: true; triggeredOnStart: true; 
+                    onTriggered: { mediaPoller.running = false; mediaPoller.running = true; } 
+                }
+
+                Process {
                     id: batPoller
                     command: ["bash", "-c", "cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1 || echo '100'; cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1 || echo 'AC'"]
                     stdout: StdioCollector {
@@ -213,25 +230,6 @@ ShellRoot {
                 Timer { 
                     interval: 5000; running: !screenRoot.isDesktop; repeat: true; triggeredOnStart: true; 
                     onTriggered: { batPoller.running = false; batPoller.running = true; } 
-                }
-
-                Process {
-                    id: weatherPoller
-                    property string scriptPath: Qt.resolvedUrl("calendar/weather.sh").toString().replace(/^file:\/\//, "")
-                    command: ["bash", "-c", '"' + scriptPath + '" --current-icon; "' + scriptPath + '" --current-temp']
-                    stdout: StdioCollector {
-                        onStreamFinished: {
-                            let lines = this.text.trim().split("\n");
-                            if (lines.length >= 2) {
-                                screenRoot.weatherIcon = lines[0] || "";
-                                screenRoot.weatherTemp = lines[1] || "--°C";
-                            }
-                        }
-                    }
-                }
-                Timer { 
-                    interval: 900000; running: true; repeat: true; triggeredOnStart: true; 
-                    onTriggered: { weatherPoller.running = false; weatherPoller.running = true; } 
                 }
 
                 // ---------------------------------------------------------
@@ -695,6 +693,7 @@ ShellRoot {
                 // 3. BOTTOM SYSTEM INFO PILLS
                 // ---------------------------------------------------------
                 RowLayout {
+                    id: bottomPills
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 40 * screenRoot.sc
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -725,6 +724,48 @@ ShellRoot {
                             Text { text: screenRoot.kbLayout; font.family: "JetBrains Mono"; font.pixelSize: 14 * screenRoot.sc; font.weight: Font.Black; color: root.text }
                         }
                         MouseArea { id: kbMouse; anchors.fill: parent; hoverEnabled: true; enabled: !screenRoot.isPlayingIntro }
+                    }
+
+                    // Media Control Pill
+                    Rectangle {
+                        property bool isHovered: mediaMouse.containsMouse
+                        visible: screenRoot.mediaStatus === "Playing" || screenRoot.mediaStatus === "Paused"
+                        Layout.preferredHeight: 48 * screenRoot.sc
+                        Layout.preferredWidth: mediaLayoutRow.implicitWidth + (36 * screenRoot.sc)
+                        radius: height / 2
+
+                        color: isHovered ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.4)
+                        border.color: isHovered ? root.blue : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.08)
+                        border.width: Math.max(1, 1 * screenRoot.sc)
+
+                        scale: isHovered ? 1.05 : 1.0
+                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                        RowLayout {
+                            id: mediaLayoutRow; anchors.centerIn: parent; spacing: 8 * screenRoot.sc
+                            Text {
+                                text: screenRoot.mediaStatus === "Playing" ? "󰏤" : "󰐊"
+                                font.family: "Iosevka Nerd Font"; font.pixelSize: 20 * screenRoot.sc
+                                color: parent.parent.isHovered ? root.blue : root.text
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                            }
+                            Text {
+                                text: screenRoot.mediaTrack
+                                font.family: "JetBrains Mono"; font.pixelSize: 14 * screenRoot.sc
+                                font.weight: Font.Medium; color: root.text
+                                Layout.maximumWidth: 250 * screenRoot.sc 
+                                elide: Text.ElideRight
+                            }
+                        }
+                        MouseArea {
+                            id: mediaMouse; anchors.fill: parent; hoverEnabled: true; enabled: !screenRoot.isPlayingIntro
+                            onClicked: (event) => {
+                                Quickshell.execDetached(["playerctl", "play-pause"]);
+                                mediaPoller.running = false; mediaPoller.running = true;
+                            }
+                        }
                     }
 
                     // Battery Pill
@@ -774,6 +815,45 @@ ShellRoot {
                         MouseArea { id: batMouse; anchors.fill: parent; hoverEnabled: true; enabled: !screenRoot.isPlayingIntro }
                     }
 
+                    // Power Button
+                    Rectangle {
+                        id: powerBtn
+                        Layout.preferredWidth: 48 * screenRoot.sc
+                        Layout.preferredHeight: 48 * screenRoot.sc
+                        radius: width / 2
+                        
+                        color: screenRoot.powerMenuOpen 
+                                ? root.surface2 
+                                : (powerBtnMa.containsMouse ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.8) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.4))
+                        border.color: screenRoot.powerMenuOpen ? root.text : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.15)
+                        border.width: Math.max(1, 1 * screenRoot.sc)
+
+                        scale: powerBtnMa.pressed ? 0.9 : (powerBtnMa.containsMouse ? 1.08 : 1.0)
+
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on border.color { ColorAnimation { duration: 200 } }
+                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "󰐥"
+                            font.family: "Iosevka Nerd Font"
+                            font.pixelSize: 22 * screenRoot.sc
+                            color: screenRoot.powerMenuOpen ? root.red : (powerBtnMa.containsMouse ? root.text : root.subtext0)
+                            Behavior on color { ColorAnimation { duration: 200 } }
+                        }
+
+                        MouseArea {
+                            id: powerBtnMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            enabled: !screenRoot.isPlayingIntro
+                            onClicked: (event) => {
+                                screenRoot.powerMenuOpen = !screenRoot.powerMenuOpen;
+                                if (!screenRoot.powerMenuOpen) inputField.forceActiveFocus();
+                            }
+                        }
+                    }
                 }
 
                 // ---------------------------------------------------------
@@ -781,10 +861,9 @@ ShellRoot {
                 // ---------------------------------------------------------
                 Rectangle {
                     id: powerMenu
-                    anchors.bottom: powerBtn.top
-                    anchors.right: parent.right
+                    anchors.bottom: bottomPills.top
+                    anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottomMargin: 15 * screenRoot.sc
-                    anchors.rightMargin: 40 * screenRoot.sc
                     width: 280 * screenRoot.sc
                     height: screenRoot.powerMenuOpen ? (menuLayout.implicitHeight + (20 * screenRoot.sc)) : 0
                     radius: 18 * screenRoot.sc
@@ -873,52 +952,6 @@ ShellRoot {
                                     poweroffProcess.running = true;
                                 }
                             }
-                        }
-                    }
-                }
-
-                // Enlarged Power Button
-                Rectangle {
-                    id: powerBtn
-                    anchors.bottom: parent.bottom
-                    anchors.right: parent.right
-                    anchors.margins: 40 * screenRoot.sc
-                    width: 52 * screenRoot.sc
-                    height: width
-                    radius: height / 2
-                    
-                    color: screenRoot.powerMenuOpen 
-                            ? root.surface2 
-                            : (powerBtnMa.containsMouse ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.8) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.4))
-                    border.color: screenRoot.powerMenuOpen ? root.text : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.15)
-                    border.width: Math.max(1, 1 * screenRoot.sc)
-
-                    opacity: screenRoot.introState
-                    transform: Translate { y: (20 * screenRoot.sc) * (1.0 - screenRoot.introState) }
-                    
-                    scale: powerBtnMa.pressed ? 0.9 : (powerBtnMa.containsMouse ? 1.08 : 1.0)
-
-                    Behavior on color { ColorAnimation { duration: 200 } }
-                    Behavior on border.color { ColorAnimation { duration: 200 } }
-                    Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "󰐥"
-                        font.family: "Iosevka Nerd Font"
-                        font.pixelSize: 22 * screenRoot.sc
-                        color: screenRoot.powerMenuOpen ? root.red : (powerBtnMa.containsMouse ? root.text : root.subtext0)
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                    }
-
-                    MouseArea {
-                        id: powerBtnMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        enabled: !screenRoot.isPlayingIntro
-                        onClicked: (event) => {
-                            screenRoot.powerMenuOpen = !screenRoot.powerMenuOpen;
-                            if (!screenRoot.powerMenuOpen) inputField.forceActiveFocus();
                         }
                     }
                 }
