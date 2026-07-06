@@ -29,7 +29,6 @@ PanelWindow {
 
             let isClosing = (masterWindow.currentActive !== "hidden" && !masterWindow.isVisible);
             let effectivelyActive = isClosing ? "hidden" : masterWindow.currentActive;
-            console.log("IPC", cmd, targetWidget, effectivelyActive);
 
             if (cmd === "close") {
                 switchWidget("hidden", "");
@@ -113,6 +112,8 @@ PanelWindow {
 
     function preloadWidget(name) {
         if (widgetCache[name]) return;
+        if (!name)
+    return;
         let t = getLayout(name);
         if (!t || !t.comp) return;
         let obj = t.comp.createObject(preloaderContainer, {
@@ -129,7 +130,7 @@ PanelWindow {
 
     Timer {
         id: preloadStaggerTimer
-        interval: 900
+        Component.onCompleted: preloadWidgets()
         repeat: false
         onTriggered: {
             preloadWidget("search");
@@ -274,24 +275,48 @@ PanelWindow {
         }
     }
 
-    property var    _layoutCache:    ({})
-    property string _layoutCacheKey: ""
+    property var _layoutCache: ({})
 
-    function getLayout(name) {
-        let key = name + "|" + masterWindow.width + "|" + masterWindow.height + "|" + masterWindow.globalUiScale;
-        if (_layoutCacheKey === key) return _layoutCache[key];
-        let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
+function getLayout(name) {
+    let key = name + "|" +
+              masterWindow.width + "|" +
+              masterWindow.height + "|" +
+              masterWindow.globalUiScale;
+
+    if (_layoutCache[key] !== undefined)
+        return _layoutCache[key];
+
+    let result = Registry.getLayout(
+        name,
+        0,
+        0,
+        masterWindow.width,
+        masterWindow.height,
+        masterWindow.globalUiScale
+    );
+
+    _layoutCache[key] = result;
+    return result;
+}
+
+Connections {
+    target: masterWindow
+
+    function onWidthChanged() {
         _layoutCache = {};
-        _layoutCache[key] = result;
-        _layoutCacheKey = key;
-        return result;
+        handleNativeScreenChange();
     }
 
-    Connections {
-        target: masterWindow
-        function onWidthChanged()  { _layoutCacheKey = ""; handleNativeScreenChange(); }
-        function onHeightChanged() { _layoutCacheKey = ""; handleNativeScreenChange(); }
+    function onHeightChanged() {
+        _layoutCache = {};
+        handleNativeScreenChange();
     }
+
+    function onGlobalUiScaleChanged() {
+        _layoutCache = {};
+        handleNativeScreenChange();
+    }
+}
 
     function handleNativeScreenChange() {
         if (masterWindow.currentActive === "hidden") return;
