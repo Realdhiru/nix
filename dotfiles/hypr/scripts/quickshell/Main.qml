@@ -336,7 +336,12 @@ PanelWindow {
     }
 
     onIsVisibleChanged: {
-        if (isVisible) widgetStack.forceActiveFocus();
+        if (isVisible) {
+            widgetStack.forceActiveFocus();
+            if (widgetStack.currentItem) {
+                widgetStack.currentItem.forceActiveFocus();
+            }
+        }
     }
 
     Item {
