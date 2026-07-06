@@ -23,6 +23,7 @@ PanelWindow {
         }
 
         function handleCommand(cmd: string, targetWidget: string, arg: string): void {
+            console.log("IPC", cmd, targetWidget, effectivelyActive);
             cmd = cmd || "";
             targetWidget = targetWidget || "";
             arg = arg || "";
@@ -151,7 +152,7 @@ PanelWindow {
     property bool disableMorph: false
 
     property int morphDuration: 160
-    property int morphDurationSwitch: 210
+    property int morphDurationShift: 210
     property int exitDuration: 160
 
     property real animW: 1
@@ -405,8 +406,8 @@ PanelWindow {
             }
         }
     }
-
     function switchWidget(newWidget, arg) {
+console.log("switchWidget:", newWidget)
         delayedClear.stop();
 
         if (newWidget === "hidden") {
@@ -437,11 +438,11 @@ PanelWindow {
                 masterWindow.disableMorph = false;
             }
 
-            Qt.callLater(() => executeSwitch(newWidget, arg, false));
+            executeSwitch(newWidget, arg, false);
         }
     }
-
     function executeSwitch(newWidget, arg, immediate) {
+console.log("executeSwitch:", newWidget)
         masterWindow.currentActive = newWidget;
         masterWindow.activeArg = arg;
 
@@ -501,12 +502,15 @@ PanelWindow {
     }
 
     Timer {
-        id: delayedClear
-        interval: 200
-        onTriggered: {
+    id: delayedClear
+    interval: 200
+
+    onTriggered: {
+        if (!masterWindow.isVisible) {
             masterWindow.currentActive = "hidden";
             widgetStack.clear();
             masterWindow.disableMorph = false;
         }
     }
+}
 }
