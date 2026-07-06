@@ -18,7 +18,7 @@ Variants {
             exclusionMode: ExclusionMode.Ignore
             color: "transparent"
 
-            focusable: isSidebarVisible && (!isPinned || (typeof mainHoverTracker !== "undefined" && mainHoverTracker.hovered))
+            focusable: isSidebarVisible && (!isPinned || isUserInteracting)
 
             // =========================================================
             // --- FULL SCREEN LAYOUT & TOPBAR CLEARANCE
@@ -46,13 +46,23 @@ Variants {
             // --- STATE LOGIC
             // =========================================================
             property bool isPinned: false
-            property bool useGraceTimer: false // Tracks if the 3s drag grace period is active
+            property bool useGraceTimer: false 
 
             onIsPinnedChanged: {
                 if (!isPinned) kickTimer();
             }
 
+            // Centralized interaction state to prevent QML ReferenceErrors
             property int hoveredBars: 0
+            property bool isUserInteracting: {
+                return (typeof mainHoverTracker !== "undefined" && mainHoverTracker.hovered) ||
+                       (typeof sidebarDragArea !== "undefined" && (sidebarDragArea.containsMouse || sidebarDragArea.pressed)) ||
+                       (typeof gridMouseArea !== "undefined" && (gridMouseArea.containsMouse || gridMouseArea.pressed)) ||
+                       (typeof peekMouse !== "undefined" && (peekMouse.containsMouse || peekMouse.pressed)) ||
+                       (typeof pinMouse !== "undefined" && pinMouse.containsMouse) ||
+                       (typeof expandMouse !== "undefined" && expandMouse.containsMouse) ||
+                       hoveredBars > 0;
+            }
 
             // =========================================================
             // --- MODULE CONFIGURATION
@@ -87,20 +97,17 @@ Variants {
             // --- UNIVERSAL SHORTCUT ROUTER
             // =========================================================
             function childIntercepts(sequenceStr) {
-                // If not expanded, parent always keeps control
                 if (!isExpanded) return false;
 
                 if (typeof moduleRepeater !== "undefined" && activeIndex >= 0 && activeIndex < moduleRepeater.count) {
                     let loader = moduleRepeater.itemAt(activeIndex);
-
                     if (loader && loader.status === Loader.Ready && loader.item) {
-                        // Check if the child has exposed a list of shortcuts it wants to steal
                         if (loader.item.interceptedShortcuts !== undefined) {
                             return loader.item.interceptedShortcuts.includes(sequenceStr);
                         }
                     }
                 }
-                return false; // Safe default: parent retains the shortcut
+                return false; 
             }
 
             // =========================================================
@@ -108,15 +115,7 @@ Variants {
             // =========================================================
             function kickTimer() {
                 if (!isPinned) {
-                    if ((typeof mainHoverTracker !== "undefined" && mainHoverTracker.hovered) ||
-                        (typeof sidebarDragArea !== "undefined" && (sidebarDragArea.containsMouse || sidebarDragArea.pressed)) ||
-                        (typeof gridMouseArea !== "undefined" && (gridMouseArea.containsMouse || gridMouseArea.pressed)) ||
-                        (typeof peekMouse !== "undefined" && (peekMouse.containsMouse || peekMouse.pressed)) ||
-                        (typeof pinMouse !== "undefined" && pinMouse.containsMouse) ||
-                        (typeof expandMouse !== "undefined" && expandMouse.containsMouse) ||
-                        floatingWidget.hoveredBars > 0) {
-                        return;
-                    }
+                    if (isUserInteracting) return;
                     hideTimer.restart();
                 }
             }
@@ -528,7 +527,7 @@ Variants {
 
             Timer {
                 id: hideTimer
-                interval: floatingWidget.useGraceTimer ? 3000 : 800 // 3 seconds if drag was just happening, else 800ms
+                interval: floatingWidget.useGraceTimer ? 3000 : 800 
                 onTriggered: {
                     if (floatingWidget.isPinned) return;
 
@@ -541,7 +540,7 @@ Variants {
 
                     floatingWidget.isExpanded = false;
                     floatingWidget.isSidebarVisible = false;
-                    floatingWidget.useGraceTimer = false; // Reset grace state when finally hidden
+                    floatingWidget.useGraceTimer = false; 
                 }
             }
 
@@ -665,7 +664,6 @@ Variants {
             // =========================================================
             Rectangle {
                 id: peekBar
-                // 10px smaller on each side = 20px total subtraction
                 width: floatingWidget.activeEdge === "bottom" ? Math.max(floatingWidget.s(20), floatingWidget.baseSidebarH - floatingWidget.s(20)) : floatingWidget.s(12)
                 height: floatingWidget.activeEdge === "bottom" ? floatingWidget.s(12) : Math.max(floatingWidget.s(20), floatingWidget.baseSidebarH - floatingWidget.s(20))
                 radius: floatingWidget.s(6)
@@ -741,7 +739,7 @@ Variants {
                         startGlobalX = gp.x;
                         startGlobalY = gp.y;
                         currentDragDelta = 0;
-                        floatingWidget.useGraceTimer = true; // Give grace time after drag interaction
+                        floatingWidget.useGraceTimer = true; 
                     }
 
                     onPositionChanged: mouse => {
@@ -764,12 +762,12 @@ Variants {
                         }
                     }
 
-                    onReleased: {
+                    onReleased: (event) => {
                         currentDragDelta = 0;
                         peekHideTimer.restart();
                     }
 
-                    onClicked: floatingWidget.showSidebar(floatingWidget.activeEdge, floatingWidget.currentPos)
+                    onClicked: (event) => floatingWidget.showSidebar(floatingWidget.activeEdge, floatingWidget.currentPos)
                 }
             }
 
@@ -814,7 +812,7 @@ Variants {
                         id: mainHoverTracker
                         onHoveredChanged: {
                             if (hovered) {
-                                floatingWidget.useGraceTimer = false; // Reset grace period safely if they returned
+                                floatingWidget.useGraceTimer = false; 
                                 hideTimer.stop();
                             } else {
                                 floatingWidget.kickTimer();
@@ -845,18 +843,21 @@ Variants {
 
                             onEntered: hideTimer.stop()
                             onExited: { if (!pressed && !gridMouseArea.containsMouse) floatingWidget.kickTimer(); }
+                            
                             onPressed: mouse => {
                                 let gp = mapToItem(mainHitArea, mouse.x, mouse.y);
                                 startGlobalX = gp.x;
                                 startGlobalY = gp.y;
-                                floatingWidget.useGraceTimer = true; // Initiated a drag, enable 3s grace
+                                floatingWidget.useGraceTimer = true; 
                             }
+                            
                             onPositionChanged: mouse => {
                                 if (!pressed) return;
                                 let gp = mapToItem(mainHitArea, mouse.x, mouse.y);
                                 floatingWidget.evaluateDrag(startGlobalX, startGlobalY, gp.x, gp.y);
                             }
-                            onReleased: { if (!containsMouse) floatingWidget.kickTimer(); }
+                            
+                            onReleased: (event) => { if (!containsMouse) floatingWidget.kickTimer(); }
                         }
                     }
 
@@ -973,6 +974,7 @@ Variants {
 
                             onEntered: hideTimer.stop()
                             onExited: { if (!sidebarDragArea.containsMouse) floatingWidget.kickTimer(); }
+                            
                             onWheel: wheel => {
                                 let step = 0;
                                 if (wheel.angleDelta.y > 0) step = floatingWidget.activeEdge === "right" ? 1 : -1;
@@ -1092,6 +1094,7 @@ Variants {
                                             startGlobalY = gp.y;
                                             isDragging = false;
                                         }
+                                        
                                         onPositionChanged: mouse => {
                                             if (!pressed) return;
                                             let gp = mapToItem(mainHitArea, mouse.x, mouse.y);
@@ -1100,7 +1103,8 @@ Variants {
                                             if (deltaX > 5 || deltaY > 5) isDragging = true;
                                             floatingWidget.evaluateDrag(startGlobalX, startGlobalY, gp.x, gp.y);
                                         }
-                                        onClicked: {
+                                        
+                                        onClicked: (event) => {
                                             if (!isDragging) {
                                                 floatingWidget.isExpanded = !floatingWidget.isExpanded;
                                                 floatingWidget.kickTimer();
@@ -1153,6 +1157,7 @@ Variants {
                                             startGlobalY = gp.y;
                                             isDragging = false;
                                         }
+                                        
                                         onPositionChanged: mouse => {
                                             if (!pressed) return;
                                             let gp = mapToItem(mainHitArea, mouse.x, mouse.y);
@@ -1161,7 +1166,8 @@ Variants {
                                             if (deltaX > 5 || deltaY > 5) isDragging = true;
                                             floatingWidget.evaluateDrag(startGlobalX, startGlobalY, gp.x, gp.y);
                                         }
-                                        onClicked: {
+                                        
+                                        onClicked: (event) => {
                                             if (!isDragging) {
                                                 floatingWidget.isPinned = !floatingWidget.isPinned;
                                             }
@@ -1243,6 +1249,7 @@ Variants {
                                             startGlobalY = gp.y;
                                             isDragging = false;
                                         }
+                                        
                                         onPositionChanged: mouse => {
                                             if (!pressed) return;
                                             let gp = mapToItem(mainHitArea, mouse.x, mouse.y);
@@ -1251,7 +1258,8 @@ Variants {
                                             if (deltaX > 5 || deltaY > 5) isDragging = true;
                                             floatingWidget.evaluateDrag(startGlobalX, startGlobalY, gp.x, gp.y);
                                         }
-                                        onClicked: {
+                                        
+                                        onClicked: (event) => {
                                             if (!isDragging) {
                                                 if (!barPill.isActive) floatingWidget.activeIndex = index;
                                                 else floatingWidget.isExpanded = !floatingWidget.isExpanded;
