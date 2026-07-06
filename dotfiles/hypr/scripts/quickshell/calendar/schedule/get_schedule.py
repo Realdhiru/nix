@@ -14,7 +14,13 @@ from selenium.common.exceptions import TimeoutException
 # --- CONFIGURATION ---
 BASE_URL = "https://all.uddataplus.dk/skema/?id=id_menu_skema"
 RESOURCE_ID = "99217" 
-PROFILE_PATH = "/home/ilyamiro/.mozilla/firefox/schedule.special"
+
+# Dynamic Profile Resolution for Portability
+PROFILE_DIR = os.path.expanduser("~/.mozilla/firefox")
+try:
+    PROFILE_PATH = [os.path.join(PROFILE_DIR, d) for d in os.listdir(PROFILE_DIR) if d.endswith("special")][0]
+except IndexError:
+    PROFILE_PATH = os.path.join(PROFILE_DIR, "schedule.special")
 
 CACHE_DIR = os.environ.get("QS_CACHE_SCHEDULE", os.path.expanduser("~/.cache/quickshell/schedule"))
 CACHE_FILE = os.path.join(CACHE_DIR, "schedule.json")
@@ -149,8 +155,9 @@ def extract_lessons_from_group(group, date_obj):
 
 def get_valid_day_columns(driver):
     try:
-        wait = WebDriverWait(driver, 3)
-        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "skemaBrikGruppe")))
+        wait = WebDriverWait(driver, 5)
+        # Fix: The website dynamically renders SVG groups. Ensure we wait for the actual SVG elements, not just the container.
+        wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(@class, 'DagMedBrikker')]//*[contains(@class, 'skemaBrikGruppe')]")))
         groups = driver.find_elements(By.XPATH, "//*[contains(@class, 'DagMedBrikker')]//*[contains(@class, 'skemaBrikGruppe')]/..")
         def get_x_pos(elem):
             transform = elem.get_attribute("transform")
@@ -183,11 +190,10 @@ def update_schedule():
     try:
         driver = webdriver.Firefox(options=options)
         
-        # PREVENT HANGING: Set a 30-second timeout for the page to load
+        # PREVENT HANGING: Set a strict timeout
         driver.set_page_load_timeout(30)
         
         now = datetime.now()
-        
         end_of_school_today = now.replace(hour=15, minute=40)
         
         search_date = now
@@ -204,13 +210,10 @@ def update_schedule():
             current_week_url = get_specific_url(search_date)
             driver.get(current_week_url)
             
-            time.sleep(2.5) 
-            
+            # Replaced hardcoded sleep with intelligent DOM polling via get_valid_day_columns
             day_columns = get_valid_day_columns(driver)
             
             if day_columns:
-                start_weekday_idx = search_date.weekday() 
-                
                 for day_idx in range(len(day_columns)):
                     monday_of_week = search_date - timedelta(days=search_date.weekday())
                     target_date = monday_of_week + timedelta(days=day_idx)
