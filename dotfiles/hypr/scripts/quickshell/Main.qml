@@ -341,15 +341,8 @@ PanelWindow {
     }
 
     onIsVisibleChanged: {
-    if (isVisible) {
-        widgetStack.forceActiveFocus();
-        if (widgetStack.currentItem) {
-            widgetStack.currentItem.focus = false;
-            widgetStack.currentItem.focus = true;
-            widgetStack.currentItem.forceActiveFocus();
-        }
+        if (isVisible) widgetStack.forceActiveFocus();
     }
-}
 
     Item {
         x: masterWindow.animX
