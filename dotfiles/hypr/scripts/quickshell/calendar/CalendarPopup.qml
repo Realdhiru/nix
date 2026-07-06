@@ -15,24 +15,20 @@ Item {
     // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler
-        // Pass both width and height so the internal popup scale perfectly synchronizes
-        // with the master window's WindowRegistry.js calculations
         currentWidth: Screen.width
         currentHeight: Screen.height
     }
     
-    // Expose reactive scale factor for all bindings
     readonly property real sf: scaler.baseScale
 
-    // Keep helper function for backwards compatibility in pure JS blocks
     function s(val) { 
         return Math.round(val * window.sf); 
     }
 
     // -------------------------------------------------------------------------
-    // DYNAMIC MASTER WINDOW SCALING (Fixes Window Clipping)
+    // DYNAMIC MASTER WINDOW SCALING (Cleaned: Locked to 510px)
     // -------------------------------------------------------------------------
-    property real targetMasterHeight: window.scheduleModuleExists ? Math.round(750 * window.sf) : Math.round(510 * window.sf)
+    property real targetMasterHeight: Math.round(510 * window.sf)
     property real targetMasterWidth: Math.round(1450 * window.sf)
     
     onTargetMasterHeightChanged: {
@@ -47,7 +43,6 @@ Item {
             masterWindow.animW = window.targetMasterWidth;
             masterWindow.targetW = window.targetMasterWidth;
             
-            // Re-center horizontally to keep the popup perfectly in the middle when scaling changes
             let newX = Math.floor((Screen.width / 2) - (window.targetMasterWidth / 2));
             masterWindow.animX = newX;
         }
@@ -55,7 +50,6 @@ Item {
 
     // -------------------------------------------------------------------------
     // KEYBOARD SHORTCUTS
-    // (Escape is handled by Main.qml now)
     // -------------------------------------------------------------------------
     Shortcut { 
         sequence: "Left"
@@ -113,18 +107,18 @@ Item {
     // -------------------------------------------------------------------------
     readonly property color timeColor: {
         let h = window.currentTime.getHours();
-        if (h >= 5 && h < 12) return window.peach;      // Morning
-        if (h >= 12 && h < 17) return window.sapphire;  // Afternoon
-        if (h >= 17 && h < 21) return window.mauve;     // Evening
-        return window.blue;                             // Night
+        if (h >= 5 && h < 12) return window.peach;      
+        if (h >= 12 && h < 17) return window.sapphire;  
+        if (h >= 17 && h < 21) return window.mauve;     
+        return window.blue;                             
     }
 
     readonly property color timeAccent: {
         let h = window.currentTime.getHours();
-        if (h >= 5 && h < 12) return window.yellow;     // Morning Accent
-        if (h >= 12 && h < 17) return window.teal;      // Afternoon Accent
-        if (h >= 17 && h < 21) return window.pink;      // Evening Accent
-        return window.mauve;                            // Night Accent
+        if (h >= 5 && h < 12) return window.yellow;     
+        if (h >= 12 && h < 17) return window.teal;      
+        if (h >= 17 && h < 21) return window.pink;      
+        return window.mauve;                            
     }
 
     readonly property color textAccent: Qt.tint(window.timeAccent, Qt.alpha(window.text, 0.35))
@@ -138,46 +132,33 @@ Item {
     property real introClock: 0
     property real introCalendar: 0
     property real introWeather: 0
-    property real introSchedule: 0
 
     SequentialAnimation {
         running: true
         
-        // 50ms buffer to allow the window manager to map the surface before animating
         PauseAnimation { duration: 20 }
 
         ParallelAnimation {
-            // Base window fades and scales slightly
             NumberAnimation { target: window; property: "introMain"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutQuart }
 
-            // Ambient background glows and big parallax icon fade in
             SequentialAnimation {
                 PauseAnimation { duration: 150 }
                 NumberAnimation { target: window; property: "introAmbient"; from: 0; to: 1.0; duration: 1000; easing.type: Easing.OutSine }
             }
 
-            // Central clock and 3D orbital pop from the center
             SequentialAnimation {
                 PauseAnimation { duration: 250 }
                 NumberAnimation { target: window; property: "introClock"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutBack; easing.overshoot: 1.15 }
             }
 
-            // Left wing (Calendar) slides in from the left
             SequentialAnimation {
                 PauseAnimation { duration: 350 }
                 NumberAnimation { target: window; property: "introCalendar"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuint }
             }
 
-            // Right wing (Weather) slides in from the right
             SequentialAnimation {
                 PauseAnimation { duration: 400 }
                 NumberAnimation { target: window; property: "introWeather"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuint }
-            }
-
-            // Bottom section (Schedule) flows up smoothly
-            SequentialAnimation {
-                PauseAnimation { duration: 500 }
-                NumberAnimation { target: window; property: "introSchedule"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutExpo }
             }
         }
         ScriptAction { script: window.startupComplete = true }
@@ -190,7 +171,6 @@ Item {
         NumberAnimation { target: window; property: "introClock"; to: 0; duration: 300; easing.type: Easing.InQuart }
         NumberAnimation { target: window; property: "introCalendar"; to: 0; duration: 350; easing.type: Easing.InQuart }
         NumberAnimation { target: window; property: "introWeather"; to: 0; duration: 350; easing.type: Easing.InQuart }
-        NumberAnimation { target: window; property: "introSchedule"; to: 0; duration: 200; easing.type: Easing.InQuart }
     }
 
     property real globalOrbitAngle: 0
@@ -214,7 +194,7 @@ Item {
         interval: 1000; running: true; repeat: true
         onTriggered: {
             window.currentTime = new Date();
-            window.secondPulse = 1.06; // Gentle pulse
+            window.secondPulse = 1.06; 
             pulseReset.start();        
             
             if (window.currentTime.getHours() === 0 && window.currentTime.getMinutes() === 0 && window.currentTime.getSeconds() === 0) {
@@ -235,13 +215,11 @@ Item {
         return window.mauve;
     }
 
-    // Transition Properties
     property int targetWeatherView: 0
     property real weatherContentOpacity: 1.0
     property real weatherContentOffset: 0.0
     property int weatherAnimDirection: 1
     
-    // New 3D Spin Properties
     property real transitionSpin: 0.0
     property real transitionScale: 1.0
 
@@ -272,13 +250,8 @@ Item {
     property bool isTempAnimating: tempAnim.running
     property color tempGlowColor: {
         if (!isTempAnimating || !window.startupComplete) return window.text;
-        
-        // If the target is higher than the currently ticking number, we are counting up
         if (window.targetTemp > window.displayedTemp) return window.red;
-        
-        // If the target is lower than the currently ticking number, we are counting down
         if (window.targetTemp < window.displayedTemp) return window.blue;
-        
         return window.text; 
     }
 
@@ -287,25 +260,19 @@ Item {
         ParallelAnimation {
             NumberAnimation { target: window; property: "weatherContentOpacity"; to: 0.0; duration: 250; easing.type: Easing.InSine }
             NumberAnimation { target: window; property: "weatherContentOffset"; to: Math.round(-40 * window.sf) * weatherAnimDirection; duration: 250; easing.type: Easing.InSine }
-            
-            // Spin the 3D orbit out and scale it down for depth
             NumberAnimation { target: window; property: "transitionSpin"; to: 180 * weatherAnimDirection; duration: 300; easing.type: Easing.InBack }
             NumberAnimation { target: window; property: "transitionScale"; to: 0.8; duration: 300; easing.type: Easing.InCubic }
         }
         ScriptAction { 
             script: { 
                 window.weatherView = window.targetWeatherView; 
-                window.weatherContentOffset = Math.round(40 * window.sf) * weatherAnimDirection; // Move to opposite side while hidden
-                
-                // Reset the spin to the opposite side so it continues spinning into place seamlessly
+                window.weatherContentOffset = Math.round(40 * window.sf) * weatherAnimDirection; 
                 window.transitionSpin = -180 * weatherAnimDirection;
             } 
         }
         ParallelAnimation {
             NumberAnimation { target: window; property: "weatherContentOpacity"; to: 1.0; duration: 450; easing.type: Easing.OutQuart }
             NumberAnimation { target: window; property: "weatherContentOffset"; to: 0.0; duration: 450; easing.type: Easing.OutQuart }
-            
-            // Snap the 3D orbit back to 0 degrees and restore full scale
             NumberAnimation { target: window; property: "transitionSpin"; to: 0.0; duration: 600; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
             NumberAnimation { target: window; property: "transitionScale"; to: 1.0; duration: 500; easing.type: Easing.OutBack }
         }
@@ -313,10 +280,8 @@ Item {
 
     function setWeatherView(idx) {
         if (idx < 0 || idx > 4 || !window.weatherData) return;
-        if (idx === window.targetWeatherView) return; // Ignore if we are already heading there
+        if (idx === window.targetWeatherView) return;
 
-        // If an animation is already running, gracefully interrupt it and apply the logical switch
-        // before starting the new animation so the data doesn't get desynced.
         if (weatherTransitionAnim.running) {
             weatherTransitionAnim.stop();
             window.weatherView = window.targetWeatherView;
@@ -365,49 +330,6 @@ Item {
         interval: 150000 
         running: true; repeat: true
         onTriggered: weatherPoller.running = true
-    }
-
-    // -------------------------------------------------------------------------
-    // SCHEDULE DATA & CONDITIONAL RENDERING
-    // -------------------------------------------------------------------------
-    property bool scheduleModuleExists: false
-    property var scheduleData: { "header": "Loading Schedule...", "link": "", "lessons": [] }
-
-    // Dynamic offset based on whether the schedule module exists
-    property real centerOffset: window.scheduleModuleExists ? Math.round(-100 * window.sf) : 0
-    Behavior on centerOffset { NumberAnimation { duration: 600; easing.type: Easing.OutQuart } }
-
-    // FORCE DISABLED TO SAVE RAM AND PREVENT UI ERRORS
-    Process {
-        id: schedulePathChecker
-        command: ["bash", "-c", "echo 0"] 
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                window.scheduleModuleExists = false;
-            }
-        }
-    }
-
-    Process {
-        id: schedulePoller
-        command: ["bash", window.scriptsDir + "/schedule/schedule_manager.sh"]
-        running: false // Handled by schedulePathChecker
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let txt = this.text.trim();
-                if (txt !== "") {
-                    try { window.scheduleData = JSON.parse(txt); } catch(e) { console.log("Schedule Parse Error:", e); }
-                }
-            }
-        }
-    }
-
-    Timer {
-        interval: 600000 
-        // Only run the timer if the module actually exists
-        running: window.scheduleModuleExists; repeat: true
-        onTriggered: schedulePoller.running = true
     }
 
     // -------------------------------------------------------------------------
@@ -510,7 +432,7 @@ Item {
             clip: true
 
             // =======================================================
-            // AMBIENT WIDGET COLOR BLOBS (Spread Out)
+            // AMBIENT WIDGET COLOR BLOBS
             // =======================================================
             Rectangle {
                 width: parent.width * 0.5; height: width; radius: width / 2
@@ -539,11 +461,10 @@ Item {
                 Behavior on color { ColorAnimation { duration: 1000 } }
             }
 
-            // Big Parallax Weather Icon (Tied to Weather Transition)
+            // Big Parallax Weather Icon
             Text {
                 id: heroIcon
                 anchors.centerIn: parent
-                anchors.verticalCenterOffset: window.centerOffset
                 text: {
                     if (!window.weatherData) return "";
                     if (window.weatherView === 0 && window.weatherData.current_icon) return window.weatherData.current_icon;
@@ -576,7 +497,6 @@ Item {
             Item {
                 id: centralHub
                 anchors.centerIn: parent
-                anchors.verticalCenterOffset: window.centerOffset
                 width: Math.round(1 * window.sf); height: Math.round(1 * window.sf) 
                 z: 5
 
@@ -598,7 +518,6 @@ Item {
                     NumberAnimation { to: 1.0; duration: 3500; easing.type: Easing.InOutSine }
                 }
 
-                // 3D Perspective Wobble (Pitch, Yaw, Roll)
                 property real pitchBreath: 0
                 SequentialAnimation on pitchBreath {
                     loops: Animation.Infinite; running: true
@@ -786,7 +705,7 @@ Item {
 
             // =======================================================
             // LEFT WING: FLOATING GLASS CALENDAR
-            // =======================================================
+            // ==========================================
             Rectangle {
                 id: calendarRect
                 anchors.left: parent.left
@@ -813,7 +732,6 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         
-                        // "Return to Today" Home Button
                         Rectangle {
                             Layout.preferredWidth: Math.round(32 * window.sf); Layout.preferredHeight: Math.round(32 * window.sf); radius: Math.round(16 * window.sf)
                             color: homeMa.containsMouse ? window.surface1 : "transparent"
@@ -1004,7 +922,6 @@ Item {
                         Layout.alignment: Qt.AlignRight 
                         spacing: Math.round(-5 * window.sf)
                         
-                        // BIG TEMPERATURE TEXT - Anchored so it doesn't slide with the wrapper
                         Text {
                             Layout.alignment: Qt.AlignRight 
                             text: Math.round(window.displayedTemp) + "°"
@@ -1038,7 +955,6 @@ Item {
 
                     Item { Layout.fillHeight: true } 
 
-                    // FIX: Replaced explicit widths and manual vertical anchors with flexible ColumnLayout containers
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignHCenter 
@@ -1050,7 +966,7 @@ Item {
                             Item {
                                 id: gaugeWrapper
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: Math.round(100 * window.sf) // Give wrapper bounds that can expand safely
+                                Layout.preferredHeight: Math.round(100 * window.sf) 
                                 
                                 scale: gaugeMa.containsMouse ? 1.15 : 1.0
                                 Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
@@ -1074,7 +990,6 @@ Item {
                                     Math.max(0.0, Math.min(1.0, (forecast.feels_like + 15) / 55.0))
                                 ) : 0.0
                                 
-                                // FIX: Use ColumnLayout to enforce perfect relative positioning instead of absolute anchors
                                 ColumnLayout {
                                     anchors.centerIn: parent
                                     spacing: Math.round(6 * window.sf)
@@ -1137,7 +1052,7 @@ Item {
                                             text: gaugeWrapper.gaugeVal
                                             font.family: "JetBrains Mono"
                                             font.weight: Font.Black
-                                            font.pixelSize: Math.round(12 * window.sf) // Slightly reduced to guarantee fit inside circle
+                                            font.pixelSize: Math.round(12 * window.sf) 
                                             color: window.text
                                         }
                                     }
