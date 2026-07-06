@@ -3,12 +3,23 @@
 # Strict execution environment: Catch undefined variables and pipe failures
 set -uo pipefail
 
-# 1. Reload Hyprland (Applies window rules, keybinds, monitor configs)
+# 1. Reload Hyprland first (Applies window rules, keybinds, monitor configs instantly)
+# Note: If hyprland.conf contains 'exec = qs...', this may auto-spawn an instance.
 if command -v hyprctl >/dev/null 2>&1; then
     hyprctl reload >/dev/null 2>&1
 fi
 
-# 2. Determine the correct Quickshell binary dynamically from the Nix store path
+# 2. Hard-kill all Quickshell processes. 
+# Using -f catches NixOS wrapped binaries that bypass strict name checks.
+# This wipes the original instance AND any instance just spawned by hyprctl reload.
+pkill -f "Shell.qml" 2>/dev/null || true
+pkill -x qs 2>/dev/null || true
+pkill -x quickshell 2>/dev/null || true
+
+# 3. Give Wayland a fraction of a second to unmap the old surfaces
+sleep 0.3
+
+# 4. Resolve the correct NixOS binary dynamically
 QS_BIN=""
 if command -v quickshell >/dev/null 2>&1; then
     QS_BIN="quickshell"
@@ -21,12 +32,5 @@ fi
 
 QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
 
-# 3. Smart Quickshell Reloading
-# Check if the Quickshell daemon is currently running
-if pgrep -x "quickshell" >/dev/null || pgrep -x "qs" >/dev/null; then
-    # Daemon is alive: Use the fast IPC hot-reload hook
-    "$QS_BIN" -p "$QS_TARGET" ipc call main forceReload >/dev/null 2>&1 &
-else
-    # Daemon is dead/crashed: Cold boot a fresh instance in the background
-    "$QS_BIN" -p "$QS_TARGET" >/dev/null 2>&1 &
-fi
+# 5. Cold boot exactly ONE fresh instance in the background
+"$QS_BIN" -p "$QS_TARGET" >/dev/null 2>&1 &
