@@ -142,6 +142,57 @@ Item {
     onAnimCapacityChanged: batCanvas.requestPaint()
     onBatColorStartChanged: batCanvas.requestPaint()
 
+    // =========================================================================
+    // POWER PROFILE AUTOMATION & ROUTING
+    // =========================================================================
+    property bool _sysInitialized: false
+
+    onBatStatusChanged: {
+        if (!_sysInitialized) {
+            if (batStatus !== "Unknown") _sysInitialized = true;
+            return;
+        }
+
+        // Automatically bind states upon physical charger connect/disconnect
+        if (batStatus === "Charging") {
+            if (window.powerProfile !== "performance") window.setPowerProfile("performance");
+        } else if (batStatus === "Discharging") {
+            if (window.powerProfile === "performance") window.setPowerProfile("balanced");
+        }
+    }
+
+    function setPowerProfile(name) {
+        window.powerProfile = name;
+        // Lock the UI state to a file so sysPoller doesn't cause rubber-banding
+        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_power_profile"]);
+
+        let bashCmd = "";
+        if (name === "power-saver") {
+            bashCmd = `
+                powerprofilesctl set power-saver 2>/dev/null
+                sudo tlp bat 2>/dev/null
+                echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
+                hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@60,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
+            `;
+        } else if (name === "balanced") {
+            bashCmd = `
+                powerprofilesctl set balanced 2>/dev/null
+                sudo tlp bat 2>/dev/null
+                echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
+                hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@120,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
+            `;
+        } else if (name === "performance") {
+            bashCmd = `
+                powerprofilesctl set performance 2>/dev/null
+                sudo tlp ac 2>/dev/null
+                echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
+                hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@120,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
+            `;
+        }
+        
+        Quickshell.execDetached(["bash", "-c", bashCmd]);
+    }
+
     Process {
         id: dndInit
         running: true
@@ -171,7 +222,11 @@ Item {
             `
             cap=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1 || echo '0')
             stat=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1 || echo 'Unknown')
-            prof=$(powerprofilesctl get 2>/dev/null || echo 'balanced')
+            
+            prof=$(cat /tmp/qs_power_profile 2>/dev/null)
+            if [ -z "$prof" ]; then
+                prof=$(powerprofilesctl get 2>/dev/null || echo 'balanced')
+            fi
 
             en=$(cat /sys/class/power_supply/BAT*/energy_now 2>/dev/null | head -n1 || cat /sys/class/power_supply/BAT*/charge_now 2>/dev/null | head -n1 || echo '0')
             ef=$(cat /sys/class/power_supply/BAT*/energy_full 2>/dev/null | head -n1 || cat /sys/class/power_supply/BAT*/charge_full 2>/dev/null | head -n1 || echo '1')
@@ -1582,33 +1637,7 @@ Item {
                                                 id: profileMa
                                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
-                                                    window.powerProfile = name;
-                                                    
-                                                    let bashCmd = "";
-                                                    if (name === "power-saver") {
-                                                        bashCmd = `
-                                                            powerprofilesctl set power-saver 2>/dev/null
-                                                            sudo tlp bat 2>/dev/null
-                                                            echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
-                                                            hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@60,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
-                                                        `;
-                                                    } else if (name === "balanced") {
-                                                        bashCmd = `
-                                                            powerprofilesctl set balanced 2>/dev/null
-                                                            sudo tlp bat 2>/dev/null
-                                                            echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
-                                                            hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@120,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
-                                                        `;
-                                                    } else if (name === "performance") {
-                                                        bashCmd = `
-                                                            powerprofilesctl set performance 2>/dev/null
-                                                            sudo tlp ac 2>/dev/null
-                                                            echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
-                                                            hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@120,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
-                                                        `;
-                                                    }
-                                                    
-                                                    Quickshell.execDetached(["bash", "-c", bashCmd]);
+                                                    window.setPowerProfile(name);
                                                     Qt.callLater(() => { sysPoller.running = false; sysPoller.running = true; });
                                                 }
                                             }
