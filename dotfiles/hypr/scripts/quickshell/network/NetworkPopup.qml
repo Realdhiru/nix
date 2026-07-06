@@ -20,6 +20,7 @@ Item {
 
     function s(val) { return scaler.s(val); }
 
+    // Re-bind the Tab shortcut to specifically re-acquire main window focus before triggering
     Shortcut {
         sequence: "Tab"
         onActivated: {
@@ -41,6 +42,15 @@ Item {
                     window.activeMode = nextMode;
                 }
             }
+        }
+    }
+
+    // Force internal focus routing dynamically whenever the popup itself becomes visible inside StackView
+    onVisibleChanged: {
+        if (visible) {
+            window.focus = false;
+            window.focus = true;
+            window.forceActiveFocus();
         }
     }
 
@@ -253,7 +263,6 @@ Item {
         }
     }
 
-    // FIX: Updated network connection execution block
     function connectDevice(mode, id, macOrSsid, password) {
         window.connectingId = id;
         window.failedId = "";
@@ -1511,553 +1520,553 @@ Item {
                         }
                     }
                 }
+            }
 
-                Item {
-                    anchors.fill: parent
-                    opacity: window.currentPower ? 1.0 : 0.0
-                    visible: opacity > 0.01
-                    Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.InOutQuad } }
+            Item {
+                anchors.fill: parent
+                opacity: window.currentPower ? 1.0 : 0.0
+                visible: opacity > 0.01
+                Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.InOutQuad } }
 
-                    Repeater {
-                        id: orbitRepeater
-                        model: (window.currentConn && window.showInfoView) ? infoListModel : (window.activeMode === "wifi" ? wifiListModel : (window.activeMode === "bt" ? btListModel : null))
+                Repeater {
+                    id: orbitRepeater
+                    model: (window.currentConn && window.showInfoView) ? infoListModel : (window.activeMode === "wifi" ? wifiListModel : (window.activeMode === "bt" ? btListModel : null))
 
-                        delegate: Item {
-                            id: floatCardDelegateContainer
-                            width: window.s(170); height: window.s(60)
+                    delegate: Item {
+                        id: floatCardDelegateContainer
+                        width: window.s(170); height: window.s(60)
 
-                            property bool isLoaded: false
-                            opacity: isLoaded ? 1.0 : 0.0
-                            visible: opacity > 0.01
-                            Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                        property bool isLoaded: false
+                        opacity: isLoaded ? 1.0 : 0.0
+                        visible: opacity > 0.01
+                        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
 
-                            property real entryAnim: isLoaded ? 1.0 : 0.0
-                            Behavior on entryAnim { NumberAnimation { duration: 600; easing.type: Easing.OutBack } }
+                        property real entryAnim: isLoaded ? 1.0 : 0.0
+                        Behavior on entryAnim { NumberAnimation { duration: 600; easing.type: Easing.OutBack } }
 
-                            Timer {
-                                running: true
-                                interval: window.activeMode === "eth" ? (600 + (index * 80)) : (40 + (index * 30))
-                                onTriggered: floatCardDelegateContainer.isLoaded = true
+                        Timer {
+                            running: true
+                            interval: window.activeMode === "eth" ? (600 + (index * 80)) : (40 + (index * 30))
+                            onTriggered: floatCardDelegateContainer.isLoaded = true
+                        }
+
+                        property int myParentIdx: model.parentIndex !== undefined ? model.parentIndex : -1
+
+                        property int siblingsCount: {
+                            let c = 0;
+                            let m = orbitRepeater.model;
+                            if (m && m.count !== undefined) {
+                                for (let i = 0; i < m.count; i++) {
+                                    let d = m.get(i);
+                                    if (d && (d.parentIndex !== undefined ? d.parentIndex : -1) === myParentIdx) c++;
+                                }
+                            }
+                            return Math.max(1, c);
+                        }
+                        property int localIndex: {
+                            let idx = 0;
+                            let m = orbitRepeater.model;
+                            if (m && m.count !== undefined) {
+                                for (let i = 0; i < index; i++) {
+                                    let d = m.get(i);
+                                    if (d && (d.parentIndex !== undefined ? d.parentIndex : -1) === myParentIdx) idx++;
+                                }
+                            }
+                            return idx;
+                        }
+
+                        property real unifiedRatio: window.activeMode === "wifi" || window.activeMode === "eth" ? 0.0 : window.multiTransitionState
+
+                        property real activeCount: (unifiedRatio > 0.5 && myParentIdx !== -1) ? siblingsCount : orbitRepeater.count
+                        property real dynamicScale: activeCount > 10 ? Math.max(0.6, 12.0 / activeCount) : (unifiedRatio > 0.5 ? (window.activeCoreCount > 2 ? 0.7 : 0.8) : 1.0)
+
+                        property real safeMultiShift: window.activeMode === "wifi" || window.activeMode === "eth" ? 0.0 : window.multiTransitionState
+                        property var pItem: myParentIdx !== -1 ? coreRepeater.itemAt(myParentIdx) : null
+
+                        property real parentX: pItem ? (orbitContainer.width / 2) + (Math.cos(parentCoreAngle) * pItem.myOrbitRadiusX * safeMultiShift * pItem.activeTransition) : (orbitContainer.width / 2)
+                        property real parentY: pItem ? (orbitContainer.height / 2) + (Math.sin(parentCoreAngle) * pItem.myOrbitRadiusY * safeMultiShift * pItem.activeTransition) : (orbitContainer.height / 2)
+
+                        property real parentBaseAngle: pItem ? pItem.animatedBaseAngle : 0
+
+                        property real targetSingleBaseAngle: (index / Math.max(1, orbitRepeater.count)) * Math.PI * 2
+                        property real singleBaseAngle: targetSingleBaseAngle
+                        Behavior on singleBaseAngle { NumberAnimation { duration: 800; easing.type: Easing.OutExpo } }
+
+                        property real singleLiveAngle: (window.globalOrbitAngle * 1.5) + singleBaseAngle
+
+                        property real arcSpread: Math.PI * 0.8
+                        property real targetNodeOffset: (siblingsCount > 1) ? ((localIndex / (siblingsCount - 1)) - 0.5) * arcSpread : 0
+                        property real nodeOffset: targetNodeOffset
+                        Behavior on nodeOffset { NumberAnimation { duration: 800; easing.type: Easing.OutExpo } }
+
+                        property real parentCoreAngle: (window.globalOrbitAngle * 1.5) + parentBaseAngle
+                        property real multiLiveAngle: myParentIdx === -1 ? singleLiveAngle : (parentCoreAngle + nodeOffset)
+
+                        property int ringIndex: isInfoNode ? 0 : index % 2
+                        property real targetRingOffset: ringIndex * window.s(40)
+                        property real ringOffset: targetRingOffset
+                        Behavior on ringOffset { NumberAnimation { duration: 800; easing.type: Easing.OutExpo } }
+
+                        property real singleRadX: isInfoNode ? window.s(280) : window.s(320) + ringOffset
+                        property real singleRadY: isInfoNode ? window.s(180) : window.s(200) + ringOffset
+
+                        property real multiRadX: isInfoNode ? (myParentIdx === -1 ? 0 : (window.activeCoreCount > 2 ? window.s(180) : window.s(160))) : window.s(340) + ringOffset
+                        property real multiRadY: isInfoNode ? (myParentIdx === -1 ? 0 : (window.activeCoreCount > 2 ? window.s(180) : window.s(160))) : window.s(240) + ringOffset
+
+                        property real currentRadX: window.activeMode === "eth" ? window.s(280) : ((singleRadX * (1 - unifiedRatio)) + (multiRadX * unifiedRatio))
+                        property real currentRadY: window.activeMode === "eth" ? window.s(180) : ((singleRadY * (1 - unifiedRatio)) + (multiRadY * unifiedRatio))
+                        property real currentAngle: (singleLiveAngle * (1 - unifiedRatio)) + (multiLiveAngle * unifiedRatio)
+
+                        property real pwrDrift: window.currentPower ? 0 : window.s(40)
+                        Behavior on pwrDrift { NumberAnimation { duration: 600; easing.type: Easing.OutQuint } }
+
+                        property real animRadX: (currentRadX + pwrDrift) * (0.25 + 0.75 * entryAnim)
+                        property real animRadY: (currentRadY + pwrDrift) * (0.25 + 0.75 * entryAnim)
+
+                        property real targetX: myParentIdx === -1
+                            ? (orbitContainer.width / 2) - (width / 2) + Math.cos(currentAngle) * animRadX
+                            : parentX - (width / 2) + Math.cos(currentAngle) * animRadX
+
+                        property real targetY: myParentIdx === -1
+                            ? (orbitContainer.height / 2) - (height / 2) + Math.sin(currentAngle) * animRadY
+                            : parentY - (height / 2) + Math.sin(currentAngle) * animRadY
+
+                        property real liveBob: myParentIdx === -1 && isInfoNode
+                            ? Math.sin(window.globalOrbitAngle * 6) * window.s(12) * (1 - unifiedRatio)
+                            : 0
+
+                        x: targetX
+                        y: targetY + liveBob
+
+                        scale: (!isLoaded ? 0.0 : (floatMa.pressed ? dynamicScale * 0.95 : (floatCard.locksList ? dynamicScale * 1.08 : dynamicScale))) * floatCard.bumpScale
+                        Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                        z: floatCard.locksList ? 10 : index
+
+                        MultiEffect {
+                            source: floatCard
+                            anchors.fill: floatCard
+                            shadowEnabled: window.currentPower && floatCardDelegateContainer.opacity > 0.05
+                            shadowColor: "#000000"
+                            shadowOpacity: 0.3
+                            shadowBlur: 0.8
+                            shadowVerticalOffset: window.s(4)
+                            z: -1
+                        }
+
+                        Rectangle {
+                            id: floatCard
+                            anchors.fill: parent
+                            radius: window.s(14)
+
+                            property string itemId: id
+                            property string itemName: name
+
+                            property bool isMyBusy: window.connectingId === itemId || !!window.busyTasks[itemId]
+                            property bool isFailed: window.failedId === itemId
+
+                            property bool isPairedBT: window.activeMode === "bt" && action === "Connect"
+                            property bool isTargetWifi: window.activeMode === "wifi" && !window.isWifiConn && itemId === window.targetWifiSsid
+                            property bool isSpecialAction: itemId === "action_scan" || itemId === "action_settings" || itemId === "ip_0"
+                            property bool isHighlighted: isPairedBT || isTargetWifi || isSpecialAction
+
+                            property bool isCurrentlyConnected: {
+                                if (window.activeMode === "eth") return (window.ethConnected && window.ethConnected.id === itemId);
+                                if (window.activeMode === "wifi") return (window.wifiConnected && window.wifiConnected.ssid === itemId);
+                                for (let i = 0; i < window.btConnected.length; i++) {
+                                    if (window.btConnected[i].mac === itemId) return true;
+                                }
+                                return false;
                             }
 
-                            property int myParentIdx: model.parentIndex !== undefined ? model.parentIndex : -1
+                            property bool isInteractable: !isInfoNode || isActionable
+                            property bool locksList: isInteractable && (floatMa.containsMouse || floatMa.pressed)
+                            onLocksListChanged: { if (locksList) window.hoveredCardCount++; else window.hoveredCardCount--; }
+                            Component.onDestruction: { if (locksList) window.hoveredCardCount--; }
 
-                            property int siblingsCount: {
-                                let c = 0;
-                                let m = orbitRepeater.model;
-                                if (m && m.count !== undefined) {
-                                    for (let i = 0; i < m.count; i++) {
-                                        let d = m.get(i);
-                                        if (d && (d.parentIndex !== undefined ? d.parentIndex : -1) === myParentIdx) c++;
+                            property real bumpScale: 1.0
+                            SequentialAnimation on bumpScale {
+                                id: cardBumpAnim
+                                running: false
+                                NumberAnimation { to: 1.2; duration: 200; easing.type: Easing.OutBack }
+                                NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.OutQuint }
+                            }
+
+                            property real nameImplicitWidth: baseNameText.implicitWidth
+                            property real nameContainerWidth: nameContainerBase.width
+                            property bool doMarquee: floatMa.containsMouse && nameImplicitWidth > nameContainerWidth
+                            property real textOffset: 0
+
+                            SequentialAnimation on textOffset {
+                                running: floatCard.doMarquee
+                                loops: Animation.Infinite
+                                PauseAnimation { duration: 600 }
+                                NumberAnimation {
+                                    from: 0
+                                    to: -(floatCard.nameImplicitWidth + window.s(30))
+                                    duration: (floatCard.nameImplicitWidth + window.s(30)) * 35
+                                }
+                            }
+                            onDoMarqueeChanged: if (!doMarquee) textOffset = 0;
+
+                            property real fillLevel: 0.0
+                            property bool triggered: false
+                            property real flashOpacity: 0.0
+
+                            property real renderFill: (isCurrentlyConnected) ? 1.0 : fillLevel
+
+                            onIsFailedChanged: {
+                                if (isFailed) {
+                                    triggered = false;
+                                    drainAnim.start();
+                                }
+                            }
+
+                            Connections {
+                                target: window
+                                function onPendingWifiIdChanged() {
+                                    if (window.pendingWifiId === "" && floatCard.fillLevel > 0 && !floatCard.isMyBusy && !floatCard.isCurrentlyConnected) {
+                                        floatCard.triggered = false;
+                                        drainAnim.start();
                                     }
                                 }
-                                return Math.max(1, c);
                             }
-                            property int localIndex: {
-                                let idx = 0;
-                                let m = orbitRepeater.model;
-                                if (m && m.count !== undefined) {
-                                    for (let i = 0; i < index; i++) {
-                                        let d = m.get(i);
-                                        if (d && (d.parentIndex !== undefined ? d.parentIndex : -1) === myParentIdx) idx++;
-                                    }
+
+                            color: locksList ? "#2affffff" : "#0effffff"
+                            Behavior on color { ColorAnimation { duration: 200 } }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: window.red
+                                opacity: floatCard.isFailed ? 0.3 : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 300 } }
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: window.s(14)
+                                color: "transparent"
+                                border.width: 1
+                                border.color: floatCard.isFailed ? window.red : window.surface2
+                                visible: !isHighlighted && !locksList
+                                Behavior on border.color { ColorAnimation { duration: 300 } }
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: window.s(14)
+                                opacity: locksList || isHighlighted ? 1.0 : 0.0
+                                color: "transparent"
+                                border.width: isHighlighted && !locksList ? 1 : window.s(2)
+                                border.color: floatCard.isFailed ? window.red : "transparent"
+                                Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.margins: isHighlighted && !locksList ? 1 : window.s(2)
+                                    radius: window.s(12)
+                                    color: window.base
+                                    opacity: locksList ? 0.9 : 1.0
                                 }
-                                return idx;
-                            }
 
-                            property real unifiedRatio: window.activeMode === "wifi" || window.activeMode === "eth" ? 0.0 : window.multiTransitionState
-
-                            property real activeCount: (unifiedRatio > 0.5 && myParentIdx !== -1) ? siblingsCount : orbitRepeater.count
-                            property real dynamicScale: activeCount > 10 ? Math.max(0.6, 12.0 / activeCount) : (unifiedRatio > 0.5 ? (window.activeCoreCount > 2 ? 0.7 : 0.8) : 1.0)
-
-                            property real safeMultiShift: window.activeMode === "wifi" || window.activeMode === "eth" ? 0.0 : window.multiTransitionState
-                            property var pItem: myParentIdx !== -1 ? coreRepeater.itemAt(myParentIdx) : null
-
-                            property real parentX: pItem ? (orbitContainer.width / 2) + (Math.cos(parentCoreAngle) * pItem.myOrbitRadiusX * safeMultiShift * pItem.activeTransition) : (orbitContainer.width / 2)
-                            property real parentY: pItem ? (orbitContainer.height / 2) + (Math.sin(parentCoreAngle) * pItem.myOrbitRadiusY * safeMultiShift * pItem.activeTransition) : (orbitContainer.height / 2)
-
-                            property real parentBaseAngle: pItem ? pItem.animatedBaseAngle : 0
-
-                            property real targetSingleBaseAngle: (index / Math.max(1, orbitRepeater.count)) * Math.PI * 2
-                            property real singleBaseAngle: targetSingleBaseAngle
-                            Behavior on singleBaseAngle { NumberAnimation { duration: 800; easing.type: Easing.OutExpo } }
-
-                            property real singleLiveAngle: (window.globalOrbitAngle * 1.5) + singleBaseAngle
-
-                            property real arcSpread: Math.PI * 0.8
-                            property real targetNodeOffset: (siblingsCount > 1) ? ((localIndex / (siblingsCount - 1)) - 0.5) * arcSpread : 0
-                            property real nodeOffset: targetNodeOffset
-                            Behavior on nodeOffset { NumberAnimation { duration: 800; easing.type: Easing.OutExpo } }
-
-                            property real parentCoreAngle: (window.globalOrbitAngle * 1.5) + parentBaseAngle
-                            property real multiLiveAngle: myParentIdx === -1 ? singleLiveAngle : (parentCoreAngle + nodeOffset)
-
-                            property int ringIndex: isInfoNode ? 0 : index % 2
-                            property real targetRingOffset: ringIndex * window.s(40)
-                            property real ringOffset: targetRingOffset
-                            Behavior on ringOffset { NumberAnimation { duration: 800; easing.type: Easing.OutExpo } }
-
-                            property real singleRadX: isInfoNode ? window.s(280) : window.s(320) + ringOffset
-                            property real singleRadY: isInfoNode ? window.s(180) : window.s(200) + ringOffset
-
-                            property real multiRadX: isInfoNode ? (myParentIdx === -1 ? 0 : (window.activeCoreCount > 2 ? window.s(180) : window.s(160))) : window.s(340) + ringOffset
-                            property real multiRadY: isInfoNode ? (myParentIdx === -1 ? 0 : (window.activeCoreCount > 2 ? window.s(180) : window.s(160))) : window.s(240) + ringOffset
-
-                            property real currentRadX: window.activeMode === "eth" ? window.s(280) : ((singleRadX * (1 - unifiedRatio)) + (multiRadX * unifiedRatio))
-                            property real currentRadY: window.activeMode === "eth" ? window.s(180) : ((singleRadY * (1 - unifiedRatio)) + (multiRadY * unifiedRatio))
-                            property real currentAngle: (singleLiveAngle * (1 - unifiedRatio)) + (multiLiveAngle * unifiedRatio)
-
-                            property real pwrDrift: window.currentPower ? 0 : window.s(40)
-                            Behavior on pwrDrift { NumberAnimation { duration: 600; easing.type: Easing.OutQuint } }
-
-                            property real animRadX: (currentRadX + pwrDrift) * (0.25 + 0.75 * entryAnim)
-                            property real animRadY: (currentRadY + pwrDrift) * (0.25 + 0.75 * entryAnim)
-
-                            property real targetX: myParentIdx === -1
-                                ? (orbitContainer.width / 2) - (width / 2) + Math.cos(currentAngle) * animRadX
-                                : parentX - (width / 2) + Math.cos(currentAngle) * animRadX
-
-                            property real targetY: myParentIdx === -1
-                                ? (orbitContainer.height / 2) - (height / 2) + Math.sin(currentAngle) * animRadY
-                                : parentY - (height / 2) + Math.sin(currentAngle) * animRadY
-
-                            property real liveBob: myParentIdx === -1 && isInfoNode
-                                ? Math.sin(window.globalOrbitAngle * 6) * window.s(12) * (1 - unifiedRatio)
-                                : 0
-
-                            x: targetX
-                            y: targetY + liveBob
-
-                            scale: (!isLoaded ? 0.0 : (floatMa.pressed ? dynamicScale * 0.95 : (floatCard.locksList ? dynamicScale * 1.08 : dynamicScale))) * floatCard.bumpScale
-                            Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
-                            z: floatCard.locksList ? 10 : index
-
-                            MultiEffect {
-                                source: floatCard
-                                anchors.fill: floatCard
-                                shadowEnabled: window.currentPower && floatCardDelegateContainer.opacity > 0.05
-                                shadowColor: "#000000"
-                                shadowOpacity: 0.3
-                                shadowBlur: 0.8
-                                shadowVerticalOffset: window.s(4)
+                                gradient: Gradient {
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0.0; color: floatCard.isFailed ? Qt.lighter(window.red, 1.15) : Qt.lighter(window.activeColor, 1.15) }
+                                    GradientStop { position: 1.0; color: floatCard.isFailed ? window.red : window.activeColor }
+                                }
                                 z: -1
                             }
 
                             Rectangle {
-                                id: floatCard
                                 anchors.fill: parent
                                 radius: window.s(14)
+                                color: "#ffffff"
+                                opacity: floatCard.flashOpacity
+                                PropertyAnimation on opacity { id: cardFlashAnim; to: 0; duration: 500; easing.type: Easing.OutExpo }
+                                z: 5
+                            }
 
-                                property string itemId: id
-                                property string itemName: name
+                            Canvas {
+                                id: waveCanvas
+                                anchors.fill: parent
 
-                                property bool isMyBusy: window.connectingId === itemId || !!window.busyTasks[itemId]
-                                property bool isFailed: window.failedId === itemId
+                                property real scaleTrigger: window.s(1)
+                                onScaleTriggerChanged: requestPaint()
 
-                                property bool isPairedBT: window.activeMode === "bt" && action === "Connect"
-                                property bool isTargetWifi: window.activeMode === "wifi" && !window.isWifiConn && itemId === window.targetWifiSsid
-                                property bool isSpecialAction: itemId === "action_scan" || itemId === "action_settings" || itemId === "ip_0"
-                                property bool isHighlighted: isPairedBT || isTargetWifi || isSpecialAction
+                                property real wavePhase: 0.0
 
-                                property bool isCurrentlyConnected: {
-                                    if (window.activeMode === "eth") return (window.ethConnected && window.ethConnected.id === itemId);
-                                    if (window.activeMode === "wifi") return (window.wifiConnected && window.wifiConnected.ssid === itemId);
-                                    for (let i = 0; i < window.btConnected.length; i++) {
-                                        if (window.btConnected[i].mac === itemId) return true;
-                                    }
-                                    return false;
-                                }
-
-                                property bool isInteractable: !isInfoNode || isActionable
-                                property bool locksList: isInteractable && (floatMa.containsMouse || floatMa.pressed)
-                                onLocksListChanged: { if (locksList) window.hoveredCardCount++; else window.hoveredCardCount--; }
-                                Component.onDestruction: { if (locksList) window.hoveredCardCount--; }
-
-                                property real bumpScale: 1.0
-                                SequentialAnimation on bumpScale {
-                                    id: cardBumpAnim
-                                    running: false
-                                    NumberAnimation { to: 1.2; duration: 200; easing.type: Easing.OutBack }
-                                    NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.OutQuint }
-                                }
-
-                                property real nameImplicitWidth: baseNameText.implicitWidth
-                                property real nameContainerWidth: nameContainerBase.width
-                                property bool doMarquee: floatMa.containsMouse && nameImplicitWidth > nameContainerWidth
-                                property real textOffset: 0
-
-                                SequentialAnimation on textOffset {
-                                    running: floatCard.doMarquee
+                                NumberAnimation on wavePhase {
+                                    running: floatCard.renderFill > 0.0 && floatCard.renderFill < 1.0
                                     loops: Animation.Infinite
-                                    PauseAnimation { duration: 600 }
-                                    NumberAnimation {
-                                        from: 0
-                                        to: -(floatCard.nameImplicitWidth + window.s(30))
-                                        duration: (floatCard.nameImplicitWidth + window.s(30)) * 35
-                                    }
-                                }
-                                onDoMarqueeChanged: if (!doMarquee) textOffset = 0;
-
-                                property real fillLevel: 0.0
-                                property bool triggered: false
-                                property real flashOpacity: 0.0
-
-                                property real renderFill: (isCurrentlyConnected) ? 1.0 : fillLevel
-
-                                onIsFailedChanged: {
-                                    if (isFailed) {
-                                        triggered = false;
-                                        drainAnim.start();
-                                    }
+                                    from: 0; to: Math.PI * 2
+                                    duration: 800
                                 }
 
-                                Connections {
-                                    target: window
-                                    function onPendingWifiIdChanged() {
-                                        if (window.pendingWifiId === "" && floatCard.fillLevel > 0 && !floatCard.isMyBusy && !floatCard.isCurrentlyConnected) {
-                                            floatCard.triggered = false;
-                                            drainAnim.start();
+                                onWavePhaseChanged: requestPaint()
+                                Connections { target: floatCard; function onRenderFillChanged() { waveCanvas.requestPaint() } }
+
+                                onPaint: {
+                                    var ctx = getContext("2d");
+                                    var s = window.s;
+                                    ctx.clearRect(0, 0, width, height);
+                                    if (floatCard.renderFill <= 0.001) return;
+
+                                    var currentW = width * floatCard.renderFill;
+                                    var r = s(14);
+
+                                    ctx.save();
+                                    ctx.beginPath();
+                                    ctx.moveTo(0, 0);
+
+                                    if (floatCard.renderFill < 0.99) {
+                                        var waveAmp = s(12) * Math.sin(floatCard.renderFill * Math.PI);
+                                        if (currentW - waveAmp < 0) waveAmp = currentW;
+                                        var cp1x = currentW + Math.sin(wavePhase) * waveAmp;
+                                        var cp2x = currentW + Math.cos(wavePhase + Math.PI) * waveAmp;
+
+                                        ctx.lineTo(currentW, 0);
+                                        ctx.bezierCurveTo(cp2x, height * 0.33, cp1x, height * 0.66, currentW, height);
+                                        ctx.lineTo(0, height);
+                                    } else {
+                                        ctx.lineTo(width, 0);
+                                        ctx.lineTo(width, height);
+                                        ctx.lineTo(0, height);
+                                    }
+                                    ctx.closePath();
+                                    ctx.clip();
+
+                                    ctx.beginPath();
+                                    ctx.moveTo(r, 0);
+                                    ctx.lineTo(width - r, 0);
+                                    ctx.arcTo(width, 0, width, r, r);
+                                    ctx.lineTo(width, height - r);
+                                    ctx.arcTo(width, height, width - r, height, r);
+                                    ctx.lineTo(r, height);
+                                    ctx.arcTo(0, height, 0, height - r, r);
+                                    ctx.lineTo(0, r);
+                                    ctx.arcTo(0, 0, r, 0, r);
+                                    ctx.closePath();
+
+                                    var grad = ctx.createLinearGradient(0, 0, currentW, 0);
+                                    grad.addColorStop(0, Qt.lighter(window.activeColor, 1.15).toString());
+                                    grad.addColorStop(1, window.activeColor.toString());
+                                    ctx.fillStyle = grad;
+                                    ctx.fill();
+
+                                    ctx.restore();
+                                }
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: "transparent"
+                                border.color: window.activeColor
+                                border.width: window.s(2)
+                                visible: parent.isHighlighted && !parent.isMyBusy && !parent.isCurrentlyConnected && !parent.isFailed
+
+                                SequentialAnimation on scale {
+                                    loops: Animation.Infinite; running: parent.visible
+                                    NumberAnimation { to: 1.15; duration: 1200; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0; duration: 1200; easing.type: Easing.InOutSine }
+                                }
+                                SequentialAnimation on opacity {
+                                    loops: Animation.Infinite; running: parent.visible
+                                    NumberAnimation { to: 0.0; duration: 1200; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 0.8; duration: 1200; easing.type: Easing.InOutSine }
+                                }
+                            }
+
+                            RowLayout {
+                                id: baseTextRow
+                                anchors.fill: parent
+                                anchors.margins: window.s(12)
+                                spacing: window.s(10)
+
+                                Text {
+                                    font.family: "Iosevka Nerd Font"
+                                    font.pixelSize: window.s(20)
+                                    color: floatCard.isFailed ? window.red : (floatCard.isMyBusy ? window.text : window.activeColor)
+                                    text: icon
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: window.s(2)
+
+                                    Item {
+                                        id: nameContainerBase
+                                        Layout.fillWidth: true
+                                        height: window.s(18)
+                                        clip: true
+
+                                        Text {
+                                            id: baseNameText
+                                            anchors.left: parent.left
+                                            anchors.leftMargin: floatCard.textOffset
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: floatCard.itemName
+                                            font.family: "JetBrains Mono"
+                                            font.weight: Font.Bold
+                                            font.pixelSize: window.s(13)
+                                            color: floatCard.isFailed ? window.red : (floatCard.isHighlighted ? window.activeColor : window.text)
+                                            Behavior on color { ColorAnimation { duration: 200 } }
+                                        }
+                                        Text {
+                                            anchors.left: baseNameText.right
+                                            anchors.leftMargin: window.s(30)
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            visible: floatCard.doMarquee
+                                            text: floatCard.itemName
+                                            font.family: "JetBrains Mono"
+                                            font.weight: Font.Bold
+                                            font.pixelSize: window.s(13)
+                                            color: floatCard.isFailed ? window.red : (floatCard.isHighlighted ? window.activeColor : window.text)
                                         }
                                     }
-                                }
-
-                                color: locksList ? "#2affffff" : "#0effffff"
-                                Behavior on color { ColorAnimation { duration: 200 } }
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: parent.radius
-                                    color: window.red
-                                    opacity: floatCard.isFailed ? 0.3 : 0.0
-                                    Behavior on opacity { NumberAnimation { duration: 300 } }
-                                }
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: window.s(14)
-                                    color: "transparent"
-                                    border.width: 1
-                                    border.color: floatCard.isFailed ? window.red : window.surface2
-                                    visible: !isHighlighted && !locksList
-                                    Behavior on border.color { ColorAnimation { duration: 300 } }
-                                }
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: window.s(14)
-                                    opacity: locksList || isHighlighted ? 1.0 : 0.0
-                                    color: "transparent"
-                                    border.width: isHighlighted && !locksList ? 1 : window.s(2)
-                                    border.color: floatCard.isFailed ? window.red : "transparent"
-                                    Behavior on opacity { NumberAnimation { duration: 250 } }
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        anchors.margins: isHighlighted && !locksList ? 1 : window.s(2)
-                                        radius: window.s(12)
-                                        color: window.base
-                                        opacity: locksList ? 0.9 : 1.0
-                                    }
-
-                                    gradient: Gradient {
-                                        orientation: Gradient.Horizontal
-                                        GradientStop { position: 0.0; color: floatCard.isFailed ? Qt.lighter(window.red, 1.15) : Qt.lighter(window.activeColor, 1.15) }
-                                        GradientStop { position: 1.0; color: floatCard.isFailed ? window.red : window.activeColor }
-                                    }
-                                    z: -1
-                                }
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: window.s(14)
-                                    color: "#ffffff"
-                                    opacity: floatCard.flashOpacity
-                                    PropertyAnimation on opacity { id: cardFlashAnim; to: 0; duration: 500; easing.type: Easing.OutExpo }
-                                    z: 5
-                                }
-
-                                Canvas {
-                                    id: waveCanvas
-                                    anchors.fill: parent
-
-                                    property real scaleTrigger: window.s(1)
-                                    onScaleTriggerChanged: requestPaint()
-
-                                    property real wavePhase: 0.0
-
-                                    NumberAnimation on wavePhase {
-                                        running: floatCard.renderFill > 0.0 && floatCard.renderFill < 1.0
-                                        loops: Animation.Infinite
-                                        from: 0; to: Math.PI * 2
-                                        duration: 800
-                                    }
-
-                                    onWavePhaseChanged: requestPaint()
-                                    Connections { target: floatCard; function onRenderFillChanged() { waveCanvas.requestPaint() } }
-
-                                    onPaint: {
-                                        var ctx = getContext("2d");
-                                        var s = window.s;
-                                        ctx.clearRect(0, 0, width, height);
-                                        if (floatCard.renderFill <= 0.001) return;
-
-                                        var currentW = width * floatCard.renderFill;
-                                        var r = s(14);
-
-                                        ctx.save();
-                                        ctx.beginPath();
-                                        ctx.moveTo(0, 0);
-
-                                        if (floatCard.renderFill < 0.99) {
-                                            var waveAmp = s(12) * Math.sin(floatCard.renderFill * Math.PI);
-                                            if (currentW - waveAmp < 0) waveAmp = currentW;
-                                            var cp1x = currentW + Math.sin(wavePhase) * waveAmp;
-                                            var cp2x = currentW + Math.cos(wavePhase + Math.PI) * waveAmp;
-
-                                            ctx.lineTo(currentW, 0);
-                                            ctx.bezierCurveTo(cp2x, height * 0.33, cp1x, height * 0.66, currentW, height);
-                                            ctx.lineTo(0, height);
-                                        } else {
-                                            ctx.lineTo(width, 0);
-                                            ctx.lineTo(width, height);
-                                            ctx.lineTo(0, height);
-                                        }
-                                        ctx.closePath();
-                                        ctx.clip();
-
-                                        ctx.beginPath();
-                                        ctx.moveTo(r, 0);
-                                        ctx.lineTo(width - r, 0);
-                                        ctx.arcTo(width, 0, width, r, r);
-                                        ctx.lineTo(width, height - r);
-                                        ctx.arcTo(width, height, width - r, height, r);
-                                        ctx.lineTo(r, height);
-                                        ctx.arcTo(0, height, 0, height - r, r);
-                                        ctx.lineTo(0, r);
-                                        ctx.arcTo(0, 0, r, 0, r);
-                                        ctx.closePath();
-
-                                        var grad = ctx.createLinearGradient(0, 0, currentW, 0);
-                                        grad.addColorStop(0, Qt.lighter(window.activeColor, 1.15).toString());
-                                        grad.addColorStop(1, window.activeColor.toString());
-                                        ctx.fillStyle = grad;
-                                        ctx.fill();
-
-                                        ctx.restore();
-                                    }
-                                }
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: parent.radius
-                                    color: "transparent"
-                                    border.color: window.activeColor
-                                    border.width: window.s(2)
-                                    visible: parent.isHighlighted && !parent.isMyBusy && !parent.isCurrentlyConnected && !parent.isFailed
-
-                                    SequentialAnimation on scale {
-                                        loops: Animation.Infinite; running: parent.visible
-                                        NumberAnimation { to: 1.15; duration: 1200; easing.type: Easing.InOutSine }
-                                        NumberAnimation { to: 1.0; duration: 1200; easing.type: Easing.InOutSine }
-                                    }
-                                    SequentialAnimation on opacity {
-                                        loops: Animation.Infinite; running: parent.visible
-                                        NumberAnimation { to: 0.0; duration: 1200; easing.type: Easing.InOutSine }
-                                        NumberAnimation { to: 0.8; duration: 1200; easing.type: Easing.InOutSine }
-                                    }
-                                }
-
-                                RowLayout {
-                                    id: baseTextRow
-                                    anchors.fill: parent
-                                    anchors.margins: window.s(12)
-                                    spacing: window.s(10)
 
                                     Text {
-                                        font.family: "Iosevka Nerd Font"
-                                        font.pixelSize: window.s(20)
-                                        color: floatCard.isFailed ? window.red : (floatCard.isMyBusy ? window.text : window.activeColor)
-                                        text: icon
+                                        font.family: "JetBrains Mono"
+                                        font.pixelSize: window.s(10)
+                                        color: floatCard.isFailed ? window.maroon : (floatCard.isMyBusy ? window.activeColor : window.overlay0)
+                                        text: floatCard.isFailed ? "Connection Failed" : (floatCard.isMyBusy ? "Connecting..." : (floatCard.renderFill > 0.1 && floatCard.renderFill < 1.0 ? floatCard.itemId === "ip_0" ? floatCard.triggered ? "Copied!" : "Hold to copy...": "Hold..." : action))
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                     }
+                                }
+                            }
+
+                            Item {
+                                anchors.left: parent.left
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                width: floatCard.width * floatCard.renderFill
+                                clip: true
+
+                                RowLayout {
+                                    x: baseTextRow.x; y: baseTextRow.y
+                                    width: baseTextRow.width; height: baseTextRow.height
+                                    spacing: window.s(10)
+
+                                    Text { font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(20); color: window.crust; text: icon }
 
                                     ColumnLayout {
                                         Layout.fillWidth: true
                                         spacing: window.s(2)
 
                                         Item {
-                                            id: nameContainerBase
                                             Layout.fillWidth: true
                                             height: window.s(18)
                                             clip: true
 
                                             Text {
-                                                id: baseNameText
+                                                id: filledNameText
                                                 anchors.left: parent.left
                                                 anchors.leftMargin: floatCard.textOffset
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 text: floatCard.itemName
-                                                font.family: "JetBrains Mono"
-                                                font.weight: Font.Bold
-                                                font.pixelSize: window.s(13)
-                                                color: floatCard.isFailed ? window.red : (floatCard.isHighlighted ? window.activeColor : window.text)
-                                                Behavior on color { ColorAnimation { duration: 200 } }
+                                                font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(13); color: window.crust
                                             }
                                             Text {
-                                                anchors.left: baseNameText.right
+                                                anchors.left: filledNameText.right
                                                 anchors.leftMargin: window.s(30)
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 visible: floatCard.doMarquee
                                                 text: floatCard.itemName
-                                                font.family: "JetBrains Mono"
-                                                font.weight: Font.Bold
-                                                font.pixelSize: window.s(13)
-                                                color: floatCard.isFailed ? window.red : (floatCard.isHighlighted ? window.activeColor : window.text)
+                                                font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(13); color: window.crust
                                             }
                                         }
-
                                         Text {
-                                            font.family: "JetBrains Mono"
-                                            font.pixelSize: window.s(10)
-                                            color: floatCard.isFailed ? window.maroon : (floatCard.isMyBusy ? window.activeColor : window.overlay0)
-                                            text: floatCard.isFailed ? "Connection Failed" : (floatCard.isMyBusy ? "Connecting..." : (floatCard.renderFill > 0.1 && floatCard.renderFill < 1.0 ? floatCard.itemId === "ip_0" ? floatCard.triggered ? "Copied!" : "Hold to copy...": "Hold..." : action))
-                                            Behavior on color { ColorAnimation { duration: 200 } }
+                                            font.family: "JetBrains Mono"; font.pixelSize: window.s(10); color: window.crust
+                                            text: floatCard.isMyBusy ? "Connecting..." : (floatCard.renderFill > 0.1 && floatCard.renderFill < 1.0 ? floatCard.itemId === "ip_0" ? floatCard.triggered ? "Copied!" : "Hold to copy..." : "Hold..." : action)
                                         }
                                     }
                                 }
+                            }
 
-                                Item {
-                                    anchors.left: parent.left
-                                    anchors.top: parent.top
-                                    anchors.bottom: parent.bottom
-                                    width: floatCard.width * floatCard.renderFill
-                                    clip: true
+                            MouseArea {
+                                id: floatMa
+                                anchors.fill: parent
+                                hoverEnabled: floatCard.isInteractable
 
-                                    RowLayout {
-                                        x: baseTextRow.x; y: baseTextRow.y
-                                        width: baseTextRow.width; height: baseTextRow.height
-                                        spacing: window.s(10)
+                                cursorShape: (floatCard.triggered || floatCard.isMyBusy || floatCard.renderFill === 1.0 || !floatCard.isInteractable) ? Qt.ArrowCursor : Qt.PointingHandCursor
 
-                                        Text { font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(20); color: window.crust; text: icon }
-
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: window.s(2)
-
-                                            Item {
-                                                Layout.fillWidth: true
-                                                height: window.s(18)
-                                                clip: true
-
-                                                Text {
-                                                    id: filledNameText
-                                                    anchors.left: parent.left
-                                                    anchors.leftMargin: floatCard.textOffset
-                                                    anchors.verticalCenter: parent.verticalCenter
-                                                    text: floatCard.itemName
-                                                    font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(13); color: window.crust
-                                                }
-                                                Text {
-                                                    anchors.left: filledNameText.right
-                                                    anchors.leftMargin: window.s(30)
-                                                    anchors.verticalCenter: parent.verticalCenter
-                                                    visible: floatCard.doMarquee
-                                                    text: floatCard.itemName
-                                                    font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(13); color: window.crust
-                                                }
-                                            }
-                                            Text {
-                                                font.family: "JetBrains Mono"; font.pixelSize: window.s(10); color: window.crust
-                                                text: floatCard.isMyBusy ? "Connecting..." : (floatCard.renderFill > 0.1 && floatCard.renderFill < 1.0 ? floatCard.itemId === "ip_0" ? floatCard.triggered ? "Copied!" : "Hold to copy..." : "Hold..." : action)
-                                            }
+                                onPressed: {
+                                    if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel === 0.0) {
+                                        if (window.pendingWifiId !== "") {
+                                            window.pendingWifiId = ""; window.pendingWifiSsid = "";
                                         }
+                                        drainAnim.stop()
+                                        fillAnim.start()
                                     }
                                 }
-
-                                MouseArea {
-                                    id: floatMa
-                                    anchors.fill: parent
-                                    hoverEnabled: floatCard.isInteractable
-
-                                    cursorShape: (floatCard.triggered || floatCard.isMyBusy || floatCard.renderFill === 1.0 || !floatCard.isInteractable) ? Qt.ArrowCursor : Qt.PointingHandCursor
-
-                                    onPressed: {
-                                        if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel === 0.0) {
-                                            if (window.pendingWifiId !== "") {
-                                                window.pendingWifiId = ""; window.pendingWifiSsid = "";
-                                            }
-                                            drainAnim.stop()
-                                            fillAnim.start()
-                                        }
-                                    }
-                                    onReleased: {
-                                        if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel < 1.0) {
-                                            fillAnim.stop()
-                                            drainAnim.start()
-                                        }
+                                onReleased: {
+                                    if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel < 1.0) {
+                                        fillAnim.stop()
+                                        drainAnim.start()
                                     }
                                 }
+                            }
 
-                                NumberAnimation {
-                                    id: fillAnim
-                                    target: floatCard
-                                    property: "fillLevel"
-                                    to: 1.0
-                                    duration: 600 * (1.0 - floatCard.fillLevel)
-                                    easing.type: Easing.InSine
-                                    onFinished: {
-                                        floatCard.triggered = true;
-                                        floatCard.flashOpacity = 0.6;
-                                        cardFlashAnim.start();
-                                        cardBumpAnim.start();
+                            NumberAnimation {
+                                id: fillAnim
+                                target: floatCard
+                                property: "fillLevel"
+                                to: 1.0
+                                duration: 600 * (1.0 - floatCard.fillLevel)
+                                easing.type: Easing.InSine
+                                onFinished: {
+                                    floatCard.triggered = true;
+                                    floatCard.flashOpacity = 0.6;
+                                    cardFlashAnim.start();
+                                    cardBumpAnim.start();
 
-                                        if (cmdStr === "TOGGLE_VIEW") {
+                                    if (cmdStr === "TOGGLE_VIEW") {
+                                        window.playSfx("switch.wav");
+                                        window.showInfoView = !window.showInfoView;
+                                        floatCard.triggered = false;
+                                        drainAnim.start();
+                                    } else if (isInfoNode && action === "IP Address") {
+                                        if (name && name !== "No IP" && name !== "Unknown") {
                                             window.playSfx("switch.wav");
-                                            window.showInfoView = !window.showInfoView;
-                                            floatCard.triggered = false;
-                                            drainAnim.start();
-                                        } else if (isInfoNode && action === "IP Address") {
-                                            if (name && name !== "No IP" && name !== "Unknown") {
-                                                window.playSfx("switch.wav");
-                                                let safeIp = name.replace(/'/g, "'\\''");
-                                                Quickshell.execDetached(["bash", "-c", "printf '%s' '" + safeIp + "' | wl-copy"]);
-                                            }
-                                            floatCard.triggered = true;
-                                            drainAnim.start();
-                                        } else if (isInfoNode && cmdStr) {
-                                            Quickshell.execDetached(["sh", "-c", cmdStr]);
-                                            if (window.activeMode === "bt") btPoller.running = true;
-                                            floatCard.triggered = false;
-                                            drainAnim.start();
-                                        } else {
-                                            let sec = typeof security !== "undefined" && security ? security.trim().toLowerCase() : "";
-                                            let isSecure = sec !== "" && sec !== "open" && sec !== "--" && sec !== "none";
-                                            let isSaved = false;
-                                            for (let i = 0; i < window.savedWifiNetworks.length; i++) {
-                                                if (window.savedWifiNetworks[i] === ssid) { isSaved = true; break; }
-                                            }
+                                            let safeIp = name.replace(/'/g, "'\\''");
+                                            Quickshell.execDetached(["bash", "-c", "printf '%s' '" + safeIp + "' | wl-copy"]);
+                                        }
+                                        floatCard.triggered = true;
+                                        drainAnim.start();
+                                    } else if (isInfoNode && cmdStr) {
+                                        Quickshell.execDetached(["sh", "-c", cmdStr]);
+                                        if (window.activeMode === "bt") btPoller.running = true;
+                                        floatCard.triggered = false;
+                                        drainAnim.start();
+                                    } else {
+                                        let sec = typeof security !== "undefined" && security ? security.trim().toLowerCase() : "";
+                                        let isSecure = sec !== "" && sec !== "open" && sec !== "--" && sec !== "none";
+                                        let isSaved = false;
+                                        for (let i = 0; i < window.savedWifiNetworks.length; i++) {
+                                            if (window.savedWifiNetworks[i] === ssid) { isSaved = true; break; }
+                                        }
 
-                                            if (window.activeMode === "wifi" && isSecure && !isSaved) {
-                                                window.pendingWifiSsid = ssid;
-                                                window.pendingWifiId = floatCard.itemId;
-                                            } else {
-                                                window.connectDevice(window.activeMode, floatCard.itemId, window.activeMode === "wifi" ? ssid : (window.activeMode === "eth" ? floatCard.itemId : mac), "");
-                                            }
+                                        if (window.activeMode === "wifi" && isSecure && !isSaved) {
+                                            window.pendingWifiSsid = ssid;
+                                            window.pendingWifiId = floatCard.itemId;
+                                        } else {
+                                            window.connectDevice(window.activeMode, floatCard.itemId, window.activeMode === "wifi" ? ssid : (window.activeMode === "eth" ? floatCard.itemId : mac), "");
                                         }
                                     }
                                 }
+                            }
 
-                                NumberAnimation {
-                                    id: drainAnim
-                                    target: floatCard
-                                    property: "fillLevel"
-                                    to: 0.0
-                                    duration: 1500 * floatCard.fillLevel
-                                    easing.type: Easing.OutQuad
-                                    onFinished: {
-                                        if (isInfoNode && action === "IP Address") {
-                                            floatCard.triggered = false;
-                                        }
+                            NumberAnimation {
+                                id: drainAnim
+                                target: floatCard
+                                property: "fillLevel"
+                                to: 0.0
+                                duration: 1500 * floatCard.fillLevel
+                                easing.type: Easing.OutQuad
+                                onFinished: {
+                                    if (isInfoNode && action === "IP Address") {
+                                        floatCard.triggered = false;
                                     }
                                 }
                             }
@@ -2228,8 +2237,6 @@ Item {
                 id: powerToggleContainer
                 z: 100
 
-                // FIXED: Replaced direct Behavior on x/y with an interpolation value.
-                // This completely removes lag and overshooting when the parent window resizes/morphs.
                 property real pwrMorph: window.currentPower ? 1.0 : 0.0
                 Behavior on pwrMorph {
                     enabled: window.powerAnimAllowed;
