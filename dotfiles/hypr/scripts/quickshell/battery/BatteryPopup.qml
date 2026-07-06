@@ -1586,11 +1586,26 @@ Item {
                                                     
                                                     let bashCmd = "";
                                                     if (name === "power-saver") {
-                                                        bashCmd = "powerprofilesctl set power-saver 2>/dev/null; sudo tlp bat 2>/dev/null; rfkill block bluetooth 2>/dev/null; brightnessctl set 15% 2>/dev/null; echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null";
+                                                        bashCmd = `
+                                                            powerprofilesctl set power-saver 2>/dev/null
+                                                            sudo tlp bat 2>/dev/null
+                                                            echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
+                                                            hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@60,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
+                                                        `;
                                                     } else if (name === "balanced") {
-                                                        bashCmd = "powerprofilesctl set balanced 2>/dev/null; sudo tlp bat 2>/dev/null; rfkill unblock bluetooth 2>/dev/null; echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null";
+                                                        bashCmd = `
+                                                            powerprofilesctl set balanced 2>/dev/null
+                                                            sudo tlp bat 2>/dev/null
+                                                            echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
+                                                            hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@120,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
+                                                        `;
                                                     } else if (name === "performance") {
-                                                        bashCmd = "powerprofilesctl set performance 2>/dev/null; sudo tlp ac 2>/dev/null; rfkill unblock bluetooth 2>/dev/null; echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null";
+                                                        bashCmd = `
+                                                            powerprofilesctl set performance 2>/dev/null
+                                                            sudo tlp ac 2>/dev/null
+                                                            echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
+                                                            hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@120,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
+                                                        `;
                                                     }
                                                     
                                                     Quickshell.execDetached(["bash", "-c", bashCmd]);
