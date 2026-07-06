@@ -59,7 +59,6 @@ ShellRoot {
     PamContext {
         id: pam
         
-        // Defer start until after component initialization to prevent memory segfaults
         Component.onCompleted: pamActionTimer.start()
 
         onCompleted: (result) => {
@@ -70,25 +69,9 @@ ShellRoot {
             } else {
                 lockUI.failed = true;
                 lockUI.statusText = "Access Denied";
-                // Defer the restart to prevent a recursive crash loop
                 pamActionTimer.start();
             }
         }
-    }
-
-    Process {
-        id: suspendProcess
-        command: ["systemctl", "suspend"]
-    }
-
-    Process {
-        id: poweroffProcess
-        command: ["systemctl", "poweroff"]
-    }
-
-    Process {
-        id: reloadProcess
-        command: ["systemctl", "reboot"]
     }
 
     WlSessionLock {
@@ -102,13 +85,11 @@ ShellRoot {
                 id: screenRoot
                 anchors.fill: parent
 
-                // --- Responsive Scaling Logic ---
                 Scaler {
                     id: scaler
                     currentWidth: screenRoot.width > 0 ? screenRoot.width : Screen.width
                 }
                 readonly property real sc: scaler.baseScale
-                // --------------------------------
 
                 property string staticWallpaperPath: "file://" + paths.getCacheDir("wallpaper_picker") + "/current_wallpaper.png"
 
@@ -116,14 +97,10 @@ ShellRoot {
                 property string batStatus: "AC"
                 property string currentUser: "User"
                 property string faceIconPath: ""
-                property string kbLayout: "US"
-                
                 property string mediaStatus: "Stopped"
-                property string mediaTrack: ""
 
                 // UI States
                 property real introState: 0.0
-                property bool powerMenuOpen: false
                 property bool inputActive: false 
                 property bool isPlayingIntro: true
                 property bool isDesktop: false
@@ -145,10 +122,6 @@ ShellRoot {
                     repeat: false
                     onTriggered: screenRoot.inputActive = false
                 }
-
-                // ---------------------------------------------------------
-                // BACKGROUND DATA POLLING 
-                // ---------------------------------------------------------
 
                 Process {
                     id: chassisDetector
@@ -180,32 +153,13 @@ ShellRoot {
                         }
                     }
                 }
-                
-                Process {
-                    id: kbPoller
-                    command: ["bash", "-c", "hyprctl devices -j | jq -r '.keyboards[] | select(.main == true) | .active_keymap' | head -n1 | cut -c1-2 | tr '[:lower:]' '[:upper:]'"]
-                    stdout: StdioCollector {
-                        onStreamFinished: {
-                            let layout = this.text.trim();
-                            if (layout !== "" && layout !== "null") {
-                                screenRoot.kbLayout = layout;
-                            }
-                        }
-                    }
-                }
-                Timer { 
-                    interval: 150; running: true; repeat: true; triggeredOnStart: true; 
-                    onTriggered: { kbPoller.running = false; kbPoller.running = true; } 
-                }
 
                 Process {
                     id: mediaPoller
-                    command: ["bash", "-c", "echo \"$(playerctl status 2>/dev/null)|$(playerctl metadata --format '{{ title }} - {{ artist }}' 2>/dev/null)\""]
+                    command: ["bash", "-c", "playerctl status 2>/dev/null || echo 'Stopped'"]
                     stdout: StdioCollector {
                         onStreamFinished: {
-                            let parts = this.text.trim().split("|");
-                            screenRoot.mediaStatus = parts[0] || "Stopped";
-                            screenRoot.mediaTrack = parts[1] || "";
+                            screenRoot.mediaStatus = this.text.trim();
                         }
                     }
                 }
@@ -322,7 +276,6 @@ ShellRoot {
                     anchors.fill: parent
                     enabled: !screenRoot.isPlayingIntro
                     onClicked: (event) => {
-                        if (screenRoot.powerMenuOpen) screenRoot.powerMenuOpen = false;
                         if (!screenRoot.inputActive) screenRoot.inputActive = true;
                         inputField.forceActiveFocus();
                     }
@@ -583,7 +536,7 @@ ShellRoot {
                                     Component.onCompleted: forceActiveFocus()
                                     
                                     onActiveFocusChanged: {
-                                        if (!activeFocus && !screenRoot.powerMenuOpen && !screenRoot.isPlayingIntro) {
+                                        if (!activeFocus && !screenRoot.isPlayingIntro) {
                                             forceActiveFocus();
                                         }
                                     }
@@ -702,36 +655,12 @@ ShellRoot {
                     opacity: screenRoot.introState
                     transform: Translate { y: (20 * screenRoot.sc) * (1.0 - screenRoot.introState) }
 
-                    // KB Layout Pill
-                    Rectangle {
-                        property bool isHovered: kbMouse.containsMouse
-                        Layout.preferredHeight: 48 * screenRoot.sc
-                        Layout.preferredWidth: kbLayoutRow.implicitWidth + (36 * screenRoot.sc)
-                        radius: height / 2 
-                        
-                        color: isHovered ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.4)
-                        border.color: isHovered ? root.mauve : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.08)
-                        border.width: Math.max(1, 1 * screenRoot.sc)
-                        
-                        scale: isHovered ? 1.05 : 1.0
-                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                        Behavior on border.color { ColorAnimation { duration: 200 } }
-
-                        RowLayout { 
-                            id: kbLayoutRow; anchors.centerIn: parent; spacing: 8 * screenRoot.sc
-                            Text { text: "󰌌"; font.family: "Iosevka Nerd Font"; font.pixelSize: 18 * screenRoot.sc; color: parent.parent.isHovered ? root.mauve : root.overlay2; Behavior on color { ColorAnimation { duration: 200 } } }
-                            Text { text: screenRoot.kbLayout; font.family: "JetBrains Mono"; font.pixelSize: 14 * screenRoot.sc; font.weight: Font.Black; color: root.text }
-                        }
-                        MouseArea { id: kbMouse; anchors.fill: parent; hoverEnabled: true; enabled: !screenRoot.isPlayingIntro }
-                    }
-
-                    // Media Control Pill
+                    // Media Control Pill (Icon Only)
                     Rectangle {
                         property bool isHovered: mediaMouse.containsMouse
                         visible: screenRoot.mediaStatus === "Playing" || screenRoot.mediaStatus === "Paused"
                         Layout.preferredHeight: 48 * screenRoot.sc
-                        Layout.preferredWidth: mediaLayoutRow.implicitWidth + (36 * screenRoot.sc)
+                        Layout.preferredWidth: 48 * screenRoot.sc
                         radius: height / 2
 
                         color: isHovered ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.4)
@@ -743,22 +672,15 @@ ShellRoot {
                         Behavior on color { ColorAnimation { duration: 200 } }
                         Behavior on border.color { ColorAnimation { duration: 200 } }
 
-                        RowLayout {
-                            id: mediaLayoutRow; anchors.centerIn: parent; spacing: 8 * screenRoot.sc
-                            Text {
-                                text: screenRoot.mediaStatus === "Playing" ? "󰏤" : "󰐊"
-                                font.family: "Iosevka Nerd Font"; font.pixelSize: 20 * screenRoot.sc
-                                color: parent.parent.isHovered ? root.blue : root.text
-                                Behavior on color { ColorAnimation { duration: 200 } }
-                            }
-                            Text {
-                                text: screenRoot.mediaTrack
-                                font.family: "JetBrains Mono"; font.pixelSize: 14 * screenRoot.sc
-                                font.weight: Font.Medium; color: root.text
-                                Layout.maximumWidth: 250 * screenRoot.sc 
-                                elide: Text.ElideRight
-                            }
+                        Text {
+                            anchors.centerIn: parent
+                            text: screenRoot.mediaStatus === "Playing" ? "󰏤" : "󰐊"
+                            font.family: "Iosevka Nerd Font"
+                            font.pixelSize: 22 * screenRoot.sc
+                            color: parent.isHovered ? root.blue : root.text
+                            Behavior on color { ColorAnimation { duration: 200 } }
                         }
+
                         MouseArea {
                             id: mediaMouse; anchors.fill: parent; hoverEnabled: true; enabled: !screenRoot.isPlayingIntro
                             onClicked: (event) => {
@@ -814,150 +736,10 @@ ShellRoot {
                         }
                         MouseArea { id: batMouse; anchors.fill: parent; hoverEnabled: true; enabled: !screenRoot.isPlayingIntro }
                     }
-
-                    // Power Button
-                    Rectangle {
-                        id: powerBtn
-                        Layout.preferredWidth: 48 * screenRoot.sc
-                        Layout.preferredHeight: 48 * screenRoot.sc
-                        radius: width / 2
-                        
-                        color: screenRoot.powerMenuOpen 
-                                ? root.surface2 
-                                : (powerBtnMa.containsMouse ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.8) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.4))
-                        border.color: screenRoot.powerMenuOpen ? root.text : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.15)
-                        border.width: Math.max(1, 1 * screenRoot.sc)
-
-                        scale: powerBtnMa.pressed ? 0.9 : (powerBtnMa.containsMouse ? 1.08 : 1.0)
-
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                        Behavior on border.color { ColorAnimation { duration: 200 } }
-                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: "󰐥"
-                            font.family: "Iosevka Nerd Font"
-                            font.pixelSize: 22 * screenRoot.sc
-                            color: screenRoot.powerMenuOpen ? root.red : (powerBtnMa.containsMouse ? root.text : root.subtext0)
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                        }
-
-                        MouseArea {
-                            id: powerBtnMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            enabled: !screenRoot.isPlayingIntro
-                            onClicked: (event) => {
-                                screenRoot.powerMenuOpen = !screenRoot.powerMenuOpen;
-                                if (!screenRoot.powerMenuOpen) inputField.forceActiveFocus();
-                            }
-                        }
-                    }
                 }
 
                 // ---------------------------------------------------------
-                // 4. POWER MENU
-                // ---------------------------------------------------------
-                Rectangle {
-                    id: powerMenu
-                    anchors.bottom: bottomPills.top
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottomMargin: 15 * screenRoot.sc
-                    width: 280 * screenRoot.sc
-                    height: screenRoot.powerMenuOpen ? (menuLayout.implicitHeight + (20 * screenRoot.sc)) : 0
-                    radius: 18 * screenRoot.sc
-                    clip: true
-                    opacity: screenRoot.powerMenuOpen ? 1 : 0
-                    
-                    color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.95)
-                    border.color: Qt.rgba(root.mauve.r, root.mauve.g, root.mauve.b, 0.25)
-                    border.width: Math.max(1, 1 * screenRoot.sc)
-
-                    Behavior on height { NumberAnimation { duration: 350; easing.type: Easing.OutExpo } }
-                    Behavior on opacity { NumberAnimation { duration: 250 } }
-
-                    ColumnLayout {
-                        id: menuLayout
-                        anchors.top: parent.top
-                        anchors.topMargin: 10 * screenRoot.sc
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        spacing: 6 * screenRoot.sc
-
-                        Rectangle {
-                            Layout.fillWidth: true; Layout.preferredHeight: 48 * screenRoot.sc; Layout.leftMargin: 10 * screenRoot.sc; Layout.rightMargin: 10 * screenRoot.sc; radius: 12 * screenRoot.sc
-                            color: ma1.containsMouse ? Qt.rgba(root.blue.r, root.blue.g, root.blue.b, 0.1) : "transparent"
-                            scale: ma1.pressed ? 0.95 : (ma1.containsMouse ? 1.02 : 1.0)
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-                            
-                            RowLayout {
-                                anchors.fill: parent; anchors.leftMargin: 16 * screenRoot.sc; anchors.rightMargin: 16 * screenRoot.sc; spacing: 0
-                                Text { text: "󰜉"; font.family: "Iosevka Nerd Font"; font.pixelSize: 18 * screenRoot.sc; color: ma1.containsMouse ? root.blue : Qt.rgba(root.blue.r, root.blue.g, root.blue.b, 0.6); Behavior on color { ColorAnimation { duration: 200 } } }
-                                Item { Layout.fillWidth: true }
-                                Text { text: "Reboot"; font.family: "JetBrains Mono"; font.pixelSize: 15 * screenRoot.sc; font.weight: Font.Medium; color: ma1.containsMouse ? root.blue : Qt.rgba(root.blue.r, root.blue.g, root.blue.b, 0.6); Behavior on color { ColorAnimation { duration: 200 } } }
-                            }
-                            MouseArea { 
-                                id: ma1; anchors.fill: parent; hoverEnabled: true;
-                                onClicked: (event) => {
-                                    screenRoot.powerMenuOpen = false;
-                                    reloadProcess.running = false;
-                                    reloadProcess.running = true;
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true; Layout.preferredHeight: 48 * screenRoot.sc; Layout.leftMargin: 10 * screenRoot.sc; Layout.rightMargin: 10 * screenRoot.sc; radius: 12 * screenRoot.sc
-                            color: ma2.containsMouse ? Qt.rgba(root.mauve.r, root.mauve.g, root.mauve.b, 0.1) : "transparent"
-                            scale: ma2.pressed ? 0.95 : (ma2.containsMouse ? 1.02 : 1.0)
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-                            
-                            RowLayout {
-                                anchors.fill: parent; anchors.leftMargin: 16 * screenRoot.sc; anchors.rightMargin: 16 * screenRoot.sc; spacing: 0
-                                Text { text: "󰒲"; font.family: "Iosevka Nerd Font"; font.pixelSize: 18 * screenRoot.sc; color: ma2.containsMouse ? root.mauve : Qt.rgba(root.mauve.r, root.mauve.g, root.mauve.b, 0.6); Behavior on color { ColorAnimation { duration: 200 } } }
-                                Item { Layout.fillWidth: true }
-                                Text { text: "Suspend"; font.family: "JetBrains Mono"; font.pixelSize: 15 * screenRoot.sc; font.weight: Font.Medium; color: ma2.containsMouse ? root.mauve : Qt.rgba(root.mauve.r, root.mauve.g, root.mauve.b, 0.6); Behavior on color { ColorAnimation { duration: 200 } } }
-                            }
-                            MouseArea { 
-                                id: ma2; anchors.fill: parent; hoverEnabled: true;
-                                onClicked: (event) => {
-                                    screenRoot.powerMenuOpen = false;
-                                    suspendProcess.running = false;
-                                    suspendProcess.running = true;
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true; Layout.preferredHeight: 48 * screenRoot.sc; Layout.leftMargin: 10 * screenRoot.sc; Layout.rightMargin: 10 * screenRoot.sc; Layout.bottomMargin: 8 * screenRoot.sc; radius: 12 * screenRoot.sc
-                            color: ma3.containsMouse ? Qt.rgba(root.red.r, root.red.g, root.red.b, 0.1) : "transparent"
-                            scale: ma3.pressed ? 0.95 : (ma3.containsMouse ? 1.02 : 1.0)
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-                            
-                            RowLayout {
-                                anchors.fill: parent; anchors.leftMargin: 16 * screenRoot.sc; anchors.rightMargin: 16 * screenRoot.sc; spacing: 0
-                                Text { text: "󰐥"; font.family: "Iosevka Nerd Font"; font.pixelSize: 18 * screenRoot.sc; color: ma3.containsMouse ? root.red : Qt.rgba(root.red.r, root.red.g, root.red.b, 0.6); Behavior on color { ColorAnimation { duration: 200 } } }
-                                Item { Layout.fillWidth: true }
-                                Text { text: "Power Off"; font.family: "JetBrains Mono"; font.pixelSize: 15 * screenRoot.sc; font.weight: Font.Medium; color: ma3.containsMouse ? root.red : Qt.rgba(root.red.r, root.red.g, root.red.b, 0.6); Behavior on color { ColorAnimation { duration: 200 } } }
-                            }
-                            MouseArea { 
-                                id: ma3; anchors.fill: parent; hoverEnabled: true;
-                                onClicked: (event) => {
-                                    screenRoot.powerMenuOpen = false;
-                                    poweroffProcess.running = false;
-                                    poweroffProcess.running = true;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ---------------------------------------------------------
-                // 5. INTRO ANIMATION OVERLAY
+                // 4. INTRO ANIMATION OVERLAY
                 // ---------------------------------------------------------
                 Item {
                     id: introOverlay
