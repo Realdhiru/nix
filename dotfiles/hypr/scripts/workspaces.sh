@@ -4,15 +4,15 @@
 source "$(dirname "${BASH_SOURCE[0]}")/caching.sh"
 qs_ensure_cache "workspaces"
 
-# Structural tracking ceiling definition
-SEQ_END=69
+# Structural tracking ceiling definition (allows external override, defaults to 69)
+SEQ_END=${SEQ_END:-69}
 
-# De-duplicate historical runtime thread pools to prevent process leaking
-for pid in $(pgrep -f "workspaces.sh"); do
-    if [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ]; then
-        kill -9 "$pid" 2>/dev/null
-    fi
-done
+# Safe Singleton File Locking (Replaces dangerous pgrep/kill -9)
+# Enforces a single writer without leaving orphaned socat instances
+exec 200>"$QS_RUN_WORKSPACES/workspaces.lock"
+if ! flock -n 200; then
+    exit 0
+fi
 
 # Signal binding trap to drop IPC child consumers instantly on thread closure
 cleanup() { pkill -P $$ 2>/dev/null; }
@@ -47,14 +47,24 @@ print_workspaces
 
 # Fast-path listener stream with microsecond execution dispatch handlers
 handle_event_stream() {
-    socat -u UNIX-CONNECT:"$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock" - 2>/dev/null | while read -r line; do
-        case "$line" in
-            workspace*|focusedmon*|activewindow*|createwindow*|closewindow*|movewindow*|destroyworkspace*)
-                print_workspaces
-                ;;
-        esac
+    # Resurrection loop: Keeps the daemon alive if Hyprland restarts and drops the socket
+    while true; do
+        socat -u UNIX-CONNECT:"$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock" - 2>/dev/null | while read -r line; do
+            case "$line" in
+                workspace*|focusedmon*|activewindow*|createwindow*|closewindow*|movewindow*|destroyworkspace*)
+                    # Debounce: Absorb and discard any subsequent events arriving within 50ms
+                    # Prevents CPU thrashing and lag spikes during rapid window manipulations
+                    while read -t 0.05 -r _; do continue; done
+                    
+                    print_workspaces
+                    ;;
+            esac
+        done
+        
+        # Pause briefly before attempting to reconnect to a dead socket
+        sleep 1
     done
 }
 
-# Execute persistent stream monitor without artificial sleep delays
+# Execute persistent stream monitor
 handle_event_stream
