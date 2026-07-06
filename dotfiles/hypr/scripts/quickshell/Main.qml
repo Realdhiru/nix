@@ -15,6 +15,11 @@ PanelWindow {
 
     Caching { id: paths }
 
+    Keys.onEscapePressed: (event) => {
+        switchWidget("hidden", "");
+        event.accepted = true;
+    }
+
     IpcHandler {
         target: "main"
 
@@ -110,6 +115,7 @@ PanelWindow {
     }
 
     property var widgetCache: ({})
+
     property var componentCache: ({})
 
     function resolveComponent(path) {
@@ -335,14 +341,7 @@ PanelWindow {
     }
 
     onIsVisibleChanged: {
-        if (isVisible) {
-            widgetStack.forceActiveFocus();
-            if (widgetStack.currentItem) {
-                widgetStack.currentItem.focus = false;
-                widgetStack.currentItem.focus = true;
-                widgetStack.currentItem.forceActiveFocus();
-            }
-        }
+        if (isVisible) widgetStack.forceActiveFocus();
     }
 
     Item {
@@ -501,7 +500,6 @@ PanelWindow {
             if (arg !== "" && cached.activeMode !== undefined) cached.activeMode = arg;
 
             cached.visible = true;
-            cached.focus = true;
             if (immediate) {
                 widgetStack.replace(cached, {}, StackView.Immediate);
             } else {
@@ -530,6 +528,12 @@ PanelWindow {
         }
 
         masterWindow.isVisible = true;
+
+        // Force focus evaluation after visibility changes to sync widget-to-widget transitions
+        widgetStack.forceActiveFocus();
+        if (widgetStack.currentItem) {
+            widgetStack.currentItem.forceActiveFocus();
+        }
     }
 
     Timer {
