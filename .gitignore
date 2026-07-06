@@ -8,3 +8,5 @@ result-*
 *.secret
 secrets.nix
 dotfiles/secrets/
+ 
+repomix-output.xml

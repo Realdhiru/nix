@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+# Consolidate date extraction into a single, atomic execution
+read -r YEAR MONTH DAY <<< "$(date +'%Y %m %d')"
 
 # Settings based on your layout
 VAULT_DIR="$HOME/Life/Obsidian"
 VAULT_NAME="Obsidian"
-YEAR=$(date +%Y)
-DAY=$(date +%d)
-MONTH=$(date +%m)
 FILENAME="${DAY}.${MONTH}"
 FILEPATH="Diary/${YEAR}/${FILENAME}.md"
 FULL_PATH="${VAULT_DIR}/${FILEPATH}"
@@ -16,14 +17,15 @@ mkdir -p "${VAULT_DIR}/Diary/${YEAR}"
 
 # 1. Create diary file if it doesn't exist
 if [ ! -f "$FULL_PATH" ]; then
-    echo "#diary" > "$FULL_PATH"
-    echo "" >> "$FULL_PATH"
+    echo -e "#diary\n" > "$FULL_PATH"
 fi
 
 # 2. Update Contents.md if the link isn't already there
 if [ -f "$CONTENTS_PATH" ]; then
     if ! grep -q "\[\[${FILENAME}\]\]" "$CONTENTS_PATH"; then
-        # Use awk to inject the link dynamically into the correct section without breaking formatting
+        # Use mktemp for a guaranteed safe, atomic file replacement
+        TMP_FILE=$(mktemp)
+        
         awk -v year="## ${YEAR}" -v entry="- [[${FILENAME}]]" '
         BEGIN { in_year=0; inserted=0 }
         $0 == year { in_year=1; print; next }
@@ -38,13 +40,14 @@ if [ -f "$CONTENTS_PATH" ]; then
                 print entry
             }
         }
-        ' "$CONTENTS_PATH" > "${CONTENTS_PATH}.tmp" && mv "${CONTENTS_PATH}.tmp" "$CONTENTS_PATH"
+        ' "$CONTENTS_PATH" > "$TMP_FILE"
+        
+        mv "$TMP_FILE" "$CONTENTS_PATH"
     fi
 else
     # Create the Contents file if missing entirely
     mkdir -p "$(dirname "$CONTENTS_PATH")"
-    echo "## ${YEAR}" > "$CONTENTS_PATH"
-    echo "- [[${FILENAME}]]" >> "$CONTENTS_PATH"
+    echo -e "## ${YEAR}\n- [[${FILENAME}]]" > "$CONTENTS_PATH"
 fi
 
 # 3. Open the specific note directly inside Obsidian using its URI protocol
