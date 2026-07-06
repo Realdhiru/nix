@@ -33,14 +33,12 @@ ShellRoot {
     readonly property color blue: _theme.blue
     readonly property color green: _theme.green
 
-    // Session Settings
     QtObject {
         id: lockSettings
         property bool hidePassword: false
         property int revealDuration: 300
     }
 
-    // Shared state across all monitors
     QtObject {
         id: lockUI
         property bool failed: false
@@ -48,14 +46,12 @@ ShellRoot {
         property string statusText: "Locked"
     }
 
-    // Timer to safely decouple PAM execution from the main QML event loop
     Timer {
         id: pamActionTimer
         interval: 50
         onTriggered: pam.start()
     }
 
-    // System Authentication hook
     PamContext {
         id: pam
         
@@ -99,7 +95,6 @@ ShellRoot {
                 property string faceIconPath: ""
                 property string mediaStatus: "Stopped"
 
-                // UI States
                 property real introState: 0.0
                 property bool inputActive: false 
                 property bool isPlayingIntro: true
@@ -114,7 +109,6 @@ ShellRoot {
                     from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: true
                 }
 
-                // Auto-hide input field if empty and idle for 15 seconds
                 Timer {
                     id: idleTimer
                     interval: 15000
@@ -185,10 +179,6 @@ ShellRoot {
                     interval: 5000; running: !screenRoot.isDesktop; repeat: true; triggeredOnStart: true; 
                     onTriggered: { batPoller.running = false; batPoller.running = true; } 
                 }
-
-                // ---------------------------------------------------------
-                // 1. LIVING BACKGROUND
-                // ---------------------------------------------------------
                 
                 Rectangle {
                     anchors.fill: parent
@@ -269,9 +259,6 @@ ShellRoot {
                     }
                 }
 
-                // ---------------------------------------------------------
-                // 2. MAIN CONTENT LAYER
-                // ---------------------------------------------------------
                 MouseArea {
                     anchors.fill: parent
                     enabled: !screenRoot.isPlayingIntro
@@ -286,7 +273,6 @@ ShellRoot {
                     opacity: screenRoot.introState
                     transform: Translate { y: (30 * screenRoot.sc) * (1.0 - screenRoot.introState) }
 
-                    // --- CLOCK MODULE (Idle State) ---
                     ColumnLayout {
                         id: clockModule
                         anchors.centerIn: parent
@@ -352,7 +338,6 @@ ShellRoot {
                         }
                     }
 
-                    // --- AUTHENTICATION MODULE (Input State) ---
                     RowLayout {
                         id: authModule
                         anchors.centerIn: parent
@@ -367,7 +352,6 @@ ShellRoot {
                         Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
                         Behavior on scale { NumberAnimation { duration: 500; easing.type: Easing.OutBack } }
 
-                        // Left: Enlarged Avatar
                         Item {
                             Layout.alignment: Qt.AlignVCenter
                             width: 170 * screenRoot.sc
@@ -425,7 +409,6 @@ ShellRoot {
                             }
                         }
 
-                        // Right: Text Details & Input
                         ColumnLayout {
                             Layout.alignment: Qt.AlignVCenter
                             spacing: 16 * screenRoot.sc
@@ -632,7 +615,6 @@ ShellRoot {
                                                 height: pinPill.height
                                                 
                                                 NumberAnimation on opacity { from: 0; to: 1; duration: 150 }
-                                                
                                             }
                                         }
                                     }
@@ -642,9 +624,6 @@ ShellRoot {
                     }
                 }
 
-                // ---------------------------------------------------------
-                // 3. BOTTOM SYSTEM INFO PILLS
-                // ---------------------------------------------------------
                 RowLayout {
                     id: bottomPills
                     anchors.bottom: parent.bottom
@@ -655,7 +634,6 @@ ShellRoot {
                     opacity: screenRoot.introState
                     transform: Translate { y: (20 * screenRoot.sc) * (1.0 - screenRoot.introState) }
 
-                    // Media Control Pill (Icon Only)
                     Rectangle {
                         property bool isHovered: mediaMouse.containsMouse
                         visible: screenRoot.mediaStatus === "Playing" || screenRoot.mediaStatus === "Paused"
@@ -690,7 +668,6 @@ ShellRoot {
                         }
                     }
 
-                    // Battery Pill
                     Rectangle {
                         property bool isHovered: batMouse.containsMouse
                         visible: !screenRoot.isDesktop
@@ -738,9 +715,6 @@ ShellRoot {
                     }
                 }
 
-                // ---------------------------------------------------------
-                // 4. INTRO ANIMATION OVERLAY
-                // ---------------------------------------------------------
                 Item {
                     id: introOverlay
                     anchors.fill: parent
