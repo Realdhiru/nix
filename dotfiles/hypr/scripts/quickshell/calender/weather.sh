@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 # -----------------------------------------------------------------------------
 # CACHING & MIGRATION
@@ -114,10 +113,10 @@ get_data() {
         return
     fi
 
-    # Parse LIVE current weather
-    c_temp=$(echo "$raw_weather" | jq -r '.main.temp')
+    # Parse LIVE current weather with safe null-fallbacks
+    c_temp=$(echo "$raw_weather" | jq -r '.main.temp // 0')
     c_temp=$(printf "%.1f" "$c_temp")
-    c_code=$(echo "$raw_weather" | jq -r '.weather[0].icon')
+    c_code=$(echo "$raw_weather" | jq -r '.weather[0].icon // "02d"')
     c_icon=$(get_icon "$c_code" | cut -d'|' -f1)
     c_hex=$(get_hex "$c_code")
 
@@ -126,7 +125,7 @@ get_data() {
 
     # 1. ROLLOVER CHECK
     if [ -f "$next_day_cache_file" ]; then
-        precache_date=$(cat "$next_day_cache_file" | jq -r '.[0].dt_txt' | cut -d' ' -f1)
+        precache_date=$(cat "$next_day_cache_file" | jq -r '.[0].dt_txt // empty' | cut -d' ' -f1 || echo "")
         if [ "$precache_date" == "$current_date" ]; then
             mv "$next_day_cache_file" "$daily_cache_file"
         fi
@@ -163,23 +162,22 @@ get_data() {
         for d in $dates; do
             day_data=$(echo "$processed_forecast" | jq "[.list[] | select(.dt_txt | startswith(\"$d\"))]")
 
-            # FAST BATCH EXTRACTION: Extract all math and strings in ONE jq call per day instead of 8.
+            # FAST BATCH EXTRACTION: Using '// 0' ensures bash doesn't crash on missing json keys
             read -r raw_max raw_min raw_feels f_pop f_wind f_hum f_code f_desc <<< $(echo "$day_data" | jq -r '
-                ([.[].main.temp_max] | max) as $max |
-                ([.[].main.temp_min] | min) as $min |
-                ([.[].main.feels_like] | max) as $feels |
-                ([.[].pop] | max) as $pop |
-                ([.[].wind.speed] | max | round) as $wind |
-                ([.[].main.humidity] | add / length | round) as $hum |
+                ([.[].main.temp_max] | max // 0) as $max |
+                ([.[].main.temp_min] | min // 0) as $min |
+                ([.[].main.feels_like] | max // 0) as $feels |
+                ([.[].pop] | max // 0) as $pop |
+                ([.[].wind.speed] | max // 0 | round) as $wind |
+                ([.[].main.humidity] | add / length // 0 | round) as $hum |
                 .[length/2 | floor].weather[0] as $w |
-                "\($max) \($min) \($feels) \($pop) \($wind) \($hum) \($w.icon) \($w.description)"
+                "\($max) \($min) \($feels) \($pop) \($wind) \($hum) \($w.icon // "02d") \($w.description // "Unknown")"
             ')
 
             f_max_temp=$(printf "%.1f" "$raw_max")
             f_min_temp=$(printf "%.1f" "$raw_min")
             f_feels_like=$(printf "%.1f" "$raw_feels")
             
-            # Replaced `bc` with `awk` for pure NixOS compliance
             f_pop_pct=$(awk "BEGIN {print int($f_pop * 100)}")
 
             f_desc=$(echo "$f_desc" | sed -e "s/\b\(.\)/\u\1/g")
@@ -192,7 +190,6 @@ get_data() {
 
             hourly_json="["
             
-            # FAST HOURLY EXTRACTION: Feed directly into bash while loop to prevent loop subshell explosion
             while read -r s_dt raw_s_temp s_code; do
                 [ -z "$s_dt" ] && continue
                 s_time=$(date -d "@$s_dt" "+%H:%M")
@@ -200,7 +197,7 @@ get_data() {
                 s_hex=$(get_hex "$s_code")
                 s_icon=$(get_icon "$s_code" | cut -d'|' -f1)
                 hourly_json="${hourly_json} {\"time\": \"${s_time}\", \"temp\": \"${s_temp}\", \"icon\": \"${s_icon}\", \"hex\": \"${s_hex}\"},"
-            done <<< $(echo "$day_data" | jq -r '.[] | "\(.dt) \(.main.temp) \(.weather[0].icon)"')
+            done <<< $(echo "$day_data" | jq -r '.[] | "\(.dt // 0) \(.main.temp // 0) \(.weather[0].icon // "02d")"')
             
             hourly_json="${hourly_json%,}]"
             if [ "$hourly_json" == "]" ]; then hourly_json="[]"; fi
