@@ -37,7 +37,7 @@ PanelWindow {
     property bool isVideoMode: cachedMode === "true"
 
     onIsVideoModeChanged: {
-        Quickshell.execDetached(["bash", "-c", "echo '" + (root.isVideoMode ? "true" : "false") + "' > " + paths.getCacheDir("screenshot") + "/video_mode"]);
+        Quickshell.execDetached(["sh", "-c", "echo '" + (root.isVideoMode ? "true" : "false") + "' > '" + paths.getCacheDir("screenshot") + "/video_mode'"]);
         
         // Smart Geometry Snapping for Portal Support
         if (root.isVideoMode) {
@@ -72,7 +72,7 @@ PanelWindow {
 
     function saveAudioPrefs() {
         let data = `${deskVol},${deskMute},${micVol},${micMute},${micDevice}`
-        Quickshell.execDetached(["bash", "-c", `echo '${data}' > ${paths.getStateDir("screenshot")}/audio_prefs`])
+        Quickshell.execDetached(["sh", "-c", `echo '${data}' > '${paths.getStateDir("screenshot")}/audio_prefs'`])
     }
 
     // --- Dynamic Mic Loader ---
@@ -140,7 +140,7 @@ PanelWindow {
     function saveCache() {
         if (root.hasSelection && !root.isVideoMode) {
             let data = Math.round(root.selX) + "," + Math.round(root.selY) + "," + Math.round(root.selW) + "," + Math.round(root.selH);
-            Quickshell.execDetached(["bash", "-c", "echo '" + data + "' > " + paths.getCacheDir("screenshot") + "/geometry"]);
+            Quickshell.execDetached(["sh", "-c", "echo '" + data + "' > '" + paths.getCacheDir("screenshot") + "/geometry'"]);
         }
     }
 
@@ -184,7 +184,7 @@ PanelWindow {
     component AnimWrap: Item {
         property bool isShown: false
         property real contentWidth: 0
-        property real rightPadding: s(3) // Reducción de padding lateral para los íconos
+        property real rightPadding: s(3) 
         property real targetWidth: contentWidth + rightPadding
         
         width: isShown ? targetWidth : 0
@@ -215,7 +215,6 @@ PanelWindow {
         width: label !== "" ? (txt.implicitWidth + s(36)) : s(36)
         radius: s(18)
         
-        // Idle is a solid base color, full matte filled-look
         color: tBtn.isDanger ? _theme.red : (maBtn.containsMouse ? _theme.surface1 : _theme.surface0)
         Behavior on color { ColorAnimation { duration: 150 } }
 
@@ -402,12 +401,10 @@ PanelWindow {
         }
     }
 
-    // --- Main Bottom Toolbar (Smooth Matte Rounded Rect) ---
     Item {
         id: toolbar
         z: 30 
         
-        // Fully expanded total height
         property real totalHeight: s(120)
         property bool fitsOutsideBottom: (root.selY + root.selH + totalHeight + s(15)) <= root.height
 
@@ -420,7 +417,6 @@ PanelWindow {
         y: fitsOutsideBottom ? (root.selY + root.selH + s(15)) : 
            ((root.selY - height - s(15)) >= 0 ? (root.selY - height - s(15)) : (root.height - height - s(15)))
 
-        // The Smooth Translucent Matte Background
         Rectangle {
             anchors.fill: parent
             color: Qt.rgba(_theme.base.r, _theme.base.g, _theme.base.b, 0.85)
@@ -444,7 +440,6 @@ PanelWindow {
 
             Rectangle {
                 width: s(30); height: s(30); radius: s(15)
-                // Filled, solid matte-look on idle
                 color: maIcon.containsMouse ? _theme.surface2 : _theme.surface0
                 Behavior on color { ColorAnimation { duration: 150 } }
 
@@ -488,7 +483,6 @@ PanelWindow {
                 Text {
                     anchors.centerIn: parent
                     font.family: "Iosevka Nerd Font"
-                    // Correcting dropdown icon orientation base on position relative to fitsOutsideBottom
                     text: toolbar.fitsOutsideBottom ? "󰅃" : "󰅀" 
                     color: _theme.text
                     font.pixelSize: s(16)
@@ -503,7 +497,6 @@ PanelWindow {
             width: s(280)
             height: micModel.count === 0 ? s(40) : Math.min(s(180), micModel.count * s(36))
             x: -s(140) 
-            // Correcting dropdown positioning
             y: toolbar.fitsOutsideBottom ? (toolbar.height + s(8)) : (-height - s(8))
             color: Qt.rgba(_theme.base.r, _theme.base.g, _theme.base.b, 0.95)
             border.color: Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.08)
@@ -539,7 +532,6 @@ PanelWindow {
             }
         }
 
-        // Top Content: The Action Tools
         Row {
             id: toolbarRow
             anchors.top: parent.top
@@ -548,9 +540,7 @@ PanelWindow {
             height: root.s(36)
             spacing: 0
 
-            // Tab Switcher with Morphing Animation (Stretchy Mauve Pill)
             Item {
-                // Width is slightly bigger to handle reducced icon padding on right
                 width: s(110) + s(3); height: parent.height
                 
                 Rectangle {
@@ -567,10 +557,9 @@ PanelWindow {
 
                         property bool curVideoMode: root.isVideoMode
                         onCurVideoModeChanged: {
-                            // Morph duration/easing when going right vs left
-                            if (curVideoMode) { // Moving right
+                            if (curVideoMode) { 
                                 rightAnim.duration = 200; leftAnim.duration = 350;
-                            } else { // Moving left
+                            } else {
                                 leftAnim.duration = 200; rightAnim.duration = 350;
                             }
                         }
@@ -605,7 +594,6 @@ PanelWindow {
                 }
             }
 
-            // Video Controls
             AnimWrap {
                 isShown: root.isVideoMode; contentWidth: s(2)
                 Rectangle { width: s(2); height: s(16); anchors.verticalCenter: parent.verticalCenter; color: _theme.surface0; radius: s(1) }
@@ -634,7 +622,6 @@ PanelWindow {
                 }
             }
 
-            // Image Controls
             AnimWrap {
                 isShown: !root.isVideoMode; contentWidth: s(2)
                 Rectangle { width: s(2); height: s(16); anchors.verticalCenter: parent.verticalCenter; color: _theme.surface0; radius: s(1) }
@@ -660,13 +647,12 @@ PanelWindow {
                 ToolbarBtn { iconTxt: root.isMaximized ? "" : ""; onClicked: root.toggleMaximize() }
             }
 
-            // Universal Close Button
             Item {
-                width: s(2) + s(3) + s(36); height: parent.height // Widened width for reducced padding on right
+                width: s(2) + s(3) + s(36); height: parent.height
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
                     height: parent.height
-                    spacing: s(3) // Reducción de padding lateral para los íconos en top part
+                    spacing: s(3) 
                     Rectangle { width: s(2); height: s(16); anchors.verticalCenter: parent.verticalCenter; color: _theme.surface0; radius: s(1);}
                     ToolbarBtn { 
                         anchors.verticalCenter: parent.verticalCenter
@@ -676,22 +662,20 @@ PanelWindow {
             }
         }
 
-        // Bottom Content: Center Capture Layout with Dynamic Gradient Lines
         Item {
             id: captureSection
             anchors.bottom: parent.bottom
             anchors.bottomMargin: s(12)
             anchors.horizontalCenter: parent.horizontalCenter
             width: parent.width
-            height: s(56) // Aumento ligero de altura para el capture circle más grande
+            height: s(56) 
             z: 10
 
-            // Smooth Left Line + Hover Wave
             Rectangle {
                 id: leftLineBase
-                height: s(4) // Líneas horizontales más gruesas
-                radius: s(2) // Radio escalado
-                color: Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.1) // Subtle structural line
+                height: s(4) 
+                radius: s(2) 
+                color: Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.1) 
                 anchors.left: parent.left
                 anchors.leftMargin: s(24)
                 anchors.right: actionBtnContainer.left
@@ -699,12 +683,10 @@ PanelWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 clip: true
 
-                // Stretchy gradient 'wave'
                 Rectangle {
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    // Stretches left when hovered
                     width: actionArea.containsMouse ? parent.width : 0
                     radius: s(2)
                     Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.InOutExpo } }
@@ -717,10 +699,9 @@ PanelWindow {
                 }
             }
 
-            // Central Capture Circle (Slightly Bigger)
             Item {
                 id: actionBtnContainer
-                width: s(56) // Círculo 'capture' un poco más grande
+                width: s(56) 
                 height: width
                 anchors.centerIn: parent
                 z: 20
@@ -735,7 +716,6 @@ PanelWindow {
                 }
 
                 Rectangle {
-                    // Círculo interno escalado
                     width: actionArea.pressed ? s(32) : (actionArea.containsMouse ? s(40) : s(36))
                     height: width
                     radius: width / 2
@@ -754,11 +734,10 @@ PanelWindow {
                 }
             }
 
-            // Smooth Right Line + Hover Wave
             Rectangle {
                 id: rightLineBase
-                height: s(4) // Líneas horizontales más gruesas
-                radius: s(2) // Radio escalado
+                height: s(4) 
+                radius: s(2) 
                 color: Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.1)
                 anchors.right: parent.right
                 anchors.rightMargin: s(24)
@@ -767,12 +746,10 @@ PanelWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 clip: true
 
-                // Stretchy gradient 'wave'
                 Rectangle {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    // Stretches right when hovered
                     width: actionArea.containsMouse ? parent.width : 0
                     radius: s(2)
                     Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.InOutExpo } }
@@ -787,7 +764,6 @@ PanelWindow {
         }
     }
 
-    // --- QR Popup and Backend Hooks ---
     Repeater {
         model: qrModel
         delegate: Rectangle {
@@ -838,7 +814,7 @@ PanelWindow {
                     visible: model.qSuccess
                     iconTxt: "󰆏"
                     onClicked: {
-                        Quickshell.execDetached(["bash", "-c", `echo -n '${model.qText.replace(/'/g, "'\\''")}' | wl-copy`]);
+                        Quickshell.execDetached(["wl-copy", model.qText]);
                         root.showQrPopup = false;
                     }
                 }
@@ -951,7 +927,7 @@ PanelWindow {
 
             root.isQrSuccess = anySuccess;
             root.showQrPopup = true
-            Quickshell.execDetached(["bash", "-c", "rm -f " + paths.getRunDir("screenshot") + "/qr_result"])
+            Quickshell.execDetached(["rm", "-f", paths.getRunDir("screenshot") + "/qr_result"])
         }
     }
     
@@ -963,36 +939,35 @@ PanelWindow {
     }
     
     function performQrScan() {
-        Quickshell.execDetached(["bash", "-c", "rm -f " + paths.getRunDir("screenshot") + "/qr_result"])
+        Quickshell.execDetached(["rm", "-f", paths.getRunDir("screenshot") + "/qr_result"])
         root.isScanningQr = true; root.showQrPopup = false; qrModel.clear()
-        let cmd = `bash ~/.config/hypr/scripts/screenshot.sh --geometry "${root.geometryString}" --scan-qr`
-        Quickshell.execDetached(["bash", "-c", cmd])
+        
+        let args = ["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/screenshot.sh", "--geometry", root.geometryString, "--scan-qr"];
+        Quickshell.execDetached(args)
         qrWaitTimer.start()
     }   
     
     Timer {
         id: captureTimer
-        property string pendingCmd: ""
+        property var pendingArgs: []
         interval: 200
         repeat: false
         onTriggered: {
-            Quickshell.execDetached(["bash", "-c", pendingCmd])
+            Quickshell.execDetached(pendingArgs)
             Qt.quit()
         }
     }
     
     function executeCapture(openEditor, isRecord) {
-        let cmd = `bash ~/.config/hypr/scripts/screenshot.sh --geometry "${root.geometryString}"`
+        let args = ["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/screenshot.sh", "--geometry", root.geometryString];
         if (isRecord) {
-            cmd += " --record"
-            cmd += ` --desk-vol ${root.deskVol} --desk-mute ${root.deskMute}`
-            cmd += ` --mic-vol ${root.micVol} --mic-mute ${root.micMute}`
-            if (root.micDevice !== "") cmd += ` --mic-dev "${root.micDevice}"`
+            args.push("--record", "--desk-vol", root.deskVol.toString(), "--desk-mute", root.deskMute.toString(), "--mic-vol", root.micVol.toString(), "--mic-mute", root.micMute.toString());
+            if (root.micDevice !== "") { args.push("--mic-dev", root.micDevice); }
         }
-        if (openEditor) cmd += " --edit"
+        if (openEditor) args.push("--edit");
     
         root.visible = false
-        captureTimer.pendingCmd = cmd
+        captureTimer.pendingArgs = args
         captureTimer.start()
     }
 }
