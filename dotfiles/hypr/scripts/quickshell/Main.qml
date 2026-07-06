@@ -104,6 +104,13 @@ PanelWindow {
         onClicked: switchWidget("hidden", "")
     }
 
+    Item {
+        id: preloaderContainer
+        visible: false
+    }
+
+    property var widgetCache: ({})
+
     property var componentCache: ({})
 
     function resolveComponent(path) {
@@ -121,7 +128,15 @@ PanelWindow {
     }
 
     function preloadWidget(name) {
-        getLayout(name);
+        if (widgetCache[name]) return;
+        let t = getLayout(name);
+        if (!t || !t.comp) return;
+        let obj = t.comp.createObject(preloaderContainer, {
+            "notifModel": masterWindow.notifModel,
+            "liveNotifs": masterWindow.liveNotifs,
+            "visible": false
+        });
+        if (obj) widgetCache[name] = obj;
     }
 
     Component.onCompleted: {
@@ -463,21 +478,46 @@ PanelWindow {
         masterWindow.targetW = t.w;
         masterWindow.targetH = t.h;
 
-        if (immediate) {
-            widgetStack.replace(t.comp, {}, StackView.Immediate);
+        let props = {};
+        props["notifModel"]   = masterWindow.notifModel;
+        props["liveNotifs"]   = masterWindow.liveNotifs;
+        props["layoutWidth"]  = t.w;
+        props["layoutHeight"] = t.h;
+        if (newWidget === "wallpaper") props["widgetArg"] = arg;
+
+        let cached = widgetCache[newWidget];
+        if (cached) {
+            // Reuse the live, already-initialized instance: update its bound
+            // properties in place instead of destroying/recreating it, so
+            // internal state (scroll position, in-progress edits, already
+            // completed startup fetches) survives across opens.
+            if (cached.notifModel   !== undefined) cached.notifModel   = masterWindow.notifModel;
+            if (cached.liveNotifs   !== undefined) cached.liveNotifs   = masterWindow.liveNotifs;
+            if (cached.layoutWidth  !== undefined) cached.layoutWidth  = t.w;
+            if (cached.layoutHeight !== undefined) cached.layoutHeight = t.h;
+            if (newWidget === "wallpaper" && cached.widgetArg !== undefined) cached.widgetArg = arg;
+            if (arg !== "" && cached.activeMode !== undefined) cached.activeMode = arg;
+
+            cached.visible = true;
+            if (immediate) {
+                widgetStack.replace(cached, {}, StackView.Immediate);
+            } else {
+                widgetStack.replace(cached, {});
+            }
         } else {
-            widgetStack.replace(t.comp, {});
+            // No cached instance: create fresh, passing props as initial
+            // properties so they're set BEFORE Component.onCompleted runs.
+            // Setting them after creation would let the popup briefly render
+            // at its fallback width/height first, then jump — a visible flash.
+            if (immediate) {
+                widgetStack.replace(t.comp, props, StackView.Immediate);
+            } else {
+                widgetStack.replace(t.comp, props);
+            }
         }
 
         let currentItem = widgetStack.currentItem;
         if (currentItem) {
-            if (currentItem.notifModel   !== undefined) currentItem.notifModel   = masterWindow.notifModel;
-            if (currentItem.liveNotifs   !== undefined) currentItem.liveNotifs   = masterWindow.liveNotifs;
-            if (currentItem.layoutWidth  !== undefined) currentItem.layoutWidth  = t.w;
-            if (currentItem.layoutHeight !== undefined) currentItem.layoutHeight = t.h;
-            if (newWidget === "wallpaper" && currentItem.widgetArg !== undefined) currentItem.widgetArg = arg;
-            if (arg !== "" && currentItem.activeMode !== undefined) currentItem.activeMode = arg;
-
             if (currentItem.targetMasterWidth !== undefined) {
                 let dynW = currentItem.targetMasterWidth;
                 masterWindow.animW = dynW;
@@ -488,8 +528,6 @@ PanelWindow {
                 masterWindow.animH = currentItem.targetMasterHeight;
                 masterWindow.targetH = currentItem.targetMasterHeight;
             }
-
-            currentItem.forceActiveFocus();
         }
 
         masterWindow.isVisible = true;
