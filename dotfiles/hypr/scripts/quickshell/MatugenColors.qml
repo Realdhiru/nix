@@ -28,20 +28,21 @@ Item {
     property string maroon: "#eba0ac"
     property string teal: "#94e2d5"
 
-    // Dynamically resolve HOME instead of hardcoding the user profile
     readonly property string colorsFile: Quickshell.env("HOME") + "/.cache/matugen/qs_colors.json"
     
-    // Internal state cache to prevent redundant processing
     property string _lastJson: ""
 
     Process {
         id: colorReader
         command: ["cat", root.colorsFile]
+        
+        // Fetch colors immediately on component boot
+        Component.onCompleted: running = true
+        
         stdout: StdioCollector {
             onStreamFinished: {
                 let txt = this.text ? this.text.trim() : "";
                 
-                // Only parse JSON and trigger property updates if the file content actually changed
                 if (txt !== "" && txt !== root._lastJson) {
                     try {
                         let data = JSON.parse(txt);
@@ -57,13 +58,11 @@ Item {
         }
     }
 
-    Timer {
-        id: colorPollTimer
-        interval: 3000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
+    // Zero-latency IPC hook (Broadcasts to all loaded instances of MatugenColors)
+    IpcHandler {
+        target: "matugen"
+        
+        function reload() {
             colorReader.running = false;
             colorReader.running = true;
         }
