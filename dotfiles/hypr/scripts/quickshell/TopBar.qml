@@ -77,15 +77,15 @@ Variants {
                 running: true
                 repeat: true
                 onTriggered: {
-                    widgetPoller.running = false; widgetPoller.running = true;
-                    recPoller.running = false; recPoller.running = true;
-                    updatePoller.running = false; updatePoller.running = true;
+                    if (!widgetPoller.running) widgetPoller.running = true;
+                    if (!recPoller.running) recPoller.running = true;
+                    if (!updatePoller.running) updatePoller.running = true;
                 }
             }
 
             Process {
                 id: widgetPoller
-                command: ["bash", "-c", "cat " + paths.runDir + "/current_widget 2>/dev/null || echo ''"]
+                command: ["bash", "-c", "cat '" + paths.runDir + "/current_widget' 2>/dev/null || echo ''"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();
@@ -96,7 +96,7 @@ Variants {
 
             Process {
                 id: recPoller
-                command: ["bash", "-c", "if [ -s " + paths.getCacheDir("recording") + "/rec_pid ] && kill -0 $(cat " + paths.getCacheDir("recording") + "/rec_pid) 2>/dev/null; then echo '1'; else echo '0'; fi"]
+                command: ["bash", "-c", "if [ -s '" + paths.getCacheDir('recording') + "/rec_pid' ] && kill -0 $(cat '" + paths.getCacheDir('recording') + "/rec_pid') 2>/dev/null; then echo '1'; else echo '0'; fi"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         barWindow.isRecording = (this.text.trim() === "1");
@@ -106,7 +106,7 @@ Variants {
 
             Process {
                 id: updatePoller
-                command: ["bash", "-c", "if [ -f " + paths.getCacheDir("updater") + "/update_pending ]; then echo '1'; else echo '0'; fi"]
+                command: ["bash", "-c", "if [ -f '" + paths.getCacheDir('updater') + "/update_pending' ]; then echo '1'; else echo '0'; fi"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         barWindow.updateAvailable = (this.text.trim() === "1");
@@ -197,7 +197,7 @@ Variants {
 
             Process {
                 id: wsDaemon
-                command: ["bash", "-c", "~/.config/hypr/scripts/workspaces.sh"]
+                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/workspaces.sh"]
                 running: true
             }
 
@@ -243,22 +243,23 @@ Variants {
                 }
             }
 
-            Process {
+            // Using standard polling instead of inotifywait within a shell
+            Timer {
                 id: wsWatcher
+                interval: 200
                 running: true
-                command: ["bash", "-c", "while [ ! -f " + paths.getRunDir("workspaces") + "/workspaces.json ]; do sleep 1; done; inotifywait -qq -e modify,close_write,move_self " + paths.getRunDir("workspaces") + "/workspaces.json; sleep 0.05"]
-                onExited: {
-                    wsReader.running = false;
-                    wsReader.running = true;
-                    running = false;
-                    running = true;
+                repeat: true
+                onTriggered: {
+                    if (!wsReader.running) {
+                        wsReader.running = true;
+                    }
                 }
             }
 
             Process {
                 id: musicForceRefresh
                 running: true
-                command: ["bash", "-c", "bash ~/.config/hypr/scripts/quickshell/music/music_info.sh | tee " + paths.getRunDir("music") + "/music_info.json"]
+                command: ["bash", "-c", "bash " + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/music/music_info.sh | tee '" + paths.getRunDir('music') + "/music_info.json'"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();
@@ -322,8 +323,7 @@ Variants {
                 running: true
                 command: ["bash", "-c", "dbus-monitor --session \"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',arg0='org.mpris.MediaPlayer2.Player'\" \"type='signal',interface='org.mpris.MediaPlayer2.Player',member='Seeked'\" 2>/dev/null | grep -m 1 'member=' > /dev/null || sleep 2"]
                 onExited: {
-                    musicForceRefresh.running = false;
-                    musicForceRefresh.running = true;
+                    if (!musicForceRefresh.running) musicForceRefresh.running = true;
                     running = false;
                     running = true;
                 }
@@ -331,22 +331,21 @@ Variants {
 
             Process {
                 id: kbPoller; running: true
-                command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/kb_fetch.sh"]
+                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/kb_fetch.sh"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();
                         if (txt !== "" && barWindow.kbLayout !== txt) barWindow.kbLayout = txt;
-                        kbWaiter.running = false;
-                        kbWaiter.running = true;
+                        if (!kbWaiter.running) kbWaiter.running = true;
                         barWindow.fastPollerLoaded = true;
                     }
                 }
             }
-            Process { id: kbWaiter; command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/kb_wait.sh"]; onExited: { kbPoller.running = false; kbPoller.running = true; } }
+            Process { id: kbWaiter; command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/kb_wait.sh"]; onExited: { if (!kbPoller.running) kbPoller.running = true; } }
 
             Process {
                 id: audioPoller; running: true
-                command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/audio_fetch.sh"]
+                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/audio_fetch.sh"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();
@@ -360,16 +359,15 @@ Variants {
                                 if (barWindow.isMuted !== newMuted) barWindow.isMuted = newMuted;
                             } catch(e) {}
                         }
-                        audioWaiter.running = false;
-                        audioWaiter.running = true;
+                        if (!audioWaiter.running) audioWaiter.running = true;
                     }
                 }
             }
-            Process { id: audioWaiter; command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/audio_wait.sh"]; onExited: { audioPoller.running = false; audioPoller.running = true; } }
+            Process { id: audioWaiter; command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/audio_wait.sh"]; onExited: { if (!audioPoller.running) audioPoller.running = true; } }
 
             Process {
                 id: networkPoller; running: true
-                command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/network_fetch.sh"]
+                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/network_fetch.sh"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();
@@ -382,16 +380,15 @@ Variants {
                                 if (barWindow.ethStatus !== data.eth_status) barWindow.ethStatus = data.eth_status;
                             } catch(e) {}
                         }
-                        networkWaiter.running = false;
-                        networkWaiter.running = true;
+                        if (!networkWaiter.running) networkWaiter.running = true;
                     }
                 }
             }
-            Process { id: networkWaiter; command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/network_wait.sh"]; onExited: { networkPoller.running = false; networkPoller.running = true; } }
+            Process { id: networkWaiter; command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/network_wait.sh"]; onExited: { if (!networkPoller.running) networkPoller.running = true; } }
 
             Process {
                 id: btPoller; running: true
-                command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/bt_fetch.sh"]
+                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/bt_fetch.sh"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();
@@ -403,16 +400,15 @@ Variants {
                                 if (barWindow.btDevice !== data.connected) barWindow.btDevice = data.connected;
                             } catch(e) {}
                         }
-                        btWaiter.running = false;
-                        btWaiter.running = true;
+                        if (!btWaiter.running) btWaiter.running = true;
                     }
                 }
             }
-            Process { id: btWaiter; command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/bt_wait.sh"]; onExited: { btPoller.running = false; btPoller.running = true; } }
+            Process { id: btWaiter; command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/bt_wait.sh"]; onExited: { if (!btPoller.running) btPoller.running = true; } }
 
             Process {
                 id: batteryPoller; running: true
-                command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/battery_fetch.sh"]
+                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_fetch.sh"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();
@@ -425,12 +421,11 @@ Variants {
                                 if (barWindow.batStatus !== data.status) barWindow.batStatus = data.status;
                             } catch(e) {}
                         }
-                        batteryWaiter.running = false;
-                        batteryWaiter.running = true;
+                        if (!batteryWaiter.running) batteryWaiter.running = true;
                     }
                 }
             }
-            Process { id: batteryWaiter; command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/battery_wait.sh"]; onExited: { batteryPoller.running = false; batteryPoller.running = true; } }
+            Process { id: batteryWaiter; command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_wait.sh"]; onExited: { if (!batteryPoller.running) batteryPoller.running = true; } }
 
             Timer {
                 interval: 1000; running: true; repeat: true; triggeredOnStart: true
@@ -597,7 +592,9 @@ Variants {
                                         hoverEnabled: true
                                         anchors.fill: parent
                                         enabled: wsPill.isItemVisible
-                                        onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh " + wsName])
+                                        onClicked: (event) => {
+                                            Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh " + wsName])
+                                        }
                                     }
                                 }
                             }
@@ -643,7 +640,9 @@ Variants {
                                     width: infoLayout.width
                                     height: innerMediaLayout.height
                                     hoverEnabled: true
-                                    onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle music"])
+                                    onClicked: (event) => {
+                                        Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"])
+                                    }
 
                                     Row {
                                         id: infoLayout
@@ -715,7 +714,13 @@ Variants {
                                             scale: prevMouse.containsMouse ? 1.1 : 1.0
                                             Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
                                         }
-                                        MouseArea { id: prevMouse; hoverEnabled: true; anchors.fill: parent; onClicked: { Quickshell.execDetached(["playerctl", "previous"]); musicForceRefresh.running = true; } }
+                                        MouseArea { 
+                                            id: prevMouse; hoverEnabled: true; anchors.fill: parent; 
+                                            onClicked: (event) => { 
+                                                Quickshell.execDetached(["playerctl", "previous"]); 
+                                                if (!musicForceRefresh.running) musicForceRefresh.running = true; 
+                                            } 
+                                        }
                                     }
                                     Item {
                                         width: barWindow.s(28); height: barWindow.s(28);
@@ -727,7 +732,13 @@ Variants {
                                             scale: playMouse.containsMouse ? 1.15 : 1.0
                                             Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
                                         }
-                                        MouseArea { id: playMouse; hoverEnabled: true; anchors.fill: parent; onClicked: { Quickshell.execDetached(["playerctl", "play-pause"]); musicForceRefresh.running = true; } }
+                                        MouseArea { 
+                                            id: playMouse; hoverEnabled: true; anchors.fill: parent; 
+                                            onClicked: (event) => { 
+                                                Quickshell.execDetached(["playerctl", "play-pause"]); 
+                                                if (!musicForceRefresh.running) musicForceRefresh.running = true; 
+                                            } 
+                                        }
                                     }
                                     Item {
                                         width: barWindow.s(24); height: barWindow.s(24);
@@ -739,7 +750,13 @@ Variants {
                                             scale: nextMouse.containsMouse ? 1.1 : 1.0
                                             Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
                                         }
-                                        MouseArea { id: nextMouse; hoverEnabled: true; anchors.fill: parent; onClicked: { Quickshell.execDetached(["playerctl", "next"]); musicForceRefresh.running = true; } }
+                                        MouseArea { 
+                                            id: nextMouse; hoverEnabled: true; anchors.fill: parent; 
+                                            onClicked: (event) => { 
+                                                Quickshell.execDetached(["playerctl", "next"]); 
+                                                if (!musicForceRefresh.running) musicForceRefresh.running = true; 
+                                            } 
+                                        }
                                     }
                                 }
                             }
@@ -777,7 +794,9 @@ Variants {
                             id: centerMouse
                             anchors.fill: parent
                             hoverEnabled: true
-                            onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle calendar"])
+                            onClicked: (event) => {
+                                Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle calendar"])
+                            }
                         }
 
                         RowLayout {
@@ -908,7 +927,7 @@ Variants {
                                             anchors.fill: parent
                                             hoverEnabled: true
                                             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-                                            onClicked: mouse => {
+                                            onClicked: (mouse) => {
                                                 if (mouse.button === Qt.LeftButton) {
                                                     if (modelData.isMenuOnly || modelData.onlyMenu) {
                                                         menuAnchor.open();
@@ -992,7 +1011,12 @@ Variants {
                                         Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: mocha.base; Behavior on color { ColorAnimation { duration: 300 } } }
                                         Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.base; Behavior on color { ColorAnimation { duration: 300 } } }
                                     }
-                                    MouseArea { id: batMouse; hoverEnabled: true; anchors.fill: parent; onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle battery"]) }
+                                    MouseArea { 
+                                        id: batMouse; hoverEnabled: true; anchors.fill: parent; 
+                                        onClicked: (event) => { 
+                                            Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle battery"]) 
+                                        } 
+                                    }
                                 }
                             }
                         }
@@ -1047,9 +1071,9 @@ Variants {
                                 id: recMouse
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                onClicked: {
+                                onClicked: (event) => {
                                     barWindow.isRecording = false;
-                                    Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/screenshot.sh"]);
+                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/screenshot.sh"]);
                                 }
                             }
                         }
