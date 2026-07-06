@@ -157,7 +157,7 @@ PanelWindow {
 
     Process {
         id: stateCommandExecutor
-        command: ["/bin/sh", "-c", "echo '" + masterWindow.currentActive + "' > " + paths.runDir + "/current_widget"]
+        command: ["sh", "-c", "echo '" + masterWindow.currentActive + "' > " + paths.runDir + "/current_widget"]
     }
 
     onCurrentActiveChanged: {
@@ -261,7 +261,7 @@ PanelWindow {
 
     Process {
         id: settingsNativeReader
-        command: ["/bin/cat", Quickshell.env("HOME") + "/.config/hypr/settings.json"]
+        command: ["cat", Quickshell.env("HOME") + "/.config/hypr/settings.json"]
         stdout: StdioCollector {
             onStreamFinished: {
                 if (!this.text) return;
