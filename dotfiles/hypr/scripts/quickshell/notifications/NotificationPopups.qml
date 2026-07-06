@@ -59,7 +59,7 @@ PanelWindow {
     implicitHeight: Math.min(popupList.contentHeight, Screen.height * 0.8)
 
     Behavior on implicitHeight {
-        NumberAnimation { duration: 400; easing.type: Easing.OutQuint }
+        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
     }
 
     property bool dndEnabled: false
@@ -73,7 +73,10 @@ PanelWindow {
     }
     Timer {
         interval: 1000; running: true; repeat: true; triggeredOnStart: true
-        onTriggered: dndPoller.running = true
+        onTriggered: {
+            dndPoller.running = false;
+            dndPoller.running = true;
+        }
     }
 
     Item {
@@ -82,7 +85,7 @@ PanelWindow {
 
         opacity: popupWindow.dndEnabled ? 0.0 : 1.0
         visible: opacity > 0.01
-        Behavior on opacity { NumberAnimation { duration: 300 } }
+        Behavior on opacity { NumberAnimation { duration: 200 } }
 
         MatugenColors { id: _theme }
 
@@ -104,22 +107,22 @@ PanelWindow {
 
             add: Transition {
                 ParallelAnimation {
-                    NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 400; easing.type: Easing.OutQuint }
-                    NumberAnimation { property: "x"; from: popupWindow.implicitWidth * 0.4; to: 0; duration: 500; easing.type: Easing.OutQuint }
-                    NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: 500; easing.type: Easing.OutQuint }
+                    NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "x"; from: popupWindow.implicitWidth * 0.4; to: 0; duration: 250; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "scale"; from: 0.95; to: 1.0; duration: 250; easing.type: Easing.OutCubic }
                 }
             }
 
             remove: Transition {
                 ParallelAnimation {
-                    NumberAnimation { property: "opacity"; to: 0.0; duration: 350; easing.type: Easing.OutQuint }
-                    NumberAnimation { property: "x"; to: popupWindow.implicitWidth * 0.4; duration: 400; easing.type: Easing.OutQuint }
-                    NumberAnimation { property: "scale"; to: 0.9; duration: 400; easing.type: Easing.OutQuint }
+                    NumberAnimation { property: "opacity"; to: 0.0; duration: 150; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "x"; to: popupWindow.implicitWidth * 0.4; duration: 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "scale"; to: 0.95; duration: 200; easing.type: Easing.OutCubic }
                 }
             }
 
             displaced: Transition {
-                NumberAnimation { properties: "x,y"; duration: 450; easing.type: Easing.OutQuint }
+                NumberAnimation { properties: "x,y"; duration: 200; easing.type: Easing.OutCubic }
             }
 
             delegate: Item {
@@ -164,16 +167,14 @@ PanelWindow {
                     NumberAnimation {
                         target: delegateRoot; property: "typeLenSum"
                         from: 0; to: fullSummary.length
-                        duration: Math.min(fullSummary.length * 20, 600)
+                        duration: Math.min(fullSummary.length * 5, 200)
                         easing.type: Easing.OutCubic
                     }
                     SequentialAnimation {
-                        // FIXED: Stripped the syntax error "privacyPause:" property label string override
-                        PauseAnimation { duration: 150 }
                         NumberAnimation {
                             target: delegateRoot; property: "typeLenBody"
                             from: 0; to: fullBody.length
-                            duration: Math.min(fullBody.length * 15, 1200)
+                            duration: Math.min(fullBody.length * 5, 300)
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -218,7 +219,7 @@ PanelWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
 
-                        onClicked: {
+                        onClicked: (event) => {
                             var n = popupWindow.getNotif(delegateRoot.popupUid);
                             if (n && n.actions) {
                                 for (var i = 0; i < n.actions.length; i++) {
@@ -236,7 +237,7 @@ PanelWindow {
                             radius: popupCard.radius
                             color: _theme.surface0
                             opacity: parent.containsMouse ? 0.3 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 250 } }
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
                         }
                     }
 
@@ -354,7 +355,7 @@ PanelWindow {
                                         cursorShape: Qt.PointingHandCursor
                                         z: 10
 
-                                        onClicked: {
+                                        onClicked: (event) => {
                                             var n = popupWindow.getNotif(delegateRoot.popupUid);
                                             if (n && n.actions) {
                                                 for (var i = 0; i < n.actions.length; i++) {
