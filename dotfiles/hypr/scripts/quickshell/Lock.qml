@@ -33,7 +33,7 @@ ShellRoot {
     readonly property color blue: _theme.blue
     readonly property color green: _theme.green
 
-    // Session Settings (Changed from Settings to QtObject to fix the Qt 6.11 initialization error)
+    // Session Settings
     QtObject {
         id: lockSettings
         property bool hidePassword: false
@@ -103,8 +103,6 @@ ShellRoot {
                 anchors.fill: parent
 
                 // --- Responsive Scaling Logic ---
-                // We use a property binding instead of a function to ensure 
-                // continuous updates even if surface width starts at 0.
                 Scaler {
                     id: scaler
                     currentWidth: screenRoot.width > 0 ? screenRoot.width : Screen.width
@@ -164,10 +162,11 @@ ShellRoot {
 
                 Process {
                     id: userPoller
+                    running: true
                     command: [
                         "bash", 
                         "-c", 
-                        "USER_VAR=$(whoami); ICON_PATH=\"\"; if [ -f ~/.face.icon ]; then ICON_PATH=$(readlink -f ~/.face.icon); elif [ -f ~/.face ]; then ICON_PATH=$(readlink -f ~/.face); fi; echo -n \"$USER_VAR|$ICON_PATH\""
+                        "USER_VAR=$(whoami); ICON_PATH=\"\"; if [ -f \"$HOME/.face.icon\" ]; then ICON_PATH=$(readlink -f \"$HOME/.face.icon\"); elif [ -f \"$HOME/.face\" ]; then ICON_PATH=$(readlink -f \"$HOME/.face\"); fi; echo -n \"$USER_VAR|$ICON_PATH\""
                     ]
                     stdout: StdioCollector {
                         onStreamFinished: {
@@ -179,7 +178,6 @@ ShellRoot {
                             }
                         }
                     }
-                    Component.onCompleted: running = true
                 }
                 
                 Process {
@@ -194,11 +192,13 @@ ShellRoot {
                         }
                     }
                 }
-                Timer { interval: 150; running: true; repeat: true; triggeredOnStart: true; onTriggered: kbPoller.running = true }
+                Timer { 
+                    interval: 150; running: true; repeat: true; triggeredOnStart: true; 
+                    onTriggered: { kbPoller.running = false; kbPoller.running = true; } 
+                }
 
                 Process {
                     id: batPoller
-                    running: !screenRoot.isDesktop
                     command: ["bash", "-c", "cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1 || echo '100'; cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1 || echo 'AC'"]
                     stdout: StdioCollector {
                         onStreamFinished: {
@@ -210,7 +210,10 @@ ShellRoot {
                         }
                     }
                 }
-                Timer { interval: 5000; running: !screenRoot.isDesktop; repeat: true; triggeredOnStart: true; onTriggered: batPoller.running = true }
+                Timer { 
+                    interval: 5000; running: !screenRoot.isDesktop; repeat: true; triggeredOnStart: true; 
+                    onTriggered: { batPoller.running = false; batPoller.running = true; } 
+                }
 
                 Process {
                     id: weatherPoller
@@ -226,7 +229,10 @@ ShellRoot {
                         }
                     }
                 }
-                Timer { interval: 900000; running: true; repeat: true; triggeredOnStart: true; onTriggered: weatherPoller.running = true }
+                Timer { 
+                    interval: 900000; running: true; repeat: true; triggeredOnStart: true; 
+                    onTriggered: { weatherPoller.running = false; weatherPoller.running = true; } 
+                }
 
                 // ---------------------------------------------------------
                 // 1. LIVING BACKGROUND
@@ -317,7 +323,7 @@ ShellRoot {
                 MouseArea {
                     anchors.fill: parent
                     enabled: !screenRoot.isPlayingIntro
-                    onClicked: {
+                    onClicked: (event) => {
                         if (screenRoot.powerMenuOpen) screenRoot.powerMenuOpen = false;
                         if (!screenRoot.inputActive) screenRoot.inputActive = true;
                         inputField.forceActiveFocus();
@@ -414,12 +420,12 @@ ShellRoot {
                         Item {
                             Layout.alignment: Qt.AlignVCenter
                             width: 170 * screenRoot.sc
-                            height: width // Force square aspect ratio
+                            height: width
 
                             Rectangle {
                                 id: avatarMask
                                 anchors.fill: parent
-                                radius: height / 2 // Dynamic perfect radius
+                                radius: height / 2
                                 color: "black"
                                 visible: false 
                                 layer.enabled: true 
@@ -488,8 +494,8 @@ ShellRoot {
 
                                 Rectangle {
                                     width: 36 * screenRoot.sc
-                                    height: width // Force square
-                                    radius: height / 2 // Perfect circle
+                                    height: width
+                                    radius: height / 2 
                                     
                                     color: lockUI.failed
                                         ? Qt.rgba(root.red.r,   root.red.g,   root.red.b,   0.2)
@@ -533,7 +539,7 @@ ShellRoot {
                                 Layout.alignment: Qt.AlignLeft
                                 width: 280 * screenRoot.sc
                                 height: 60 * screenRoot.sc
-                                radius: height / 2 // Perfect pill shape natively!
+                                radius: height / 2
                                 clip: true 
                                 
                                 color: lockUI.failed ? Qt.rgba(root.red.r, root.red.g, root.red.b, 0.1) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.5)
@@ -665,7 +671,6 @@ ShellRoot {
 
                                         Repeater {
                                             model: passModel
-                                            // Render text directly as the delegate to avoid circular layout loops
                                             delegate: Text {
                                                 text: "•"
                                                 font.family: "JetBrains Mono"
@@ -703,7 +708,7 @@ ShellRoot {
                         property bool isHovered: kbMouse.containsMouse
                         Layout.preferredHeight: 48 * screenRoot.sc
                         Layout.preferredWidth: kbLayoutRow.implicitWidth + (36 * screenRoot.sc)
-                        radius: height / 2 // Dynamic pill shape
+                        radius: height / 2 
                         
                         color: isHovered ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.4)
                         border.color: isHovered ? root.mauve : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.08)
@@ -801,7 +806,6 @@ ShellRoot {
                         anchors.right: parent.right
                         spacing: 6 * screenRoot.sc
 
-
                         Rectangle {
                             Layout.fillWidth: true; Layout.preferredHeight: 48 * screenRoot.sc; Layout.leftMargin: 10 * screenRoot.sc; Layout.rightMargin: 10 * screenRoot.sc; radius: 12 * screenRoot.sc
                             color: ma1.containsMouse ? Qt.rgba(root.blue.r, root.blue.g, root.blue.b, 0.1) : "transparent"
@@ -817,8 +821,9 @@ ShellRoot {
                             }
                             MouseArea { 
                                 id: ma1; anchors.fill: parent; hoverEnabled: true;
-                                onClicked: {
+                                onClicked: (event) => {
                                     screenRoot.powerMenuOpen = false;
+                                    reloadProcess.running = false;
                                     reloadProcess.running = true;
                                 }
                             }
@@ -839,8 +844,9 @@ ShellRoot {
                             }
                             MouseArea { 
                                 id: ma2; anchors.fill: parent; hoverEnabled: true;
-                                onClicked: {
+                                onClicked: (event) => {
                                     screenRoot.powerMenuOpen = false;
+                                    suspendProcess.running = false;
                                     suspendProcess.running = true;
                                 }
                             }
@@ -861,8 +867,9 @@ ShellRoot {
                             }
                             MouseArea { 
                                 id: ma3; anchors.fill: parent; hoverEnabled: true;
-                                onClicked: {
+                                onClicked: (event) => {
                                     screenRoot.powerMenuOpen = false;
+                                    poweroffProcess.running = false;
                                     poweroffProcess.running = true;
                                 }
                             }
@@ -909,7 +916,7 @@ ShellRoot {
                         anchors.fill: parent
                         hoverEnabled: true
                         enabled: !screenRoot.isPlayingIntro
-                        onClicked: {
+                        onClicked: (event) => {
                             screenRoot.powerMenuOpen = !screenRoot.powerMenuOpen;
                             if (!screenRoot.powerMenuOpen) inputField.forceActiveFocus();
                         }
