@@ -79,6 +79,7 @@ Variants {
                     widgetPoller.running = false; widgetPoller.running = true;
                     recPoller.running = false; recPoller.running = true;
                     updatePoller.running = false; updatePoller.running = true;
+                    musicForceRefresh.running = false; musicForceRefresh.running = true;
                 }
             }
 
@@ -262,7 +263,15 @@ Variants {
                     onStreamFinished: {
                         let txt = this.text.trim();
                         if (txt !== "") {
-                            try { barWindow.musicData = JSON.parse(txt); } catch(e) {}
+                            try { 
+                                let newData = JSON.parse(txt);
+                                let oldData = barWindow.musicData || {};
+                                let posDiff = Math.abs(newData.position - (oldData.position || 0));
+
+                                if (oldData.title !== newData.title || oldData.status !== newData.status || posDiff > 3) {
+                                    barWindow.musicData = newData;
+                                }
+                            } catch(e) {}
                         }
                     }
                 }
@@ -310,6 +319,7 @@ Variants {
                     let newData = Object.assign({}, barWindow.musicData);
                     newData.timeStr = newPosStr + " / " + parts[1];
                     newData.positionStr = newPosStr;
+                    newData.position = posSecs; 
                     if (lenSecs > 0) newData.percent = (posSecs / lenSecs) * 100;
 
                     barWindow.musicData = newData;
@@ -664,7 +674,7 @@ Variants {
 
                                             Image {
                                                 anchors.fill: parent
-                                                source: barWindow.displayArtUrl ? barWindow.displayArtUrl : ""
+                                                source: barWindow.displayArtUrl ? "file://" + barWindow.displayArtUrl : ""
                                                 fillMode: Image.PreserveAspectCrop
                                                 asynchronous: true
                                                 cache: false
@@ -1015,11 +1025,11 @@ Variants {
                                         Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: mocha.base; Behavior on color { ColorAnimation { duration: 300 } } }
                                         Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.base; Behavior on color { ColorAnimation { duration: 300 } } }
                                     }
-                                    MouseArea { 
-                                        id: batMouse; hoverEnabled: true; anchors.fill: parent; 
-                                        onClicked: (event) => { 
-                                            Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle battery"]) 
-                                        } 
+                                    MouseArea {
+                                        id: batMouse; hoverEnabled: true; anchors.fill: parent;
+                                        onClicked: (event) => {
+                                            Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle battery"])
+                                        }
                                     }
                                 }
                             }
@@ -1076,7 +1086,7 @@ Variants {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 onClicked: (event) => {
-                                    barWindow.isRecording = false; 
+                                    barWindow.isRecording = false;
                                     Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/record.sh"]);
                                 }
                             }

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# dotfiles/hypr/scripts/quickshell/music/music_info.sh
 
 # -----------------------------------------------------------------------------
 # CACHING
@@ -61,16 +62,9 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
                 tempArt="$TMP_DIR/${trackHash}_temp_art.jpg"
                 tempBlur="$TMP_DIR/${trackHash}_temp_blur.png"
 
-                if [[ "$rawUrl" == http* ]]; then
-                    curl -s -L --max-time 3 -o "$tempArt" "$rawUrl"
-                else
-                    cleanPath=$(echo "$rawUrl" | sed 's/file:\/\///g')
-                    if [ -f "$cleanPath" ]; then
-                        cp "$cleanPath" "$tempArt"
-                    else
-                        cp "$PLACEHOLDER" "$tempArt"
-                    fi
-                fi
+                # curl seamlessly handles http://, https://, and file:// URLs. 
+                # It also natively handles URL-decoding for browser file:// paths containing %20, bypassing cp failures.
+                curl -s -L --max-time 8 -o "$tempArt" "$rawUrl"
 
                 if [ ! -s "$tempArt" ]; then
                     cp "$PLACEHOLDER" "$tempArt"
