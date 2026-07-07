@@ -1,3 +1,4 @@
+// dotfiles/hypr/scripts/quickshell/TopBar.qml
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
@@ -268,7 +269,7 @@ Variants {
                                 let oldData = barWindow.musicData || {};
                                 let posDiff = Math.abs(newData.position - (oldData.position || 0));
 
-                                if (oldData.title !== newData.title || oldData.status !== newData.status || posDiff > 3) {
+                                if (oldData.title !== newData.title || oldData.status !== newData.status || oldData.artUrl !== newData.artUrl || posDiff > 3) {
                                     barWindow.musicData = newData;
                                 }
                             } catch(e) {}
