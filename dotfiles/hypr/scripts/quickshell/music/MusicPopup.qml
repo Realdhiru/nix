@@ -1,3 +1,4 @@
+// dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
@@ -55,14 +56,14 @@ Item {
     readonly property color subtext1: _theme.subtext1
     readonly property color blue: _theme.blue
     readonly property color sapphire: _theme.sapphire
-    readonly property color lavender: _theme.blue 
+    readonly property color lavender: _theme.blue
     readonly property color mauve: _theme.mauve
     readonly property color pink: _theme.pink
     readonly property color red: _theme.red
     readonly property color yellow: _theme.yellow
 
     property var musicData: {
-        "title": "Loading...", "artist": "", "status": "Stopped", "percent": 0,
+        "title": "Loading...", "artist": "", "status": "Stopped", "percent": 0, "position": 0, "length": 1,
         "lengthStr": "00:00", "positionStr": "00:00", "timeStr": "--:-- / --:--",
         "source": "Offline", "playerName": "", "blur": "", "grad": "",
         "textColor": "#cdd6f4", "deviceIcon": "󰓃", "deviceName": "Speaker",
@@ -96,7 +97,7 @@ Item {
     property real catppuccinFlowOffset: 0
     NumberAnimation on catppuccinFlowOffset {
         from: 0; to: 1.0
-        duration: 8000 
+        duration: 8000
         loops: Animation.Infinite
         running: root.visible
     }
@@ -110,7 +111,7 @@ Item {
     }
 
     property real eqLightningProgress: 0.0
-    property real eqLightningFade: 1.0 
+    property real eqLightningFade: 1.0
 
     SequentialAnimation {
         id: eqLightningAnim
@@ -118,15 +119,15 @@ Item {
         ScriptAction { script: { root.eqLightningFade = 0.0; root.eqLightningProgress = 0.0; } }
         NumberAnimation {
             target: root; property: "eqLightningProgress";
-            from: 0.0; to: 10.0; 
-            duration: 650; 
+            from: 0.0; to: 10.0;
+            duration: 650;
             easing.type: Easing.OutSine
         }
-        PauseAnimation { duration: 150 } 
+        PauseAnimation { duration: 150 }
         NumberAnimation {
             target: root; property: "eqLightningFade";
             from: 0.0; to: 1.0;
-            duration: 800; 
+            duration: 800;
             easing.type: Easing.OutQuad
         }
         ScriptAction { script: { root.eqLightningProgress = 0.0; } }
@@ -204,7 +205,7 @@ Item {
         var matches = root.musicData.grad.match(hexRegex);
 
         if (matches && matches.length >= 3) {
-            return [matches[0], matches[1], matches[2], matches[0]]; 
+            return [matches[0], matches[1], matches[2], matches[0]];
         }
         return defaultColors;
     }
@@ -285,6 +286,41 @@ Item {
         }
     }
 
+    // Unified 1-second timer to glide the media playback independently of bash delays
+    Timer {
+        interval: 1000
+        running: root.visible && root.musicData !== null && root.musicData.status === "Playing"
+        repeat: true
+        onTriggered: {
+            if (root.userIsSeeking) return;
+            var posSecs = root.musicData.position !== undefined ? root.musicData.position : 0;
+            var lenSecs = root.musicData.length !== undefined ? root.musicData.length : 1;
+            
+            posSecs++;
+            if (posSecs > lenSecs) posSecs = lenSecs;
+            
+            var newPosStr = "";
+            if (posSecs >= 3600) {
+                var h = Math.floor(posSecs / 3600);
+                var m = Math.floor((posSecs % 3600) / 60);
+                var s = posSecs % 60;
+                newPosStr = h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+            } else {
+                var m2 = Math.floor(posSecs / 60);
+                var s2 = posSecs % 60;
+                newPosStr = (m2 < 10 ? "0" : "") + m2 + ":" + (s2 < 10 ? "0" : "") + s2;
+            }
+            
+            var temp = Object.assign({}, root.musicData);
+            temp.position = posSecs;
+            temp.positionStr = newPosStr;
+            temp.timeStr = newPosStr + " / " + root.musicData.lengthStr;
+            if (lenSecs > 0) temp.percent = (posSecs / lenSecs) * 100;
+            
+            root.musicData = temp;
+        }
+    }
+
     Process {
         id: musicProc
         running: true
@@ -299,7 +335,11 @@ Item {
                             if (root.userToggledPlay) {
                                 newData.status = root.musicData.status;
                             }
-                            root.musicData = newData;
+                            // Only overwrite timeline data if it diverges from the localized 1s progression by >3 seconds
+                            var posDiff = Math.abs(newData.position - (root.musicData.position || 0));
+                            if (root.musicData.title !== newData.title || root.musicData.status !== newData.status || posDiff > 3) {
+                                root.musicData = newData;
+                            }
                         } catch(e) {}
                     }
                 }
@@ -339,9 +379,9 @@ Item {
             Shape {
                 id: maskRectOuter
                 anchors.fill: parent
-                visible: false 
+                visible: false
                 layer.enabled: true
-                preferredRendererType: Shape.GeometryRenderer 
+                preferredRendererType: Shape.GeometryRenderer
 
                 property real sw: root.s(6)
                 property real inset: (sw / 2) + root.s(0.5)
@@ -359,9 +399,9 @@ Item {
                     id: chargeAnim
                     from: 0
                     to: maskRectOuter.perimeter
-                    duration: 1200 
+                    duration: 1200
                     easing.type: Easing.OutCubic
-                    running: true 
+                    running: true
                 }
 
                 ShapePath {
@@ -402,8 +442,8 @@ Item {
             Item {
                 id: gradContainer
                 anchors.fill: parent
-                visible: false 
-                clip: true 
+                visible: false
+                clip: true
 
                 Rectangle {
                     width: Math.max(parent.width, parent.height) * 2
@@ -654,12 +694,12 @@ Item {
 
                             Text {
                                 text: root.musicData.artist ? "BY " + root.musicData.artist : ""
-                                color: root.subtext0 
+                                color: root.subtext0
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: root.s(14)
                                 font.bold: true
                                 elide: Text.ElideRight
-                                maximumLineCount: 1 
+                                maximumLineCount: 1
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: root.s(20)
                             }
@@ -680,7 +720,7 @@ Item {
                                 }
                                 Text {
                                     text: "VIA " + (root.musicData.source || "Offline")
-                                    color: root.overlay2 
+                                    color: root.overlay2
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: root.s(12)
                                     font.bold: true
@@ -967,7 +1007,7 @@ Item {
                         Row {
                             id: eqSliderRow
                             anchors.fill: parent
-                            z: 1 
+                            z: 1
 
                             Repeater {
                                 model: [
@@ -1135,7 +1175,7 @@ Item {
 
                                                         Rectangle {
                                                             width: parent.width
-                                                            height: root.s(80) 
+                                                            height: root.s(80)
                                                             y: (sliderDelegate.trackPulse * (parent.height + height)) - height
                                                             opacity: Math.sin(sliderDelegate.trackPulse * Math.PI) * 2.0 * (1.0 - root.eqLightningFade)
 
@@ -1143,7 +1183,7 @@ Item {
                                                                 orientation: Gradient.Vertical
                                                                 GradientStop { position: 0.0; color: "transparent" }
                                                                 GradientStop { position: 0.2; color: root.blue }
-                                                                GradientStop { position: 0.5; color: root.text } 
+                                                                GradientStop { position: 0.5; color: root.text }
                                                                 GradientStop { position: 0.8; color: root.mauve }
                                                                 GradientStop { position: 1.0; color: "transparent" }
                                                             }
@@ -1169,7 +1209,7 @@ Item {
 
                                                 Rectangle {
                                                     anchors.centerIn: parent
-                                                    width: parent.width + root.s(36) * sliderDelegate.hitPulse 
+                                                    width: parent.width + root.s(36) * sliderDelegate.hitPulse
                                                     height: width
                                                     radius: width / 2
                                                     color: parent.catColors[index % parent.catColors.length]
@@ -1198,7 +1238,7 @@ Item {
                             id: lightningCanvas
                             anchors.fill: parent
                             opacity: 1.0 - root.eqLightningFade
-                            z: 0 
+                            z: 0
 
                             renderTarget: Canvas.FramebufferObject
 
@@ -1206,14 +1246,14 @@ Item {
                             layer.effect: MultiEffect {
                                 shadowEnabled: true
                                 shadowColor: root.mauve
-                                shadowBlur: 1.0 
+                                shadowBlur: 1.0
                                 shadowOpacity: 0.6
                                 shadowVerticalOffset: 0
                                 shadowHorizontalOffset: 0
                             }
 
                             Timer {
-                                interval: 16 
+                                interval: 16
                                 running: root.eqLightningFade < 1.0 && root.eqLightningProgress > 0.0
                                 repeat: true
                                 onTriggered: lightningCanvas.requestPaint()
@@ -1226,7 +1266,7 @@ Item {
                                 if (root.eqLightningProgress <= 0.0 || root.eqLightningFade >= 1.0) return;
 
                                 var time = Date.now() / 1000;
-                                var maxIdx = root.eqLightningProgress; 
+                                var maxIdx = root.eqLightningProgress;
 
                                 ctx.lineJoin = "round";
                                 ctx.lineCap = "round";
@@ -1246,7 +1286,7 @@ Item {
                                     ctx.moveTo(pts[0].x, pts[0].y);
 
                                     for (var i = 0; i < pts.length - 1; i++) {
-                                        if (i > maxIdx) break; 
+                                        if (i > maxIdx) break;
 
                                         var p1 = pts[i];
                                         var p2 = pts[i+1];
@@ -1256,7 +1296,7 @@ Item {
                                             fraction = maxIdx - i;
                                         }
 
-                                        var steps = s === 3 ? 6 : 8; 
+                                        var steps = s === 3 ? 6 : 8;
                                         for (var j = 1; j <= steps; j++) {
                                             var t = j / steps;
                                             if (t > fraction) t = fraction;
@@ -1281,19 +1321,19 @@ Item {
                                         }
                                     }
 
-                                    if (s === 0) { 
+                                    if (s === 0) {
                                         ctx.lineWidth = root.s(20);
                                         ctx.strokeStyle = root.mauve;
                                         ctx.globalAlpha = 0.2;
-                                    } else if (s === 1) { 
+                                    } else if (s === 1) {
                                         ctx.lineWidth = root.s(8);
                                         ctx.strokeStyle = root.pink;
                                         ctx.globalAlpha = 0.45;
-                                    } else if (s === 2) { 
+                                    } else if (s === 2) {
                                         ctx.lineWidth = root.s(3.5);
                                         ctx.strokeStyle = root.lavender;
                                         ctx.globalAlpha = 0.85;
-                                    } else if (s === 3) { 
+                                    } else if (s === 3) {
                                         ctx.lineWidth = root.s(1.0);
                                         ctx.strokeStyle = "#ffffff";
                                         ctx.globalAlpha = 0.1;
