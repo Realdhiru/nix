@@ -1,3 +1,4 @@
+// ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/Timer.qml <==
 //@ pragma UseQApplication
 import QtQuick
 import QtQuick.Layouts
@@ -13,7 +14,7 @@ Item {
     // =========================================================
     property int requestedLayoutTemplate: 1
     property bool isActiveTab: typeof isCurrentTarget !== "undefined" ? isCurrentTarget : true
-    property string iconFont: "Font Awesome 6 Free Solid" 
+    property string iconFont: "Font Awesome 6 Free Solid"
     property string safeActiveEdge: typeof activeEdge !== "undefined" ? activeEdge : "left"
 
     // =========================================================
@@ -24,7 +25,7 @@ Item {
     }
 
     // baseW sets the inward extension. baseL sets the span along the edge.
-    property real baseW: s(400) 
+    property real baseW: s(400)
     property real baseL: s(340)
 
     property real preferredWidth: safeActiveEdge === "bottom" ? baseL + 50 : baseW
@@ -33,7 +34,7 @@ Item {
     property real counterRotation: {
         if (safeActiveEdge === "right") return 180;
         if (safeActiveEdge === "bottom") return 90;
-        return 0; 
+        return 0;
     }
 
     // =========================================================
@@ -54,23 +55,23 @@ Item {
     // =========================================================
     QtObject {
         id: stateCache
-        
+
         property int activeMode: 0 // 0: Timer, 1: Stopwatch, 2: Pomodoro
-        
+
         // Timer State
-        property real timerTargetEpoch: 0 
-        property int timerRemainingMs: 5 * 60 * 1000 
+        property real timerTargetEpoch: 0
+        property int timerRemainingMs: 5 * 60 * 1000
         property int timerPresetMs: 5 * 60 * 1000
-        
+
         // Stopwatch State
         property real swStartEpoch: 0
         property int swAccumulatedMs: 0
-        
+
         // Pomodoro State
         property int pomoState: 0 // 0: Work, 1: Short Break, 2: Long Break
-        property real pomoTargetEpoch: 0 
-        property int pomoRemainingMs: 25 * 60 * 1000 
-        
+        property real pomoTargetEpoch: 0
+        property int pomoRemainingMs: 25 * 60 * 1000
+
         property int pomoWorkLimit: 25
         property int pomoShortBreakLimit: 5
         property int pomoLongBreakLimit: 15
@@ -99,7 +100,7 @@ Item {
     function toggleActiveTabState() {
         if (!root.isActiveTab) return;
         let now = Date.now();
-        
+
         if (stateCache.activeMode === 0) { // Timer
             if (stateCache.timerTargetEpoch > 0) {
                 stateCache.timerTargetEpoch = 0; // Pause
@@ -149,11 +150,11 @@ Item {
         let hours = Math.floor(totalSeconds / 3600);
         let minutes = Math.floor((totalSeconds % 3600) / 60);
         let seconds = totalSeconds % 60;
-        
+
         let out = "";
         if (hours > 0) out += hours.toString().padStart(2, '0') + ":";
         out += minutes.toString().padStart(2, '0') + ":" + seconds.toString().padStart(2, '0');
-        
+
         if (includeMs) {
             let millis = Math.floor((ms % 1000) / 10);
             out += "." + millis.toString().padStart(2, '0');
@@ -185,10 +186,10 @@ Item {
             interval: 32
             repeat: true
             // The ticker must run even when the widget is hidden so notifications aren't delayed
-            running: root.anyTimerActive 
+            running: root.anyTimerActive
             onTriggered: {
                 let now = Date.now();
-                
+
                 // Timer
                 if (stateCache.timerTargetEpoch > 0) {
                     let rem = stateCache.timerTargetEpoch - now;
@@ -200,7 +201,7 @@ Item {
                         stateCache.timerRemainingMs = rem;
                     }
                 }
-                
+
                 // Stopwatch
                 if (stateCache.swStartEpoch > 0) {
                     stopwatchView.currentDisplayMs = stateCache.swAccumulatedMs + (now - stateCache.swStartEpoch);
@@ -214,14 +215,14 @@ Item {
                     if (rem <= 0) {
                         stateCache.pomoTargetEpoch = 0;
                         stateCache.pomoRemainingMs = 0;
-                        
+
                         let phase = stateCache.pomoState; // Capture phase before it resets
                         if (phase === 0) {
                             root.notify("Focus Complete", "Great job! Time to take a well-deserved break.", "face-smile");
                         } else {
                             root.notify("Break Over", "Break time is up. Let's get back to focus!", "task-due");
                         }
-                        
+
                         pomodoroView.handleSessionComplete();
                     } else {
                         stateCache.pomoRemainingMs = rem;
@@ -301,7 +302,7 @@ Item {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: stateCache.activeMode = index
+                            onClicked: (mouse) => stateCache.activeMode = index
                         }
                     }
                 }
@@ -334,7 +335,7 @@ Item {
                     let h = Math.floor(stateCache.timerPresetMs / 3600000);
                     let m = Math.floor((stateCache.timerPresetMs % 3600000) / 60000);
                     let sec = Math.floor((stateCache.timerPresetMs % 60000) / 1000);
-                    
+
                     if (activeEditSegment === 0) {
                         h = Math.max(0, Math.min(99, h + dir));
                     } else if (activeEditSegment === 1) {
@@ -343,16 +344,16 @@ Item {
                         else if (m < 0) { if (h > 0) { m = 59; h--; } else { m = 0; } }
                     } else if (activeEditSegment === 2) {
                         sec += dir;
-                        if (sec > 59) { 
-                            sec = 0; m++; 
-                            if (m > 59) { m = 0; h++; } 
-                        } else if (sec < 0) { 
-                            if (m > 0) { sec = 59; m--; } 
-                            else if (h > 0) { sec = 59; m = 59; h--; } 
+                        if (sec > 59) {
+                            sec = 0; m++;
+                            if (m > 59) { m = 0; h++; }
+                        } else if (sec < 0) {
+                            if (m > 0) { sec = 59; m--; }
+                            else if (h > 0) { sec = 59; m = 59; h--; }
                             else { sec = 0; }
                         }
                     }
-                    
+
                     let total = (h * 3600 + m * 60 + sec) * 1000;
                     stateCache.timerPresetMs = total;
                     stateCache.timerRemainingMs = total;
@@ -393,7 +394,7 @@ Item {
                     Item { // UP ARROW
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: root.s(48); height: root.s(24)
-                        Text { 
+                        Text {
                             anchors.centerIn: parent
                             anchors.verticalCenterOffset: upOffset
                             text: "\uF077"
@@ -404,7 +405,7 @@ Item {
                             Behavior on opacity { NumberAnimation { duration: 200 } }
                             Behavior on color { ColorAnimation { duration: 200 } }
                         }
-                        MouseArea { anchors.fill: parent; onClicked: upClicked(); cursorShape: Qt.PointingHandCursor }
+                        MouseArea { anchors.fill: parent; onClicked: (mouse) => upClicked(); cursorShape: Qt.PointingHandCursor }
                     }
 
                     Item { // DIGITS
@@ -420,7 +421,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: segmentClicked()
+                            onClicked: (mouse) => segmentClicked()
                             cursorShape: Qt.PointingHandCursor
                         }
                     }
@@ -428,7 +429,7 @@ Item {
                     Item { // DOWN ARROW
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: root.s(48); height: root.s(24)
-                        Text { 
+                        Text {
                             anchors.centerIn: parent
                             anchors.verticalCenterOffset: downOffset
                             text: "\uF078"
@@ -439,7 +440,7 @@ Item {
                             Behavior on opacity { NumberAnimation { duration: 200 } }
                             Behavior on color { ColorAnimation { duration: 200 } }
                         }
-                        MouseArea { anchors.fill: parent; onClicked: downClicked(); cursorShape: Qt.PointingHandCursor }
+                        MouseArea { anchors.fill: parent; onClicked: (mouse) => downClicked(); cursorShape: Qt.PointingHandCursor }
                     }
                 }
 
@@ -475,11 +476,11 @@ Item {
                             onSegmentClicked: standardTimerView.activeEditSegment = 0
                         }
 
-                        Text { 
+                        Text {
                             text: ":"
                             font.family: "JetBrains Mono"; font.weight: Font.Black; font.pixelSize: root.s(54)
                             color: root.alpha(root.cSubtext0, 0.4)
-                            anchors.verticalCenter: parent.verticalCenter 
+                            anchors.verticalCenter: parent.verticalCenter
                         }
 
                         TimerSegment {
@@ -490,11 +491,11 @@ Item {
                             onSegmentClicked: standardTimerView.activeEditSegment = 1
                         }
 
-                        Text { 
+                        Text {
                             text: ":"
                             font.family: "JetBrains Mono"; font.weight: Font.Black; font.pixelSize: root.s(54)
                             color: root.alpha(root.cSubtext0, 0.4)
-                            anchors.verticalCenter: parent.verticalCenter 
+                            anchors.verticalCenter: parent.verticalCenter
                         }
 
                         TimerSegment {
@@ -520,11 +521,11 @@ Item {
                         Text { anchors.centerIn: parent; text: "\uF0E2"; font.family: root.iconFont; font.pixelSize: root.s(16); color: root.cText }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { 
+                            onClicked: (mouse) => {
                                 if (!root.isTimerIdle) {
                                     // Stop and revert to preset
-                                    stateCache.timerTargetEpoch = 0; 
-                                    stateCache.timerRemainingMs = stateCache.timerPresetMs; 
+                                    stateCache.timerTargetEpoch = 0;
+                                    stateCache.timerRemainingMs = stateCache.timerPresetMs;
                                 } else {
                                     // Fully idle, so clear out the numbers
                                     stateCache.timerPresetMs = 0;
@@ -545,7 +546,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.toggleActiveTabState()
+                            onClicked: (mouse) => root.toggleActiveTabState()
                         }
                     }
                 }
@@ -562,7 +563,7 @@ Item {
                 Behavior on opacity { NumberAnimation { duration: 250 } }
 
                 property bool isRunning: stateCache.swStartEpoch > 0
-                property real currentDisplayMs: 0 
+                property real currentDisplayMs: 0
 
                 // Perfectly centers the content between the Tab Bar and the Controls
                 Item {
@@ -601,7 +602,7 @@ Item {
                                 anchors.fill: parent
                                 model: root.swLapData.length
                                 spacing: root.s(6)
-                                
+
                                 delegate: Rectangle {
                                     width: lapList.width
                                     height: root.s(32)
@@ -609,7 +610,7 @@ Item {
                                     color: root.cSurface0
                                     border.width: 1
                                     border.color: root.cSurface1
-                                    
+
                                     property int trueIdx: root.swLapData.length - 1 - index
                                     property var lapItem: root.swLapData[trueIdx]
 
@@ -636,14 +637,14 @@ Item {
                     Rectangle {
                         width: root.s(50); height: root.s(50); radius: root.s(10)
                         color: root.cSurface0; border.width: 1; border.color: root.cSurface1
-                        Text { 
+                        Text {
                             anchors.centerIn: parent
-                            text: stopwatchView.isRunning ? "\uF024" : "\uF0E2" 
-                            font.family: root.iconFont; font.pixelSize: root.s(16); color: root.cText 
+                            text: stopwatchView.isRunning ? "\uF024" : "\uF0E2"
+                            font.family: root.iconFont; font.pixelSize: root.s(16); color: root.cText
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: {
+                            onClicked: (mouse) => {
                                 if (stopwatchView.isRunning) {
                                     let nowMs = stopwatchView.currentDisplayMs;
                                     let lastMs = root.swLapData.length > 0 ? root.swLapData[root.swLapData.length - 1].total : 0;
@@ -671,7 +672,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: root.toggleActiveTabState()
+                            onClicked: (mouse) => root.toggleActiveTabState()
                         }
                     }
                 }
@@ -775,13 +776,13 @@ Item {
                                     Rectangle {
                                         width: root.s(24); height: root.s(24); radius: root.s(6); color: root.cSurface1
                                         Text { anchors.centerIn: parent; text: "-"; color: root.cText; font.family: "JetBrains Mono"; font.pixelSize: root.s(14) }
-                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: stateCache[modelData.target] = Math.max(modelData.min, stateCache[modelData.target] - modelData.step) }
+                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: (mouse) => stateCache[modelData.target] = Math.max(modelData.min, stateCache[modelData.target] - modelData.step) }
                                     }
                                     Text { text: stateCache[modelData.target]; color: root.cText; font.family: "JetBrains Mono"; font.bold: true; font.pixelSize: root.s(14); Layout.minimumWidth: root.s(24); horizontalAlignment: Text.AlignHCenter }
                                     Rectangle {
                                         width: root.s(24); height: root.s(24); radius: root.s(6); color: root.cSurface1
                                         Text { anchors.centerIn: parent; text: "+"; color: root.cText; font.family: "JetBrains Mono"; font.pixelSize: root.s(14) }
-                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: stateCache[modelData.target] = Math.min(modelData.max, stateCache[modelData.target] + modelData.step) }
+                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: (mouse) => stateCache[modelData.target] = Math.min(modelData.max, stateCache[modelData.target] + modelData.step) }
                                     }
                                 }
                             }
@@ -802,7 +803,7 @@ Item {
                         Text { anchors.centerIn: parent; text: "\uF013"; font.family: root.iconFont; font.pixelSize: root.s(16); color: pomodoroView.showSettings ? root.cMauve : root.cText }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: pomodoroView.showSettings = !pomodoroView.showSettings
+                            onClicked: (mouse) => pomodoroView.showSettings = !pomodoroView.showSettings
                         }
                     }
 
@@ -817,7 +818,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: {
+                            onClicked: (mouse) => {
                                 if (pomodoroView.showSettings) pomodoroView.showSettings = false;
                                 root.toggleActiveTabState();
                             }
@@ -830,7 +831,7 @@ Item {
                         Text { anchors.centerIn: parent; text: "\uF051"; font.family: root.iconFont; font.pixelSize: root.s(16); color: root.cText } // Skip
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: {
+                            onClicked: (mouse) => {
                                 stateCache.pomoTargetEpoch = 0;
                                 let phase = stateCache.pomoState;
                                 if (phase === 0) {

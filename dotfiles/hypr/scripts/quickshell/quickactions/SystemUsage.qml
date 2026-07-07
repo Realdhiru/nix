@@ -1,3 +1,4 @@
+// ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/SystemUsage.qml <==
 //@ pragma UseQApplication
 import QtQuick
 import QtQuick.Layouts
@@ -10,7 +11,7 @@ Item {
 
     Caching { id: paths }
 
-    // By NOT declaring these as local properties, we allow QML to naturally 
+    // By NOT declaring these as local properties, we allow QML to naturally
     // inherit them from the parent Loader in Floating.qml
     property string safeActiveEdge: typeof activeEdge !== "undefined" ? activeEdge : "left"
 
@@ -35,7 +36,7 @@ Item {
     property real counterRotation: {
         if (root.safeActiveEdge === "right") return 180;
         if (root.safeActiveEdge === "bottom") return 90;
-        return 0; 
+        return 0;
     }
 
     // Mathematical coordinate mapping to perfectly sync with Floating.qml skeletons
@@ -68,7 +69,7 @@ Item {
     function alpha(color, a) { return Qt.rgba(color.r, color.g, color.b, a); }
 
     property bool widgetVisible: parent !== null && parent.visible !== undefined ? parent.visible : true
-    
+
     property real globalWavePhase: 0.0
     NumberAnimation on globalWavePhase {
         from: 0; to: Math.PI * 2; duration: 1800; loops: Animation.Infinite; running: root.widgetVisible
@@ -104,7 +105,7 @@ Item {
 
     property real diskUsagePercent: 0.0
     Behavior on diskUsagePercent { NumberAnimation { duration: 800; easing.type: Easing.OutQuint } }
-    
+
     property string diskUsageText: "..."
     property var diskFolders: []
 
@@ -124,37 +125,37 @@ Item {
 
     Process {
         id: diskProc
-        command: ["bash", "-c", "df -h ~ | awk 'NR==2{printf(\"%s;%s / %s;\", $5, $3, $2)}'; du -sh ~/.config ~/.cache ~/.local/share ~/Downloads ~/Documents ~/Pictures ~/Videos ~/Music ~/Projects ~/Games 2>/dev/null | sort -hr | head -n 5 | awk '{printf(\"%s|%s,\", $1, $2)}'"]
+        command: ["bash", "-c", "df -h $HOME | awk 'NR==2{printf(\"%s;%s / %s;\", $5, $3, $2)}'; du -sh $HOME/.config $HOME/.cache $HOME/.local/share $HOME/Downloads $HOME/Documents $HOME/Pictures $HOME/Videos $HOME/Music $HOME/Projects $HOME/Games 2>/dev/null | sort -hr | head -n 5 | awk '{printf(\"%s|%s,\", $1, $2)}'"]
         stdout: StdioCollector {
             onStreamFinished: {
                 let text = this.text ? this.text.trim() : "";
                 if (!text) return;
-                
+
                 var parts = text.split(";");
                 if (parts.length >= 3) {
                     root.diskUsagePercent = parseFloat(parts[0].replace('%', '')) / 100.0;
                     root.diskUsageText = parts[1];
-                    
+
                     var folderList = parts[2].split(",").filter(str => str.length > 0);
                     var newFolders = [];
                     var maxVal = 0;
-                    
+
                     for (var i = 0; i < folderList.length; i++) {
                         var fp = folderList[i].split("|");
                         if (fp.length === 2) {
                             var sizeStr = fp[0];
-                            var pathStr = fp[1].split("/").pop(); 
-                            
+                            var pathStr = fp[1].split("/").pop();
+
                             var num = parseFloat(sizeStr);
                             if (sizeStr.indexOf('G') !== -1) num *= 1024;
                             if (sizeStr.indexOf('M') !== -1) num *= 1;
                             if (sizeStr.indexOf('K') !== -1) num /= 1024;
-                            
+
                             if (num > maxVal) maxVal = num;
                             newFolders.push({ name: pathStr, sizeStr: sizeStr, rawSize: num });
                         }
                     }
-                    
+
                     var finalModel = [];
                     for (var j = 0; j < newFolders.length; j++) {
                         finalModel.push({
@@ -171,14 +172,14 @@ Item {
 
     component LiquidSquare: Item {
         id: ls
-        property real value: 0.0 
+        property real value: 0.0
         property color colorBase: root.cSurface0
         property color colorFill: root.cMauve
         property string icon: ""
         property string title: ""
         property string valueText: ""
         property string subText: ""
-        
+
         default property alias childItems: customContent.data
 
         property real fillRatio: Math.max(0.0, Math.min(1.0, ls.value))
@@ -203,7 +204,7 @@ Item {
                 if (ls.value <= 0) return;
 
                 ctx.save();
-                
+
                 var r = root.s(12);
                 ctx.beginPath();
                 ctx.moveTo(r, 0);
@@ -258,12 +259,12 @@ Item {
                 anchors.top: parent.top
                 anchors.left: parent.left
                 // FIXED: Property definition blocks mapping to local interface hooks
-                font.family: root.iconFont 
+                font.family: root.iconFont
                 font.pixelSize: root.s(16)
                 color: root.cSubtext0; text: ls.icon
             }
             Text {
-                anchors.verticalCenter: baseIcon.verticalCenter 
+                anchors.verticalCenter: baseIcon.verticalCenter
                 anchors.right: parent.right
                 font.family: "JetBrains Mono"; font.bold: true; font.pixelSize: root.s(10)
                 color: root.cSubtext0; text: ls.title
@@ -271,7 +272,7 @@ Item {
             Text {
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
-                anchors.bottomMargin: root.s(4) 
+                anchors.bottomMargin: root.s(4)
                 font.family: "JetBrains Mono"; font.bold: true; font.pixelSize: root.s(12)
                 color: root.cSubtext0; text: ls.subText
             }
@@ -309,7 +310,7 @@ Item {
                     color: root.alpha(root.cCrust, 0.7); text: ls.icon
                 }
                 Text {
-                    anchors.verticalCenter: filledIcon.verticalCenter 
+                    anchors.verticalCenter: filledIcon.verticalCenter
                     anchors.right: parent.right
                     font.family: "JetBrains Mono"; font.bold: true; font.pixelSize: root.s(10)
                     color: root.alpha(root.cCrust, 0.7); text: ls.title
@@ -317,7 +318,7 @@ Item {
                 Text {
                     anchors.bottom: parent.bottom
                     anchors.left: parent.left
-                    anchors.bottomMargin: root.s(4) 
+                    anchors.bottomMargin: root.s(4)
                     font.family: "JetBrains Mono"; font.bold: true; font.pixelSize: root.s(12)
                     color: root.cCrust; text: ls.subText
                 }
@@ -344,17 +345,17 @@ Item {
         width: (root.counterRotation % 180 !== 0) ? parent.height : parent.width
         height: (root.counterRotation % 180 !== 0) ? parent.width : parent.height
         rotation: root.counterRotation
-        clip: false 
+        clip: false
 
         LiquidSquare {
             x: root.cellX(0.0)
             y: root.cellY(0.0)
             width: root.cellW(0.0, 0.333)
             height: root.cellH(0.0, 0.5)
-            
+
             value: root.cpuUsage
-            colorFill: Qt.lighter(root.cMauve, 1.4) 
-            icon: "\uF2DB" 
+            colorFill: Qt.lighter(root.cMauve, 1.4)
+            icon: "\uF2DB"
             title: "CPU"
             valueText: Math.round(root.cpuUsage * 100) + "%"
         }
@@ -364,10 +365,10 @@ Item {
             y: root.cellY(0.0)
             width: root.cellW(0.333, 0.334)
             height: root.cellH(0.0, 0.5)
-            
+
             value: root.ramUsage
-            colorFill: Qt.lighter(root.cMauve, 1.2) 
-            icon: "\uF538" 
+            colorFill: Qt.lighter(root.cMauve, 1.2)
+            icon: "\uF538"
             title: "RAM"
             valueText: root.ramUsedGb.toFixed(1) + "G"
         }
@@ -377,9 +378,9 @@ Item {
             y: root.cellY(0.0)
             width: root.cellW(0.667, 0.333)
             height: root.cellH(0.0, 0.5)
-            
+
             value: Math.max(0.0, Math.min(1.0, root.tempC / 100.0))
-            colorFill: root.cMauve 
+            colorFill: root.cMauve
             icon: "\uF2C9"
             title: "TEMP"
             valueText: Math.round(root.tempC) + "°"
@@ -392,7 +393,7 @@ Item {
             height: root.cellH(0.5, 0.5)
 
             value: root.diskUsagePercent
-            colorFill: Qt.darker(root.cMauve, 1.2) 
+            colorFill: Qt.darker(root.cMauve, 1.2)
             icon: "\uF0A0"
             title: "DISK"
             subText: root.diskUsageText
@@ -404,9 +405,9 @@ Item {
             y: root.cellY(0.5)
             width: root.cellW(0.5, 0.5)
             height: root.cellH(0.5, 0.5)
-            
-            value: 0.12 
-            colorFill: Qt.darker(root.cMauve, 1.4) 
+
+            value: 0.12
+            colorFill: Qt.darker(root.cMauve, 1.4)
             icon: "󰤨"
             title: "NET"
             valueText: ""

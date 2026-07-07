@@ -1,3 +1,4 @@
+// ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/DrawAction.qml <==
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -22,7 +23,7 @@ Item {
     property bool isActiveTab: typeof isCurrentTarget !== "undefined" ? isCurrentTarget : true
 
     // FIXED: Added missing iconFont property to prevent 'undefined to QString' warnings
-    property string iconFont: "Font Awesome 6 Free Solid" 
+    property string iconFont: "Font Awesome 6 Free Solid"
 
     // =========================================================
     // --- SCALING & DIMENSIONS
@@ -45,7 +46,7 @@ Item {
             if (activeEdge === "right") return 180;
             if (activeEdge === "bottom") return 90;
         }
-        return 0; 
+        return 0;
     }
 
     // =========================================================
@@ -64,7 +65,7 @@ Item {
     property real pickSat: 0.33
     property real pickVal: 0.97
     property color currentColor: Qt.hsva(pickHue, pickSat, pickVal, 1.0)
-    
+
     // Tool Size Config State (Independent memory per tool)
     property real penSizeRatio: 0.3
     property real brushSizeRatio: 0.4
@@ -86,7 +87,7 @@ Item {
     property color baseTextColor: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.text) ? mochaColors.text : "#cdd6f4"
     property color solidBgColor: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.mantle) ? mochaColors.mantle : "#181825"
     property color themeBaseColor: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.base) ? mochaColors.base : "#1e1e2e"
-    
+
     // Universal Panel Styling
     property color panelBgColor: Qt.rgba(themeBaseColor.r, themeBaseColor.g, themeBaseColor.b, 0.85)
     property color panelBorderColor: Qt.rgba(baseTextColor.r, baseTextColor.g, baseTextColor.b, 0.15)
@@ -95,7 +96,7 @@ Item {
     // Zoom limits and World Size
     property real minZoom: 0.1
     property real maxZoom: 5.0
-    property real worldSize: 2048 
+    property real worldSize: 2048
 
     // =========================================================
     // --- HISTORY SYSTEM (UNDO / REDO)
@@ -108,11 +109,11 @@ Item {
     function commitAction(action) {
         var newHistory = root.actionHistory.slice(0, root.historyStep + 1);
         newHistory.push(action);
-        
+
         if (newHistory.length > root.maxHistory) {
             newHistory.shift();
         }
-        
+
         root.actionHistory = newHistory;
         root.historyStep = root.actionHistory.length - 1;
     }
@@ -148,7 +149,7 @@ Item {
     Item {
         id: orientedRoot
         anchors.centerIn: parent
-        
+
         width: (root.counterRotation % 180 !== 0) ? parent.height : parent.width
         height: (root.counterRotation % 180 !== 0) ? parent.width : parent.height
         rotation: root.counterRotation
@@ -187,10 +188,10 @@ Item {
                 id: zoomContainer
                 width: root.worldSize
                 height: root.worldSize
-                
+
                 x: (cameraRig.width - width) / 2
                 y: (cameraRig.height - height) / 2
-                
+
                 transformOrigin: Item.Center
                 Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
@@ -203,11 +204,11 @@ Item {
                 Image {
                     anchors.fill: parent
                     fillMode: Image.Tile
-                    
+
                     property real dotRadius: s(1.2)
                     property real dotSpacing: s(12)
                     property color dotC: root.baseTextColor
-                    
+
                     source: `data:image/svg+xml;utf8,<svg width='${dotSpacing}' height='${dotSpacing}' xmlns='http://www.w3.org/2000/svg'><circle cx='${dotSpacing/2}' cy='${dotSpacing/2}' r='${dotRadius}' fill='rgb(${dotC.r*255},${dotC.g*255},${dotC.b*255})' fill-opacity='0.15'/></svg>`
                 }
 
@@ -216,12 +217,12 @@ Item {
                     id: drawCanvas
                     anchors.fill: parent
                     z: 1
-                    
+
             renderTarget: Canvas.FramebufferObject
-                    
+
                     property real lastX: -1
                     property real lastY: -1
-                    
+
                     property var _queue: []
                     property bool _clearPending: false
                     property bool _replayPending: false
@@ -229,15 +230,15 @@ Item {
                     function renderBrushLine(ctx, s, isLive) {
                         var bSize = s.penSize || root.s(18);
                         var segments = isLive ? [{x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2}] : s.segments;
-                        
+
                         var bristleCount = Math.max(6, Math.floor(bSize * 0.6));
-                        
+
                         ctx.globalCompositeOperation = "source-over";
                         ctx.lineCap = "round";
                         ctx.lineJoin = "round";
-                        
+
                         var col = s.color;
-                        
+
                         for (var b = 0; b < bristleCount; b++) {
                             var t = b / bristleCount;
                             var angle = t * Math.PI * 2;
@@ -246,11 +247,11 @@ Item {
                             var offY = Math.sin(angle) * radius * 0.5;
                             var alpha = 0.25 + (((b * 13 + 5) % 17) / 17) * 0.45;
                             var width = root.s(0.8) + (((b * 3 + 1) % 5) / 5) * root.s(1.6);
-                            
+
                             ctx.globalAlpha = alpha;
                             ctx.lineWidth = width;
                             ctx.strokeStyle = col;
-                            
+
                             ctx.beginPath();
                             ctx.moveTo(segments[0].x1 + offX, segments[0].y1 + offY);
                             for (var j = 0; j < segments.length; j++) {
@@ -258,22 +259,22 @@ Item {
                             }
                             ctx.stroke();
                         }
-                        
+
                         ctx.globalAlpha = 1.0;
                     }
 
                     function applyToolStyle(ctx, tool, color, customSize) {
                         ctx.lineCap = "round";
                         ctx.lineJoin = "round";
-                        
+
                         if (tool === "eraser") {
                             ctx.globalCompositeOperation = "destination-out";
                             ctx.lineWidth = customSize || root.actualToolSize;
-                            ctx.strokeStyle = "rgba(0,0,0,1)"; 
+                            ctx.strokeStyle = "rgba(0,0,0,1)";
                             ctx.globalAlpha = 1.0;
                             ctx.shadowBlur = 0;
                             ctx.shadowColor = "transparent";
-                        } else { 
+                        } else {
                             ctx.globalCompositeOperation = "source-over";
                             ctx.strokeStyle = color;
                             ctx.lineWidth = customSize || root.actualToolSize;
@@ -285,7 +286,7 @@ Item {
 
                     onPaint: {
                         var ctx = getContext("2d");
-                        
+
                         if (_replayPending) {
                             ctx.clearRect(0, 0, width, height);
                             for (var h = 0; h <= root.historyStep; h++) {
@@ -305,7 +306,7 @@ Item {
                                     } else {
                                         ctx.beginPath();
                                         applyToolStyle(ctx, action.tool, action.color, action.penSize);
-                                        
+
                                         if (action.segments && action.segments.length > 0) {
                                             ctx.moveTo(action.segments[0].x1, action.segments[0].y1);
                                             for (var k = 0; k < action.segments.length; k++) {
@@ -317,7 +318,7 @@ Item {
                                 }
                             }
                             _replayPending = false;
-                            _queue = []; 
+                            _queue = [];
                             return;
                         }
 
@@ -325,10 +326,10 @@ Item {
                             ctx.clearRect(0, 0, width, height);
                             _clearPending = false;
                         }
-                        
+
                         for (var i = 0; i < _queue.length; i++) {
                             var q = _queue[i];
-                            
+
                             if (q.type === "fill_bg") {
                                 ctx.globalCompositeOperation = "destination-over";
                                 ctx.fillStyle = q.color;
@@ -344,25 +345,25 @@ Item {
                                 ctx.stroke();
                             }
                         }
-                        
-                        _queue = []; 
+
+                        _queue = [];
                     }
 
                     MouseArea {
                         anchors.fill: parent
                         enabled: root.isActiveTab // FIXED: Isolated Input
                         acceptedButtons: root.currentTool === "mouse" ? Qt.NoButton : Qt.LeftButton
-                        
+
                         onWheel: (wheel) => {
                             let deltaY = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : (wheel.pixelDelta ? wheel.pixelDelta.y : 0);
                             let deltaX = wheel.angleDelta.x !== 0 ? wheel.angleDelta.x : (wheel.pixelDelta ? wheel.pixelDelta.x : 0);
                             let delta = deltaY !== 0 ? deltaY : deltaX;
-                            
+
                             if (delta === 0) {
                                 wheel.accepted = false;
                                 return;
                             }
-                            
+
                             wheel.accepted = true;
                             let zoomFactor = delta > 0 ? 1.15 : (1.0 / 1.15);
                             cameraRig.zoomBy(zoomFactor);
@@ -376,21 +377,21 @@ Item {
                                 let freezeCol = root.currentColor.toString();
                                 root.commitAction({ type: "fill_bg", color: freezeCol });
                                 drawCanvas._queue.push({ type: "fill_bg", color: freezeCol });
-                                
-                                drawCanvas.markDirty(Qt.rect(0, 0, drawCanvas.width, drawCanvas.height)); 
+
+                                drawCanvas.markDirty(Qt.rect(0, 0, drawCanvas.width, drawCanvas.height));
                                 drawCanvas.requestPaint();
                                 return;
                             }
 
                             drawCanvas.lastX = mouse.x;
                             drawCanvas.lastY = mouse.y;
-                            
-                            root.currentAction = { 
-                                type: "stroke", 
-                                tool: root.currentTool, 
-                                color: root.currentColor.toString(), 
+
+                            root.currentAction = {
+                                type: "stroke",
+                                tool: root.currentTool,
+                                color: root.currentColor.toString(),
                                 penSize: root.actualToolSize,
-                                segments: [] 
+                                segments: []
                             };
                             var initialSegment = { x1: mouse.x, y1: mouse.y, x2: mouse.x + 0.1, y2: mouse.y };
                             root.currentAction.segments.push(initialSegment);
@@ -400,10 +401,10 @@ Item {
                                 tool: root.currentTool,
                                 color: root.currentColor.toString(),
                                 penSize: root.actualToolSize,
-                                x1: initialSegment.x1, y1: initialSegment.y1, 
+                                x1: initialSegment.x1, y1: initialSegment.y1,
                                 x2: initialSegment.x2, y2: initialSegment.y2
                             });
-                            
+
                             var rad = s(20);
                             drawCanvas.markDirty(Qt.rect(mouse.x - rad, mouse.y - rad, rad*2, rad*2));
                             drawCanvas.requestPaint();
@@ -415,7 +416,7 @@ Item {
                                     x1: drawCanvas.lastX, y1: drawCanvas.lastY,
                                     x2: mouse.x, y2: mouse.y
                                 };
-                                
+
                                 if (root.currentAction) {
                                     root.currentAction.segments.push(segment);
                                 }
@@ -425,19 +426,19 @@ Item {
                                     tool: root.currentTool,
                                     color: root.currentColor.toString(),
                                     penSize: root.actualToolSize,
-                                    x1: segment.x1, y1: segment.y1, 
+                                    x1: segment.x1, y1: segment.y1,
                                     x2: segment.x2, y2: segment.y2
                                 });
-                                
+
                                 var rad = s(20);
                                 var minX = Math.min(drawCanvas.lastX, mouse.x) - rad;
                                 var minY = Math.min(drawCanvas.lastY, mouse.y) - rad;
                                 var w = Math.abs(mouse.x - drawCanvas.lastX) + rad*2;
                                 var h = Math.abs(mouse.y - drawCanvas.lastY) + rad*2;
-                                
+
                                 drawCanvas.lastX = mouse.x;
                                 drawCanvas.lastY = mouse.y;
-                                
+
                                 drawCanvas.markDirty(Qt.rect(minX, minY, w, h));
                                 drawCanvas.requestPaint();
                             }
@@ -491,7 +492,7 @@ Item {
                         }
                         MouseArea {
                             id: zoomMinusMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: cameraRig.zoomBy(1.0 / 1.25)
+                            onClicked: (mouse) => cameraRig.zoomBy(1.0 / 1.25)
                         }
                     }
 
@@ -506,7 +507,7 @@ Item {
                         }
                         MouseArea {
                             id: zoomResetMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: {
+                            onClicked: (mouse) => {
                                 zoomContainer.scale = 1.0;
                                 zoomContainer.x = (cameraRig.width - zoomContainer.width) / 2;
                                 zoomContainer.y = (cameraRig.height - zoomContainer.height) / 2;
@@ -525,7 +526,7 @@ Item {
                         }
                         MouseArea {
                             id: zoomPlusMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: cameraRig.zoomBy(1.25)
+                            onClicked: (mouse) => cameraRig.zoomBy(1.25)
                         }
                     }
                 }
@@ -539,7 +540,7 @@ Item {
                 color: root.panelBgColor
                 border.width: 1
                 border.color: root.panelBorderColor
-                
+
                 Rectangle {
                     anchors.centerIn: parent; width: s(32); height: s(32); radius: s(14); z:-1
                     color: copyMouse.containsMouse ? ((typeof mochaColors !== "undefined" && mochaColors && mochaColors.surface0) ? mochaColors.surface0 : Qt.rgba(root.baseTextColor.r, root.baseTextColor.g, root.baseTextColor.b, 0.1)) : "transparent"
@@ -547,7 +548,7 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "\uF0C5" 
+                    text: "\uF0C5"
                     font.family: root.iconFont
                     font.pixelSize: s(14)
                     color: root.baseTextColor
@@ -559,7 +560,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
+                    onClicked: (mouse) => {
                         var tempPath = paths.getRunDir("quickactions") + "/drawing.png";
                         drawCanvas.save(tempPath);
                         Quickshell.execDetached(["sh", "-c", "wl-copy < " + tempPath]);
@@ -580,11 +581,11 @@ Item {
             color: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.base) ? Qt.rgba(mochaColors.base.r, mochaColors.base.g, mochaColors.base.b, 0.98) : root.solidBgColor
             border.width: 1
             border.color: root.panelBorderColor
-            
+
             anchors.bottom: toolbar.top
             anchors.bottomMargin: s(12)
             anchors.horizontalCenter: parent.horizontalCenter
-            
+
             visible: root.showSizeConfig
             opacity: visible ? 1.0 : 0.0
             Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutExpo } }
@@ -607,7 +608,7 @@ Item {
                     height: s(6)
                     radius: s(3)
                     color: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.text) ? Qt.rgba(mochaColors.text.r, mochaColors.text.g, mochaColors.text.b, 0.1) : Qt.rgba(root.baseTextColor.r, root.baseTextColor.g, root.baseTextColor.b, 0.1)
-                    
+
                     Rectangle {
                         width: parent.width * root.currentSizeRatio
                         height: parent.height
@@ -627,7 +628,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: -s(16) // Generous hit box
                         cursorShape: Qt.PointingHandCursor
-                        
+
                         function updateSize(mouse) {
                             let val = Math.max(0.0, Math.min(1.0, mouse.x / width));
                             if (root.currentTool === "eraser") root.eraserSizeRatio = val;
@@ -646,7 +647,7 @@ Item {
                     height: s(32)
                     Rectangle {
                         anchors.centerIn: parent
-                        
+
                         width: {
                             let toolMax = 0;
                             if (root.currentTool === "eraser") toolMax = s(8) + s(60);
@@ -654,13 +655,13 @@ Item {
                             else toolMax = s(2) + s(30);
 
                             let visualLimit = s(32);
-                            
+
                             // If the tool's maximum size fits within our visual limit (like the pen), show it 1:1.
                             if (toolMax <= visualLimit) {
                                 return root.actualToolSize;
                             }
-                            
-                            // If it exceeds the visual limit (like brush or eraser), 
+
+                            // If it exceeds the visual limit (like brush or eraser),
                             // scale the preview proportionally so it smoothly grows to the visual limit.
                             let minVisual = s(4);
                             return minVisual + (root.currentSizeRatio * (visualLimit - minVisual));
@@ -688,11 +689,11 @@ Item {
             color: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.base) ? Qt.rgba(mochaColors.base.r, mochaColors.base.g, mochaColors.base.b, 0.98) : root.solidBgColor
             border.width: 1
             border.color: root.panelBorderColor
-            
+
             anchors.bottom: toolbar.top
             anchors.bottomMargin: s(12)
             anchors.horizontalCenter: parent.horizontalCenter
-            
+
             visible: root.showColorPicker
             opacity: visible ? 1.0 : 0.0
             Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutExpo } }
@@ -812,20 +813,20 @@ Item {
                             (typeof mochaColors !== "undefined" && mochaColors && mochaColors.mauve) ? mochaColors.mauve : "#cba6f7",
                             root.baseTextColor
                         ]
-                        
+
                         Rectangle {
                             width: s(20)
                             height: s(20)
                             radius: width / 2
                             color: modelData
-                            
+
                             border.width: root.currentColor.toString() === color.toString() ? s(2) : 0
                             border.color: root.baseTextColor
-                            
+
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
+                                onClicked: (mouse) => {
                                     root.currentColor = parent.color;
                                 }
                             }
@@ -837,15 +838,15 @@ Item {
                 Row {
                     spacing: s(10)
                     anchors.horizontalCenter: parent.horizontalCenter
-                    
-                    Text { 
+
+                    Text {
                         text: "Hex"
                         color: Qt.rgba(root.baseTextColor.r, root.baseTextColor.g, root.baseTextColor.b, 0.6)
                         anchors.verticalCenter: parent.verticalCenter
                         font.pixelSize: s(13)
                         font.bold: true
                     }
-                    
+
                     Rectangle {
                         width: s(120)
                         height: s(28)
@@ -853,7 +854,7 @@ Item {
                         border.width: 1
                         border.color: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.surface1) ? mochaColors.surface1 : Qt.rgba(root.baseTextColor.r, root.baseTextColor.g, root.baseTextColor.b, 0.1)
                         radius: s(6)
-                        
+
                         TextInput {
                             id: hexInput
                             anchors.fill: parent
@@ -881,11 +882,11 @@ Item {
             anchors.bottom: parent.bottom
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.margins: s(20)
-            
+
             width: toolRow.width + s(32)
             height: s(48)
             radius: s(14)
-            
+
             color: root.panelBgColor
             border.width: 1
             border.color: root.panelBorderColor
@@ -907,12 +908,12 @@ Item {
                         Behavior on color { ColorAnimation { duration: 150 } }
                         z: -1
                     }
-                    
+
                     Text {
                         anchors.centerIn: parent
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
-                        text: "\uF0E2" 
+                        text: "\uF0E2"
                         font.family: root.iconFont
                         font.pixelSize: s(14)
                         color: root.baseTextColor
@@ -923,7 +924,7 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: root.historyStep >= 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onClicked: { if (root.historyStep >= 0) root.undo() }
+                        onClicked: (mouse) => { if (root.historyStep >= 0) root.undo() }
                     }
                 }
 
@@ -939,12 +940,12 @@ Item {
                         Behavior on color { ColorAnimation { duration: 150 } }
                         z: -1
                     }
-                    
+
                     Text {
                         anchors.centerIn: parent
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
-                        text: "\uF01E" 
+                        text: "\uF01E"
                         font.family: root.iconFont
                         font.pixelSize: s(14)
                         color: root.baseTextColor
@@ -955,7 +956,7 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: root.historyStep < root.actionHistory.length - 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onClicked: { if (root.historyStep < root.actionHistory.length - 1) root.redo() }
+                        onClicked: (mouse) => { if (root.historyStep < root.actionHistory.length - 1) root.redo() }
                     }
                 }
 
@@ -1012,13 +1013,13 @@ Item {
 
                         Repeater {
                             model: [
-                                { id: "mouse", icon: "\uF245", xOff: 0, yOff: 0 }, 
-                                { id: "pen", icon: "\uF040", xOff: 0, yOff: 0 },   
-                                { id: "brush", icon: "\uF1FC", xOff: -1, yOff: 0 }, 
-                                { id: "fill", icon: "\uF576", xOff: -1, yOff: 0 },  
-                                { id: "eraser", icon: "\uF12D", xOff: -1, yOff: 0 } 
+                                { id: "mouse", icon: "\uF245", xOff: 0, yOff: 0 },
+                                { id: "pen", icon: "\uF040", xOff: 0, yOff: 0 },
+                                { id: "brush", icon: "\uF1FC", xOff: -1, yOff: 0 },
+                                { id: "fill", icon: "\uF576", xOff: -1, yOff: 0 },
+                                { id: "eraser", icon: "\uF12D", xOff: -1, yOff: 0 }
                             ]
-                            
+
                             Item {
                                 width: s(32)
                                 height: s(32)
@@ -1037,7 +1038,7 @@ Item {
                                     anchors.verticalCenterOffset: s(modelData.yOff)
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
-                                    
+
                                     text: modelData.icon
                                     font.family: root.iconFont
                                     font.pixelSize: s(14)
@@ -1051,7 +1052,7 @@ Item {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
+                                    onClicked: (mouse) => {
                                         if (modelData.id === "pen" || modelData.id === "brush" || modelData.id === "eraser") {
                                             if (root.currentTool === modelData.id) {
                                                 root.showSizeConfig = !root.showSizeConfig;
@@ -1097,18 +1098,18 @@ Item {
                         radius: s(14)
                         color: root.currentColor
                         anchors.centerIn: parent
-                        
+
                         border.width: root.currentTool !== "eraser" ? s(2) : 0
                         border.color: root.baseTextColor
                         opacity: (root.currentTool === "eraser" || root.currentTool === "mouse") ? 0.3 : 1.0
                     }
-                    
+
                     MouseArea {
                         id: colorIndicatorMouse
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: {
+                        onClicked: (mouse) => {
                             root.showColorPicker = !root.showColorPicker;
                             root.showSizeConfig = false;
                             if (root.currentTool === "eraser" || root.currentTool === "mouse") {
@@ -1154,7 +1155,7 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: {
+                        onClicked: (mouse) => {
                             root.commitAction({ type: "clear" });
                             drawCanvas._clearPending = true;
                             drawCanvas.requestPaint();
