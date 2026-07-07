@@ -1,3 +1,4 @@
+// dotfiles/hypr/scripts/quickshell/Config.qml
 pragma Singleton
 import QtQuick
 import Quickshell
@@ -15,7 +16,7 @@ Item {
     readonly property string hyprDir: homeDir + "/.config/hypr"
     readonly property string qsScriptsDir: hyprDir + "/scripts/quickshell"
     readonly property string cacheDir: paths.cacheDir
-    
+
     readonly property string settingsJsonPath: hyprDir + "/settings.json"
     readonly property string weatherEnvPath: qsScriptsDir + "/calendar/.env"
 
@@ -42,7 +43,7 @@ Item {
         let tempObj = {};
         tempObj[key] = value;
         let safeJson = JSON.stringify(tempObj).replace(/'/g, "'\\''");
-        
+
         let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" && ` +
                   `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
                   `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
@@ -57,7 +58,7 @@ Item {
                   `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
                   `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}'`;
         sh(cmd);
-        
+
         for (let key in dataObj) rawSettings[key] = dataObj[key];
     }
 
@@ -130,7 +131,7 @@ Item {
             "OPENWEATHER_CITY_ID": config.weatherCityId,
             "OPENWEATHER_UNIT": config.weatherUnit
         };
-        
+
         config.updateEnvBulk(config.weatherEnvPath, envs);
         sh(`rm -rf "${paths.getCacheDir('weather')}"`);
         sh("notify-send 'Weather' 'API configuration saved successfully!'");
@@ -228,7 +229,8 @@ Item {
             if (m.transform !== 0) monitorStr += ",transform," + m.transform;
             let jsonArr = [{ name: m.name, resW: m.resW, resH: m.resH, rate: parseInt(m.rate), x: 0, y: 0, scale: m.sysScale, transform: m.transform }];
             config.setSetting("monitors", jsonArr);
-            config.sh("hyprctl keyword monitor " + monitorStr + " ; awww kill ; sleep 0.2 ; awww-daemon &");
+            let cacheWriteCmd = "echo 'monitor=" + monitorStr + "' > ~/.cache/hypr_power_monitor.conf";
+            config.sh(cacheWriteCmd + " ; hyprctl keyword monitor " + monitorStr + " ; awww kill ; sleep 0.2 ; awww-daemon &");
             Quickshell.execDetached(["notify-send", "Display Update", "Applied: " + m.resW + "x" + m.resH + " @ " + m.rate + "Hz"]);
         } else {
             let rects = [];
@@ -266,7 +268,7 @@ Item {
                 if (rects[i].x < finalMinX) finalMinX = rects[i].x;
                 if (rects[i].y < finalMinY) finalMinY = rects[i].y;
             }
-            let batchCmds = [], summaryString = "", jsonArr = [];
+            let batchCmds = [], summaryString = "", jsonArr = [], confLines = [];
             for (let i = 0; i < rects.length; i++) {
                 let r = rects[i];
                 r.x = Math.round(r.x - finalMinX);
@@ -274,11 +276,13 @@ Item {
                 let monitorStr = r.name + "," + r.resW + "x" + r.resH + "@" + r.rate + "," + r.x + "x" + r.y + "," + r.sysScale;
                 if (r.transform !== 0) monitorStr += ",transform," + r.transform;
                 batchCmds.push("keyword monitor " + monitorStr);
+                confLines.push("monitor=" + monitorStr);
                 summaryString += r.name + " ";
                 jsonArr.push({ name: r.name, resW: r.resW, resH: r.resH, rate: parseInt(r.rate), x: r.x, y: r.y, scale: r.sysScale, transform: r.transform });
             }
             config.setSetting("monitors", jsonArr);
-            config.sh("hyprctl --batch '" + batchCmds.join(" ; ") + "' ; awww kill ; sleep 0.2 ; awww-daemon &");
+            let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
+            config.sh(cacheWriteCmd + " ; hyprctl --batch '" + batchCmds.join(" ; ") + "' ; awww kill ; sleep 0.2 ; awww-daemon &");
             Quickshell.execDetached(["notify-send", "Display Update", "Applied layout for: " + summaryString.trim()]);
         }
     }
@@ -307,12 +311,14 @@ Item {
                     }
                     config.monOriginalOriginX = minX !== 999999 ? minX : 0;
                     config.monOriginalOriginY = minY !== 999999 ? minY : 0;
+                    
+                    let batch = [];
                     for (let i = 0; i < data.length; i++) {
                         let scl = data[i].scale !== undefined ? data[i].scale : 1.0;
                         let tf = data[i].transform !== undefined ? data[i].transform : 0;
                         let normalizedX = (data[i].x - minX) * config.monUiScale;
                         let normalizedY = (data[i].y - minY) * config.monUiScale;
-                        config.monitorsModel.append({
+                        batch.push({
                             name: data[i].name, resW: data[i].width, resH: data[i].height,
                             sysScale: scl, rate: Math.round(data[i].refreshRate).toString(),
                             uiX: normalizedX, uiY: normalizedY, transform: tf,
@@ -320,6 +326,7 @@ Item {
                         });
                         if (data[i].focused) config.monActiveEditIndex = i;
                     }
+                    if (batch.length > 0) config.monitorsModel.append(batch);
                     config.monForceLayoutUpdate();
                 } catch(e) {}
             }
@@ -330,6 +337,7 @@ Item {
     // Boot Initialization (Runs once on start)
     // =========================================================================
     Component.onCompleted: {
+        sh("mkdir -p ~/.cache && touch ~/.cache/hypr_power_monitor.conf");
         settingsReader.running = false; settingsReader.running = true;
         envReader.running = false; envReader.running = true;
     }
@@ -348,7 +356,7 @@ Item {
                         let key = parts[0].trim();
                         let val = parts.slice(1).join("=").replace(/^['"]|['"]$/g, '').trim();
                         config.rawEnvs[key] = val;
-                        
+
                         if (key === "OPENWEATHER_KEY") config.weatherApiKey = val;
                         else if (key === "OPENWEATHER_CITY_ID") config.weatherCityId = val;
                         else if (key === "OPENWEATHER_UNIT") config.weatherUnit = val;
@@ -367,7 +375,7 @@ Item {
                 try {
                     if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
                         config.rawSettings = JSON.parse(this.text);
-                        
+
                         // Map explicitly defined properties
                         if (config.rawSettings.uiScale !== undefined) config.uiScale = config.rawSettings.uiScale;
                         if (config.rawSettings.openGuideAtStartup !== undefined) config.openGuideAtStartup = config.rawSettings.openGuideAtStartup;
@@ -377,9 +385,9 @@ Item {
                         if (config.rawSettings.kbOptions !== undefined) config.kbOptions = config.rawSettings.kbOptions;
                         if (config.rawSettings.workspaceCount !== undefined) {
                             config.workspaceCount = config.rawSettings.workspaceCount;
-                            config.initialWorkspaceCount = config.rawSettings.workspaceCount; 
+                            config.initialWorkspaceCount = config.rawSettings.workspaceCount;
                         }
-                        
+
                         // Map Keybinds
                         if (config.rawSettings.keybinds !== undefined && Array.isArray(config.rawSettings.keybinds)) {
                             let tempBinds = [];
