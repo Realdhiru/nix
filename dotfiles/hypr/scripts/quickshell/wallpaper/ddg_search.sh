@@ -1,3 +1,4 @@
+# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/ddg_search.sh <==
 #!/usr/bin/env bash
 
 QUERY="$1"
@@ -18,17 +19,21 @@ echo "=== Starting search for: $QUERY ===" > "$LOG_FILE"
 # 1. Guarantee directory exists
 mkdir -p "$SEARCH_DIR"
 
-# 2. The Pipe: Python provides links, OS provides backpressure
+# 2. Safely capture the active tmp path for the trap cleanup
+ACTIVE_TMP=""
+trap 'rm -f "$ACTIVE_TMP" 2>/dev/null' EXIT INT TERM
+
+# 3. The Pipe: Python provides links, OS provides backpressure
 python3 -u "$SCRIPT_DIR/quickshell/wallpaper/get_ddg_links.py" "$QUERY" | while IFS='|' read -r thumb_url full_url; do
-    
-    # 3. Safely read control file
+
+    # Safely read control file
     state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
-    
-    if [[ "$state" == "stop" ]]; then 
+
+    if [[ "$state" == "stop" ]]; then
         echo "Stop signal received. Exiting." >> "$LOG_FILE"
-        exit 0 
+        exit 0
     fi
-    
+
     while [[ "$state" == "pause" ]]; do
         sleep 1
         state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
@@ -63,24 +68,26 @@ python3 -u "$SCRIPT_DIR/quickshell/wallpaper/get_ddg_links.py" "$QUERY" | while 
     filename="ddg_${uuid}.${ext}"
     filepath="$SEARCH_DIR/$filename"
     tmppath="${filepath}.tmp"
+    ACTIVE_TMP="$tmppath"
 
     echo "Downloading Thumb: $thumb_url -> $filename" >> "$LOG_FILE"
 
-    # 4. TIMEOUT ADDED: -m 5 prevents permanent freezing on stalled connections
+    # TIMEOUT ADDED: -m 5 prevents permanent freezing on stalled connections
     curl -s -L -m 5 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "$thumb_url" -o "$tmppath"
 
-    # 5. Check state again AFTER the curl block
+    # Check state again AFTER the curl block
     state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
-    if [[ "$state" == "stop" ]]; then 
+    if [[ "$state" == "stop" ]]; then
         echo "Stop signal received during download. Discarding." >> "$LOG_FILE"
         rm -f "$tmppath"
-        exit 0 
+        ACTIVE_TMP=""
+        exit 0
     fi
 
-    # 6. Verify the thumbnail itself is valid and not corrupted
+    # Verify the thumbnail itself is valid and not corrupted
     if [ -s "$tmppath" ]; then
         actual_mime=$(file -b --mime-type "$tmppath")
-        
+
         if [[ ! "$actual_mime" =~ ^image/ ]]; then
             echo "ERROR: Thumb is not an image ($actual_mime). Discarding." >> "$LOG_FILE"
             rm -f "$tmppath"
@@ -98,6 +105,7 @@ python3 -u "$SCRIPT_DIR/quickshell/wallpaper/get_ddg_links.py" "$QUERY" | while 
         echo "ERROR: Failed or empty download for $thumb_url" >> "$LOG_FILE"
         rm -f "$tmppath"
     fi
+    ACTIVE_TMP=""
 done
 
 echo "=== Pipeline finished ===" >> "$LOG_FILE"

@@ -1,6 +1,7 @@
+# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/wallpaper_thumbnail.sh <==
 #!/usr/bin/env bash
 
-# Strict execution environment: Ensure failures inside the script are caught, 
+# Strict execution environment: Ensure failures inside the script are caught,
 # but do not use `set -e` globally to prevent a single bad image from killing the batch.
 set -uo pipefail
 
@@ -15,13 +16,12 @@ mkdir -p "$THUMB" "$COLOR_DIR"
 # Export the variables so they are accessible by the xargs subshells
 export THUMB COLOR_DIR
 
-# Define the processing logic as an exported function. This is significantly faster 
-# and safer than passing a massive string into `bash -c`.
+# Define the processing logic as an exported function.
 process_wallpaper() {
     local file="$1"
     local name
     name=$(basename "$file")
-    
+
     local target="$THUMB/$name"
     local ext="${file##*.}"
     ext="${ext,,}" # lowercase extension
@@ -36,8 +36,9 @@ process_wallpaper() {
     else
         # Image processing block
         if [ ! -f "$target" ]; then
-            # Magick extraction: fill 400x400 bounds cleanly, strip profile data for speed
-            magick "$file[0]" -strip -thumbnail 400x400^ -gravity center -extent 400x400 "$target"
+            # Inject memory-bound scaling constraint (-define jpeg:size) before loading the file
+            # This drastically reduces RAM usage and I/O bottlenecks for 4K/8K images.
+            magick -define jpeg:size=800x800 "$file[0]" -strip -thumbnail 400x400^ -gravity center -extent 400x400 "$target"
         fi
     fi
 
@@ -45,13 +46,13 @@ process_wallpaper() {
     # Check if a hex marker already exists for this specific file
     local marker
     marker=$(find "$COLOR_DIR" -name "${name}_HEX_*" -print -quit)
-    
+
     if [ -z "$marker" ] && [ -f "$target" ]; then
         local hex
-        # Extract average color by scaling to 1x1 pixel. 
+        # Extract average color by scaling to 1x1 pixel.
         # Extract exactly 6 characters to prevent carriage return pollution
         hex=$(magick "$target" -resize 1x1 -format "%[hex:p{0,0}]" info: 2>/dev/null | cut -c 1-6)
-        
+
         # Only touch the marker file if the hex string is perfectly 6 characters long
         if [ -n "$hex" ] && [ "${#hex}" -eq 6 ]; then
             touch "$COLOR_DIR/${name}_HEX_${hex}"
