@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# dotfiles/hypr/scripts/quickshell/network/bluetooth_panel_logic.sh
-
 export LC_ALL=C
 SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 source "$SCRIPT_DIR/../../caching.sh"

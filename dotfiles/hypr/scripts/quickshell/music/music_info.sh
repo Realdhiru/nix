@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# dotfiles/hypr/scripts/quickshell/music/music_info.sh
-
 source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
 qs_ensure_cache "music"
 

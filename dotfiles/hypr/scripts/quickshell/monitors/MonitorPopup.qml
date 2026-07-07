@@ -1,4 +1,3 @@
-// dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
