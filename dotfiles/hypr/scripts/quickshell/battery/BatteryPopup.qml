@@ -143,7 +143,7 @@ Item {
     onBatColorStartChanged: batCanvas.requestPaint()
 
     // =========================================================================
-    // POWER PROFILE AUTOMATION & ROUTING
+    // POWER PROFILE AUTOMATION (DYNAMIC ARCHITECTURE)
     // =========================================================================
     property bool _sysInitialized: false
 
@@ -153,7 +153,6 @@ Item {
             return;
         }
 
-        // Automatically bind states upon physical charger connect/disconnect
         if (batStatus === "Charging") {
             if (window.powerProfile !== "performance") window.setPowerProfile("performance");
         } else if (batStatus === "Discharging") {
@@ -163,32 +162,34 @@ Item {
 
     function setPowerProfile(name) {
         window.powerProfile = name;
-        // Lock the UI state to a file so sysPoller doesn't cause rubber-banding
         Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_power_profile"]);
 
-        let bashCmd = "";
-        if (name === "power-saver") {
-            bashCmd = `
-                powerprofilesctl set power-saver 2>/dev/null
-                sudo tlp bat 2>/dev/null
-                echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
-                hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@60,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
-            `;
-        } else if (name === "balanced") {
-            bashCmd = `
-                powerprofilesctl set balanced 2>/dev/null
-                sudo tlp bat 2>/dev/null
-                echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
-                hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@120,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
-            `;
-        } else if (name === "performance") {
-            bashCmd = `
-                powerprofilesctl set performance 2>/dev/null
-                sudo tlp ac 2>/dev/null
-                echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
-                hyprctl -j monitors | jq -r '.[] | "\\(.name),\\(.width)x\\(.height)@120,\\(.x)x\\(.y),\\(.scale)"' | xargs -I {} hyprctl keyword monitor "{}" 2>/dev/null
-            `;
-        }
+        let targetRR = (name === "power-saver") ? "60" : "120";
+        let ppdMode = name; 
+        let tlpMode = (name === "performance") ? "ac" : "bat";
+        let disableTurbo = (name === "power-saver") ? "1" : "0";
+        let enableBoost = (name === "power-saver") ? "0" : "1";
+
+        let bashCmd = `
+            powerprofilesctl set ${ppdMode} 2>/dev/null
+            sudo tlp ${tlpMode} 2>/dev/null
+            echo ${disableTurbo} | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo ${enableBoost} | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
+            
+            INT_MON=$(hyprctl monitors -j | jq -r '.[] | select(.name | test("eDP|LVDS|MIPI")).name' | head -n1)
+            
+            if [ -n "$INT_MON" ]; then
+                RES=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n) | "\\(.width)x\\(.height)"')
+                SCALE=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).scale')
+                
+                # Write to the mutable cache file instead of the read-only Nix store
+                echo "monitor=$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10" > ~/.cache/hypr_power_monitor.conf
+                
+                CUR_RR=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).refreshRate' | awk '{print int($1 + 0.5)}')
+                if [ "$CUR_RR" != "${targetRR}" ]; then
+                    hyprctl keyword monitor "$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10" 2>/dev/null
+                fi
+            fi
+        `;
         
         Quickshell.execDetached(["bash", "-c", bashCmd]);
     }
