@@ -359,6 +359,7 @@ Item {
     ListModel { id: monthListModel }
 
     function syncAppsModel() {
+        let batch = [];
         for (let i = 0; i < window.topApps.length; i++) {
             let app = window.topApps[i];
             if (i < appListModel.count) {
@@ -368,7 +369,7 @@ Item {
                 appListModel.setProperty(i, "seconds", app.seconds);
                 appListModel.setProperty(i, "percent", app.percent);
             } else {
-                appListModel.append({
+                batch.push({
                     name: app.name,
                     appClass: app.class,
                     icon: app.icon || "",
@@ -378,12 +379,14 @@ Item {
                 });
             }
         }
+        if (batch.length > 0) appListModel.append(batch);
         while (appListModel.count > window.topApps.length) {
             appListModel.remove(appListModel.count - 1);
         }
     }
 
     function syncWeekAppsModel() {
+        let batch = [];
         for (let i = 0; i < window.weekAppsData.length; i++) {
             let app = window.weekAppsData[i];
             if (i < weekAppListModel.count) {
@@ -393,7 +396,7 @@ Item {
                 weekAppListModel.setProperty(i, "seconds", app.seconds);
                 weekAppListModel.setProperty(i, "percent", app.percent);
             } else {
-                weekAppListModel.append({
+                batch.push({
                     name: app.name,
                     appClass: app.class,
                     icon: app.icon || "",
@@ -403,6 +406,7 @@ Item {
                 });
             }
         }
+        if (batch.length > 0) weekAppListModel.append(batch);
         while (weekAppListModel.count > window.weekAppsData.length) {
             weekAppListModel.remove(weekAppListModel.count - 1);
         }
@@ -415,6 +419,7 @@ Item {
         }
         window.maxWeekTotal = currentMax;
 
+        let batch = [];
         for (let i = 0; i < window.weekData.length; i++) {
             let w = window.weekData[i];
             if (i < weekListModel.count) {
@@ -423,7 +428,7 @@ Item {
                 weekListModel.setProperty(i, "total", w.total);
                 weekListModel.setProperty(i, "isTarget", w.is_target);
             } else {
-                weekListModel.append({
+                batch.push({
                     dateStr: w.date,
                     dayName: w.day,
                     total: w.total,
@@ -431,6 +436,7 @@ Item {
                 });
             }
         }
+        if (batch.length > 0) weekListModel.append(batch);
         while (weekListModel.count > window.weekData.length) {
             weekListModel.remove(weekListModel.count - 1);
         }
@@ -443,6 +449,7 @@ Item {
         }
         window.maxMonthTotal = currentMax;
 
+        let batch = [];
         for (let i = 0; i < window.monthData.length; i++) {
             let m = window.monthData[i];
             if (i < monthListModel.count) {
@@ -450,13 +457,14 @@ Item {
                 monthListModel.setProperty(i, "total", m.total);
                 monthListModel.setProperty(i, "isTarget", m.is_target);
             } else {
-                monthListModel.append({
+                batch.push({
                     dateStr: m.date,
                     total: m.total,
                     isTarget: m.is_target
                 });
             }
         }
+        if (batch.length > 0) monthListModel.append(batch);
         while (monthListModel.count > window.monthData.length) {
             monthListModel.remove(monthListModel.count - 1);
         }
@@ -479,16 +487,16 @@ Item {
     // -------------------------------------------------------------------------
     // KEYBOARD SHORTCUTS
     // -------------------------------------------------------------------------
-    Shortcut { sequence: "Left"; onActivated: changeDay(window.isWeekView ? -7 : -1) }
-    Shortcut { sequence: "Right"; onActivated: changeDay(window.isWeekView ? 7 : 1) }
-    Shortcut { sequence: "Home"; onActivated: changeDay(-7) }
-    Shortcut { sequence: "End"; onActivated: changeDay(7) }
+    Shortcut { sequence: "Left"; enabled: window.visible; onActivated: changeDay(window.isWeekView ? -7 : -1) }
+    Shortcut { sequence: "Right"; enabled: window.visible; onActivated: changeDay(window.isWeekView ? 7 : 1) }
+    Shortcut { sequence: "Home"; enabled: window.visible; onActivated: changeDay(-7) }
+    Shortcut { sequence: "End"; enabled: window.visible; onActivated: changeDay(7) }
     
     // Escape key handling: Only intercepts if we are in a sub-view
     Shortcut { 
         sequence: "Escape"
         context: Qt.ApplicationShortcut
-        enabled: window.selectedAppClass !== "" || window.isWeekView
+        enabled: window.visible && (window.selectedAppClass !== "" || window.isWeekView)
         onActivated: {
             if (window.selectedAppClass !== "") {
                 window.selectedAppClass = ""; 
