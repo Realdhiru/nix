@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-# --- CONFIGURATION ---
-STRICT_SPAM_FILTER=true
-# ---------------------
-
 export LC_ALL=C
 SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 source "$SCRIPT_DIR/../../caching.sh"
@@ -56,12 +52,6 @@ get_status() {
         return
     fi
 
-    controller=$(timeout 1 bluetoothctl list 2>/dev/null | head -n1)
-    if [[ -z "$controller" || "$controller" == *"Waiting"* ]]; then
-        echo "{\"present\":false,\"power\":\"off\",\"connected\":[],\"devices\":[]}"
-        return
-    fi
-
     power="off"
     if timeout 1 bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then power="on"; fi
 
@@ -79,6 +69,7 @@ get_status() {
         connected_list_objs=()
         devices_list_objs=()
 
+        # 1. PROCESS CONNECTED DEVICES
         for c_line in "${connected_info_lines[@]}"; do
             [ -z "$c_line" ] && continue
             rest="${c_line#Device }"
@@ -115,6 +106,7 @@ get_status() {
             connected_json="[$(IFS=,; echo "${connected_list_objs[*]}")]"
         fi
 
+        # 2. PROCESS PAIRED & SCANNED DEVICES INSTANTLY
         for line in "${devices[@]}"; do
             [ -z "$line" ] && continue
             rest="${line#Device }"
@@ -122,26 +114,18 @@ get_status() {
             
             if [[ "$connected_macs" == *"$mac"* ]]; then continue; fi
 
-            # FAST FILTER: Only process devices that are currently transmitting a signal (RSSI)
-            info=$(bluetoothctl info "$mac")
-            if ! echo "$info" | grep -q -E "RSSI:|Connected: yes"; then
-                continue
-            fi
-
             name="${rest#* }"
             name_esc="${name//\"/\\\"}"
-
-            if [[ "$STRICT_SPAM_FILTER" == true ]]; then
-                mac_hyphens="${mac//:/-}"
-                if [[ "$name" == "$mac" || "$name" == "$mac_hyphens" || -z "$name" ]]; then
-                    continue
-                fi
-            fi
 
             if [[ "$paired_macs" == *"$mac"* ]]; then
                 action="Connect"
             else
                 action="Pair & Connect"
+                # Strict Spam Filter: Drop unknown/unpaired devices without a real name
+                mac_hyphens="${mac//:/-}"
+                if [[ "$name" == "$mac" || "$name" == "$mac_hyphens" || -z "$name" ]]; then
+                    continue
+                fi
             fi
 
             icon=$(get_icon "unknown" "$name")
@@ -159,9 +143,7 @@ get_status() {
 }
 
 toggle_power() {
-    # HARDWARE UNBLOCK: Force the kernel to release the radio before toggling
     rfkill unblock bluetooth 2>/dev/null
-    
     if bluetoothctl show | grep -q "Powered: yes"; then
         bluetoothctl power off
         sleep 0.5
@@ -173,7 +155,6 @@ toggle_power() {
 
 connect_dev() {
     local mac="$1"
-    # Unified sequence automatically handles Trust -> Pair -> Connect flawlessly
     bluetoothctl trust "$mac" > /dev/null 2>&1
     bluetoothctl pair "$mac" > /dev/null 2>&1
     bluetoothctl connect "$mac"
@@ -195,8 +176,6 @@ case $cmd in
         rfkill unblock bluetooth 2>/dev/null
         bluetoothctl power on > /dev/null 2>&1
         if [ -f "$PID_FILE" ]; then kill -9 $(cat "$PID_FILE") 2>/dev/null; rm -f "$PID_FILE"; fi
-        
-        # DAEMON DETACH: Runs the scanner completely isolated from the UI thread so it doesn't die prematurely
         nohup bluetoothctl scan on > /dev/null 2>&1 < /dev/null &
         echo $! > "$PID_FILE"
         ;;
