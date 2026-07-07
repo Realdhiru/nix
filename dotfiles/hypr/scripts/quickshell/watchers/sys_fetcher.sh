@@ -1,28 +1,47 @@
+# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/sys_fetcher.sh <==
 #!/usr/bin/env bash
 
-# 1. Read initial values for time-sensitive metrics (CPU and Network)
-read -r _ u1 n1 s1 i1 io1 ir1 so1 st1 g1 gn1 <<< "$(grep '^cpu ' /proc/stat)"
-read rx1 tx1 <<< "$(awk -v IGNORECASE=1 '/^ *[ew]/{rx+=$2; tx+=$10} END{print rx, tx}' /proc/net/dev)"
+CACHE_FILE="/tmp/qs_sys_fetcher_cache.txt"
 
-# 2. Small delay to calculate precise usage deltas
-sleep 0.5
+# 1. Read instantaneous current values
+read -r _ u n s i io ir so st g gn <<< "$(grep '^cpu ' /proc/stat)"
+read rx tx <<< "$(awk -v IGNORECASE=1 '/^ *[ew]/{rx+=$2; tx+=$10} END{print rx, tx}' /proc/net/dev)"
+NOW=$(date +%s%N 2>/dev/null || date +%s000000000)
 
-# 3. Read final values
-read -r _ u2 n2 s2 i2 io2 ir2 so2 st2 g2 gn2 <<< "$(grep '^cpu ' /proc/stat)"
-read rx2 tx2 <<< "$(awk -v IGNORECASE=1 '/^ *[ew]/{rx+=$2; tx+=$10} END{print rx, tx}' /proc/net/dev)"
+# 2. Extract previous values from cache
+if [ -f "$CACHE_FILE" ]; then
+    read -r p_u p_n p_s p_i p_io p_ir p_so p_st p_rx p_tx p_now < "$CACHE_FILE"
+else
+    p_u=0; p_n=0; p_s=0; p_i=0; p_io=0; p_ir=0; p_so=0; p_st=0; p_rx=0; p_tx=0; p_now=0
+fi
 
-# --- CPU Calculation ---
-IDLE1=$i1; TOTAL1=$((u1 + n1 + s1 + i1 + io1 + ir1 + so1 + st1))
-IDLE2=$i2; TOTAL2=$((u2 + n2 + s2 + i2 + io2 + ir2 + so2 + st2))
-DIFF_IDLE=$((IDLE2 - IDLE1))
-DIFF_TOTAL=$((TOTAL2 - TOTAL1))
-if [ "$DIFF_TOTAL" -eq 0 ]; then CPU_USAGE=0; else CPU_USAGE=$(( 100 * (DIFF_TOTAL - DIFF_IDLE) / DIFF_TOTAL )); fi
+# 3. Write new state instantly
+echo "$u $n $s $i $io $ir $so $st $rx $tx $NOW" > "$CACHE_FILE"
 
-# --- Network Calculation ---
-RX_RATE=$(((rx2 - rx1) * 2))
-TX_RATE=$(((tx2 - tx1) * 2))
+# 4. Calculate Deltas
+if [ "$p_now" -eq 0 ]; then
+    CPU_USAGE=0
+    RX_RATE=0
+    TX_RATE=0
+else
+    IDLE1=$p_i; TOTAL1=$((p_u + p_n + p_s + p_i + p_io + p_ir + p_so + p_st))
+    IDLE2=$i;   TOTAL2=$((u + n + s + i + io + ir + so + st))
+    DIFF_IDLE=$((IDLE2 - IDLE1))
+    DIFF_TOTAL=$((TOTAL2 - TOTAL1))
 
-# --- RAM Calculation ---
+    if [ "$DIFF_TOTAL" -eq 0 ]; then CPU_USAGE=0; else CPU_USAGE=$(( 100 * (DIFF_TOTAL - DIFF_IDLE) / DIFF_TOTAL )); fi
+
+    # Enforce strict positive limits to block negative UI byte spikes on network reset
+    TIME_DIFF_SEC=$(awk "BEGIN {print ($NOW - $p_now) / 1000000000}")
+    if awk "BEGIN {exit !($TIME_DIFF_SEC > 0)}"; then
+        RX_RATE=$(awk "BEGIN {val=($rx - $p_rx) / $TIME_DIFF_SEC; printf \"%d\", val>0?val:0}")
+        TX_RATE=$(awk "BEGIN {val=($tx - $p_tx) / $TIME_DIFF_SEC; printf \"%d\", val>0?val:0}")
+    else
+        RX_RATE=0; TX_RATE=0
+    fi
+fi
+
+# --- RAM Calculation (Snapshot) ---
 while IFS=":" read -r key val; do
     case "$key" in
         MemTotal) TOTAL_MEM=$(echo "$val" | awk '{print $1}') ;;
@@ -33,7 +52,7 @@ USED_MEM=$((TOTAL_MEM - AVAIL_MEM))
 RAM_PCT=$(( 100 * USED_MEM / TOTAL_MEM ))
 RAM_GB=$(awk "BEGIN {printf \"%.1f\", $USED_MEM / 1024 / 1024}")
 
-# --- Temperature Calculation ---
+# --- Temperature Calculation (Snapshot) ---
 TEMP_RAW=""
 for hwmon in /sys/class/hwmon/hwmon*; do
     if [ -f "$hwmon/name" ]; then
