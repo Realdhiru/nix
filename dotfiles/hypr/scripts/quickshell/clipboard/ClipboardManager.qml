@@ -245,11 +245,17 @@ Item {
 
     function appendClips(newItems) {
         let q = searchInput.text.toLowerCase();
+        let updatedClips = window.allClips.concat(newItems);
+        window.allClips = updatedClips; 
+        
+        let batch = [];
         for (let i = 0; i < newItems.length; i++) {
-            allClips.push(newItems[i]);
             if (q === "" || newItems[i].type === "image" || newItems[i].content.toLowerCase().includes(q)) {
-                clipModel.append(newItems[i]);
+                batch.push(newItems[i]);
             }
+        }
+        if (batch.length > 0) {
+            clipModel.append(batch);
         }
         
         if (window.pendingIndex !== -1) {
@@ -269,10 +275,15 @@ Item {
         let q = query.toLowerCase();
         clipModel.clear();
 
-        for (let i = 0; i < allClips.length; i++) {
-            if (allClips[i].type === "image" || allClips[i].content.toLowerCase().includes(q)) {
-                clipModel.append(allClips[i]);
+        let clips = window.allClips;
+        let batch = [];
+        for (let i = 0; i < clips.length; i++) {
+            if (clips[i].type === "image" || clips[i].content.toLowerCase().includes(q)) {
+                batch.push(clips[i]);
             }
+        }
+        if (batch.length > 0) {
+            clipModel.append(batch);
         }
 
         if (clipModel.count > 0) {
