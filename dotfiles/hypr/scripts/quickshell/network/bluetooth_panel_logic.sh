@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# dotfiles/hypr/scripts/quickshell/network/bluetooth_panel_logic.sh
 
 export LC_ALL=C
 SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
@@ -53,15 +54,15 @@ get_status() {
     fi
 
     power="off"
-    if timeout 1 bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then power="on"; fi
+    if timeout 0.5 bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then power="on"; fi
 
     connected_json="[]"
     devices_json="[]"
 
     if [ "$power" == "on" ]; then
-        paired_macs=$(bluetoothctl devices Paired)
-        mapfile -t devices < <(bluetoothctl devices)
-        mapfile -t connected_info_lines < <(bluetoothctl devices Connected)
+        paired_macs=$(timeout 1 bluetoothctl devices Paired 2>/dev/null)
+        mapfile -t devices < <(timeout 1 bluetoothctl devices 2>/dev/null)
+        mapfile -t connected_info_lines < <(timeout 1 bluetoothctl devices Connected 2>/dev/null)
         
         cached_cards=$(timeout 0.5 pactl list cards 2>/dev/null)
         
@@ -82,7 +83,7 @@ get_status() {
             if [ -f "$CACHE_FILE" ]; then
                 source "$CACHE_FILE"
             else
-                info=$(bluetoothctl info "$mac")
+                info=$(timeout 0.5 bluetoothctl info "$mac" 2>/dev/null)
                 icon_type=$(echo "$info" | awk -F': ' '/Icon:/ {print $2}')
                 icon=$(get_icon "$icon_type" "$name")
                 profile=$(get_audio_profile "$mac" "$cached_cards")
@@ -96,7 +97,7 @@ get_status() {
                 CACHE_PROFILE="${profile//\"/\\\"}"
             fi
             
-            bat=$(bluetoothctl info "$mac" | awk -F'[(|)]' '/Battery Percentage:/ {print $2}')
+            bat=$(timeout 0.5 bluetoothctl info "$mac" 2>/dev/null | awk -F'[(|)]' '/Battery Percentage:/ {print $2}')
             [ -z "$bat" ] && bat="0"
 
             connected_list_objs+=("{\"id\":\"$mac\",\"name\":\"$CACHE_NAME\",\"mac\":\"$mac\",\"icon\":\"$CACHE_ICON\",\"battery\":\"$bat\",\"profile\":\"$CACHE_PROFILE\"}")
@@ -121,7 +122,6 @@ get_status() {
                 action="Connect"
             else
                 action="Pair & Connect"
-                # Strict Spam Filter: Drop unknown/unpaired devices without a real name
                 mac_hyphens="${mac//:/-}"
                 if [[ "$name" == "$mac" || "$name" == "$mac_hyphens" || -z "$name" ]]; then
                     continue
@@ -144,26 +144,26 @@ get_status() {
 
 toggle_power() {
     rfkill unblock bluetooth 2>/dev/null
-    if bluetoothctl show | grep -q "Powered: yes"; then
-        bluetoothctl power off
+    if timeout 0.5 bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
+        timeout 0.5 bluetoothctl power off 2>/dev/null
         sleep 0.5
     else
-        bluetoothctl power on
+        timeout 0.5 bluetoothctl power on 2>/dev/null
         sleep 0.5
     fi
 }
 
 connect_dev() {
     local mac="$1"
-    bluetoothctl trust "$mac" > /dev/null 2>&1
-    bluetoothctl pair "$mac" > /dev/null 2>&1
-    bluetoothctl connect "$mac"
+    timeout 2 bluetoothctl trust "$mac" > /dev/null 2>&1
+    timeout 2 bluetoothctl pair "$mac" > /dev/null 2>&1
+    timeout 5 bluetoothctl connect "$mac" > /dev/null 2>&1
 }
 
 disconnect_dev() {
     local mac="$1"
     rm -f "$CACHE_DIR/bt_stat_${mac//:/_}" 2>/dev/null
-    bluetoothctl disconnect "$mac"
+    timeout 2 bluetoothctl disconnect "$mac" > /dev/null 2>&1
 }
 
 cmd="$1"
@@ -174,13 +174,13 @@ case $cmd in
     --disconnect) disconnect_dev "$2" ;;
     --scan-start)
         rfkill unblock bluetooth 2>/dev/null
-        bluetoothctl power on > /dev/null 2>&1
+        timeout 0.5 bluetoothctl power on > /dev/null 2>&1
         if [ -f "$PID_FILE" ]; then kill -9 $(cat "$PID_FILE") 2>/dev/null; rm -f "$PID_FILE"; fi
         nohup bluetoothctl scan on > /dev/null 2>&1 < /dev/null &
         echo $! > "$PID_FILE"
         ;;
     --scan-stop)
         if [ -f "$PID_FILE" ]; then kill -9 $(cat "$PID_FILE") 2>/dev/null; rm -f "$PID_FILE"; fi
-        bluetoothctl scan off > /dev/null 2>&1
+        timeout 0.5 bluetoothctl scan off > /dev/null 2>&1
         ;;
 esac
