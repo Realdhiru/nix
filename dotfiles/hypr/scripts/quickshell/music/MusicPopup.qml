@@ -496,6 +496,7 @@ Item {
                     spacing: root.s(25)
 
                     Item {
+                        visible: root.musicData && root.musicData.artUrl !== ""
                         Layout.preferredWidth: root.s(220)
                         Layout.preferredHeight: root.s(220)
                         Layout.alignment: Qt.AlignVCenter
@@ -503,7 +504,7 @@ Item {
                         opacity: root.introCover
                         transform: Translate { x: root.s(-40) * (1 - root.introCover); y: root.s(10) * (1 - root.introCover) }
 
-                        scale: root.musicData.status === "Playing" ? 1.0 : 0.90
+                        scale: root.musicData && root.musicData.status === "Playing" ? 1.0 : 0.90
                         Behavior on scale { NumberAnimation { duration: 800; easing.type: Easing.OutElastic; easing.overshoot: 1.2 } }
 
                         Rectangle {
@@ -511,7 +512,7 @@ Item {
                             radius: root.s(110)
                             color: root.surface1
                             border.width: root.s(4)
-                            border.color: root.musicData.status === "Playing" ? root.mauve : root.overlay0
+                            border.color: root.musicData && root.musicData.status === "Playing" ? root.mauve : root.overlay0
                             Behavior on border.color { ColorAnimation { duration: 500 } }
 
                             Rectangle {
@@ -521,7 +522,7 @@ Item {
                                 height: parent.height + root.s(20)
                                 radius: width / 2
                                 color: root.mauve
-                                opacity: root.musicData.status === "Playing" ? 0.5 : 0.0
+                                opacity: root.musicData && root.musicData.status === "Playing" ? 0.5 : 0.0
                                 Behavior on opacity { NumberAnimation { duration: 500 } }
                                 layer.enabled: true
                                 layer.effect: MultiEffect {
@@ -537,7 +538,7 @@ Item {
                                 Image {
                                     id: artImg
                                     anchors.fill: parent
-                                    source: root.musicData.artUrl ? "file://" + root.musicData.artUrl : ""
+                                    source: root.musicData && root.musicData.artUrl ? "file://" + root.musicData.artUrl : ""
                                     fillMode: Image.PreserveAspectCrop
                                     visible: false
                                 }
@@ -576,7 +577,7 @@ Item {
                                 from: 0; to: 360; duration: 8000
                                 loops: Animation.Infinite
                                 running: true
-                                paused: root.musicData.status !== "Playing"
+                                paused: root.musicData && root.musicData.status !== "Playing"
                             }
                         }
                     }
