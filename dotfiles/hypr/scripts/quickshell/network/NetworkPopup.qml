@@ -150,7 +150,6 @@ Item {
         if (window.activeMode === "wifi") savedNetworksFetcher.running = true;
     }
 
-
     function playSfx(filename) {
         try {
             let rawUrl = Qt.resolvedUrl("sounds/" + filename).toString();
@@ -253,6 +252,26 @@ Item {
         }
     }
 
+    Process {
+        id: disconnectProcess
+        property string targetMode: ""
+        onExited: {
+            if (targetMode === "eth") ethPoller.running = true;
+            else if (targetMode === "wifi") wifiPoller.running = true;
+            else btPoller.running = true;
+        }
+    }
+
+    Process {
+        id: powerToggleProcess
+        property string targetMode: ""
+        onExited: {
+            if (targetMode === "eth") ethPoller.running = true;
+            else if (targetMode === "wifi") wifiPoller.running = true;
+            else btPoller.running = true;
+        }
+    }
+
     function connectDevice(mode, id, macOrSsid, password) {
         window.connectingId = id;
         window.failedId = "";
@@ -264,6 +283,8 @@ Item {
         connectProcess.targetId = id;
         connectProcess.targetSsid = (mode === "wifi") ? macOrSsid : "";
 
+        if (connectProcess.running) connectProcess.running = false;
+
         if (mode === "eth") {
             connectProcess.command = ["bash", "-c", "nmcli device connect '" + macOrSsid + "'"];
         } else if (mode === "wifi") {
@@ -273,7 +294,7 @@ Item {
                 connectProcess.command = ["bash", "-c", "if nmcli connection show '" + macOrSsid + "' >/dev/null 2>&1; then nmcli connection up id '" + macOrSsid + "'; else nmcli device wifi connect '" + macOrSsid + "'; fi"];
             }
         } else {
-            connectProcess.command = ["bash", "-c", "bluetoothctl trust '" + macOrSsid + "' 2>/dev/null; bluetoothctl pair '" + macOrSsid + "' 2>/dev/null; bluetoothctl connect '" + macOrSsid + "'"];
+            connectProcess.command = ["bash", window.scriptsDir + "/bluetooth_panel_logic.sh", "--connect", macOrSsid];
         }
         connectProcess.running = true;
     }
@@ -358,6 +379,14 @@ Item {
 
         window.pendingWifiId = ""; window.pendingWifiSsid = "";
         if (window.activeMode === "wifi") savedNetworksFetcher.running = true;
+
+        if (window.activeMode === "bt" && window.btPower === "on" && window.visible && !window.isScanningBt) {
+            if (btScanStarter.running) btScanStarter.running = false;
+            btScanStarter.running = true;
+        } else if (window.activeMode !== "bt" && window.isScanningBt) {
+            if (btScanStopper.running) btScanStopper.running = false;
+            btScanStopper.running = true;
+        }
 
         infoListModel.clear();
         window.busyTasks = ({});
@@ -675,109 +704,15 @@ Item {
     property var btDeviceList: []
 
     Process {
-        id: btScanner
-        running: false
-        command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/bluetooth_panel_logic.sh --scan"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                window.isScanningBt = false;
-                try {
-                    let parsed = JSON.parse(this.text);
-                    parsed.sort((a, b) => {
-                        if (a.status === "Connected" && b.status !== "Connected") return -1;
-                        if (a.status !== "Connected" && b.status === "Connected") return 1;
-                        return 0;
-                    });
-                    window.btDeviceList = parsed;
-                    
-                    if (window.activeMode === "bt") {
-                         let isNowBtConn = false;
-                         let newBtConnected = [];
-                         let newDevices = [];
+        id: btScanStarter
+        command: ["bash", window.scriptsDir + "/bluetooth_panel_logic.sh", "--scan-start"]
+        onExited: window.isScanningBt = true
+    }
 
-                         for(let i=0; i<parsed.length; i++){
-                             if(parsed[i].status === "Connected"){
-                                 isNowBtConn = true;
-                                 newBtConnected.push(parsed[i]);
-                             } else {
-                                 let action = "Connect"; 
-                                 newDevices.push({
-                                     id: parsed[i].mac, mac: parsed[i].mac,
-                                     name: parsed[i].name, icon: parsed[i].icon,
-                                     action: action
-                                 });
-                             }
-                         }
-
-                         let oldBtLen = window.btConnected.length;
-
-                         if (JSON.stringify(window.btConnected) !== JSON.stringify(newBtConnected)) {
-                             window.btConnected = newBtConnected;
-                         }
-
-                         newDevices.sort((a, b) => a.id.localeCompare(b.id));
-
-                         if (isNowBtConn) {
-                             newDevices.push({ id: "action_settings", ssid: "", mac: "action_settings", name: "Current Device", icon: "󰒓", action: "View Info", isInfoNode: false, isActionable: true, cmdStr: "TOGGLE_VIEW", parentIndex: -1 });
-                         }
-
-                         if (JSON.stringify(window.btList) !== JSON.stringify(newDevices)) {
-                             if (window.isListLocked) window.nextBtList = newDevices;
-                             else { window.syncModel(btListModel, newDevices); window.btList = newDevices; window.nextBtList = null; }
-                         }
-
-                         if (newBtConnected.length > oldBtLen) {
-                             window.showInfoView = true;
-                         }
-
-                         let dd = window.disconnectingDevices;
-                         let ddChanged = false;
-                         for (let mac in dd) {
-                             let stillConnected = false;
-                             for (let i = 0; i < newBtConnected.length; i++) {
-                                 if (newBtConnected[i].mac === mac) { stillConnected = true; break; }
-                             }
-                             if (!stillConnected) {
-                                 delete dd[mac];
-                                 ddChanged = true;
-                             }
-                         }
-                         if (ddChanged) {
-                             window.disconnectingDevices = Object.assign({}, dd);
-                             if (Object.keys(window.disconnectingDevices).length === 0 && Object.keys(window.busyTasks).length === 0) busyTimeout.stop();
-                         }
-
-                         let newlyConnected = false;
-                         let bt = window.busyTasks;
-                         for (let i = 0; i < newBtConnected.length; i++) {
-                             let mac = newBtConnected[i].mac;
-                             if (bt[mac]) {
-                                 newlyConnected = true;
-                                 delete bt[mac];
-                                 window.connectingId = "";
-                             }
-                         }
-                         if (newlyConnected) {
-                             window.playSfx("connect.wav");
-                             window.busyTasks = Object.assign({}, bt);
-                             if (Object.keys(window.busyTasks).length === 0 && Object.keys(window.disconnectingDevices).length === 0) busyTimeout.stop();
-                         }
-
-                         if (isNowBtConn || window.isWifiConn || window.isEthConn) window.updateInfoNodes();
-
-                         let data = {
-                             present: window.btPresent,
-                             power: window.btPower,
-                             connected: newBtConnected,
-                             devices: newDevices
-                         };
-                         cache.lastBtJson = JSON.stringify(data);
-                    }
-                } catch(e) {
-                    console.log("Failed to parse BT scan results");
-                }
-            }
-        }
+    Process {
+        id: btScanStopper
+        command: ["bash", window.scriptsDir + "/bluetooth_panel_logic.sh", "--scan-stop"]
+        onExited: window.isScanningBt = false
     }
 
     Connections {
@@ -785,8 +720,13 @@ Item {
         function onVisibleChanged() {
             if (window.visible) {
                 if (!window.isScanningBt && window.activeMode === "bt" && window.btPower === "on") {
-                    window.isScanningBt = true;
-                    btScanner.running = true;
+                    if (btScanStarter.running) btScanStarter.running = false;
+                    btScanStarter.running = true;
+                }
+            } else {
+                if (window.isScanningBt) {
+                    if (btScanStopper.running) btScanStopper.running = false;
+                    btScanStopper.running = true;
                 }
             }
         }
@@ -911,11 +851,8 @@ Item {
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
-                // If we are currently scanning, ignore this generic poll to prevent UI flicker
-                if (!window.isScanningBt) {
-                    cache.lastBtJson = this.text.trim();
-                    processBtJson(cache.lastBtJson);
-                }
+                cache.lastBtJson = this.text.trim();
+                processBtJson(cache.lastBtJson);
             }
         }
     }
@@ -1469,7 +1406,7 @@ Item {
                                                     window.forceActiveFocus();
                                                 }
                                             }
-                                            Keys.onEscapePressed: { window.pendingWifiId = ""; window.pendingWifiSsid = ""; text = ""; window.forceActiveFocus(); }
+                                            Keys.onEscapePressed: (event) => { window.pendingWifiId = ""; window.pendingWifiSsid = ""; text = ""; window.forceActiveFocus(); }
                                         }
                                     }
                                 }
@@ -1607,11 +1544,12 @@ Item {
                                     window.disconnectingDevices = Object.assign({}, dd);
                                     busyTimeout.restart();
 
-                                    let cmd = "";
-                                    if (window.activeMode === "eth") cmd = "nmcli device disconnect '" + coreContainer.myId + "'";
-                                    else if (window.activeMode === "wifi") cmd = "nmcli device disconnect $(nmcli -t -f DEVICE,TYPE d | grep wifi | cut -d: -f1 | head -n1)";
-                                    else cmd = "bash " + window.scriptsDir + "/bluetooth_panel_logic.sh --disconnect '" + coreContainer.myId + "'";
-                                    Quickshell.execDetached(["sh", "-c", cmd])
+                                    if (disconnectProcess.running) disconnectProcess.running = false;
+                                    disconnectProcess.targetMode = window.activeMode;
+                                    if (window.activeMode === "eth") disconnectProcess.command = ["nmcli", "device", "disconnect", coreContainer.myId];
+                                    else if (window.activeMode === "wifi") disconnectProcess.command = ["bash", "-c", "nmcli device disconnect $(nmcli -t -f DEVICE,TYPE d | grep wifi | cut -d: -f1 | head -n1)"];
+                                    else disconnectProcess.command = ["bash", window.scriptsDir + "/bluetooth_panel_logic.sh", "--disconnect", coreContainer.myId];
+                                    disconnectProcess.running = true;
 
                                     centralCore.disconnectFill = 0.0;
                                     centralCore.disconnectTriggered = false;
@@ -2441,6 +2379,9 @@ Item {
                         onClicked: {
                             if (window.pendingWifiId !== "") { window.pendingWifiId = ""; window.pendingWifiSsid = ""; }
 
+                            if (powerToggleProcess.running) powerToggleProcess.running = false;
+                            powerToggleProcess.targetMode = window.activeMode;
+
                             if (window.activeMode === "eth") {
                                 if (window.ethPowerPending) return;
                                 window.expectedEthPower = window.ethPower === "on" ? "off" : "on";
@@ -2450,8 +2391,8 @@ Item {
                                 window.ethPower = window.expectedEthPower;
                                 let targetDev = window.ethDeviceName !== "" ? window.ethDeviceName : (window.currentCores[0] ? window.currentCores[0].id : "");
                                 if (targetDev !== "") {
-                                    if (window.expectedEthPower === "on") Quickshell.execDetached(["nmcli", "device", "connect", targetDev]);
-                                    else Quickshell.execDetached(["nmcli", "device", "disconnect", targetDev]);
+                                    powerToggleProcess.command = window.expectedEthPower === "on" ? ["nmcli", "device", "connect", targetDev] : ["nmcli", "device", "disconnect", targetDev];
+                                    powerToggleProcess.running = true;
                                 }
                                 ethPoller.running = true;
                             } else if (window.activeMode === "wifi") {
@@ -2461,7 +2402,8 @@ Item {
                                 if (window.expectedWifiPower === "on") window.playSfx("power_on.wav"); else window.playSfx("power_off.wav");
                                 wifiPendingReset.restart();
                                 window.wifiPower = window.expectedWifiPower;
-                                Quickshell.execDetached(["nmcli", "radio", "wifi", window.wifiPower]);
+                                powerToggleProcess.command = ["nmcli", "radio", "wifi", window.wifiPower];
+                                powerToggleProcess.running = true;
                                 wifiPoller.running = true;
                             } else {
                                 if (window.btPowerPending) return;
@@ -2470,7 +2412,8 @@ Item {
                                 if (window.expectedBtPower === "on") window.playSfx("power_on.wav"); else window.playSfx("power_off.wav");
                                 btPendingReset.restart();
                                 window.btPower = window.expectedBtPower;
-                                Quickshell.execDetached(["bash", window.scriptsDir + "/bluetooth_panel_logic.sh", "--toggle"]);
+                                powerToggleProcess.command = ["bash", window.scriptsDir + "/bluetooth_panel_logic.sh", "--toggle"];
+                                powerToggleProcess.running = true;
                                 btPoller.running = true;
                             }
                         }
