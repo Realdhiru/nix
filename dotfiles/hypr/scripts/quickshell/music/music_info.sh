@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 # -----------------------------------------------------------------------------
 # CACHING
 # -----------------------------------------------------------------------------
@@ -9,16 +10,22 @@ TMP_DIR="$QS_RUN_MUSIC/covers"
 STATE_FILE="$QS_STATE_MUSIC/last_state.json"
 
 mkdir -p "$TMP_DIR"
+PLACEHOLDER="$TMP_DIR/placeholder_blank.png"
 
 # Prevent cold-boot D-Bus hangs from keeping the script alive
 PT="timeout 1.5 playerctl"
 
-# --- 1. CHECK STATUS ---
+# --- 1. ENSURE PLACEHOLDER EXISTS ---
+if [ ! -f "$PLACEHOLDER" ]; then
+    convert -size 500x500 xc:"#313244" "$PLACEHOLDER"
+fi
+
+# --- 2. CHECK STATUS ---
 STATUS=$($PT status 2>/dev/null)
 
 if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
 
-    # --- 2. GET INFO ---
+    # --- 3. GET INFO ---
     rawUrl=$($PT metadata mpris:artUrl 2>/dev/null)
     title=$($PT metadata xesam:title 2>/dev/null)
     artist=$($PT metadata xesam:artist 2>/dev/null)
@@ -36,13 +43,12 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
     textPath="$TMP_DIR/${trackHash}_text.txt"
     lockFile="$TMP_DIR/${trackHash}.lock"
 
-    # Default to EMPTY. If art doesn't exist, the UI will collapse the space.
-    displayArt=""
-    displayBlur=""
+    displayArt="$PLACEHOLDER"
+    displayBlur="$PLACEHOLDER"
     displayGrad="linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)"
     displayText="#cdd6f4"
 
-    # --- 3. ASYNC BACKGROUND LOGIC ---
+    # --- 4. ASYNC BACKGROUND LOGIC ---
     if [ -f "$finalArt" ] && [ -s "$finalArt" ]; then
         displayArt="$finalArt"
         if [ -f "$blurPath" ]; then displayBlur="$blurPath"; fi
@@ -56,31 +62,30 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
                 tempBlur="$TMP_DIR/${trackHash}_temp_blur.png"
 
                 # curl seamlessly handles http://, https://, and file:// URLs. 
-                # It also natively handles URL-decoding for browser file:// paths containing %20.
+                # It also natively handles URL-decoding for browser file:// paths containing %20, bypassing cp failures.
                 curl -s -L --max-time 8 -o "$tempArt" "$rawUrl"
 
-                # Only lock in the image if curl successfully fetched real data
-                if [ -s "$tempArt" ]; then
-                    echo "linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)" > "$colorPath"
-                    echo "#cdd6f4" > "$textPath"
-                    cp "$tempArt" "$blurPath"
-                    mv "$tempArt" "$finalArt"
-
-                    # TRIGGER D-BUS WAKEUP: Tells TopBar.qml that the async image is ready
-                    dbus-send --session --type=signal /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Seeked int64:0 2>/dev/null
-                else
-                    rm -f "$tempArt" 2>/dev/null
+                if [ ! -s "$tempArt" ]; then
+                    cp "$PLACEHOLDER" "$tempArt"
                 fi
+
+                echo "linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)" > "$colorPath"
+                echo "#cdd6f4" > "$textPath"
+                cp "$tempArt" "$blurPath"
+                mv "$tempArt" "$finalArt"
 
                 rm -f "$lockFile"
                 (cd "$TMP_DIR" && ls -1t | tail -n +21 | xargs -r rm -f 2>/dev/null)
+
+                # TRIGGER D-BUS WAKEUP: Tells TopBar.qml that the async image is ready
+                dbus-send --session --type=signal /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Seeked int64:0 2>/dev/null
             ) </dev/null >/dev/null 2>&1 &
 
             ( sleep 0.1 && touch "$QS_RUN_WORKSPACES/workspaces.json" ) &
         fi
     fi
 
-    # --- 4. TIMING ---
+    # --- 5. TIMING ---
     len_micro=$($PT metadata mpris:length 2>/dev/null)
     if [ -z "$len_micro" ] || [ "$len_micro" -eq 0 ]; then len_micro=1000000; fi
     len_sec=$((len_micro / 1000000))
@@ -116,7 +121,7 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
     pos_str=$(printf "%02d:%02d" $((pos_sec/60)) $((pos_sec%60)))
     time_str="${pos_str} / ${len_str}"
 
-    # --- 5. DEVICE INFO ---
+    # --- 6. DEVICE INFO ---
     player_raw=$($PT status -f "{{playerName}}" 2>/dev/null | head -n 1)
     player_nice="${player_raw^}"
 
@@ -135,7 +140,10 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
         dev_name="$node_desc"
     fi
 
-    # --- 6. JSON OUTPUT ---
+    # RESTORED: Raw path assignment to prevent file:// collision crash in QML
+    finalArtUrl="${displayArt}"
+
+    # --- 7. JSON OUTPUT ---
     jq -n -c \
         --arg title "$title" \
         --arg artist "$artist" \
@@ -153,7 +161,7 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
         --arg txtColor "$displayText" \
         --arg devIcon "$dev_icon" \
         --arg devName "$dev_name" \
-        --arg finalArt "$displayArt" \
+        --arg finalArt "$finalArtUrl" \
         '{
             title: $title,
             artist: $artist,
@@ -191,7 +199,10 @@ else
     last_len_str=$(printf "%02d:%02d" $((last_len_sec/60)) $((last_len_sec%60)))
     last_time_str="${last_pos_str} / ${last_len_str}"
 
+    finalArtUrl="${PLACEHOLDER}"
+
     jq -n -c \
+    --arg placeholder "$finalArtUrl" \
     --arg pos_str "$last_pos_str" \
     --arg len_str "$last_len_str" \
     --arg time_str "$last_time_str" \
@@ -206,11 +217,11 @@ else
         timeStr: $time_str,
         source: "Offline",
         playerName: "",
-        blur: "",
+        blur: $placeholder,
         grad: "linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)",
         textColor: "#cdd6f4",
         deviceIcon: "󰓃",
         deviceName: "Speaker",
-        artUrl: ""
+        artUrl: $placeholder
     }'
 fi
