@@ -45,20 +45,16 @@ get_audio_profile() {
 }
 
 get_status() {
-    # 1. Zero-latency hardware presence check (Bypasses the 1-second timeout entirely)
     if ! ls -1d /sys/class/bluetooth/hci* &>/dev/null; then
         echo "{\"present\":false,\"power\":\"off\",\"connected\":[],\"devices\":[]}"
         return
     fi
 
-    # 2. Check if bluetoothctl is even installed to prevent command errors
     if ! command -v bluetoothctl &> /dev/null; then
         echo "{\"present\":false,\"power\":\"off\",\"connected\":[],\"devices\":[]}"
         return
     fi
 
-    # We keep the timeout here just in case the bluetoothd daemon is frozen, 
-    # but the sysfs check above prevents this from running at all on machines without BT.
     controller=$(timeout 1 bluetoothctl list 2>/dev/null | head -n1)
     if [[ -z "$controller" || "$controller" == *"Waiting"* ]]; then
         echo "{\"present\":false,\"power\":\"off\",\"connected\":[],\"devices\":[]}"
@@ -76,14 +72,12 @@ get_status() {
         mapfile -t devices < <(bluetoothctl devices)
         mapfile -t connected_info_lines < <(bluetoothctl devices Connected)
         
-        # THE FIX: Cache pactl output ONCE per script execution with a strict timeout
         cached_cards=$(timeout 0.5 pactl list cards 2>/dev/null)
         
         connected_macs=""
         connected_list_objs=()
         devices_list_objs=()
 
-        # 1. PROCESS CONNECTED DEVICES
         for c_line in "${connected_info_lines[@]}"; do
             [ -z "$c_line" ] && continue
             rest="${c_line#Device }"
@@ -100,7 +94,6 @@ get_status() {
                 icon_type=$(echo "$info" | awk -F': ' '/Icon:/ {print $2}')
                 icon=$(get_icon "$icon_type" "$name")
                 
-                # THE FIX: Pass the cached output instead of calling pactl again
                 profile=$(get_audio_profile "$mac" "$cached_cards")
                 
                 echo "CACHE_NAME=\"${name//\"/\\\"}\"" > "$CACHE_FILE"
@@ -122,7 +115,6 @@ get_status() {
             connected_json="[$(IFS=,; echo "${connected_list_objs[*]}")]"
         fi
 
-        # 2. PROCESS DISCOVERED & PAIRED DEVICES
         for line in "${devices[@]}"; do
             [ -z "$line" ] && continue
             rest="${line#Device }"
@@ -170,10 +162,9 @@ toggle_power() {
 
 connect_dev() {
     local mac="$1"
-    if [ -f "$PID_FILE" ]; then kill -STOP $(cat "$PID_FILE") 2>/dev/null; fi
+    if [ -f "$PID_FILE" ]; then kill -9 $(cat "$PID_FILE") 2>/dev/null; rm -f "$PID_FILE"; fi
     bluetoothctl trust "$mac" > /dev/null 2>&1
     bluetoothctl connect "$mac"
-    if [ -f "$PID_FILE" ]; then kill -CONT $(cat "$PID_FILE") 2>/dev/null; fi
 }
 
 disconnect_dev() {
@@ -188,4 +179,14 @@ case $cmd in
     --toggle) toggle_power ;;
     --connect) connect_dev "$2" ;;
     --disconnect) disconnect_dev "$2" ;;
+    --scan-start)
+        if [ -f "$PID_FILE" ]; then kill -9 $(cat "$PID_FILE") 2>/dev/null; fi
+        # 15s Failsafe timeout prevents battery drain if UI crashes
+        timeout 15 bluetoothctl scan on > /dev/null 2>&1 &
+        echo $! > "$PID_FILE"
+        ;;
+    --scan-stop)
+        if [ -f "$PID_FILE" ]; then kill -9 $(cat "$PID_FILE") 2>/dev/null; rm -f "$PID_FILE"; fi
+        bluetoothctl scan off > /dev/null 2>&1
+        ;;
 esac

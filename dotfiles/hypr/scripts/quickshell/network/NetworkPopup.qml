@@ -253,7 +253,6 @@ Item {
         }
     }
 
-    // FIX: Updated network connection execution block
     function connectDevice(mode, id, macOrSsid, password) {
         window.connectingId = id;
         window.failedId = "";
@@ -672,6 +671,128 @@ Item {
         if (!isCache) validateActiveMode();
     }
 
+    property bool isScanningBt: false
+    property var btDeviceList: []
+
+    Process {
+        id: btScanner
+        running: false
+        command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/bluetooth_panel_logic.sh --scan"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                window.isScanningBt = false;
+                try {
+                    let parsed = JSON.parse(this.text);
+                    parsed.sort((a, b) => {
+                        if (a.status === "Connected" && b.status !== "Connected") return -1;
+                        if (a.status !== "Connected" && b.status === "Connected") return 1;
+                        return 0;
+                    });
+                    window.btDeviceList = parsed;
+                    
+                    if (window.activeMode === "bt") {
+                         let isNowBtConn = false;
+                         let newBtConnected = [];
+                         let newDevices = [];
+
+                         for(let i=0; i<parsed.length; i++){
+                             if(parsed[i].status === "Connected"){
+                                 isNowBtConn = true;
+                                 newBtConnected.push(parsed[i]);
+                             } else {
+                                 let action = "Connect"; 
+                                 newDevices.push({
+                                     id: parsed[i].mac, mac: parsed[i].mac,
+                                     name: parsed[i].name, icon: parsed[i].icon,
+                                     action: action
+                                 });
+                             }
+                         }
+
+                         let oldBtLen = window.btConnected.length;
+
+                         if (JSON.stringify(window.btConnected) !== JSON.stringify(newBtConnected)) {
+                             window.btConnected = newBtConnected;
+                         }
+
+                         newDevices.sort((a, b) => a.id.localeCompare(b.id));
+
+                         if (isNowBtConn) {
+                             newDevices.push({ id: "action_settings", ssid: "", mac: "action_settings", name: "Current Device", icon: "󰒓", action: "View Info", isInfoNode: false, isActionable: true, cmdStr: "TOGGLE_VIEW", parentIndex: -1 });
+                         }
+
+                         if (JSON.stringify(window.btList) !== JSON.stringify(newDevices)) {
+                             if (window.isListLocked) window.nextBtList = newDevices;
+                             else { window.syncModel(btListModel, newDevices); window.btList = newDevices; window.nextBtList = null; }
+                         }
+
+                         if (newBtConnected.length > oldBtLen) {
+                             window.showInfoView = true;
+                         }
+
+                         let dd = window.disconnectingDevices;
+                         let ddChanged = false;
+                         for (let mac in dd) {
+                             let stillConnected = false;
+                             for (let i = 0; i < newBtConnected.length; i++) {
+                                 if (newBtConnected[i].mac === mac) { stillConnected = true; break; }
+                             }
+                             if (!stillConnected) {
+                                 delete dd[mac];
+                                 ddChanged = true;
+                             }
+                         }
+                         if (ddChanged) {
+                             window.disconnectingDevices = Object.assign({}, dd);
+                             if (Object.keys(window.disconnectingDevices).length === 0 && Object.keys(window.busyTasks).length === 0) busyTimeout.stop();
+                         }
+
+                         let newlyConnected = false;
+                         let bt = window.busyTasks;
+                         for (let i = 0; i < newBtConnected.length; i++) {
+                             let mac = newBtConnected[i].mac;
+                             if (bt[mac]) {
+                                 newlyConnected = true;
+                                 delete bt[mac];
+                                 window.connectingId = "";
+                             }
+                         }
+                         if (newlyConnected) {
+                             window.playSfx("connect.wav");
+                             window.busyTasks = Object.assign({}, bt);
+                             if (Object.keys(window.busyTasks).length === 0 && Object.keys(window.disconnectingDevices).length === 0) busyTimeout.stop();
+                         }
+
+                         if (isNowBtConn || window.isWifiConn || window.isEthConn) window.updateInfoNodes();
+
+                         let data = {
+                             present: window.btPresent,
+                             power: window.btPower,
+                             connected: newBtConnected,
+                             devices: newDevices
+                         };
+                         cache.lastBtJson = JSON.stringify(data);
+                    }
+                } catch(e) {
+                    console.log("Failed to parse BT scan results");
+                }
+            }
+        }
+    }
+
+    Connections {
+        target: window
+        function onVisibleChanged() {
+            if (window.visible) {
+                if (!window.isScanningBt && window.activeMode === "bt" && window.btPower === "on") {
+                    window.isScanningBt = true;
+                    btScanner.running = true;
+                }
+            }
+        }
+    }
+
+
     function processBtJson(textData, isCache = false) {
         if (!isCache && window.btFirstLoad) {
             window.powerAnimAllowed = false;
@@ -790,8 +911,11 @@ Item {
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
-                cache.lastBtJson = this.text.trim();
-                processBtJson(cache.lastBtJson);
+                // If we are currently scanning, ignore this generic poll to prevent UI flicker
+                if (!window.isScanningBt) {
+                    cache.lastBtJson = this.text.trim();
+                    processBtJson(cache.lastBtJson);
+                }
             }
         }
     }
@@ -928,8 +1052,6 @@ Item {
                     var s = window.s;
                     ctx.clearRect(0, 0, width, height);
                     if (!window.currentConn || !window.showInfoView || !window.currentPower) return;
-
-                    var time = Date.now() / 1000;
 
                     var time = Date.now() / 1000;
                     ctx.lineJoin = "round";
@@ -2079,7 +2201,6 @@ Item {
                 border.width: 1
                 visible: window.ethPresent || window.wifiPresent || window.btPresent
 
-                // The Morphing Highlight Pill
                 Rectangle {
                     id: activeTabHighlight
                     y: window.s(6)
@@ -2228,8 +2349,6 @@ Item {
                 id: powerToggleContainer
                 z: 100
 
-                // FIXED: Replaced direct Behavior on x/y with an interpolation value.
-                // This completely removes lag and overshooting when the parent window resizes/morphs.
                 property real pwrMorph: window.currentPower ? 1.0 : 0.0
                 Behavior on pwrMorph {
                     enabled: window.powerAnimAllowed;
