@@ -11,7 +11,6 @@ Item {
     // =========================================================
     // --- CACHING SYSTEM
     // =========================================================
-    Caching { id: paths }
 
     // =========================================================
     // --- MODULE CAPABILITIES EXPORT
@@ -561,7 +560,7 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: (mouse) => {
-                        var tempPath = paths.getRunDir("quickactions") + "/drawing.png";
+                        var tempPath = Caching.getRunDir("quickactions") + "/drawing.png";
                         drawCanvas.save(tempPath);
                         Quickshell.execDetached(["sh", "-c", "wl-copy < " + tempPath]);
                     }

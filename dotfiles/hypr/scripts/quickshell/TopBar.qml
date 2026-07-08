@@ -15,7 +15,6 @@ Variants {
             id: barWindow
             property bool pendingReload: false
 
-            Caching { id: paths }
 
             IpcHandler {
                 target: "topbar"
@@ -86,7 +85,7 @@ Variants {
 
             Process {
                 id: widgetPoller
-                command: ["bash", "-c", "cat '" + paths.runDir + "/current_widget' 2>/dev/null || echo ''"]
+                command: ["bash", "-c", "cat '" + Caching.runDir + "/current_widget' 2>/dev/null || echo ''"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();
@@ -97,7 +96,7 @@ Variants {
 
             Process {
                 id: recPoller
-                command: ["bash", "-c", "if [ -s '" + paths.getCacheDir('recording') + "/rec_pid' ] && kill -0 $(cat '" + paths.getCacheDir('recording') + "/rec_pid') 2>/dev/null; then echo '1'; else echo '0'; fi"]
+                command: ["bash", "-c", "if [ -s '" + Caching.getCacheDir('recording') + "/rec_pid' ] && kill -0 $(cat '" + Caching.getCacheDir('recording') + "/rec_pid') 2>/dev/null; then echo '1'; else echo '0'; fi"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         barWindow.isRecording = (this.text.trim() === "1");
@@ -107,7 +106,7 @@ Variants {
 
             Process {
                 id: updatePoller
-                command: ["bash", "-c", "if [ -f '" + paths.getCacheDir('updater') + "/update_pending' ]; then echo '1'; else echo '0'; fi"]
+                command: ["bash", "-c", "if [ -f '" + Caching.getCacheDir('updater') + "/update_pending' ]; then echo '1'; else echo '0'; fi"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         barWindow.updateAvailable = (this.text.trim() === "1");
@@ -205,7 +204,7 @@ Variants {
             Process {
                 id: wsReader
                 running: true
-                command: ["cat", paths.getRunDir("workspaces") + "/workspaces.json"]
+                command: ["cat", Caching.getRunDir("workspaces") + "/workspaces.json"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();
@@ -247,7 +246,7 @@ Variants {
             Process {
                 id: wsWatcher
                 running: true
-                command: ["bash", "-c", "while [ ! -f '" + paths.getRunDir('workspaces') + "/workspaces.json' ]; do sleep 1; done; inotifywait -qq -e modify,close_write,move_self '" + paths.getRunDir('workspaces') + "/workspaces.json'; sleep 0.05"]
+                command: ["bash", "-c", "while [ ! -f '" + Caching.getRunDir('workspaces') + "/workspaces.json' ]; do sleep 1; done; inotifywait -qq -e modify,close_write,move_self '" + Caching.getRunDir('workspaces') + "/workspaces.json'; sleep 0.05"]
                 onExited: {
                     wsReader.running = false;
                     wsReader.running = true;
@@ -259,7 +258,7 @@ Variants {
             Process {
                 id: musicForceRefresh
                 running: true
-                command: ["bash", "-c", "bash " + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/music/music_info.sh | tee '" + paths.getRunDir('music') + "/music_info.json'"]
+                command: ["bash", "-c", "bash " + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/music/music_info.sh | tee '" + Caching.getRunDir('music') + "/music_info.json'"]
                 stdout: StdioCollector {
                     onStreamFinished: {
                         let txt = this.text.trim();

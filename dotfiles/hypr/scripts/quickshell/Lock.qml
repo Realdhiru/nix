@@ -13,7 +13,6 @@ import "../"
 ShellRoot {
     id: root
 
-    Caching { id: paths }
 
     MatugenColors { id: _theme }
     readonly property color base: _theme.base
@@ -87,7 +86,7 @@ ShellRoot {
                 }
                 readonly property real sc: scaler.baseScale
 
-                property string staticWallpaperPath: "file://" + paths.getCacheDir("wallpaper_picker") + "/current_wallpaper.png"
+                property string staticWallpaperPath: "file://" + Caching.getCacheDir("wallpaper_picker") + "/current_wallpaper.png"
 
                 property string batPct: "100"
                 property string batStatus: "AC"

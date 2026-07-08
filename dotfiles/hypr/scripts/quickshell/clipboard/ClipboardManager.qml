@@ -11,7 +11,6 @@ Item {
     id: window
     focus: true
 
-    Caching { id: paths }
 
     Scaler {
         id: scaler
@@ -190,7 +189,7 @@ Item {
     Process {
         id: clipFetcher
         running: true
-        command: ["python3", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.py", window.currentOffset, window.fetchLimit, paths.getCacheDir("clipboard")]
+        command: ["python3", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.py", window.currentOffset, window.fetchLimit, Caching.getCacheDir("clipboard")]
         
         stdout: StdioCollector {
             onStreamFinished: {
@@ -239,7 +238,7 @@ Item {
         if (isLoading || !hasMore) return;
         isLoading = true;
         currentOffset += fetchLimit;
-        clipFetcher.command = ["python3", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.py", window.currentOffset, window.fetchLimit, paths.getCacheDir("clipboard")];
+        clipFetcher.command = ["python3", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.py", window.currentOffset, window.fetchLimit, Caching.getCacheDir("clipboard")];
         clipFetcher.running = true;
     }
 
@@ -312,7 +311,7 @@ Item {
                 window.currentOffset = 0;
                 window.hasMore = true;
                 window.isLoading = true;
-                clipFetcher.command = ["python3", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.py", 0, window.fetchLimit, paths.getCacheDir("clipboard")];
+                clipFetcher.command = ["python3", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.py", 0, window.fetchLimit, Caching.getCacheDir("clipboard")];
                 clipFetcher.running = true;
             } else {
                 searchInput.text = "";

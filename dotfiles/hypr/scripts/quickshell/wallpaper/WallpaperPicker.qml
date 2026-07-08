@@ -11,7 +11,6 @@ Item {
     id: window
     width: Screen.width
 
-    Caching { id: paths }
 
     Scaler {
         id: scaler
@@ -145,7 +144,7 @@ Item {
             let destFile = window.srcDir + "/" + safeFileName;
             let finalThumb = "file://" + window.srcDir + "/" + safeFileName;
             let tempThumb = decodeURIComponent(window.searchDir.replace("file://", "")) + "/" + safeFileName;
-            let mapFile = paths.getCacheDir("wallpaper_picker") + "/search_map.txt";
+            let mapFile = Caching.getCacheDir("wallpaper_picker") + "/search_map.txt";
 
             if (alreadyExists) {
                 const applyScript = `
@@ -202,7 +201,7 @@ Item {
     }
 
     onIsSearchPausedChanged: {
-        Quickshell.execDetached(["bash", "-c", "echo '" + (isSearchPaused ? "pause" : "run") + "' > " + paths.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
+        Quickshell.execDetached(["bash", "-c", "echo '" + (isSearchPaused ? "pause" : "run") + "' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
     }
 
     onVisibleChanged: {
@@ -384,9 +383,9 @@ Item {
         let scriptPath = decodeURIComponent(Qt.resolvedUrl("ddg_search.sh").toString().replace(/^file:\/\//, ""));
         
         const cmd = `
-            exec > ${paths.logDir}/ddg_run.log 2>&1
+            exec > ${Caching.logDir}/ddg_run.log 2>&1
             export PATH=$PATH:/run/current-system/sw/bin
-            echo 'stop' > ${paths.getRunDir("wallpaper_picker")}/ddg_search_control
+            echo 'stop' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
             for p in \$(pgrep -f ddg_search.sh); do
                 if [ "\$p" != "\$\$" ] && [ "\$p" != "\$BASHPID" ]; then
                     kill -9 \$p 2>/dev/null || true
@@ -396,7 +395,7 @@ Item {
             sleep 0.2
             rm -rf "${rawSearchDir}"/* || true
             rm -f "${rawSearchDir}/../search_map.txt" || true
-            echo 'run' > ${paths.getRunDir("wallpaper_picker")}/ddg_search_control
+            echo 'run' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
             bash "${scriptPath}" "${window.searchQuery}" &
         `;
         Quickshell.execDetached(["bash", "-c", cmd]);
@@ -405,7 +404,7 @@ Item {
     }
 
     readonly property string homeDir: "file://" + Quickshell.env("HOME")
-    readonly property string searchDir: "file://" + paths.getCacheDir("wallpaper_picker") + "/search_thumbs"
+    readonly property string searchDir: "file://" + Caching.getCacheDir("wallpaper_picker") + "/search_thumbs"
     readonly property string srcDir: {
         const dir = Quickshell.env("WALLPAPER_DIR")
         return (dir && dir !== "") ? dir : Quickshell.env("HOME") + "/Pictures/Wallpapers"
@@ -486,7 +485,7 @@ Item {
 
     FolderListModel {
         id: markerModel
-        folder: "file://" + paths.getCacheDir("wallpaper_picker") + "/colors_markers"
+        folder: "file://" + Caching.getCacheDir("wallpaper_picker") + "/colors_markers"
         showDirs: false
         nameFilters: ["*_HEX_*"]
         onCountChanged: markerDebounce.restart()
@@ -862,7 +861,7 @@ Item {
             readonly property real targetWidth: isVisuallyEnlarged ? (window.itemWidth * 1.5) : (window.itemWidth * 0.5)
             readonly property real targetHeight: isVisuallyEnlarged ? (window.itemHeight + window.s(30)) : window.itemHeight
             
-            readonly property string thumbPath: "file://" + paths.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName)
+            readonly property string thumbPath: "file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName)
 
             width: matchesFilter ? (targetWidth + window.spacing) : 0
             visible: width > 0.1 || opacity > 0.01
@@ -1451,9 +1450,9 @@ Item {
             searchState.query = searchInput.text;
             searchState.searched = window.hasSearched;
             searchState.lastName = window.lastSearchName;
-            Quickshell.execDetached(["bash", "-c", "echo 'pause' > " + paths.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
+            Quickshell.execDetached(["bash", "-c", "echo 'pause' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
         } else {
-            Quickshell.execDetached(["bash", "-c", "echo 'stop' > " + paths.getRunDir("wallpaper_picker") + "/ddg_search_control; for p in \$(pgrep -f ddg_search.sh); do if [ \"\$p\" != \"\$\$\" ] && [ \"\$p\" != \"\$BASHPID\" ]; then kill -9 \$p 2>/dev/null || true; fi; done; pkill -f '[g]et_ddg_links.py'"]);
+            Quickshell.execDetached(["bash", "-c", "echo 'stop' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control; for p in \$(pgrep -f ddg_search.sh); do if [ \"\$p\" != \"\$\$\" ] && [ \"\$p\" != \"\$BASHPID\" ]; then kill -9 \$p 2>/dev/null || true; fi; done; pkill -f '[g]et_ddg_links.py'"]);
         }
     }
 }

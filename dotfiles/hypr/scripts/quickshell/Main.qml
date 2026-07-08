@@ -13,7 +13,6 @@ PanelWindow {
     id: masterWindow
     color: "transparent"
 
-    Caching { id: paths }
 
     Keys.onEscapePressed: (event) => {
         switchWidget("hidden", "");
@@ -162,7 +161,7 @@ PanelWindow {
     property string currentActive: "hidden"
 
     onCurrentActiveChanged: {
-        Quickshell.execDetached(["bash", "-c", "echo '" + currentActive + "' > " + paths.runDir + "/current_widget"]);
+        Quickshell.execDetached(["bash", "-c", "echo '" + currentActive + "' > " + Caching.runDir + "/current_widget"]);
     }
 
     property bool isVisible: false

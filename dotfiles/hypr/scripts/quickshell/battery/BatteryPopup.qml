@@ -9,7 +9,6 @@ import "../"
 Item {
     id: window
 
-    Caching { id: paths }
 
     property var notifModel
     property var liveNotifs
@@ -197,7 +196,7 @@ Item {
     Process {
         id: dndInit
         running: true
-        command: ["bash", "-c", "cat '" + paths.getCacheDir("dnd") + "/state' 2>/dev/null || echo '0'"]
+        command: ["bash", "-c", "cat '" + Caching.getCacheDir("dnd") + "/state' 2>/dev/null || echo '0'"]
         stdout: StdioCollector {
             onStreamFinished: {
                 window.dndEnabled = (this.text.trim() === "1");
@@ -468,7 +467,7 @@ Item {
                                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         window.dndEnabled = !window.dndEnabled;
-                                        Quickshell.execDetached(["sh", "-c", "echo '" + (window.dndEnabled ? "1" : "0") + "' > '" + paths.getCacheDir("dnd") + "/state'"]);
+                                        Quickshell.execDetached(["sh", "-c", "echo '" + (window.dndEnabled ? "1" : "0") + "' > '" + Caching.getCacheDir("dnd") + "/state'"]);
                                     }
                                 }
                             }
@@ -957,7 +956,7 @@ Item {
                             onClicked: { 
                                 exitAnim.start(); 
                                 Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/exit.sh"]); 
-                                Quickshell.execDetached(["sh", "-c", "echo 'close' > '" + paths.getRunDir("widget_state") + "'"]); 
+                                Quickshell.execDetached(["sh", "-c", "echo 'close' > '" + Caching.getRunDir("widget_state") + "'"]); 
                             }
                         }
                     }
@@ -1563,7 +1562,7 @@ Item {
                                             id: exitTimer; interval: 500 
                                             onTriggered: { 
                                                 Quickshell.execDetached(["bash", "-c", cmd]); 
-                                                Quickshell.execDetached(["sh", "-c", "echo 'close' > '" + paths.getRunDir("widget_state") + "'"]); 
+                                                Quickshell.execDetached(["sh", "-c", "echo 'close' > '" + Caching.getRunDir("widget_state") + "'"]); 
                                             }
                                         }
                                     }

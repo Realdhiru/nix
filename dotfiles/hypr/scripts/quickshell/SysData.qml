@@ -6,7 +6,6 @@ import Quickshell.Io
 Item {
     id: root
 
-    Caching { id: paths }
 
     readonly property string scriptPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/sys_fetcher.sh"
 
@@ -56,7 +55,7 @@ Item {
         command: [
             "bash", 
             "-c", 
-            `export QS_CACHE_SYSDATA="${paths.getCacheDir('sysdata')}"; AC=$(cat /sys/class/power_supply/*/online 2>/dev/null | head -n1 || echo 1); STATS=$(bash "${root.scriptPath}"); echo "$AC|$STATS"`
+            `export QS_CACHE_SYSDATA="${Caching.getCacheDir('sysdata')}"; AC=$(cat /sys/class/power_supply/*/online 2>/dev/null | head -n1 || echo 1); STATS=$(bash "${root.scriptPath}"); echo "$AC|$STATS"`
         ]
         stdout: StdioCollector {
             onStreamFinished: {

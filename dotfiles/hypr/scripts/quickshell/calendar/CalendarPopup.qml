@@ -10,7 +10,6 @@ import "../"
 Item {
     id: window
 
-    Caching { id: paths }
 
     // --- Responsive Scaling Logic ---
     Scaler {

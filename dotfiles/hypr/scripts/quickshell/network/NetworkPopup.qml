@@ -11,7 +11,6 @@ Item {
     id: window
     focus: true
 
-    Caching { id: paths }
 
     Scaler {
         id: scaler
@@ -53,7 +52,7 @@ Item {
         property string lastEthJson: ""
     }
 
-    readonly property string cacheDir: paths.getCacheDir("network")
+    readonly property string cacheDir: Caching.getCacheDir("network")
     readonly property string modeFilePath: cacheDir + "/mode"
 
     property bool ethPresent: false

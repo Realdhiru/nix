@@ -7,7 +7,6 @@ import Quickshell.Io
 Item {
     id: config
 
-    Caching { id: paths }
 
     // =========================================================================
     // Core Paths & Environment
@@ -15,7 +14,7 @@ Item {
     readonly property string homeDir: Quickshell.env("HOME")
     readonly property string hyprDir: homeDir + "/.config/hypr"
     readonly property string qsScriptsDir: hyprDir + "/scripts/quickshell"
-    readonly property string cacheDir: paths.cacheDir
+    readonly property string cacheDir: Caching.cacheDir
 
     readonly property string settingsJsonPath: hyprDir + "/settings.json"
     readonly property string weatherEnvPath: qsScriptsDir + "/calendar/.env"
@@ -133,7 +132,7 @@ Item {
         };
 
         config.updateEnvBulk(config.weatherEnvPath, envs);
-        sh(`rm -rf "${paths.getCacheDir('weather')}"`);
+        sh(`rm -rf "${Caching.getCacheDir('weather')}"`);
         sh("notify-send 'Weather' 'API configuration saved successfully!'");
     }
 

@@ -11,7 +11,6 @@ import "../WindowRegistry.js" as Registry
 PanelWindow {
     id: popupWindow
 
-    Caching { id: paths }
 
     property var popupModel
     property real uiScale: 1.0
@@ -66,7 +65,7 @@ PanelWindow {
 
     Process {
         id: dndPoller
-        command: ["bash", "-c", "cat '" + paths.getCacheDir("dnd") + "/state' 2>/dev/null || echo '0'"]
+        command: ["bash", "-c", "cat '" + Caching.getCacheDir("dnd") + "/state' 2>/dev/null || echo '0'"]
         stdout: StdioCollector {
             onStreamFinished: popupWindow.dndEnabled = (this.text.trim() === "1")
         }
