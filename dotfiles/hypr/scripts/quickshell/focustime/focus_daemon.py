@@ -18,6 +18,12 @@ from collections import defaultdict
 current_app_class = "Desktop"
 current_app_title = "Desktop"
 
+# Guards the (class, title) pair above. Written by listen_hyprland_ipc()
+# (background thread) and read by main()'s tick loop (main thread). Without
+# this, a read can land between the two assignments and pair a new class
+# with the previous title for one tick.
+_state_lock = threading.Lock()
+
 # Use standardized dynamic paths securely
 DB_DIR = os.environ.get("QS_STATE_FOCUSTIME", os.path.expanduser("~/.local/state/quickshell/focustime"))
 os.makedirs(DB_DIR, exist_ok=True)
@@ -198,10 +204,11 @@ def listen_hyprland_ipc():
                     line, buffer = buffer.split('\n', 1)
                     if line.startswith('activewindow>>'):
                         cls, clean_title = get_active_window_hyprctl()
-                        if is_locked() or cls == "hyprlock":
-                            current_app_class, current_app_title = "Locked", "Locked"
-                        else:
-                            current_app_class, current_app_title = cls, clean_title
+                        with _state_lock:
+                            if is_locked() or cls == "hyprlock":
+                                current_app_class, current_app_title = "Locked", "Locked"
+                            else:
+                                current_app_class, current_app_title = cls, clean_title
         except Exception:
             time.sleep(2) 
 
@@ -444,8 +451,9 @@ def main():
     signal.signal(signal.SIGINT, exit_handler)
     signal.signal(signal.SIGTERM, exit_handler)
 
-    current_app_class, current_app_title = get_active_window_hyprctl()
-    
+    with _state_lock:
+        current_app_class, current_app_title = get_active_window_hyprctl()
+
     ipc_thread = threading.Thread(target=listen_hyprland_ipc, daemon=True)
     ipc_thread.start()
 
@@ -453,9 +461,21 @@ def main():
     while True:
         time.sleep(1)
         tick_counter += 1
-        if current_app_class and current_app_class not in [""]:
-            # Only dump JSON to memory/disk every 5 seconds
-            tracker.fast_tick(current_app_class, current_app_title, write_to_disk=(tick_counter % 5 == 0))
 
+        # Polled lock-state safety net, independent of the IPC event stream.
+        # Catches cases where hyprlock is invoked without an intervening
+        # Hyprland activewindow change (e.g. certain idle-triggered lock
+        # paths), which the event-driven check in listen_hyprland_ipc()
+        # would otherwise miss until the next real window switch.
+        with _state_lock:
+            if current_app_class != "Locked" and is_locked():
+                current_app_class, current_app_title = "Locked", "Locked"
+            cls_snapshot = current_app_class
+            title_snapshot = current_app_title
+
+        if cls_snapshot and cls_snapshot not in [""]:
+            # Only dump JSON to memory/disk every 5 seconds
+            tracker.fast_tick(cls_snapshot, title_snapshot, write_to_disk=(tick_counter % 5 == 0))
+            
 if __name__ == "__main__":
     main()
