@@ -244,13 +244,17 @@ Item {
 
     function appendClips(newItems) {
         let q = searchInput.text.toLowerCase();
+        let batch = [];
+
         for (let i = 0; i < newItems.length; i++) {
             allClips.push(newItems[i]);
             if (q === "" || newItems[i].type === "image" || newItems[i].content.toLowerCase().includes(q)) {
-                clipModel.append(newItems[i]);
+                batch.push(newItems[i]);
             }
         }
-        
+
+        if (batch.length > 0) clipModel.append(batch);
+
         if (window.pendingIndex !== -1) {
             if (window.pendingIndex < clipModel.count) {
                 clipList.currentIndex = window.pendingIndex;
@@ -268,11 +272,13 @@ Item {
         let q = query.toLowerCase();
         clipModel.clear();
 
+        let batch = [];
         for (let i = 0; i < allClips.length; i++) {
             if (allClips[i].type === "image" || allClips[i].content.toLowerCase().includes(q)) {
-                clipModel.append(allClips[i]);
+                batch.push(allClips[i]);
             }
         }
+        if (batch.length > 0) clipModel.append(batch);
 
         if (clipModel.count > 0) {
             clipList.currentIndex = 0;
