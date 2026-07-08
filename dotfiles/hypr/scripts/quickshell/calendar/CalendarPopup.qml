@@ -376,12 +376,12 @@ Item {
 
     function updateCalendarGrid() {
         let d = new Date(window.currentTime.getTime());
-        d.setDate(1); 
+        d.setDate(1);
         d.setMonth(d.getMonth() + window.monthOffset);
 
         let targetMonth = d.getMonth();
         let targetYear = d.getFullYear();
-        
+
         let actualToday = new Date();
         let isRealCurrentMonth = (actualToday.getMonth() === targetMonth && actualToday.getFullYear() === targetYear);
         let todayDate = actualToday.getDate();
@@ -389,23 +389,27 @@ Item {
         window.targetMonthName = Qt.formatDateTime(d, "MMMM yyyy");
 
         let firstDay = new Date(targetYear, targetMonth, 1).getDay();
-        firstDay = (firstDay === 0) ? 6 : firstDay - 1; 
+        firstDay = (firstDay === 0) ? 6 : firstDay - 1;
 
         let daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
         let daysInPrevMonth = new Date(targetYear, targetMonth, 0).getDate();
 
         calendarModel.clear();
 
+        let batch = [];
+
         for (let i = firstDay - 1; i >= 0; i--) {
-            calendarModel.append({ dayNum: (daysInPrevMonth - i).toString(), isCurrentMonth: false, isToday: false });
+            batch.push({ dayNum: (daysInPrevMonth - i).toString(), isCurrentMonth: false, isToday: false });
         }
         for (let i = 1; i <= daysInMonth; i++) {
-            calendarModel.append({ dayNum: i.toString(), isCurrentMonth: true, isToday: (isRealCurrentMonth && i === todayDate) });
+            batch.push({ dayNum: i.toString(), isCurrentMonth: true, isToday: (isRealCurrentMonth && i === todayDate) });
         }
-        let remaining = 42 - calendarModel.count;
+        let remaining = 42 - batch.length;
         for (let i = 1; i <= remaining; i++) {
-            calendarModel.append({ dayNum: i.toString(), isCurrentMonth: false, isToday: false });
+            batch.push({ dayNum: i.toString(), isCurrentMonth: false, isToday: false });
         }
+
+        calendarModel.append(batch);
     }
 
     onMonthOffsetChanged: updateCalendarGrid()
