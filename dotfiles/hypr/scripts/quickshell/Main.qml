@@ -149,12 +149,16 @@ PanelWindow {
         interval: 900
         repeat: false
         onTriggered: {
-            preloadWidget("search");
             preloadWidget("battery");
             preloadWidget("network");
             preloadWidget("volume");
             preloadWidget("music");
             preloadWidget("clipboard");
+            preloadWidget("monitors");
+            preloadWidget("focustime");
+            preloadWidget("guide");
+            preloadWidget("calendar");
+            preloadWidget("wallpaper");
         }
     }
 
@@ -517,10 +521,28 @@ PanelWindow {
                 widgetStack.replace(cached, {});
             }
         } else {
-            if (immediate) {
-                widgetStack.replace(t.comp, props, StackView.Immediate);
+            // Attach directly to masterWindow (not widgetStack) so the object
+            // survives being popped off the StackView, mirroring exactly
+            // what preloadWidget() already does for the stagger-preloaded
+            // widgets. Without this, the object created below is owned by
+            // the StackView and gets destroyed on the next replace(), which
+            // is why monitors/focustime/guide/calendar/wallpaper previously
+            // lost all internal state on every close.
+            let obj = t.comp.createObject(masterWindow, props);
+            if (obj) {
+                widgetCache[newWidget] = obj;
+                if (immediate) {
+                    widgetStack.replace(obj, {}, StackView.Immediate);
+                } else {
+                    widgetStack.replace(obj, {});
+                }
             } else {
-                widgetStack.replace(t.comp, props);
+                console.log("Failed to create widget instance for:", newWidget);
+                if (immediate) {
+                    widgetStack.replace(t.comp, props, StackView.Immediate);
+                } else {
+                    widgetStack.replace(t.comp, props);
+                }
             }
         }
 
