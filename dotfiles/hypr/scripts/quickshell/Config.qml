@@ -1,3 +1,4 @@
+// ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml <==
 pragma Singleton
 import QtQuick
 import Quickshell
@@ -14,17 +15,49 @@ Item {
     readonly property string qsScriptsDir: hyprDir + "/scripts/quickshell"
     readonly property string cacheDir: Caching.cacheDir
 
+    readonly property string settingsJsonPath: hyprDir + "/settings.json"
     readonly property string weatherEnvPath: qsScriptsDir + "/calendar/.env"
 
     // State Tracking
     property bool dataReady: false
+    property var rawSettings: ({})
     property var rawEnvs: ({})
 
     // =========================================================================
     // Generic Utilities
     // =========================================================================
+
     function sh(cmd) {
         Quickshell.execDetached(["bash", "-c", cmd]);
+    }
+
+    // --- JSON Operations ---
+    function getSetting(key, fallbackValue) {
+        return rawSettings.hasOwnProperty(key) ? rawSettings[key] : fallbackValue;
+    }
+
+    function setSetting(key, value) {
+        rawSettings[key] = value;
+        let tempObj = {};
+        tempObj[key] = value;
+        let safeJson = JSON.stringify(tempObj).replace(/'/g, "'\\''");
+
+        let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" && ` +
+                  `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
+                  `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
+                  `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}'`;
+        sh(cmd);
+    }
+
+    function updateJsonBulk(dataObj) {
+        let safeJson = JSON.stringify(dataObj).replace(/'/g, "'\\''");
+        let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" && ` +
+                  `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
+                  `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
+                  `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}'`;
+        sh(cmd);
+
+        for (let key in dataObj) rawSettings[key] = dataObj[key];
     }
 
     // --- Env Operations ---
@@ -45,8 +78,17 @@ Item {
     }
 
     // =========================================================================
-    // Active State Properties
+    // Legacy Specific Properties (Bound to Settings.qml)
     // =========================================================================
+    property real uiScale: 1.0
+    property bool openGuideAtStartup: true
+    property bool topbarHelpIcon: true
+    property int workspaceCount: 8
+    property int initialWorkspaceCount: 8
+    property string wallpaperDir: Quickshell.env("WALLPAPER_DIR") || (homeDir + "/Pictures/Wallpapers")
+    property string language: ""
+    property string kbOptions: "grp:alt_shift_toggle"
+
     property string weatherUnit: "metric"
     property string weatherApiKey: ""
     property string weatherCityId: ""
@@ -54,9 +96,34 @@ Item {
     property var keybindsData: []
     signal keybindsLoaded()
 
+    property var startupData: []
+    signal startupLoaded()
+
     // =========================================================================
-    // Config Save Functions
+    // Settings Save Functions
     // =========================================================================
+    function saveAppSettings() {
+        let configObj = {
+            "uiScale": config.uiScale,
+            "openGuideAtStartup": config.openGuideAtStartup,
+            "topbarHelpIcon": config.topbarHelpIcon,
+            "wallpaperDir": config.wallpaperDir,
+            "language": config.language,
+            "kbOptions": config.kbOptions,
+            "workspaceCount": config.workspaceCount
+        };
+
+        config.updateJsonBulk(configObj);
+        
+        // Notification intentionally removed for silence
+
+        if (config.workspaceCount !== config.initialWorkspaceCount) {
+            let reloadCmd = `if command -v qs >/dev/null 2>&1; then QS_BIN="qs"; else QS_BIN="quickshell"; fi; $QS_BIN -p "${qsScriptsDir}/TopBar.qml" ipc call topbar queueReload`;
+            sh(reloadCmd);
+            config.initialWorkspaceCount = config.workspaceCount;
+        }
+    }
+
     function saveWeatherConfig() {
         let envs = {
             "OPENWEATHER_KEY": config.weatherApiKey,
@@ -70,8 +137,13 @@ Item {
 
     function saveAllKeybinds(bindsArray) {
         config.keybindsData = bindsArray;
-        // Binds array is stored in memory for the active session. 
-        // Persistent keybinds are managed via hyprland.conf in this architecture.
+        config.setSetting("keybinds", bindsArray);
+        // Notification intentionally removed for silence
+    }
+
+    function saveAllStartup(startupArray) {
+        config.startupData = startupArray;
+        config.setSetting("startup", startupArray);
     }
 
     // =========================================================================
@@ -152,8 +224,11 @@ Item {
             let m = monitorsModel.get(0);
             let monitorStr = m.name + "," + m.resW + "x" + m.resH + "@" + m.rate + ",0x0," + m.sysScale;
             if (m.transform !== 0) monitorStr += ",transform," + m.transform;
+            let jsonArr = [{ name: m.name, resW: m.resW, resH: m.resH, rate: parseInt(m.rate), x: 0, y: 0, scale: m.sysScale, transform: m.transform }];
+            config.setSetting("monitors", jsonArr);
             let cacheWriteCmd = "echo 'monitor=" + monitorStr + "' > ~/.cache/hypr_power_monitor.conf";
             config.sh(cacheWriteCmd + " ; hyprctl keyword monitor " + monitorStr + " ; awww kill ; sleep 0.2 ; awww-daemon &");
+            Quickshell.execDetached(["notify-send", "Display Update", "Applied: " + m.resW + "x" + m.resH + " @ " + m.rate + "Hz"]);
         } else {
             let rects = [];
             for (let i = 0; i < monitorsModel.count; i++) {
@@ -190,7 +265,7 @@ Item {
                 if (rects[i].x < finalMinX) finalMinX = rects[i].x;
                 if (rects[i].y < finalMinY) finalMinY = rects[i].y;
             }
-            let batchCmds = [], confLines = [];
+            let batchCmds = [], summaryString = "", jsonArr = [], confLines = [];
             for (let i = 0; i < rects.length; i++) {
                 let r = rects[i];
                 r.x = Math.round(r.x - finalMinX);
@@ -199,9 +274,13 @@ Item {
                 if (r.transform !== 0) monitorStr += ",transform," + r.transform;
                 batchCmds.push("keyword monitor " + monitorStr);
                 confLines.push("monitor=" + monitorStr);
+                summaryString += r.name + " ";
+                jsonArr.push({ name: r.name, resW: r.resW, resH: r.resH, rate: parseInt(r.rate), x: r.x, y: r.y, scale: r.sysScale, transform: r.transform });
             }
+            config.setSetting("monitors", jsonArr);
             let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
             config.sh(cacheWriteCmd + " ; hyprctl --batch '" + batchCmds.join(" ; ") + "' ; awww kill ; sleep 0.2 ; awww-daemon &");
+            Quickshell.execDetached(["notify-send", "Display Update", "Applied layout for: " + summaryString.trim()]);
         }
     }
 
@@ -256,6 +335,7 @@ Item {
     // =========================================================================
     Component.onCompleted: {
         sh("mkdir -p ~/.cache && touch ~/.cache/hypr_power_monitor.conf");
+        settingsReader.running = false; settingsReader.running = true;
         envReader.running = false; envReader.running = true;
     }
 
@@ -279,8 +359,73 @@ Item {
                         else if (key === "OPENWEATHER_UNIT") config.weatherUnit = val;
                     }
                 }
+            }
+        }
+    }
+
+    Process {
+        id: settingsReader
+        command: ["bash", "-c", `cat "${config.settingsJsonPath}" 2>/dev/null || echo '{}'`]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
+                        config.rawSettings = JSON.parse(this.text);
+
+                        // Map explicitly defined properties
+                        if (config.rawSettings.uiScale !== undefined) config.uiScale = config.rawSettings.uiScale;
+                        if (config.rawSettings.openGuideAtStartup !== undefined) config.openGuideAtStartup = config.rawSettings.openGuideAtStartup;
+                        if (config.rawSettings.topbarHelpIcon !== undefined) config.topbarHelpIcon = config.rawSettings.topbarHelpIcon;
+                        if (config.rawSettings.wallpaperDir !== undefined) config.wallpaperDir = config.rawSettings.wallpaperDir;
+                        if (config.rawSettings.language !== undefined && config.rawSettings.language !== "") config.language = config.rawSettings.language;
+                        if (config.rawSettings.kbOptions !== undefined) config.kbOptions = config.rawSettings.kbOptions;
+                        if (config.rawSettings.workspaceCount !== undefined) {
+                            config.workspaceCount = config.rawSettings.workspaceCount;
+                            config.initialWorkspaceCount = config.rawSettings.workspaceCount;
+                        }
+
+                        // Map Keybinds
+                        if (config.rawSettings.keybinds !== undefined && Array.isArray(config.rawSettings.keybinds)) {
+                            let tempBinds = [];
+                            for (let k of config.rawSettings.keybinds) {
+                                tempBinds.push({
+                                    type: k.type || "bind",
+                                    mods: k.mods || "",
+                                    key: k.key || "",
+                                    dispatcher: k.dispatcher || "exec",
+                                    command: k.command || "",
+                                    isEditing: false
+                                });
+                            }
+                            config.keybindsData = tempBinds;
+                        } else {
+                            config.keybindsData = [];
+                        }
+
+                        // Map Startups
+                        if (config.rawSettings.startup !== undefined && Array.isArray(config.rawSettings.startup)) {
+                            let tempStartup = [];
+                            for (let s of config.rawSettings.startup) {
+                                tempStartup.push({ command: s.command || "" });
+                            }
+                            config.startupData = tempStartup;
+                        } else {
+                            config.startupData = [];
+                        }
+                    } else {
+                        config.saveAppSettings();
+                        config.keybindsData = [];
+                        config.saveAllKeybinds([]);
+                        config.startupData = [];
+                    }
+                } catch (e) {
+                    config.keybindsData = [];
+                    config.startupData = [];
+                }
+                config.keybindsLoaded();
+                config.startupLoaded();
                 config.dataReady = true;
-                config.keybindsLoaded(); // Fired to satisfy legacy bindings
             }
         }
     }
