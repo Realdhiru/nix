@@ -146,6 +146,13 @@ Item {
     // =========================================================================
     property bool _sysInitialized: false
 
+    // Set whenever the user explicitly picks a profile from the UI. Cleared
+    // only on an actual charge-cycle boundary (plugging in), never on a
+    // discharge transition — so a manual choice made while on battery
+    // survives incidental AC blips (sleep/wake, a loose charger connection)
+    // instead of being silently reverted.
+    property bool _manualOverride: false
+
     onBatStatusChanged: {
         if (!_sysInitialized) {
             if (batStatus !== "Unknown") _sysInitialized = true;
@@ -153,43 +160,52 @@ Item {
         }
 
         if (batStatus === "Charging") {
-            if (window.powerProfile !== "performance") window.setPowerProfile("performance");
+            window._manualOverride = false;
+            if (window.powerProfile !== "performance") window.setPowerProfile("performance", false);
         } else if (batStatus === "Discharging") {
-            if (window.powerProfile === "performance") window.setPowerProfile("balanced");
+            if (!window._manualOverride && window.powerProfile === "performance") {
+                window.setPowerProfile("balanced", false);
+            }
         }
     }
 
-    function setPowerProfile(name) {
+    function setPowerProfile(name, isManual) {
+        if (isManual === undefined) isManual = true;
+        if (isManual) window._manualOverride = true;
+
         window.powerProfile = name;
         Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_power_profile"]);
 
-        let targetRR = (name === "power-saver") ? "60" : "120";
-        let ppdMode = name; 
-        let tlpMode = (name === "performance") ? "ac" : "bat";
+        let ppdMode = name;
         let disableTurbo = (name === "power-saver") ? "1" : "0";
         let enableBoost = (name === "power-saver") ? "0" : "1";
+        let targetRR = (name === "power-saver") ? "60" : "120";
 
+        // NOTE: intentionally no `sudo tlp ac`/`sudo tlp bat` call here.
+        // AC/BAT mode switching is owned exclusively by the udev rule in
+        // power.nix. This function only manages the desktop-visible
+        // profile label, powerprofilesctl, CPU turbo/boost, and the
+        // internal-monitor refresh rate.
         let bashCmd = `
             powerprofilesctl set ${ppdMode} 2>/dev/null
-            sudo tlp ${tlpMode} 2>/dev/null
             echo ${disableTurbo} | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo ${enableBoost} | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
-            
+
             INT_MON=$(hyprctl monitors -j | jq -r '.[] | select(.name | test("eDP|LVDS|MIPI")).name' | head -n1)
-            
+
             if [ -n "$INT_MON" ]; then
                 RES=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n) | "\\(.width)x\\(.height)"')
                 SCALE=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).scale')
-                
+
                 # Write to the mutable cache file instead of the read-only Nix store
                 echo "monitor=$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10" > ~/.cache/hypr_power_monitor.conf
-                
+
                 CUR_RR=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).refreshRate' | awk '{print int($1 + 0.5)}')
                 if [ "$CUR_RR" != "${targetRR}" ]; then
                     hyprctl keyword monitor "$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10" 2>/dev/null
                 fi
             fi
         `;
-        
+
         Quickshell.execDetached(["bash", "-c", bashCmd]);
     }
 
