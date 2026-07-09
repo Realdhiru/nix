@@ -16,10 +16,9 @@
     };
 
     initContent = ''
-      if [ -z "$DISPLAY" ] && [ "${XDG_VTNR:-0}" = "1" ]; then
+      if [ -z "$DISPLAY" ] && [ "''${XDG_VTNR:-0}" = "1" ]; then
           exec start-hyprland
       fi
-
       rebuild() {
         cd ~/nix || return
 
