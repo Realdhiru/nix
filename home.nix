@@ -3,7 +3,6 @@
 {
   imports = [
     ./modules/home/shell.nix
-    ./modules/home/quickshell.nix
     ./modules/home/spicetify.nix
     ./modules/home/theme.nix
   ];
@@ -38,12 +37,14 @@
   '';
 
   xdg.configFile."hypr" = {
-    source = ./dotfiles/hypr;
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/hypr";
     force = true;
   };
 
   xdg.configFile."rofi" = {
-    source = ./dotfiles/rofi;
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/rofi";
     force = true;
   };
 

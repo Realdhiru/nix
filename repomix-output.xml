@@ -921,110 +921,6 @@ fi
 echo "{\"present\":true,\"power\":\"on\",\"connected\":$CONNECTED_JSON,\"networks\":$NETWORKS_JSON}"
 </file>
 
-<file path="dotfiles/hypr/scripts/quickshell/volume/get_audio_state.py">
-#!/usr/bin/env python3
-
-import subprocess
-import json
-import re
-
-
-def run(cmd):
-    try:
-        return subprocess.check_output(
-            cmd,
-            shell=True,
-            text=True,
-            stderr=subprocess.DEVNULL
-        )
-    except:
-        return ""
-
-
-def parse_volume(line):
-    m = re.search(r'\[vol:\s*([0-9.]+)', line)
-    if m:
-        return int(float(m.group(1)) * 100)
-    return 0
-
-
-def parse_muted(line):
-    return "MUTED" in line
-
-
-def get_default_id(target):
-    out = run(f"wpctl inspect {target}")
-    m = re.search(r'object.serial = "([0-9]+)"', out)
-    if m:
-        return m.group(1)
-    return ""
-
-
-default_sink = get_default_id("@DEFAULT_AUDIO_SINK@")
-default_source = get_default_id("@DEFAULT_AUDIO_SOURCE@")
-
-status = run("wpctl status")
-
-outputs = []
-inputs = []
-
-section = None
-
-for line in status.splitlines():
-
-    if "├─ Sinks:" in line:
-        section = "sinks"
-        continue
-
-    if "├─ Sources:" in line:
-        section = "sources"
-        continue
-
-    if "├─ Filters:" in line:
-        section = None
-        continue
-
-    if section not in ["sinks", "sources"]:
-        continue
-
-    m = re.search(r'(\*?)\s*([0-9]+)\.\s+(.*?)\s+\[vol:', line)
-
-    if not m:
-        continue
-
-    star = m.group(1)
-    node_id = m.group(2)
-    desc = m.group(3).strip()
-
-    entry = {
-        "id": node_id,
-        "name": desc,
-        "description": desc,
-        "volume": parse_volume(line),
-        "mute": parse_muted(line),
-        "is_default": (
-            node_id == default_sink
-            if section == "sinks"
-            else node_id == default_source
-        ),
-        "icon": "audio-card"
-    }
-
-    if section == "sinks":
-        outputs.append(entry)
-    else:
-        inputs.append(entry)
-
-
-result = {
-    "outputs": outputs,
-    "inputs": inputs,
-    "apps": []
-}
-
-print(json.dumps(result))
-</file>
-
 <file path="dotfiles/hypr/scripts/quickshell/volume/VolumePopup.qml">
 import QtQuick
 import QtQuick.Layouts
@@ -3743,76 +3639,6 @@ return config
   xdg.configFile."quickshell".source =
     config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/hypr/scripts/quickshell";
-}
-</file>
-
-<file path="modules/home/shell.nix">
-{ ... }:
-
-{
-  programs.zsh = {
-    enable = true;
-
-    enableCompletion = true;
-
-    autosuggestion.enable = true;
-
-    syntaxHighlighting.enable = true;
-
-    history = {
-      size = 10000;
-      path = "$HOME/.zsh_history";
-    };
-
-    initContent = ''
-      if [ -z "$DISPLAY" ] && [ "$XDG_VTNR" -eq 1 ]; then
-          exec start-hyprland
-      fi
-
-      rebuild() {
-        cd ~/nix || return
-
-        git add -A
-
-        if git diff --cached --quiet && git diff --quiet; then
-          echo "Nothing to commit."
-        else
-          if [ $# -eq 0 ]; then
-            git commit -m "Update configuration"
-          else
-            git commit -m "$*"
-          fi
-        fi
-
-        sudo nixos-rebuild switch --flake .#nixos
-      }
-
-      update() {
-        cd ~/nix || return
-
-        git pull
-        nix flake update
-
-        rebuild "flake update"
-      }
-
-      clean() {
-        sudo nix-collect-garbage -d
-      }
-
-      ff() {
-        fastfetch
-      }
-    '';
-
-    shellAliases = {
-    };
-  };
-
-  programs.starship.enable = true;
-
-  xdg.configFile."starship.toml".source =
-    ../../dotfiles/starship/starship.toml;
 }
 </file>
 
@@ -7519,1698 +7345,108 @@ Item {
 }
 </file>
 
-<file path="dotfiles/hypr/scripts/quickshell/volume/audio_control.sh">
-#!/usr/bin/env bash
-# dotfiles/hypr/scripts/quickshell/volume/audio_control.sh
+<file path="dotfiles/hypr/scripts/quickshell/volume/get_audio_state.py">
+#!/usr/bin/env python3
 
-ACTION=$1
-TYPE=$2
-ID=$3
-VAL=$4
+import subprocess
+import json
+import re
 
-# Function to dispatch an overriding OSD notification
-send_osd() {
-    local icon=$1
-    local title=$2
-    local val=$3
-    if [ "$val" = "muted" ]; then
-        notify-send -a "System" -u low -h string:x-canonical-private-synchronous:sys-osd -i "$icon" "$title" "Muted"
-    else
-        notify-send -a "System" -u low -h string:x-canonical-private-synchronous:sys-osd -h int:value:"$val" -i "$icon" "$title" "Level: ${val}%"
-    fi
-}
 
-case $ACTION in
-    set-volume)
-        if [[ "$ID" == "@DEFAULT@" ]]; then
-            if [[ "$TYPE" == "sink" ]]; then
-                wpctl set-volume @DEFAULT_AUDIO_SINK@ "$VAL"
-                vol=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{print int($2*100)}')
-                send_osd "audio-volume-high" "Volume" "$vol"
-            elif [[ "$TYPE" == "source" ]]; then
-                wpctl set-volume @DEFAULT_AUDIO_SOURCE@ "$VAL"
-                vol=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | awk '{print int($2*100)}')
-                send_osd "microphone-sensitivity-high" "Microphone" "$vol"
-            fi
-        else
-            pactl set-${TYPE}-volume "$ID" "$VAL"
-        fi
-        ;;
-    toggle-mute)
-        if [[ "$ID" == "@DEFAULT@" ]]; then
-            if [[ "$TYPE" == "sink" ]]; then
-                wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
-                is_muted=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep -o MUTED)
-                if [ -n "$is_muted" ]; then
-                    send_osd "audio-volume-muted" "Volume" "muted"
-                else
-                    vol=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{print int($2*100)}')
-                    send_osd "audio-volume-high" "Volume" "$vol"
-                fi
-            elif [[ "$TYPE" == "source" ]]; then
-                wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
-                is_muted=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | grep -o MUTED)
-                if [ -n "$is_muted" ]; then
-                    send_osd "microphone-sensitivity-muted" "Microphone" "muted"
-                else
-                    vol=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | awk '{print int($2*100)}')
-                    send_osd "microphone-sensitivity-high" "Microphone" "$vol"
-                fi
-            fi
-        else
-            pactl set-${TYPE}-mute "$ID" toggle
-        fi
-        ;;
-    set-default)
-        pactl set-default-$TYPE "$ID"
-        ;;
-esac
-</file>
+def run(cmd):
+    try:
+        return subprocess.check_output(
+            cmd,
+            shell=True,
+            text=True,
+            stderr=subprocess.DEVNULL
+        )
+    except:
+        return ""
 
-<file path="dotfiles/hypr/scripts/quickshell/wallpaper/ddg_search.sh">
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/ddg_search.sh <==
-#!/usr/bin/env bash
 
-QUERY="$1"
-SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+def parse_volume(line):
+    m = re.search(r'\[vol:\s*([0-9.]+)', line)
+    if m:
+        return int(float(m.group(1)) * 100)
+    return 0
 
-# Import dynamic caching system
-source "$SCRIPT_DIR/../../caching.sh"
-qs_ensure_cache "wallpaper_picker"
 
-CACHE_DIR="$QS_CACHE_WALLPAPER_PICKER"
-SEARCH_DIR="$CACHE_DIR/search_thumbs"
-MAP_FILE="$CACHE_DIR/search_map.txt"
-CONTROL_FILE="$QS_RUN_WALLPAPER_PICKER/ddg_search_control"
-LOG_FILE="$QS_LOG_DIR/ddg_downloader.log"
+def parse_muted(line):
+    return "MUTED" in line
 
-echo "=== Starting search for: $QUERY ===" > "$LOG_FILE"
 
-# 1. Guarantee directory exists
-mkdir -p "$SEARCH_DIR"
+def get_default_id(target):
+    out = run(f"wpctl inspect {target}")
+    m = re.search(r'object.serial = "([0-9]+)"', out)
+    if m:
+        return m.group(1)
+    return ""
 
-# 2. Safely capture the active tmp path for the trap cleanup
-ACTIVE_TMP=""
-trap 'rm -f "$ACTIVE_TMP" 2>/dev/null' EXIT INT TERM
 
-# 3. The Pipe: Python provides links, OS provides backpressure
-python3 -u "$SCRIPT_DIR/quickshell/wallpaper/get_ddg_links.py" "$QUERY" | while IFS='|' read -r thumb_url full_url; do
+default_sink = get_default_id("@DEFAULT_AUDIO_SINK@")
+default_source = get_default_id("@DEFAULT_AUDIO_SOURCE@")
 
-    # Safely read control file
-    state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
+status = run("wpctl status")
 
-    if [[ "$state" == "stop" ]]; then
-        echo "Stop signal received. Exiting." >> "$LOG_FILE"
-        exit 0
-    fi
+outputs = []
+inputs = []
 
-    while [[ "$state" == "pause" ]]; do
-        sleep 1
-        state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
-    done
+section = None
 
-    if [ -z "$thumb_url" ] || [ -z "$full_url" ]; then continue; fi
+for line in status.splitlines():
 
-    # =========================================================================
-    # PRE-FLIGHT CHECK ON THE FULL URL
-    # =========================================================================
-    target_headers=$(curl -s -I -L -m 3 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "$full_url")
-    target_type=$(echo "$target_headers" | grep -i "content-type:" | tail -n 1 | tr -d '\r')
-
-    if [[ ! "$target_type" =~ "image/" ]]; then
-        echo "Skip: Full URL is dead or HTML ($target_type) -> $full_url" >> "$LOG_FILE"
+    if "├─ Sinks:" in line:
+        section = "sinks"
         continue
-    fi
-    # =========================================================================
 
-    uuid=$(date +%s%N)
-    ext="${full_url##*.}"
-    ext="${ext%%\?*}"
-    ext=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
-    if [[ ! "$ext" =~ ^(jpg|jpeg|png|webp|gif)$ ]]; then ext="jpg"; fi
+    if "├─ Sources:" in line:
+        section = "sources"
+        continue
 
-    is_webp=0
-    if [[ "$ext" == "webp" ]]; then
-        is_webp=1
-        ext="jpg"
-    fi
+    if "├─ Filters:" in line:
+        section = None
+        continue
 
-    filename="ddg_${uuid}.${ext}"
-    filepath="$SEARCH_DIR/$filename"
-    tmppath="${filepath}.tmp"
-    ACTIVE_TMP="$tmppath"
+    if section not in ["sinks", "sources"]:
+        continue
 
-    echo "Downloading Thumb: $thumb_url -> $filename" >> "$LOG_FILE"
+    m = re.search(r'(\*?)\s*([0-9]+)\.\s+(.*?)\s+\[vol:', line)
 
-    # TIMEOUT ADDED: -m 5 prevents permanent freezing on stalled connections
-    curl -s -L -m 5 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "$thumb_url" -o "$tmppath"
+    if not m:
+        continue
 
-    # Check state again AFTER the curl block
-    state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
-    if [[ "$state" == "stop" ]]; then
-        echo "Stop signal received during download. Discarding." >> "$LOG_FILE"
-        rm -f "$tmppath"
-        ACTIVE_TMP=""
-        exit 0
-    fi
+    star = m.group(1)
+    node_id = m.group(2)
+    desc = m.group(3).strip()
 
-    # Verify the thumbnail itself is valid and not corrupted
-    if [ -s "$tmppath" ]; then
-        actual_mime=$(file -b --mime-type "$tmppath")
-
-        if [[ ! "$actual_mime" =~ ^image/ ]]; then
-            echo "ERROR: Thumb is not an image ($actual_mime). Discarding." >> "$LOG_FILE"
-            rm -f "$tmppath"
-        else
-            if [[ "$actual_mime" == "image/webp" ]] || [ $is_webp -eq 1 ]; then
-                magick "$tmppath" "$filepath" 2>/dev/null || mv "$tmppath" "$filepath"
-                rm -f "$tmppath"
-            else
-                mv "$tmppath" "$filepath"
-            fi
-            echo "$filename|$full_url" >> "$MAP_FILE"
-            echo "Success: $filename saved." >> "$LOG_FILE"
-        fi
-    else
-        echo "ERROR: Failed or empty download for $thumb_url" >> "$LOG_FILE"
-        rm -f "$tmppath"
-    fi
-    ACTIVE_TMP=""
-done
-
-echo "=== Pipeline finished ===" >> "$LOG_FILE"
-</file>
-
-<file path="dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml">
-import QtQuick
-import QtQuick.Layouts
-import QtQuick.Window
-import QtCore
-import Qt.labs.folderlistmodel
-import Quickshell
-import Quickshell.Io
-import "../" 
-
-Item {
-    id: window
-    width: Screen.width
-
-
-    Scaler {
-        id: scaler
-        currentWidth: Screen.width
-    }
-    
-    function s(val) { 
-        return scaler.s(val); 
+    entry = {
+        "id": node_id,
+        "name": desc,
+        "description": desc,
+        "volume": parse_volume(line),
+        "mute": parse_muted(line),
+        "is_default": (
+            node_id == default_sink
+            if section == "sinks"
+            else node_id == default_source
+        ),
+        "icon": "audio-card"
     }
 
-    MatugenColors { id: _theme }
-
-    property string widgetArg: ""
-    property string targetWallName: ""
-    property bool initialFocusSet: false
-    property int visibleItemCount: -1
-    property int scrollAccum: 0
-    property real scrollThreshold: window.s(300)
-
-    property string currentFilter: "All"
-    property string _lastFilter: "All"
-    property string searchQuery: ""
-    property bool isOnlineSearch: false
-    property bool isSearchPaused: false
-    property bool hasSearched: false
-    property var colorMap: ({})
-    property int cacheVersion: 0 
-    
-    property bool isDownloadingWallpaper: false
-    property string currentDownloadName: ""
-    
-    property bool isApplying: false
-    property bool isMonitorSelectorOpen: false
-
-    property bool allowAddAnimation: false
-    
-    Timer {
-        id: applyUnlockTimer
-        interval: 250
-        onTriggered: window.isApplying = false
-    }
-    
-    property bool isStartup: localFolderModel.status === FolderListModel.Loading || srcModel.status === FolderListModel.Loading
-    property bool isReady: visible && localFolderModel.status === FolderListModel.Ready
-    property bool isSearchActive: window.currentFilter === "Search" && window.hasSearched && searchFolderModel.status === FolderListModel.Loading
-    
-    property string lastSearchName: ""
-    property bool isModelChanging: false
-    property bool searchIndexRestored: false
-    
-    property bool isScrollingBlocked: window.currentFilter === "Search" && window.hasSearched && window.isSearchActive && !window.isSearchPaused
-    property bool jumpToLastOnFilterChange: false
-
-    readonly property var filterData: [
-        { name: "All", hex: "", label: "All" },
-        { name: "Video", hex: "", label: "Vid" },
-        { name: "Red", hex: "#FF4500", label: "" },
-        { name: "Orange", hex: "#FFA500", label: "" },
-        { name: "Yellow", hex: "#FFD700", label: "" },
-        { name: "Green", hex: "#32CD32", label: "" },
-        { name: "Blue", hex: "#1E90FF", label: "" },
-        { name: "Purple", hex: "#8A2BE2", label: "" },
-        { name: "Pink", hex: "#FF69B4", label: "" },
-        { name: "Monochrome", hex: "#A9A9A9", label: "" },
-        { name: "Search", hex: "", label: "Search" } 
-    ]
-
-    ListModel { id: monitorModel }
-
-    Process {
-        id: monitorProc
-        command: ["sh", "-c", "export PATH=$PATH:/usr/bin:/usr/local/bin:/run/current-system/sw/bin && hyprctl monitors -j"]
-        running: false
-        
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let response = this.text; 
-                if (response && response.trim().length > 0) {
-                    try {
-                        var monitors = JSON.parse(response);
-                        monitorModel.clear();
-                        for (var i = 0; i < monitors.length; i++) {
-                            monitorModel.append({ "name": monitors[i].name, "selected": true });
-                        }
-                    } catch(e) {
-                        console.log("[MonitorSync] ERROR parsing JSON: " + e);
-                    }
-                }
-            }
-        }
-    }
-
-    function loadMonitors() {
-        monitorProc.running = true;
-    }
-
-    function getMonitorOutputs() {
-        if (monitorModel.count <= 1) return "all"; 
-        let selected = [];
-        for (let i = 0; i < monitorModel.count; i++) {
-            if (monitorModel.get(i).selected) {
-                selected.push(monitorModel.get(i).name);
-            }
-        }
-        if (selected.length === 0) return "none";
-        if (selected.length === monitorModel.count) return "all";
-        return selected.join(",");
-    }
-
-    function applyWallpaper(safeFileName, isVideo) {
-        if (!safeFileName || window.isApplying) return;
-        
-        let outputs = window.getMonitorOutputs();
-        if (outputs === "none") return;
-        
-        window.isApplying = true;
-        applyUnlockTimer.restart();
-        
-        window.targetWallName = safeFileName;
-        let cleanName = window.getCleanName(safeFileName);
-        let reloadScript = Qt.resolvedUrl("matugen_reload.sh").toString();
-        
-        if (reloadScript.startsWith("file://")) {
-            reloadScript = decodeURIComponent(reloadScript.substring(7));
-        }
-
-        const escapeBash = (str) => String(str).replace(/(["\\$`])/g, '\\$1');
-        
-        if (window.currentFilter === "Search" && window.hasSearched) {
-            let alreadyExists = window.isDownloaded(safeFileName);
-            let destFile = window.srcDir + "/" + safeFileName;
-            let finalThumb = "file://" + window.srcDir + "/" + safeFileName;
-            let tempThumb = decodeURIComponent(window.searchDir.replace("file://", "")) + "/" + safeFileName;
-            let mapFile = Caching.getCacheDir("wallpaper_picker") + "/search_map.txt";
-
-            if (alreadyExists) {
-                const applyScript = `
-                    export DEST_FILE="${escapeBash(destFile)}"
-                    export FINAL_THUMB="${escapeBash(finalThumb)}"
-                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
-                    
-                    ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
-                `;
-                Quickshell.execDetached(["bash", "-c", applyScript]);
-            } else {
-                window.isDownloadingWallpaper = true;
-                window.currentDownloadName = safeFileName;
-
-                const downloadScript = `
-                    export SAFE_NAME="${escapeBash(safeFileName)}"
-                    export DEST_FILE="${escapeBash(destFile)}"
-                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
-                    export MAP_FILE="${escapeBash(mapFile)}"
-                    
-                    URL=\$(awk -F'|' -v fname="\$SAFE_NAME" '\$1 == fname {print \$2; exit}' "\$MAP_FILE")
-                    if [ -n "\$URL" ]; then
-                        curl -s -L -A "Mozilla/5.0" "\$URL" -o "$DEST_FILE.tmp"
-                        if file "$DEST_FILE.tmp" | grep -iq "webp"; then
-                            magick "$DEST_FILE.tmp" "$DEST_FILE"
-                            rm -f "$DEST_FILE.tmp"
-                        else
-                            mv "$DEST_FILE.tmp" "$DEST_FILE"
-                        fi
-                        
-                        ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
-                    fi
-                `;
-                Quickshell.execDetached(["bash", "-c", downloadScript]);
-            }
-            return;
-        }
-
-        const originalFile = window.srcDir + "/" + cleanName;
-        const escOriginal = escapeBash(originalFile);
-
-        const fullScript = `
-            ~/.config/hypr/scripts/set_wallpaper.sh "${escOriginal}"
-        `;
-        Quickshell.execDetached(["bash", "-c", fullScript]);
-    }
-    
-    Settings {
-        id: searchState
-        category: "QS_WallpaperPicker"
-        property string query: ""
-        property bool searched: false
-        property string lastName: ""
-    }
-
-    onIsSearchPausedChanged: {
-        Quickshell.execDetached(["bash", "-c", "echo '" + (isSearchPaused ? "pause" : "run") + "' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
-    }
-
-    onVisibleChanged: {
-        if (!visible) {
-            window.initialFocusSet = false;
-            window.allowAddAnimation = false;
-            window.searchIndexRestored = false;
-            window.isApplying = false;
-            window.isMonitorSelectorOpen = false;
-            if (window.hasSearched) {
-                window.isSearchPaused = true;
-            }
-        } else {
-            window.isFilterAnimating = true;
-            filterAnimationTimer.restart();
-            if (window.currentFilter !== "Search") {
-                window.applyFilters(true);
-            } else if (window.hasSearched) {
-                window.searchIndexRestored = false;
-                window.isSearchPaused = true;
-                window.trySearchFocus();
-                window.syncSearchModel();
-            }
-        }
-    }
-
-    property bool isLoading: localFolderModel.status === FolderListModel.Loading || 
-                             srcModel.status === FolderListModel.Loading ||
-                             (window.currentFilter === "Search" && searchFolderModel.status === FolderListModel.Loading)
-
-    property bool showSpinner: window.isDownloadingWallpaper || 
-                               (window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused) || 
-                               (window.currentFilter !== "Search" && window.isLoading)
-
-    property string currentNotification: {
-        if (window.isDownloadingWallpaper) return "Downloading wallpaper...";
-        if (window.currentFilter === "Search") {
-            if (!window.hasSearched) return "Type something to search...";
-            if (window.isSearchPaused) return "Search Paused";
-            if (window.visibleItemCount === 0) return "Searching DDG (FHD+)...";
-            return "Parsing wallpapers...";
-        }
-        if (isLoading) return "Parsing wallpapers...";
-        if (window.visibleItemCount === 0) return "No wallpapers found";
-        if (window.currentFilter === "All") return "";
-        if (window.currentFilter === "Video") return "Videos";
-        return window.currentFilter;
-    }
-    
-    property bool showNotification: !window.isStartup && currentNotification !== ""
-
-    function getCleanName(name) {
-        if (!name) return "";
-        let clean = String(name);
-        return clean.startsWith("000_") ? clean.substring(4) : clean;
-    }
-
-    function isDownloaded(name) {
-        if (!name) return false;
-        for (let i = 0; i < srcModel.count; i++) {
-            if (srcModel.get(i, "fileName") === name) return true;
-        }
-        return false;
-    }
-
-    onWidgetArgChanged: {
-        if (widgetArg !== "") {
-            targetWallName = widgetArg;
-            initialFocusSet = false;
-            tryFocus();
-        }
-    }
-
-    function executeFocusRestore(targetIndex, isSearchRestore, requirePositioning) {
-        let targetModel = window.getModelForFilter(window.currentFilter);
-        if (targetIndex !== -1 && targetIndex < targetModel.count) {
-            window.isModelChanging = true;
-            if (requirePositioning) {
-                view.forceLayout();
-                view.positionViewAtIndex(targetIndex, ListView.Center);
-            }
-            view.currentIndex = targetIndex;
-            if (isSearchRestore) {
-                window.searchIndexRestored = true;
-            }
-            window.isModelChanging = false;
-            window.initialFocusSet = true;
-            allowAddAnimationTimer.restart();
-        } else if (isSearchRestore) {
-            window.searchIndexRestored = true;
-        }
-    }
-
-    Timer {
-        id: allowAddAnimationTimer
-        interval: 600
-        onTriggered: window.allowAddAnimation = true
-    }
-
-    function tryFocus() {
-        if (initialFocusSet) return;
-        if (localProxyModel.count > 0) {
-            let foundIndex = -1;
-            let cleanTarget = window.getCleanName(targetWallName);
-            if (cleanTarget !== "") {
-                for (let i = 0; i < localProxyModel.count; i++) {
-                    let fname = localProxyModel.get(i).fileName || "";
-                    if (window.getCleanName(fname) === cleanTarget) {
-                        foundIndex = i;
-                        break;
-                    }
-                }
-            }
-            let finalIndex = foundIndex !== -1 ? foundIndex : 0;
-            window.executeFocusRestore(finalIndex, false, true);
-        }
-    }
-    
-    function trySearchFocus() {
-        if (window.searchIndexRestored || searchProxyModel.count === 0) return;
-        if (window.lastSearchName === "") {
-             window.searchIndexRestored = true;
-             return;
-        }
-        for (let i = 0; i < searchProxyModel.count; i++) {
-            let fname = searchProxyModel.get(i).fileName || "";
-            if (fname === window.lastSearchName) {
-                window.executeFocusRestore(i, true, true);
-                return;
-            }
-        }
-        if (searchFolderModel.status === FolderListModel.Ready && searchProxyModel.count === searchFolderModel.count) {
-             window.searchIndexRestored = true;
-        }
-    }
-
-    function getModelForFilter(filter) {
-        return filter === "Search" ? searchProxyModel : localProxyModel;
-    }
-
-    function updateVisibleCount() {
-        let targetModel = window.getModelForFilter(window.currentFilter);
-        if (!targetModel || targetModel.count === 0) {
-            window.visibleItemCount = 0;
-            return;
-        }
-        let count = 0;
-        for (let i = 0; i < targetModel.count; i++) {
-            let fname = targetModel.get(i).fileName || "";
-            let isVid = fname.startsWith("000_");
-            if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                count++;
-            }
-        }
-        window.visibleItemCount = count;
-    }
-
-    function triggerOnlineSearch() {
-        if (searchInput.text.trim() === "") return;
-        window.isModelChanging = true;
-        searchProxyModel.clear();
-        window.lastSearchName = "";
-        searchState.lastName = "";
-        if (window.currentFilter === "Search") {
-            view.currentIndex = 0;
-            view.positionViewAtIndex(0, ListView.Center);
-        }
-        window.isModelChanging = false;
-        window.searchIndexRestored = true;
-        window.isOnlineSearch = true;
-        window.hasSearched = true;
-        window.visibleItemCount = 0;
-        searchState.searched = true;
-        searchState.query = searchInput.text.trim();
-        window.isSearchPaused = false;
-        window.searchQuery = searchInput.text.trim();
-        
-        let rawSearchDir = decodeURIComponent(window.searchDir.replace(/^file:\/\//, ""));
-        let scriptPath = decodeURIComponent(Qt.resolvedUrl("ddg_search.sh").toString().replace(/^file:\/\//, ""));
-        
-        const cmd = `
-            exec > ${Caching.logDir}/ddg_run.log 2>&1
-            export PATH=$PATH:/run/current-system/sw/bin
-            echo 'stop' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
-            for p in \$(pgrep -f ddg_search.sh); do
-                if [ "\$p" != "\$\$" ] && [ "\$p" != "\$BASHPID" ]; then
-                    kill -9 \$p 2>/dev/null || true
-                fi
-            done
-            pkill -f "[g]et_ddg_links.py" || true
-            sleep 0.2
-            rm -rf "${rawSearchDir}"/* || true
-            rm -f "${rawSearchDir}/../search_map.txt" || true
-            echo 'run' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
-            bash "${scriptPath}" "${window.searchQuery}" &
-        `;
-        Quickshell.execDetached(["bash", "-c", cmd]);
-        searchInput.focus = false;
-        view.forceActiveFocus();
-    }
-
-    readonly property string homeDir: "file://" + Quickshell.env("HOME")
-    readonly property string searchDir: "file://" + Caching.getCacheDir("wallpaper_picker") + "/search_thumbs"
-    readonly property string srcDir: {
-        const dir = Quickshell.env("WALLPAPER_DIR")
-        return (dir && dir !== "") ? dir : Quickshell.env("HOME") + "/Pictures/Wallpapers"
-    }
-
-    readonly property real itemWidth: window.s(400)
-    readonly property real itemHeight: window.s(420)
-    readonly property real borderWidth: window.s(3)
-    readonly property real spacing: window.s(10)
-    readonly property real skewFactor: -0.35
-
-    Timer { id: scrollThrottle; interval: 150 }
-
-    property bool isFilterAnimating: false
-    Timer {
-        id: filterAnimationTimer
-        interval: 800
-        onTriggered: window.isFilterAnimating = false
-    }
-
-    property bool isItemAnimating: false
-    Timer {
-        id: itemAnimationTimer
-        interval: 500
-        onTriggered: window.isItemAnimating = false
-    }
-
-    function getHexBucket(hexStr) {
-        if (!hexStr) return "Monochrome";
-        hexStr = String(hexStr).trim().replace(/#/g, '');
-        if (hexStr.length > 6) hexStr = hexStr.substring(0, 6);
-        if (hexStr.length !== 6) return "Monochrome";
-
-        let r = parseInt(hexStr.substring(0,2), 16) / 255;
-        let g = parseInt(hexStr.substring(2,4), 16) / 255;
-        let b = parseInt(hexStr.substring(4,6), 16) / 255;
-        if (isNaN(r) || isNaN(g) || isNaN(b)) return "Monochrome";
-
-        let max = Math.max(r, g, b), min = Math.min(r, g, b);
-        let d = max - min;
-        let h = 0;
-        let s = max === 0 ? 0 : d / max;
-        let v = max;
-
-        if (max !== min) {
-            if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-            else if (max === g) h = (b - r) / d + 2;
-            else h = (r - g) / d + 4;
-            h /= 6;
-        }
-        h = h * 360;
-
-        if (s < 0.05 || v < 0.08) return "Monochrome";
-        if (h >= 345 || h < 15) return "Red";
-        if (h >= 15 && h < 45) return "Orange";
-        if (h >= 45 && h < 75) return "Yellow";
-        if (h >= 75 && h < 165) return "Green";
-        if (h >= 165 && h < 260) return "Blue";
-        if (h >= 260 && h < 315) return "Purple";
-        if (h >= 315 && h < 345) return "Pink";
-        return "Monochrome";
-    }
-
-    function checkItemMatchesFilter(fileName, isVid, cv, filter) {
-        if (filter === "Search") return true;
-        if (filter === "All") return true;
-        if (filter === "Video") return isVid;
-        let hexColor = window.colorMap[String(fileName)];
-        if (!hexColor) return filter === "Monochrome";
-        return window.getHexBucket(hexColor) === filter;
-    }
-
-    Timer {
-        id: markerDebounce
-        interval: 300
-        onTriggered: window.processMarkers()
-    }
-
-    FolderListModel {
-        id: markerModel
-        folder: "file://" + Caching.getCacheDir("wallpaper_picker") + "/colors_markers"
-        showDirs: false
-        nameFilters: ["*_HEX_*"]
-        onCountChanged: markerDebounce.restart()
-        onStatusChanged: { if (status === FolderListModel.Ready) markerDebounce.restart() }
-    }
-    
-    FolderListModel {
-        id: srcModel
-        folder: "file://" + window.srcDir
-        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
-        showDirs: false
-        onCountChanged: {
-            if (window.isDownloadingWallpaper && window.isDownloaded(window.currentDownloadName)) {
-                window.isDownloadingWallpaper = false;
-            }
-        }
-    }
-
-    function processMarkers() {
-        let newMap = {};
-        for (let i = 0; i < markerModel.count; i++) {
-            let markerName = markerModel.get(i, "fileName") || "";
-            if (!markerName) continue;
-            let splitIdx = markerName.lastIndexOf("_HEX_");
-            if (splitIdx !== -1) {
-                let fName = markerName.substring(0, splitIdx);
-                let hexCode = markerName.substring(splitIdx + 5);
-                newMap[fName] = "#" + hexCode;
-            }
-        }
-        window.colorMap = newMap;
-        window.cacheVersion++;
-        window.updateVisibleCount();
-    }
-
-    function stepToNextValidIndex(direction) {
-        let targetModel = window.getModelForFilter(window.currentFilter);
-        if (!targetModel || targetModel.count === 0) return;
-        
-        let start = view.currentIndex;
-        let found = -1;
-
-        if (direction === 1) {
-            for (let i = start + 1; i < targetModel.count; i++) {
-                let fname = targetModel.get(i).fileName || "";
-                let isVid = fname.startsWith("000_");
-                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                    found = i; break;
-                }
-            }
-        } else {
-            for (let i = start - 1; i >= 0; i--) {
-                let fname = targetModel.get(i).fileName || "";
-                let isVid = fname.startsWith("000_");
-                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                    found = i; break;
-                }
-            }
-        }
-
-        if (found !== -1) {
-            view.currentIndex = found;
-            return;
-        }
-
-        let filterOrder = ["All", "Video", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Monochrome"];
-        let currentFilterIdx = filterOrder.indexOf(window.currentFilter);
-
-        if (currentFilterIdx === -1) {
-            let current = start;
-            for (let i = 0; i < targetModel.count; i++) {
-                current = (current + direction + targetModel.count) % targetModel.count;
-                let fname = targetModel.get(current).fileName || "";
-                let isVid = fname.startsWith("000_");
-                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                    view.currentIndex = current;
-                    return;
-                }
-            }
-            return;
-        }
-
-        let nextFilterIdx = currentFilterIdx + direction;
-        if (nextFilterIdx >= 0 && nextFilterIdx < filterOrder.length) {
-            window.jumpToLastOnFilterChange = (direction === -1);
-            window.currentFilter = filterOrder[nextFilterIdx];
-        }
-    }
-
-    function cycleFilter(direction) {
-        let currentIdx = -1;
-        for (let i = 0; i < window.filterData.length; i++) {
-            if (window.filterData[i].name === window.currentFilter) {
-                currentIdx = i;
-                break;
-            }
-        }
-        if (currentIdx !== -1) {
-            let nextIdx = (currentIdx + direction + window.filterData.length) % window.filterData.length;
-            window.currentFilter = window.filterData[nextIdx].name;
-        }
-    }
-
-    function applyFilters(forceSnap) {
-        let targetModel = window.getModelForFilter(window.currentFilter);
-        if (!targetModel || targetModel.count === 0) {
-            window.updateVisibleCount();
-            return;
-        }
-        if (window.currentFilter === "Search") {
-            window.updateVisibleCount();
-            return;
-        }
-
-        let firstValidIndex = -1;
-        let lastValidIndex = -1;
-        let cleanTarget = window.getCleanName(window.targetWallName);
-        let targetIndex = -1;
-
-        for (let i = 0; i < targetModel.count; i++) {
-            let fname = targetModel.get(i).fileName || "";
-            let isVid = fname.startsWith("000_");
-            if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                if (firstValidIndex === -1) firstValidIndex = i;
-                lastValidIndex = i;
-                if (cleanTarget !== "" && window.getCleanName(fname) === cleanTarget) {
-                    targetIndex = i;
-                }
-            }
-        }
-
-        let indexToFocus = -1;
-        if (targetIndex !== -1) indexToFocus = targetIndex;
-        else if (window.jumpToLastOnFilterChange && lastValidIndex !== -1) indexToFocus = lastValidIndex;
-        else if (firstValidIndex !== -1) indexToFocus = firstValidIndex;
-
-        window.jumpToLastOnFilterChange = false;
-        if (indexToFocus !== -1) {
-            window.executeFocusRestore(indexToFocus, false, forceSnap === true);
-        }
-        window.updateVisibleCount();
-    }
-
-    onCurrentFilterChanged: {
-        window.isFilterAnimating = true;
-        filterAnimationTimer.restart();
-        window.isModelChanging = true;
-        let returningFromSearch = (window._lastFilter === "Search" && window.currentFilter !== "Search");
-        window._lastFilter = window.currentFilter;
-        
-        if (returningFromSearch) window.searchIndexRestored = false;
-        
-        Qt.callLater(() => {
-            view.forceActiveFocus();
-            if (window.currentFilter === "Search") {
-                if (window.hasSearched) {
-                    window.searchIndexRestored = false;
-                    window.trySearchFocus();
-                }
-            } else {
-                window.applyFilters(returningFromSearch);
-            }
-            window.isModelChanging = false;
-        });
-    }
-
-    Shortcut { 
-        sequence: "Left"; 
-        enabled: !window.isScrollingBlocked && !window.isApplying
-        onActivated: window.stepToNextValidIndex(-1) 
-    }
-    Shortcut { 
-        sequence: "Right"; 
-        enabled: !window.isScrollingBlocked && !window.isApplying
-        onActivated: window.stepToNextValidIndex(1) 
-    }
-    Shortcut { 
-        sequence: "Return"
-        enabled: !searchInput.activeFocus && !window.isScrollingBlocked && !window.isApplying
-        onActivated: { 
-            let targetModel = window.getModelForFilter(window.currentFilter);
-            if (view.currentIndex >= 0 && view.currentIndex < targetModel.count) {
-                let fname = targetModel.get(view.currentIndex).fileName;
-                if (fname) window.applyWallpaper(String(fname), String(fname).startsWith("000_"));
-            }
-        } 
-    }
-    Shortcut { sequence: "Escape"; enabled: !window.isApplying; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
-    Shortcut { sequence: "Tab"; enabled: !window.isApplying; onActivated: window.cycleFilter(1) }
-    Shortcut { sequence: "Backtab"; enabled: !window.isApplying; onActivated: window.cycleFilter(-1) }
-
-    ListModel { id: localProxyModel }
-    ListModel { id: searchProxyModel }
-    readonly property var activeModel: window.currentFilter === "Search" ? searchProxyModel : localProxyModel
-
-    FolderListModel {
-        id: localFolderModel
-        folder: "file://" + window.srcDir
-        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
-        showDirs: false
-        sortField: FolderListModel.Name
-        onCountChanged: window.syncLocalModel()
-        onStatusChanged: { if (status === FolderListModel.Ready) window.syncLocalModel() }
-    }
-
-    property int _localSyncedCount: 0
-
-    function syncLocalModel() {
-        let folderCount = localFolderModel.count;
-        if (folderCount < window._localSyncedCount) {
-            let wasAllowing = window.allowAddAnimation;
-            window.allowAddAnimation = false;
-            window.isModelChanging = true;
-            localProxyModel.clear();
-            window._localSyncedCount = 0;
-            window.isModelChanging = false;
-            window.syncLocalModel();
-            if (wasAllowing) allowAddAnimationTimer.restart();
-            return;
-        }
-
-        if (folderCount > window._localSyncedCount) {
-            let batch = [];
-            for (let i = window._localSyncedCount; i < folderCount; i++) {
-                let fn = localFolderModel.get(i, "fileName");
-                let fu = localFolderModel.get(i, "fileUrl");
-                if (fn !== undefined) {
-                    batch.push({ "fileName": fn, "fileUrl": String(fu) });
-                }
-            }
-            if (batch.length > 0) localProxyModel.append(batch);
-            window._localSyncedCount = folderCount;
-        }
-
-        if (window.currentFilter !== "Search") window.updateVisibleCount();
-        if (!window.initialFocusSet && window.currentFilter !== "Search" && localProxyModel.count > 0) {
-            window.tryFocus();
-        }
-    }
-
-    function syncSearchModel() {
-        let startIdx = searchProxyModel.count;
-        let endIdx = searchFolderModel.count;
-        if (endIdx < startIdx) {
-            window.isModelChanging = true;
-            searchProxyModel.clear();
-            startIdx = 0;
-            window.isModelChanging = false;
-        }
-
-        let batch = [];
-        for (let i = startIdx; i < endIdx; i++) {
-            let fn = searchFolderModel.get(i, "fileName");
-            let fu = searchFolderModel.get(i, "fileUrl");
-            if (fn !== undefined) {
-                batch.push({ "fileName": fn, "fileUrl": String(fu) });
-            }
-        }
-        if (batch.length > 0) searchProxyModel.append(batch);
-
-        if (window.currentFilter === "Search") window.updateVisibleCount();
-        if (window.currentFilter === "Search" && window.hasSearched) {
-            if (!window.searchIndexRestored) window.trySearchFocus();
-            if (window.isScrollingBlocked && startIdx === 0 && searchProxyModel.count > 0 && window.lastSearchName === "") {
-                view.forceLayout();
-                view.currentIndex = 0;
-                view.positionViewAtIndex(0, ListView.Center);
-            }
-        }
-    }
-
-    FolderListModel {
-        id: searchFolderModel
-        folder: window.searchDir
-        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
-        showDirs: false
-        sortField: FolderListModel.Name
-        onFolderChanged: {
-            window.isModelChanging = true;
-            searchProxyModel.clear();
-            window.isModelChanging = false;
-        }
-        onCountChanged: window.syncSearchModel()
-        onStatusChanged: { if (status === FolderListModel.Ready) window.syncSearchModel() }
-    }
-
-    ListView {
-        id: view
-        anchors.fill: parent
-        opacity: window.isReady ? 1.0 : 0.0
-        anchors.margins: window.isReady ? 0 : window.s(40)
-        
-        Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutQuart } }
-        Behavior on anchors.margins { NumberAnimation { duration: 700; easing.type: Easing.OutExpo } }
-
-        spacing: 0
-        orientation: ListView.Horizontal
-        clip: false
-        interactive: !window.isScrollingBlocked && !window.isApplying
-        cacheBuffer: 2000
-
-        highlightRangeMode: ListView.StrictlyEnforceRange
-        preferredHighlightBegin: (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2)
-        preferredHighlightEnd: (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2)
-        highlightMoveDuration: window.initialFocusSet ? 500 : 0
-        focus: true
-        
-        onCurrentIndexChanged: {
-            window.isItemAnimating = true;
-            itemAnimationTimer.restart();
-            if (view.model !== searchProxyModel || window.currentFilter !== "Search") return;
-            if (!window.isModelChanging && window.hasSearched && window.searchIndexRestored) {
-                if (currentIndex >= 0 && currentIndex < searchProxyModel.count) {
-                    let fname = searchProxyModel.get(currentIndex).fileName;
-                    if (fname !== undefined && fname !== "") {
-                        window.lastSearchName = String(fname);
-                        searchState.lastName = String(fname);
-                    }
-                }
-            }
-        }
-        
-        add: Transition {
-            enabled: window.allowAddAnimation
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 400; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "scale"; from: 0.5; to: 1; duration: 400; easing.type: Easing.OutBack }
-            }
-        }
-        addDisplaced: Transition {
-            enabled: window.allowAddAnimation
-            NumberAnimation { property: "x"; duration: 400; easing.type: Easing.OutCubic }
-        }
-
-        header: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5) / 2)) }
-        footer: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5) / 2)) }
-        model: window.activeModel
-
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.NoButton
-            onWheel: (wheel) => {
-                if (window.isScrollingBlocked || window.isApplying) {
-                    wheel.accepted = true;
-                    return;
-                }
-                if (scrollThrottle.running) {
-                   wheel.accepted = true;
-                   return;
-                }
-                let dx = wheel.angleDelta.x;
-                let dy = wheel.angleDelta.y;
-                let delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
-                scrollAccum += delta;
-
-                if (Math.abs(scrollAccum) >= scrollThreshold) {
-                    window.stepToNextValidIndex(scrollAccum > 0 ? -1 : 1);
-                    scrollAccum = 0;
-                    scrollThrottle.start();
-                }
-                wheel.accepted = true;
-            }        
-        }
-
-        delegate: Item {
-            id: delegateRoot
-            readonly property string safeFileName: fileName !== undefined ? String(fileName) : ""
-            readonly property bool isCurrent: ListView.isCurrentItem && !window.isScrollingBlocked
-            readonly property bool isFakeSelected: window.isScrollingBlocked && index === 0
-            readonly property bool isVisuallyEnlarged: isCurrent || isFakeSelected
-            readonly property bool isVideo: safeFileName.startsWith("000_")
-            readonly property bool matchesFilter: window.checkItemMatchesFilter(safeFileName, isVideo, window.cacheVersion, window.currentFilter)
-            readonly property real targetWidth: isVisuallyEnlarged ? (window.itemWidth * 1.5) : (window.itemWidth * 0.5)
-            readonly property real targetHeight: isVisuallyEnlarged ? (window.itemHeight + window.s(30)) : window.itemHeight
-            
-            readonly property string thumbPath: "file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName)
-
-            width: matchesFilter ? (targetWidth + window.spacing) : 0
-            visible: width > 0.1 || opacity > 0.01
-            opacity: matchesFilter ? (isVisuallyEnlarged ? 1.0 : 0.6) : 0.0
-            scale: matchesFilter ? 1.0 : 0.5
-            height: matchesFilter ? targetHeight : 0
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: window.s(15)
-            z: isVisuallyEnlarged ? 10 : 1
-            
-            Behavior on scale { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-            Behavior on width { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-            Behavior on height { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-            Behavior on opacity { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-
-            Item {
-                anchors.centerIn: parent
-                anchors.horizontalCenterOffset: ((window.itemHeight - height) / 2) * window.skewFactor
-                width: parent.width > 0 ? parent.width * (targetWidth / (targetWidth + window.spacing)) : 0
-                height: parent.height
-
-                transform: Matrix4x4 {
-                    property real s: window.skewFactor
-                    matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-                }
-                
-                MouseArea {
-                    anchors.fill: parent
-                    enabled: delegateRoot.matchesFilter && !window.isScrollingBlocked && !window.isApplying
-                    onClicked: {
-                        view.currentIndex = index;
-                        window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo);
-                    }
-                }
-
-                Image {
-                    anchors.fill: parent
-                    source: thumbPath
-                    sourceSize: Qt.size(256, 256)
-                    fillMode: Image.Stretch
-                    asynchronous: true
-                }
-
-                Item {
-                    anchors.fill: parent
-                    anchors.margins: window.borderWidth
-                    Rectangle { anchors.fill: parent; color: _theme.base }
-                    clip: true
-
-                    Image {
-                        anchors.centerIn: parent
-                        anchors.horizontalCenterOffset: window.s(-50)
-                        width: (window.itemWidth * 1.5) + ((window.itemHeight + window.s(30)) * Math.abs(window.skewFactor)) + window.s(50)
-                        height: window.itemHeight + window.s(30)
-                        fillMode: Image.PreserveAspectCrop
-                        source: thumbPath
-                        sourceSize: Qt.size(400, 400)
-                        asynchronous: true
-
-                        transform: Matrix4x4 {
-                            property real s: -window.skewFactor
-                            matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Rectangle {
-        id: filterBarBackground
-        anchors.top: parent.top
-        anchors.topMargin: window.isReady ? window.s(40) : window.s(-100)
-        opacity: window.isReady ? 1.0 : 0.0
-        Behavior on anchors.topMargin { NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
-        Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
-        anchors.horizontalCenter: parent.horizontalCenter
-        z: 20
-        height: window.s(56)
-        width: filterRow.width + window.s(24)
-        radius: window.s(14)
-        color: Qt.rgba(_theme.mantle.r, _theme.mantle.g, _theme.mantle.b, 0.90)
-        border.color: _theme.surface2
-        border.width: 1
-
-        Row {
-            id: filterRow
-            anchors.centerIn: parent
-            spacing: window.s(12)
-
-            Rectangle {
-                id: notifDrawer
-                height: window.s(44)
-                property real paddingLeft: window.showSpinner ? window.s(40) : window.s(16)
-                property real targetWidth: window.showNotification ? Math.min(notifTextDrawer.implicitWidth + paddingLeft + window.s(20), window.s(300)) : 0
-                width: targetWidth
-                visible: width > 0.1
-                radius: window.s(10)
-                clip: true
-                anchors.verticalCenter: parent.verticalCenter
-                color: window.showNotification ? _theme.surface2 : "transparent"
-                border.color: window.showNotification ? _theme.surface1 : "transparent"
-                border.width: 1
-
-                Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400 } }
-                Behavior on border.color { ColorAnimation { duration: 400 } }
-
-                Item {
-                    visible: window.showSpinner
-                    width: window.s(44)
-                    height: window.s(44)
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    Canvas {
-                        id: notifSpinner
-                        width: window.s(14)
-                        height: window.s(14)
-                        anchors.centerIn: parent
-                        property real scaleTrigger: window.s(1)
-                        onScaleTriggerChanged: requestPaint()
-
-                        onPaint: {
-                            var ctx = getContext("2d");
-                            var s = window.s;
-                            ctx.reset();
-                            ctx.lineWidth = s(2);
-                            ctx.strokeStyle = Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.3);
-                            ctx.beginPath();
-                            ctx.arc(s(7), s(7), s(5), 0, Math.PI * 2);
-                            ctx.stroke();
-                            
-                            ctx.strokeStyle = Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.9);
-                            ctx.beginPath();
-                            ctx.arc(s(7), s(7), s(5), 0, Math.PI * 0.5);
-                            ctx.stroke();
-                        }
-                        RotationAnimation on rotation {
-                            loops: Animation.Infinite
-                            from: 0; to: 360
-                            duration: 800
-                            running: window.showSpinner && window.showNotification
-                        }
-                    }
-                }
-
-                Text {
-                    id: notifTextDrawer
-                    anchors.left: parent.left
-                    anchors.leftMargin: window.showSpinner ? window.s(40) : window.s(16)
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: Math.min(implicitWidth, window.s(300) - anchors.leftMargin - window.s(16))
-                    text: window.currentNotification
-                    color: _theme.text
-                    font.family: "JetBrains Mono"
-                    font.pixelSize: window.s(14)
-                    font.bold: true
-                    elide: Text.ElideRight
-                    opacity: window.showNotification ? 0.9 : 0.0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
-                    Behavior on anchors.leftMargin { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                }
-            }
-
-            Rectangle {
-                id: monitorDrawer
-                visible: monitorModel.count > 1
-                height: window.s(44)
-                property real expandedWidth: window.s(44) + monitorListRow.width + window.s(8)
-                width: visible ? (window.isMonitorSelectorOpen ? expandedWidth : window.s(44)) : 0
-                radius: window.s(10)
-                clip: true
-                anchors.verticalCenter: parent.verticalCenter
-                color: window.isMonitorSelectorOpen ? _theme.surface2 : "transparent"
-                border.color: window.isMonitorSelectorOpen ? _theme.text : _theme.surface1
-                border.width: window.isMonitorSelectorOpen ? window.s(2) : 1
-                
-                Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400 } }
-                Behavior on border.color { ColorAnimation { duration: 400 } }
-
-                MouseArea {
-                    id: monitorIconMouse
-                    width: window.s(44)
-                    height: window.s(44)
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    hoverEnabled: true
-                    enabled: !window.isApplying
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: window.isMonitorSelectorOpen = !window.isMonitorSelectorOpen
-                }
-
-                Canvas {
-                    id: monitorIcon
-                    width: window.s(18)
-                    height: window.s(18)
-                    anchors.centerIn: monitorIconMouse
-                    property string activeColor: window.isMonitorSelectorOpen ? _theme.text : (monitorIconMouse.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
-                    onActiveColorChanged: requestPaint()
-                    property real scaleTrigger: window.s(1)
-                    onScaleTriggerChanged: requestPaint()
-
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        var s = window.s;
-                        ctx.reset();
-                        ctx.lineWidth = s(2);
-                        ctx.strokeStyle = activeColor;
-                        ctx.lineJoin = "round";
-                        ctx.lineCap = "round";
-                        ctx.beginPath();
-                        ctx.rect(s(2), s(3), s(14), s(9));
-                        ctx.stroke();
-                        ctx.beginPath();
-                        ctx.moveTo(s(9), s(12));
-                        ctx.lineTo(s(9), s(16));
-                        ctx.moveTo(s(5), s(16));
-                        ctx.lineTo(s(13), s(16));
-                        ctx.stroke();
-                    }
-                }
-
-                Row {
-                    id: monitorListRow
-                    anchors.left: monitorIconMouse.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: window.s(8)
-                    opacity: window.isMonitorSelectorOpen ? 1.0 : 0.0
-                    Behavior on opacity { NumberAnimation { duration: 300 } }
-
-                    Repeater {
-                        model: monitorModel
-                        delegate: Item {
-                            width: monitorText.contentWidth + window.s(16)
-                            height: window.s(32)
-                            anchors.verticalCenter: parent.verticalCenter
-                            
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: window.s(6)
-                                color: model.selected ? _theme.text : _theme.surface1
-                                border.color: model.selected ? _theme.text : _theme.surface2
-                                border.width: 1
-                                Behavior on color { ColorAnimation { duration: 250 } }
-                                Behavior on border.color { ColorAnimation { duration: 250 } }
-                                
-                                Text {
-                                    id: monitorText
-                                    text: model.name
-                                    anchors.centerIn: parent
-                                    color: model.selected ? _theme.base : _theme.text
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: window.s(12)
-                                    font.bold: model.selected
-                                    Behavior on color { ColorAnimation { duration: 250 } }
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                enabled: window.isMonitorSelectorOpen && !window.isApplying
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (model.selected) {
-                                        let activeCount = 0;
-                                        for (let i = 0; i < monitorModel.count; i++) {
-                                            if (monitorModel.get(i).selected) activeCount++;
-                                        }
-                                        if (activeCount > 1) {
-                                            monitorModel.setProperty(index, "selected", false);
-                                        }
-                                    } else {
-                                        monitorModel.setProperty(index, "selected", true);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Repeater {
-                model: window.filterData
-                delegate: Item {
-                    visible: modelData.name !== "Search"
-                    width: !visible ? 0 : ((modelData.name === "Video" || modelData.name === "All") ? window.s(44) : (modelData.hex === "" ? filterText.contentWidth + window.s(24) : window.s(36)))
-                    height: !visible ? 0 : window.s(36)
-                    anchors.verticalCenter: parent.verticalCenter
-                    
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: window.s(10)
-                        color: modelData.hex === "" ? (window.currentFilter === modelData.name ? _theme.surface2 : "transparent") : modelData.hex
-                        border.color: window.currentFilter === modelData.name ? _theme.text : _theme.surface1
-                        border.width: window.currentFilter === modelData.name ? window.s(2) : 1
-                        scale: window.currentFilter === modelData.name ? 1.15 : (filterMouse.containsMouse ? 1.08 : 1.0)
-                        
-                        Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
-                        Behavior on border.color { ColorAnimation { duration: 300 } }
-
-                        Text {
-                            id: filterText
-                            visible: modelData.hex === "" && modelData.name !== "Video" && modelData.name !== "All"
-                            text: modelData.label
-                            anchors.centerIn: parent
-                            color: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
-                            font.family: "JetBrains Mono"
-                            font.pixelSize: window.s(14)
-                            font.bold: window.currentFilter === modelData.name
-                            Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
-                        }
-
-                        Canvas {
-                            visible: modelData.name === "Video"
-                            width: window.s(14); height: window.s(16)
-                            anchors.centerIn: parent
-                            anchors.horizontalCenterOffset: window.s(2)
-                            property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
-                            onActiveColorChanged: requestPaint()
-                            property real scaleTrigger: window.s(1)
-                            onScaleTriggerChanged: requestPaint()
-
-                            onPaint: {
-                                var ctx = getContext("2d");
-                                var s = window.s;
-                                ctx.reset();
-                                ctx.fillStyle = activeColor;
-                                ctx.beginPath();
-                                ctx.moveTo(0, 0);
-                                ctx.lineTo(s(14), s(8));
-                                ctx.lineTo(0, s(16));
-                                ctx.closePath();
-                                ctx.fill();
-                            }
-                        }
-
-                        Canvas {
-                            visible: modelData.name === "All"
-                            width: window.s(14); height: window.s(14)
-                            anchors.centerIn: parent
-                            property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
-                            onActiveColorChanged: requestPaint()
-                            property real scaleTrigger: window.s(1)
-                            onScaleTriggerChanged: requestPaint()
-
-                            onPaint: {
-                                var ctx = getContext("2d");
-                                var s = window.s;
-                                ctx.reset();
-                                ctx.fillStyle = activeColor;
-                                ctx.fillRect(0, 0, s(6), s(6));
-                                ctx.fillRect(s(8), 0, s(6), s(6));
-                                ctx.fillRect(0, s(8), s(6), s(6));
-                                ctx.fillRect(s(8), s(8), s(6), s(6));
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: filterMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        enabled: !window.isApplying
-                        onClicked: window.currentFilter = modelData.name
-                        cursorShape: Qt.PointingHandCursor
-                    }
-                }
-            }
-
-            Rectangle {
-                id: searchControlBtn
-                visible: window.currentFilter === "Search" && window.hasSearched
-                width: visible ? window.s(44) : 0
-                height: window.s(44)
-                radius: window.s(10)
-                clip: true
-                anchors.verticalCenter: parent.verticalCenter
-                color: window.isSearchPaused ? _theme.surface2 : "transparent"
-                border.color: window.isSearchPaused ? _theme.text : _theme.surface1
-                border.width: window.isSearchPaused ? window.s(2) : 1
-                
-                Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
-                
-                MouseArea {
-                    id: scMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    enabled: !window.isApplying
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: window.isSearchPaused = !window.isSearchPaused
-                }
-                
-                Canvas {
-                    width: window.s(44); height: window.s(44)
-                    anchors.centerIn: parent
-                    property bool paused: window.isSearchPaused
-                    property string activeColor: paused ? _theme.text : (scMouse.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
-                    onActiveColorChanged: requestPaint()
-                    onPausedChanged: requestPaint()
-                    property real scaleTrigger: window.s(1)
-                    onScaleTriggerChanged: requestPaint()
-                    
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        var s = window.s;
-                        ctx.reset();
-                        ctx.fillStyle = activeColor;
-                        if (!paused) {
-                            ctx.fillRect(s(15), s(14), s(4), s(16));
-                            ctx.fillRect(s(25), s(14), s(4), s(16));
-                        } else {
-                            ctx.beginPath();
-                            ctx.moveTo(s(16), s(12));
-                            ctx.lineTo(s(32), s(22));
-                            ctx.lineTo(s(16), s(32));
-                            ctx.closePath();
-                            ctx.fill();
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                id: searchBox
-                height: window.s(44)
-                width: window.currentFilter === "Search" ? window.s(360) : window.s(44)
-                radius: window.s(10)
-                clip: true
-                anchors.verticalCenter: parent.verticalCenter
-                color: window.currentFilter === "Search" ? Qt.rgba(_theme.surface2.r, _theme.surface2.g, _theme.surface2.b, 0.8) : "transparent"
-                border.color: window.currentFilter === "Search" ? _theme.text : _theme.surface1
-                border.width: window.currentFilter === "Search" ? window.s(2) : 1
-                
-                Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
-                Behavior on border.color { ColorAnimation { duration: 400 } }
-
-                MouseArea {
-                    id: searchMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    enabled: !window.isApplying
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (window.currentFilter !== "Search") {
-                            window.currentFilter = "Search";
-                        } else {
-                            window.currentFilter = "All";
-                        }
-                    }
-                }
-
-                Canvas {
-                    id: searchIcon
-                    width: window.s(44)
-                    height: window.s(44)
-                    anchors.left: parent.left
-                    anchors.leftMargin: window.currentFilter === "Search" ? window.s(5) : 0
-                    anchors.verticalCenter: parent.verticalCenter
-                    Behavior on anchors.leftMargin { NumberAnimation { duration: 500; easing.type: Easing.OutExpo } }
-                    property string activeColor: window.currentFilter === "Search" ? _theme.text : (searchMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
-                    onActiveColorChanged: requestPaint()
-                    property real scaleTrigger: window.s(1)
-                    onScaleTriggerChanged: requestPaint()
-
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        var s = window.s;
-                        ctx.reset();
-                        ctx.lineWidth = s(3);
-                        ctx.strokeStyle = activeColor;
-                        ctx.beginPath();
-                        ctx.arc(s(18), s(18), s(7), 0, Math.PI * 2);
-                        ctx.stroke();
-                        ctx.beginPath();
-                        ctx.moveTo(s(23), s(23));
-                        ctx.lineTo(s(31), s(31));
-                        ctx.stroke();
-                    }
-                }
-
-                TextInput {
-                    id: searchInput
-                    anchors.left: searchIcon.right
-                    anchors.right: submitBtn.left
-                    anchors.rightMargin: window.s(8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    opacity: window.currentFilter === "Search" ? 1.0 : 0.0
-                    visible: opacity > 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
-                    color: _theme.text
-                    font.family: "JetBrains Mono"
-                    font.pixelSize: window.s(16)
-                    clip: true
-                    
-                    onTextEdited: {
-                        window.hasSearched = false;
-                        searchState.searched = false;
-                    }
-                    onAccepted: {
-                        window.triggerOnlineSearch();
-                        searchInput.focus = false;
-                        view.forceActiveFocus();
-                    }
-                }
-
-                Rectangle {
-                    id: submitBtn
-                    width: window.s(32)
-                    height: window.s(32)
-                    radius: window.s(8)
-                    anchors.right: parent.right
-                    anchors.rightMargin: window.s(8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    opacity: window.currentFilter === "Search" ? 1.0 : 0.0
-                    visible: opacity > 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
-                    color: submitMouseArea.containsMouse ? _theme.surface1 : "transparent"
-                    border.color: submitMouseArea.containsMouse ? _theme.text : _theme.surface2
-                    border.width: 1
-                    Behavior on color { ColorAnimation { duration: 300 } }
-
-                    MouseArea {
-                        id: submitMouseArea
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        hoverEnabled: true
-                        enabled: !window.isApplying
-                        onClicked: window.triggerOnlineSearch()
-                    }
-
-                    Canvas {
-                        width: window.s(16)
-                        height: window.s(16)
-                        anchors.centerIn: parent
-                        property string activeColor: submitMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
-                        onActiveColorChanged: requestPaint()
-                        property real scaleTrigger: window.s(1)
-                        onScaleTriggerChanged: requestPaint()
-                        
-                        onPaint: {
-                            var ctx = getContext("2d");
-                            var s = window.s;
-                            ctx.reset();
-                            ctx.lineWidth = s(2);
-                            ctx.lineCap = "round";
-                            ctx.lineJoin = "round";
-                            ctx.strokeStyle = activeColor;
-                            ctx.beginPath();
-                            ctx.moveTo(s(2), s(8));
-                            ctx.lineTo(s(14), s(8));
-                            ctx.moveTo(s(9), s(3));
-                            ctx.lineTo(s(14), s(8));
-                            ctx.lineTo(s(9), s(13));
-                            ctx.stroke();
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Component.onCompleted: {
-        Quickshell.execDetached(["bash", "-c", "mkdir -p '" + decodeURIComponent(window.searchDir.replace("file://", "")) + "'"]);
-        window.loadMonitors();
-
-        if (searchState.searched) {
-            searchInput.text = searchState.query;
-            window.searchQuery = searchState.query;
-            window.hasSearched = true;
-            window.lastSearchName = searchState.lastName;
-            window.isSearchPaused = true;
-        }
-
-        view.forceActiveFocus();
-        window.processMarkers();
-        Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/wallpaper_thumbnail.sh"]);
-    }
-
-    Component.onDestruction: {
-        if (window.hasSearched) {
-            searchState.query = searchInput.text;
-            searchState.searched = window.hasSearched;
-            searchState.lastName = window.lastSearchName;
-            Quickshell.execDetached(["bash", "-c", "echo 'pause' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
-        } else {
-            Quickshell.execDetached(["bash", "-c", "echo 'stop' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control; for p in \$(pgrep -f ddg_search.sh); do if [ \"\$p\" != \"\$\$\" ] && [ \"\$p\" != \"\$BASHPID\" ]; then kill -9 \$p 2>/dev/null || true; fi; done; pkill -f '[g]et_ddg_links.py'"]);
-        }
-    }
-}
-</file>
-
-<file path="dotfiles/hypr/scripts/quickshell/watchers/audio_fetch.sh">
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/audio_fetch.sh <==
-#!/usr/bin/env bash
-
-fetch_audio_state() {
-    local dump=""
-    local vol=0
-    local muted="false"
-    local icon="󰝟"
-
-    if command -v wpctl &> /dev/null; then
-        dump=$(LC_ALL=C wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null)
-        vol=$(echo "$dump" | awk '{print int($2*100)}')
-        if echo "$dump" | grep -q "MUTED"; then muted="true"; fi
-    elif command -v pamixer &> /dev/null; then
-        vol=$(LC_ALL=C pamixer --get-volume 2>/dev/null)
-        if LC_ALL=C pamixer --get-mute 2>/dev/null | grep -q "true"; then muted="true"; fi
-    fi
-
-    vol=${vol:-0}
-
-    if [ "$muted" = "true" ]; then icon="󰝟"
-    elif [ "$vol" -ge 70 ]; then icon="󰕾"
-    elif [ "$vol" -ge 30 ]; then icon="󰖀"
-    elif [ "$vol" -gt 0 ]; then icon="󰕿"
-    else icon="󰝟"; fi
-
-    echo "$vol|$muted|$icon"
+    if section == "sinks":
+        outputs.append(entry)
+    else:
+        inputs.append(entry)
+
+
+result = {
+    "outputs": outputs,
+    "inputs": inputs,
+    "apps": []
 }
 
-toggle_mute() {
-    if command -v wpctl &> /dev/null; then
-        LC_ALL=C wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
-    elif command -v pamixer &> /dev/null; then
-        LC_ALL=C pamixer --toggle-mute 2>/dev/null
-    fi
-
-    IFS='|' read -r vol muted icon <<< "$(fetch_audio_state)"
-    if [ "$muted" = "true" ]; then notify-send -u low -i audio-volume-muted "Volume" "Muted"
-    else notify-send -u low -i audio-volume-high "Volume" "Unmuted (${vol}%)"; fi
-}
-
-case ${1:-} in
-    --toggle) toggle_mute ;;
-    *)
-        IFS='|' read -r vol muted icon <<< "$(fetch_audio_state)"
-        jq -n -c --arg volume "$vol" --arg icon "$icon" --arg is_muted "$muted" '{volume: $volume, icon: $icon, is_muted: $is_muted}'
-        ;;
-esac
+print(json.dumps(result))
 </file>
 
 <file path="dotfiles/hypr/scripts/quickshell/watchers/bt_fetch.sh">
@@ -9249,235 +7485,6 @@ case $1 in
     --toggle) toggle_bt ;;
     *) jq -n -c --arg status "$(get_bt_status)" --arg icon "$(get_bt_icon)" --arg connected "$(get_bt_connected_device)" '{status: $status, icon: $icon, connected: $connected}' ;;
 esac
-</file>
-
-<file path="dotfiles/hypr/scripts/quickshell/watchers/bt_wait.sh">
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/bt_wait.sh <==
-#!/usr/bin/env bash
-source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
-
-PIPE="$QS_RUN_DIR/qs_bt_wait_$$.fifo"
-mkfifo "$PIPE" 2>/dev/null
-
-# Clean target ensuring the entire subshell group is eliminated
-trap 'rm -f "$PIPE"; pkill -P $$ 2>/dev/null; exit 0' EXIT INT TERM
-
-LC_ALL=C dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',arg0='org.bluez.Device1'" 2>/dev/null | grep --line-buffered 'string "Connected"' > "$PIPE" &
-LC_ALL=C dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',arg0='org.bluez.Adapter1'" 2>/dev/null | grep --line-buffered 'string "Powered"' > "$PIPE" &
-read -r _ < "$PIPE"
-
-# Hard limit on execution frequency if dbus spams connection signals
-sleep 1.5
-</file>
-
-<file path="dotfiles/hypr/scripts/quickshell/watchers/kb_wait.sh">
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/kb_wait.sh <==
-#!/usr/bin/env bash
-source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
-
-PIPE="$QS_RUN_DIR/qs_kb_wait_$$.fifo"
-mkfifo "$PIPE" 2>/dev/null
-
-# Destroys both the grep hook and the hidden socat socket binder
-trap 'rm -f "$PIPE"; pkill -P $$ 2>/dev/null; exit 0' EXIT INT TERM
-
-if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-    LC_ALL=C socat -U - UNIX-CONNECT:$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock 2>/dev/null | grep --line-buffered "activelayout>>" > "$PIPE" &
-else
-    sleep 10 > "$PIPE" &
-fi
-
-read -r _ < "$PIPE"
-sleep 0.05
-</file>
-
-<file path="dotfiles/hypr/scripts/quickshell/watchers/network_fetch.sh">
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/network_fetch.sh <==
-#!/usr/bin/env bash
-
-get_wifi_radio() {
-    LC_ALL=C nmcli radio wifi 2>/dev/null
-}
-
-get_wifi_strength() {
-    local signal=$(LC_ALL=C awk 'NR==3 {gsub(/\./,"",$3); print int($3 * 100 / 70)}' /proc/net/wireless 2>/dev/null)
-    echo "${signal:-0}"
-}
-
-get_network_data() {
-    # Fetch NM layout exactly once via singular D-Bus query
-    local NM_DUMP
-    NM_DUMP=$(LC_ALL=C nmcli -t -f DEVICE,TYPE,STATE,CONNECTION d 2>/dev/null)
-
-    local active_iface=$(ip route show default 2>/dev/null | awk '/default/ {print $5; exit}')
-    local iface_type=""
-
-    if [ -n "$active_iface" ]; then
-        iface_type=$(echo "$NM_DUMP" | awk -F: -v dev="$active_iface" '$1==dev {print $2; exit}')
-    fi
-
-    local status=""
-    local ssid=""
-    local icon=""
-    local eth_status="Disconnected"
-
-    if [ "$iface_type" = "ethernet" ]; then
-        status="enabled"
-        ssid="Ethernet"
-        icon="󰈀"
-        eth_status="Connected"
-
-    elif [ "$iface_type" = "wifi" ]; then
-        status="enabled"
-        # Extract connection profile mapped directly to device from the dump
-        ssid=$(echo "$NM_DUMP" | awk -F: -v dev="$active_iface" '$1==dev {print $4; exit}')
-        if [ -z "$ssid" ]; then
-            ssid=$(LC_ALL=C iw dev "$active_iface" link 2>/dev/null | awk '/\s+SSID/ { $1=""; sub(/^ /, ""); print; exit }')
-        fi
-        
-        local signal=$(get_wifi_strength)
-        if [ "$signal" -ge 75 ]; then icon="󰤨"
-        elif [ "$signal" -ge 50 ]; then icon="󰤥"
-        elif [ "$signal" -ge 25 ]; then icon="󰤢"
-        else icon="󰤟"; fi
-
-        local eth_dev=$(echo "$NM_DUMP" | awk -F: '$2=="ethernet" && $3=="connected" && $1 != "lo" {print $1; exit}')
-        if [ -n "$eth_dev" ]; then eth_status="Connected"; fi
-
-    else
-        local radio=$(get_wifi_radio)
-        local wifi_dev=$(echo "$NM_DUMP" | awk -F: '$2=="wifi" {print $1; exit}')
-
-        if [ -z "$wifi_dev" ]; then
-            status="disabled"
-            ssid=""
-            icon="󰈂"
-        elif [ "$radio" = "disabled" ]; then
-            status="disabled"
-            ssid=""
-            icon="󰤮"
-        else
-            status="enabled"
-            ssid=""
-            icon="󰤯"
-        fi
-    fi
-
-    echo "$status|$ssid|$icon|$eth_status"
-}
-
-toggle_wifi() {
-    if [ "$(get_wifi_radio)" = "enabled" ]; then
-        LC_ALL=C nmcli radio wifi off
-        notify-send -u low -i network-wireless-disabled "WiFi" "Disabled"
-    else
-        LC_ALL=C nmcli radio wifi on
-        notify-send -u low -i network-wireless-enabled "WiFi" "Enabled"
-    fi
-}
-
-case ${1:-} in
-    --toggle) toggle_wifi ;;
-    *)
-        IFS='|' read -r status ssid icon eth <<< "$(get_network_data)"
-        jq -n -c \
-            --arg status "$status" \
-            --arg ssid "$ssid" \
-            --arg icon "$icon" \
-            --arg eth "$eth" \
-            '{status: $status, ssid: $ssid, icon: $icon, eth_status: $eth}' ;;
-esac
-</file>
-
-<file path="dotfiles/hypr/scripts/quickshell/watchers/sys_fetcher.sh">
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/sys_fetcher.sh <==
-#!/usr/bin/env bash
-
-CACHE_FILE="/tmp/qs_sys_fetcher_cache.txt"
-
-# 1. Read instantaneous current values
-read -r _ u n s i io ir so st g gn <<< "$(grep '^cpu ' /proc/stat)"
-read rx tx <<< "$(awk -v IGNORECASE=1 '/^ *[ew]/{rx+=$2; tx+=$10} END{print rx, tx}' /proc/net/dev)"
-NOW=$(date +%s%N 2>/dev/null || date +%s000000000)
-
-# 2. Extract previous values from cache
-if [ -f "$CACHE_FILE" ]; then
-    read -r p_u p_n p_s p_i p_io p_ir p_so p_st p_rx p_tx p_now < "$CACHE_FILE"
-else
-    p_u=0; p_n=0; p_s=0; p_i=0; p_io=0; p_ir=0; p_so=0; p_st=0; p_rx=0; p_tx=0; p_now=0
-fi
-
-# 3. Write new state instantly
-echo "$u $n $s $i $io $ir $so $st $rx $tx $NOW" > "$CACHE_FILE"
-
-# 4. Calculate Deltas
-if [ "$p_now" -eq 0 ]; then
-    CPU_USAGE=0
-    RX_RATE=0
-    TX_RATE=0
-else
-    IDLE1=$p_i; TOTAL1=$((p_u + p_n + p_s + p_i + p_io + p_ir + p_so + p_st))
-    IDLE2=$i;   TOTAL2=$((u + n + s + i + io + ir + so + st))
-    DIFF_IDLE=$((IDLE2 - IDLE1))
-    DIFF_TOTAL=$((TOTAL2 - TOTAL1))
-
-    if [ "$DIFF_TOTAL" -eq 0 ]; then CPU_USAGE=0; else CPU_USAGE=$(( 100 * (DIFF_TOTAL - DIFF_IDLE) / DIFF_TOTAL )); fi
-
-    # Enforce strict positive limits to block negative UI byte spikes on network reset
-    TIME_DIFF_SEC=$(awk "BEGIN {print ($NOW - $p_now) / 1000000000}")
-    if awk "BEGIN {exit !($TIME_DIFF_SEC > 0)}"; then
-        RX_RATE=$(awk "BEGIN {val=($rx - $p_rx) / $TIME_DIFF_SEC; printf \"%d\", val>0?val:0}")
-        TX_RATE=$(awk "BEGIN {val=($tx - $p_tx) / $TIME_DIFF_SEC; printf \"%d\", val>0?val:0}")
-    else
-        RX_RATE=0; TX_RATE=0
-    fi
-fi
-
-# --- RAM Calculation (Snapshot) ---
-while IFS=":" read -r key val; do
-    case "$key" in
-        MemTotal) TOTAL_MEM=$(echo "$val" | awk '{print $1}') ;;
-        MemAvailable) AVAIL_MEM=$(echo "$val" | awk '{print $1}') ;;
-    esac
-done < /proc/meminfo
-USED_MEM=$((TOTAL_MEM - AVAIL_MEM))
-RAM_PCT=$(( 100 * USED_MEM / TOTAL_MEM ))
-RAM_GB=$(awk "BEGIN {printf \"%.1f\", $USED_MEM / 1024 / 1024}")
-
-# --- Temperature Calculation (Snapshot) ---
-TEMP_RAW=""
-for hwmon in /sys/class/hwmon/hwmon*; do
-    if [ -f "$hwmon/name" ]; then
-        hwmon_name=$(cat "$hwmon/name" 2>/dev/null)
-        if [[ "$hwmon_name" =~ ^(coretemp|k10temp|zenpower|cpu_thermal|bcm2835_thermal)$ ]]; then
-            if [ -f "$hwmon/temp1_input" ]; then
-                TEMP_RAW=$(cat "$hwmon/temp1_input" 2>/dev/null)
-                break
-            fi
-        fi
-    fi
-done
-
-if [ -z "$TEMP_RAW" ]; then
-    for tz in /sys/class/thermal/thermal_zone*; do
-        if [ -f "$tz/type" ]; then
-            tz_type=$(cat "$tz/type" 2>/dev/null)
-            if [[ "$tz_type" =~ ^(x86_pkg_temp|cpu_thermal|cpu-thermal)$ ]]; then
-                TEMP_RAW=$(cat "$tz/temp" 2>/dev/null)
-                break
-            fi
-        fi
-    done
-fi
-
-if [ -z "$TEMP_RAW" ]; then
-    TEMP_RAW=$(cat /sys/class/hwmon/hwmon0/temp1_input 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)
-fi
-
-if [ "$TEMP_RAW" -gt 1000 ]; then TEMP=$((TEMP_RAW / 1000)); else TEMP=$TEMP_RAW; fi
-
-# --- Output formatted string ---
-echo "$CPU_USAGE|$RAM_PCT|$RAM_GB|$TEMP|$RX_RATE|$TX_RATE"
 </file>
 
 <file path="dotfiles/hypr/scripts/quickshell/Floating.qml">
@@ -11317,56 +9324,6 @@ source = ~/.cache/hypr_power_monitor.conf
 monitor=,preferred,auto,2,bitdepth,10
 </file>
 
-<file path="dotfiles/matugen/extract_raw_colors.sh">
-# ==> /home/realdhiru/nix/dotfiles/matugen/extract_raw_colors.sh <==
-#!/usr/bin/env bash
-WALL="$1"
-CACHE_FILE="$HOME/.cache/matugen/qs_colors.json"
-
-# 1. $O(1) Color Extraction via Affine Transform
-# Resizing to exactly 2x1 pixels instantly averages the image into two dominant tones, skipping heavy quantization.
-read -r main second <<< "$(magick "$WALL" -resize '2x1!' -format "#%[hex:p{0,0}] #%[hex:p{1,0}]\n" info:)"
-
-# 2. Memory-Safe Saturation Check
-sat=$(magick "$WALL" -resize 16x16 -colorspace HSL -channel s -separate +channel -format "%[fx:mean*100]" info: 2>/dev/null)
-
-if (( $(echo "${sat:-100} < 5" | bc -l) )); then
-    main="#d3d3d3"
-    second="#a9a9a9"
-fi
-
-# 3. Atomic File Writing
-# Generates all 22 keys to perfectly match qs_colors.json.template, preventing QML binding desync
-cat << JSON > "${CACHE_FILE}.tmp"
-{
-  "base": "#11111b",
-  "mantle": "#181825",
-  "crust": "#1e1e2e",
-  "text": "$second",
-  "subtext0": "$second",
-  "subtext1": "$second",
-  "surface0": "#313244",
-  "surface1": "#45475a",
-  "surface2": "#585b70",
-  "overlay0": "#6c7086",
-  "overlay1": "#7f849c",
-  "overlay2": "#9399b2",
-  "blue": "$main",
-  "sapphire": "$main",
-  "peach": "$second",
-  "green": "$main",
-  "red": "#f38ba8",
-  "mauve": "$main",
-  "pink": "$main",
-  "yellow": "$main",
-  "maroon": "#eba0ac",
-  "teal": "$main"
-}
-JSON
-
-mv "${CACHE_FILE}.tmp" "$CACHE_FILE"
-</file>
-
 <file path="dotfiles/secrets/.gitkeep">
 
 </file>
@@ -11481,63 +9438,6 @@ mv "${CACHE_FILE}.tmp" "$CACHE_FILE"
 
   programs.home-manager.enable = true;
 }
-</file>
-
-<file path="dotfiles/hypr/scripts/quickshell/calendar/diary_manager.sh">
-#!/usr/bin/env bash
-set -euo pipefail
-
-# Consolidate date extraction into a single, atomic execution
-read -r YEAR MONTH DAY <<< "$(date +'%Y %m %d')"
-
-# Settings based on your layout
-VAULT_DIR="$HOME/Life/Obsidian"
-VAULT_NAME="Obsidian"
-FILENAME="${DAY}.${MONTH}"
-FILEPATH="Diary/${YEAR}/${FILENAME}.md"
-FULL_PATH="${VAULT_DIR}/${FILEPATH}"
-CONTENTS_PATH="${VAULT_DIR}/Diary/Contents.md"
-
-# Ensure the directory exists
-mkdir -p "${VAULT_DIR}/Diary/${YEAR}"
-
-# 1. Create diary file if it doesn't exist
-if [ ! -f "$FULL_PATH" ]; then
-    echo -e "#diary\n" > "$FULL_PATH"
-fi
-
-# 2. Update Contents.md if the link isn't already there
-if [ -f "$CONTENTS_PATH" ]; then
-    if ! grep -q "\[\[${FILENAME}\]\]" "$CONTENTS_PATH"; then
-        # Use mktemp for a guaranteed safe, atomic file replacement
-        TMP_FILE=$(mktemp)
-        
-        awk -v year="## ${YEAR}" -v entry="- [[${FILENAME}]]" '
-        BEGIN { in_year=0; inserted=0 }
-        $0 == year { in_year=1; print; next }
-        /^## / && in_year { print entry; inserted=1; in_year=0 }
-        { print }
-        END {
-            if (in_year && !inserted) {
-                print entry
-            } else if (!in_year && !inserted) {
-                print ""
-                print year
-                print entry
-            }
-        }
-        ' "$CONTENTS_PATH" > "$TMP_FILE"
-        
-        mv "$TMP_FILE" "$CONTENTS_PATH"
-    fi
-else
-    # Create the Contents file if missing entirely
-    mkdir -p "$(dirname "$CONTENTS_PATH")"
-    echo -e "## ${YEAR}\n- [[${FILENAME}]]" > "$CONTENTS_PATH"
-fi
-
-# 3. Open the specific note directly inside Obsidian using its URI protocol
-xdg-open "obsidian://open?vault=${VAULT_NAME}&file=Diary/${YEAR}/${FILENAME}"
 </file>
 
 <file path="dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml">
@@ -15076,6 +12976,1922 @@ Item {
 }
 </file>
 
+<file path="dotfiles/hypr/scripts/quickshell/volume/audio_control.sh">
+#!/usr/bin/env bash
+# dotfiles/hypr/scripts/quickshell/volume/audio_control.sh
+
+ACTION=$1
+TYPE=$2
+ID=$3
+VAL=$4
+
+# Function to dispatch an overriding OSD notification
+send_osd() {
+    local icon=$1
+    local title=$2
+    local val=$3
+    if [ "$val" = "muted" ]; then
+        notify-send -a "System" -u low -h string:x-canonical-private-synchronous:sys-osd -i "$icon" "$title" "Muted"
+    else
+        notify-send -a "System" -u low -h string:x-canonical-private-synchronous:sys-osd -h int:value:"$val" -i "$icon" "$title" "Level: ${val}%"
+    fi
+}
+
+case $ACTION in
+    set-volume)
+        if [[ "$ID" == "@DEFAULT@" ]]; then
+            if [[ "$TYPE" == "sink" ]]; then
+                wpctl set-volume @DEFAULT_AUDIO_SINK@ "$VAL"
+                vol=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{print int($2*100)}')
+                send_osd "audio-volume-high" "Volume" "$vol"
+            elif [[ "$TYPE" == "source" ]]; then
+                wpctl set-volume @DEFAULT_AUDIO_SOURCE@ "$VAL"
+                vol=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | awk '{print int($2*100)}')
+                send_osd "microphone-sensitivity-high" "Microphone" "$vol"
+            fi
+        else
+            pactl set-${TYPE}-volume "$ID" "$VAL"
+        fi
+        ;;
+    toggle-mute)
+        if [[ "$ID" == "@DEFAULT@" ]]; then
+            if [[ "$TYPE" == "sink" ]]; then
+                wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+                is_muted=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep -o MUTED)
+                if [ -n "$is_muted" ]; then
+                    send_osd "audio-volume-muted" "Volume" "muted"
+                else
+                    vol=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{print int($2*100)}')
+                    send_osd "audio-volume-high" "Volume" "$vol"
+                fi
+            elif [[ "$TYPE" == "source" ]]; then
+                wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+                is_muted=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | grep -o MUTED)
+                if [ -n "$is_muted" ]; then
+                    send_osd "microphone-sensitivity-muted" "Microphone" "muted"
+                else
+                    vol=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | awk '{print int($2*100)}')
+                    send_osd "microphone-sensitivity-high" "Microphone" "$vol"
+                fi
+            fi
+        else
+            pactl set-${TYPE}-mute "$ID" toggle
+        fi
+        ;;
+    set-default)
+        pactl set-default-$TYPE "$ID"
+        ;;
+esac
+</file>
+
+<file path="dotfiles/hypr/scripts/quickshell/wallpaper/ddg_search.sh">
+#!/usr/bin/env bash
+
+QUERY="$1"
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+
+# Import dynamic caching system
+source "$SCRIPT_DIR/../../caching.sh"
+qs_ensure_cache "wallpaper_picker"
+
+CACHE_DIR="$QS_CACHE_WALLPAPER_PICKER"
+SEARCH_DIR="$CACHE_DIR/search_thumbs"
+MAP_FILE="$CACHE_DIR/search_map.txt"
+CONTROL_FILE="$QS_RUN_WALLPAPER_PICKER/ddg_search_control"
+LOG_FILE="$QS_LOG_DIR/ddg_downloader.log"
+
+echo "=== Starting search for: $QUERY ===" > "$LOG_FILE"
+
+# 1. Guarantee directory exists
+mkdir -p "$SEARCH_DIR"
+
+# 2. Safely capture the active tmp path for the trap cleanup
+ACTIVE_TMP=""
+trap 'rm -f "$ACTIVE_TMP" 2>/dev/null' EXIT INT TERM
+
+# 3. The Pipe: Python provides links, OS provides backpressure
+python3 -u "$SCRIPT_DIR/quickshell/wallpaper/get_ddg_links.py" "$QUERY" | while IFS='|' read -r thumb_url full_url; do
+
+    # Safely read control file
+    state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
+
+    if [[ "$state" == "stop" ]]; then
+        echo "Stop signal received. Exiting." >> "$LOG_FILE"
+        exit 0
+    fi
+
+    while [[ "$state" == "pause" ]]; do
+        sleep 1
+        state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
+    done
+
+    if [ -z "$thumb_url" ] || [ -z "$full_url" ]; then continue; fi
+
+    # =========================================================================
+    # PRE-FLIGHT CHECK ON THE FULL URL
+    # =========================================================================
+    target_headers=$(curl -s -I -L -m 3 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "$full_url")
+    target_type=$(echo "$target_headers" | grep -i "content-type:" | tail -n 1 | tr -d '\r')
+
+    if [[ ! "$target_type" =~ "image/" ]]; then
+        echo "Skip: Full URL is dead or HTML ($target_type) -> $full_url" >> "$LOG_FILE"
+        continue
+    fi
+    # =========================================================================
+
+    uuid=$(date +%s%N)
+    ext="${full_url##*.}"
+    ext="${ext%%\?*}"
+    ext=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+    if [[ ! "$ext" =~ ^(jpg|jpeg|png|webp|gif)$ ]]; then ext="jpg"; fi
+
+    is_webp=0
+    if [[ "$ext" == "webp" ]]; then
+        is_webp=1
+        ext="jpg"
+    fi
+
+    filename="ddg_${uuid}.${ext}"
+    filepath="$SEARCH_DIR/$filename"
+    tmppath="${filepath}.tmp"
+    ACTIVE_TMP="$tmppath"
+
+    echo "Downloading Thumb: $thumb_url -> $filename" >> "$LOG_FILE"
+
+    # TIMEOUT ADDED: -m 5 prevents permanent freezing on stalled connections
+    curl -s -L -m 5 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "$thumb_url" -o "$tmppath"
+
+    # Check state again AFTER the curl block
+    state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
+    if [[ "$state" == "stop" ]]; then
+        echo "Stop signal received during download. Discarding." >> "$LOG_FILE"
+        rm -f "$tmppath"
+        ACTIVE_TMP=""
+        exit 0
+    fi
+
+    # Verify the thumbnail itself is valid and not corrupted
+    if [ -s "$tmppath" ]; then
+        actual_mime=$(file -b --mime-type "$tmppath")
+
+        if [[ ! "$actual_mime" =~ ^image/ ]]; then
+            echo "ERROR: Thumb is not an image ($actual_mime). Discarding." >> "$LOG_FILE"
+            rm -f "$tmppath"
+        else
+            if [[ "$actual_mime" == "image/webp" ]] || [ $is_webp -eq 1 ]; then
+                magick "$tmppath" "$filepath" 2>/dev/null || mv "$tmppath" "$filepath"
+                rm -f "$tmppath"
+            else
+                mv "$tmppath" "$filepath"
+            fi
+            echo "$filename|$full_url" >> "$MAP_FILE"
+            echo "Success: $filename saved." >> "$LOG_FILE"
+        fi
+    else
+        echo "ERROR: Failed or empty download for $thumb_url" >> "$LOG_FILE"
+        rm -f "$tmppath"
+    fi
+    ACTIVE_TMP=""
+done
+
+echo "=== Pipeline finished ===" >> "$LOG_FILE"
+</file>
+
+<file path="dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml">
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Window
+import QtCore
+import Qt.labs.folderlistmodel
+import Quickshell
+import Quickshell.Io
+import "../" 
+
+Item {
+    id: window
+    width: Screen.width
+
+
+    Scaler {
+        id: scaler
+        currentWidth: Screen.width
+    }
+    
+    function s(val) { 
+        return scaler.s(val); 
+    }
+
+    MatugenColors { id: _theme }
+
+    property string widgetArg: ""
+    property string targetWallName: ""
+    property bool initialFocusSet: false
+    property int visibleItemCount: -1
+    property int scrollAccum: 0
+    property real scrollThreshold: window.s(300)
+
+    property string currentFilter: "All"
+    property string _lastFilter: "All"
+    property string searchQuery: ""
+    property bool isOnlineSearch: false
+    property bool isSearchPaused: false
+    property bool hasSearched: false
+    property var colorMap: ({})
+    property int cacheVersion: 0 
+    
+    property bool isDownloadingWallpaper: false
+    property string currentDownloadName: ""
+    
+    property bool isApplying: false
+    property bool isMonitorSelectorOpen: false
+
+    property bool allowAddAnimation: false
+    
+    Timer {
+        id: applyUnlockTimer
+        interval: 250
+        onTriggered: window.isApplying = false
+    }
+    
+    property bool isStartup: localFolderModel.status === FolderListModel.Loading || srcModel.status === FolderListModel.Loading
+    property bool isReady: visible && localFolderModel.status === FolderListModel.Ready
+    property bool isSearchActive: window.currentFilter === "Search" && window.hasSearched && searchFolderModel.status === FolderListModel.Loading
+    
+    property string lastSearchName: ""
+    property bool isModelChanging: false
+    property bool searchIndexRestored: false
+    
+    property bool isScrollingBlocked: window.currentFilter === "Search" && window.hasSearched && window.isSearchActive && !window.isSearchPaused
+    property bool jumpToLastOnFilterChange: false
+
+    readonly property var filterData: [
+        { name: "All", hex: "", label: "All" },
+        { name: "Video", hex: "", label: "Vid" },
+        { name: "Red", hex: "#FF4500", label: "" },
+        { name: "Orange", hex: "#FFA500", label: "" },
+        { name: "Yellow", hex: "#FFD700", label: "" },
+        { name: "Green", hex: "#32CD32", label: "" },
+        { name: "Blue", hex: "#1E90FF", label: "" },
+        { name: "Purple", hex: "#8A2BE2", label: "" },
+        { name: "Pink", hex: "#FF69B4", label: "" },
+        { name: "Monochrome", hex: "#A9A9A9", label: "" },
+        { name: "Search", hex: "", label: "Search" } 
+    ]
+
+    ListModel { id: monitorModel }
+
+    Process {
+        id: monitorProc
+        command: ["hyprctl", "monitors", "-j"]
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let response = this.text;
+                if (response && response.trim().length > 0) {
+                    try {
+                        var monitors = JSON.parse(response);
+                        monitorModel.clear();
+                        for (var i = 0; i < monitors.length; i++) {
+                            monitorModel.append({ "name": monitors[i].name, "selected": true });
+                        }
+                    } catch(e) {
+                        console.log("[MonitorSync] ERROR parsing JSON: " + e);
+                    }
+                }
+            }
+        }
+
+    function loadMonitors() {
+        monitorProc.running = true;
+    }
+
+    function getMonitorOutputs() {
+        if (monitorModel.count <= 1) return "all"; 
+        let selected = [];
+        for (let i = 0; i < monitorModel.count; i++) {
+            if (monitorModel.get(i).selected) {
+                selected.push(monitorModel.get(i).name);
+            }
+        }
+        if (selected.length === 0) return "none";
+        if (selected.length === monitorModel.count) return "all";
+        return selected.join(",");
+    }
+
+    function applyWallpaper(safeFileName, isVideo) {
+        if (!safeFileName || window.isApplying) return;
+        
+        let outputs = window.getMonitorOutputs();
+        if (outputs === "none") return;
+        
+        window.isApplying = true;
+        applyUnlockTimer.restart();
+        
+        window.targetWallName = safeFileName;
+        let cleanName = window.getCleanName(safeFileName);
+        let reloadScript = Qt.resolvedUrl("matugen_reload.sh").toString();
+        
+        if (reloadScript.startsWith("file://")) {
+            reloadScript = decodeURIComponent(reloadScript.substring(7));
+        }
+
+        const escapeBash = (str) => String(str).replace(/(["\\$`])/g, '\\$1');
+        
+        if (window.currentFilter === "Search" && window.hasSearched) {
+            let alreadyExists = window.isDownloaded(safeFileName);
+            let destFile = window.srcDir + "/" + safeFileName;
+            let finalThumb = "file://" + window.srcDir + "/" + safeFileName;
+            let tempThumb = decodeURIComponent(window.searchDir.replace("file://", "")) + "/" + safeFileName;
+            let mapFile = Caching.getCacheDir("wallpaper_picker") + "/search_map.txt";
+
+            if (alreadyExists) {
+                const applyScript = `
+                    export DEST_FILE="${escapeBash(destFile)}"
+                    export FINAL_THUMB="${escapeBash(finalThumb)}"
+                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
+                    
+                    ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
+                `;
+                Quickshell.execDetached(["bash", "-c", applyScript]);
+            } else {
+                window.isDownloadingWallpaper = true;
+                window.currentDownloadName = safeFileName;
+
+                const downloadScript = `
+                    export SAFE_NAME="${escapeBash(safeFileName)}"
+                    export DEST_FILE="${escapeBash(destFile)}"
+                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
+                    export MAP_FILE="${escapeBash(mapFile)}"
+                    
+                    URL=\$(awk -F'|' -v fname="\$SAFE_NAME" '\$1 == fname {print \$2; exit}' "\$MAP_FILE")
+                    if [ -n "\$URL" ]; then
+                        curl -s -L -A "Mozilla/5.0" "\$URL" -o "$DEST_FILE.tmp"
+                        if file "$DEST_FILE.tmp" | grep -iq "webp"; then
+                            magick "$DEST_FILE.tmp" "$DEST_FILE"
+                            rm -f "$DEST_FILE.tmp"
+                        else
+                            mv "$DEST_FILE.tmp" "$DEST_FILE"
+                        fi
+                        
+                        ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
+                    fi
+                `;
+                Quickshell.execDetached(["bash", "-c", downloadScript]);
+            }
+            return;
+        }
+
+        const originalFile = window.srcDir + "/" + cleanName;
+        const escOriginal = escapeBash(originalFile);
+
+        const fullScript = `
+            ~/.config/hypr/scripts/set_wallpaper.sh "${escOriginal}"
+        `;
+        Quickshell.execDetached(["bash", "-c", fullScript]);
+    }
+    
+    Settings {
+        id: searchState
+        category: "QS_WallpaperPicker"
+        property string query: ""
+        property bool searched: false
+        property string lastName: ""
+    }
+
+    onIsSearchPausedChanged: {
+        Quickshell.execDetached(["bash", "-c", "echo '" + (isSearchPaused ? "pause" : "run") + "' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
+    }
+
+    onVisibleChanged: {
+        if (!visible) {
+            window.initialFocusSet = false;
+            window.allowAddAnimation = false;
+            window.searchIndexRestored = false;
+            window.isApplying = false;
+            window.isMonitorSelectorOpen = false;
+            if (window.hasSearched) {
+                window.isSearchPaused = true;
+            }
+        } else {
+            window.isFilterAnimating = true;
+            filterAnimationTimer.restart();
+            if (window.currentFilter !== "Search") {
+                window.applyFilters(true);
+            } else if (window.hasSearched) {
+                window.searchIndexRestored = false;
+                window.isSearchPaused = true;
+                window.trySearchFocus();
+                window.syncSearchModel();
+            }
+        }
+    }
+
+    property bool isLoading: localFolderModel.status === FolderListModel.Loading || 
+                             srcModel.status === FolderListModel.Loading ||
+                             (window.currentFilter === "Search" && searchFolderModel.status === FolderListModel.Loading)
+
+    property bool showSpinner: window.isDownloadingWallpaper || 
+                               (window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused) || 
+                               (window.currentFilter !== "Search" && window.isLoading)
+
+    property string currentNotification: {
+        if (window.isDownloadingWallpaper) return "Downloading wallpaper...";
+        if (window.currentFilter === "Search") {
+            if (!window.hasSearched) return "Type something to search...";
+            if (window.isSearchPaused) return "Search Paused";
+            if (window.visibleItemCount === 0) return "Searching DDG (FHD+)...";
+            return "Parsing wallpapers...";
+        }
+        if (isLoading) return "Parsing wallpapers...";
+        if (window.visibleItemCount === 0) return "No wallpapers found";
+        if (window.currentFilter === "All") return "";
+        if (window.currentFilter === "Video") return "Videos";
+        return window.currentFilter;
+    }
+    
+    property bool showNotification: !window.isStartup && currentNotification !== ""
+
+    function getCleanName(name) {
+        if (!name) return "";
+        let clean = String(name);
+        return clean.startsWith("000_") ? clean.substring(4) : clean;
+    }
+
+    function isDownloaded(name) {
+        if (!name) return false;
+        for (let i = 0; i < srcModel.count; i++) {
+            if (srcModel.get(i, "fileName") === name) return true;
+        }
+        return false;
+    }
+
+    onWidgetArgChanged: {
+        if (widgetArg !== "") {
+            targetWallName = widgetArg;
+            initialFocusSet = false;
+            tryFocus();
+        }
+    }
+
+    function executeFocusRestore(targetIndex, isSearchRestore, requirePositioning) {
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (targetIndex !== -1 && targetIndex < targetModel.count) {
+            window.isModelChanging = true;
+            if (requirePositioning) {
+                view.forceLayout();
+                view.positionViewAtIndex(targetIndex, ListView.Center);
+            }
+            view.currentIndex = targetIndex;
+            if (isSearchRestore) {
+                window.searchIndexRestored = true;
+            }
+            window.isModelChanging = false;
+            window.initialFocusSet = true;
+            allowAddAnimationTimer.restart();
+        } else if (isSearchRestore) {
+            window.searchIndexRestored = true;
+        }
+    }
+
+    Timer {
+        id: allowAddAnimationTimer
+        interval: 600
+        onTriggered: window.allowAddAnimation = true
+    }
+
+    function tryFocus() {
+        if (initialFocusSet) return;
+        if (localProxyModel.count > 0) {
+            let foundIndex = -1;
+            let cleanTarget = window.getCleanName(targetWallName);
+            if (cleanTarget !== "") {
+                for (let i = 0; i < localProxyModel.count; i++) {
+                    let fname = localProxyModel.get(i).fileName || "";
+                    if (window.getCleanName(fname) === cleanTarget) {
+                        foundIndex = i;
+                        break;
+                    }
+                }
+            }
+            let finalIndex = foundIndex !== -1 ? foundIndex : 0;
+            window.executeFocusRestore(finalIndex, false, true);
+        }
+    }
+    
+    function trySearchFocus() {
+        if (window.searchIndexRestored || searchProxyModel.count === 0) return;
+        if (window.lastSearchName === "") {
+             window.searchIndexRestored = true;
+             return;
+        }
+        for (let i = 0; i < searchProxyModel.count; i++) {
+            let fname = searchProxyModel.get(i).fileName || "";
+            if (fname === window.lastSearchName) {
+                window.executeFocusRestore(i, true, true);
+                return;
+            }
+        }
+        if (searchFolderModel.status === FolderListModel.Ready && searchProxyModel.count === searchFolderModel.count) {
+             window.searchIndexRestored = true;
+        }
+    }
+
+    function getModelForFilter(filter) {
+        return filter === "Search" ? searchProxyModel : localProxyModel;
+    }
+
+    function updateVisibleCount() {
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (!targetModel || targetModel.count === 0) {
+            window.visibleItemCount = 0;
+            return;
+        }
+        let count = 0;
+        for (let i = 0; i < targetModel.count; i++) {
+            let fname = targetModel.get(i).fileName || "";
+            let isVid = fname.startsWith("000_");
+            if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
+                count++;
+            }
+        }
+        window.visibleItemCount = count;
+    }
+
+    function triggerOnlineSearch() {
+        if (searchInput.text.trim() === "") return;
+        window.isModelChanging = true;
+        searchProxyModel.clear();
+        window.lastSearchName = "";
+        searchState.lastName = "";
+        if (window.currentFilter === "Search") {
+            view.currentIndex = 0;
+            view.positionViewAtIndex(0, ListView.Center);
+        }
+        window.isModelChanging = false;
+        window.searchIndexRestored = true;
+        window.isOnlineSearch = true;
+        window.hasSearched = true;
+        window.visibleItemCount = 0;
+        searchState.searched = true;
+        searchState.query = searchInput.text.trim();
+        window.isSearchPaused = false;
+        window.searchQuery = searchInput.text.trim();
+        
+        let rawSearchDir = decodeURIComponent(window.searchDir.replace(/^file:\/\//, ""));
+        let scriptPath = decodeURIComponent(Qt.resolvedUrl("ddg_search.sh").toString().replace(/^file:\/\//, ""));
+        
+        const cmd = `
+            exec > ${Caching.logDir}/ddg_run.log 2>&1
+            export PATH=$PATH:/run/current-system/sw/bin
+            echo 'stop' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
+            for p in \$(pgrep -f ddg_search.sh); do
+                if [ "\$p" != "\$\$" ] && [ "\$p" != "\$BASHPID" ]; then
+                    kill -9 \$p 2>/dev/null || true
+                fi
+            done
+            pkill -f "[g]et_ddg_links.py" || true
+            sleep 0.2
+            rm -rf "${rawSearchDir}"/* || true
+            rm -f "${rawSearchDir}/../search_map.txt" || true
+            echo 'run' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
+            bash "${scriptPath}" "${window.searchQuery}" &
+        `;
+        Quickshell.execDetached(["bash", "-c", cmd]);
+        searchInput.focus = false;
+        view.forceActiveFocus();
+    }
+
+    readonly property string homeDir: "file://" + Quickshell.env("HOME")
+    readonly property string searchDir: "file://" + Caching.getCacheDir("wallpaper_picker") + "/search_thumbs"
+    readonly property string srcDir: {
+        const dir = Quickshell.env("WALLPAPER_DIR")
+        return (dir && dir !== "") ? dir : Quickshell.env("HOME") + "/Pictures/Wallpapers"
+    }
+
+    readonly property real itemWidth: window.s(400)
+    readonly property real itemHeight: window.s(420)
+    readonly property real borderWidth: window.s(3)
+    readonly property real spacing: window.s(10)
+    readonly property real skewFactor: -0.35
+
+    Timer { id: scrollThrottle; interval: 150 }
+
+    property bool isFilterAnimating: false
+    Timer {
+        id: filterAnimationTimer
+        interval: 800
+        onTriggered: window.isFilterAnimating = false
+    }
+
+    property bool isItemAnimating: false
+    Timer {
+        id: itemAnimationTimer
+        interval: 500
+        onTriggered: window.isItemAnimating = false
+    }
+
+    function getHexBucket(hexStr) {
+        if (!hexStr) return "Monochrome";
+        hexStr = String(hexStr).trim().replace(/#/g, '');
+        if (hexStr.length > 6) hexStr = hexStr.substring(0, 6);
+        if (hexStr.length !== 6) return "Monochrome";
+
+        let r = parseInt(hexStr.substring(0,2), 16) / 255;
+        let g = parseInt(hexStr.substring(2,4), 16) / 255;
+        let b = parseInt(hexStr.substring(4,6), 16) / 255;
+        if (isNaN(r) || isNaN(g) || isNaN(b)) return "Monochrome";
+
+        let max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let d = max - min;
+        let h = 0;
+        let s = max === 0 ? 0 : d / max;
+        let v = max;
+
+        if (max !== min) {
+            if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+            else if (max === g) h = (b - r) / d + 2;
+            else h = (r - g) / d + 4;
+            h /= 6;
+        }
+        h = h * 360;
+
+        if (s < 0.05 || v < 0.08) return "Monochrome";
+        if (h >= 345 || h < 15) return "Red";
+        if (h >= 15 && h < 45) return "Orange";
+        if (h >= 45 && h < 75) return "Yellow";
+        if (h >= 75 && h < 165) return "Green";
+        if (h >= 165 && h < 260) return "Blue";
+        if (h >= 260 && h < 315) return "Purple";
+        if (h >= 315 && h < 345) return "Pink";
+        return "Monochrome";
+    }
+
+    function checkItemMatchesFilter(fileName, isVid, cv, filter) {
+        if (filter === "Search") return true;
+        if (filter === "All") return true;
+        if (filter === "Video") return isVid;
+        let hexColor = window.colorMap[String(fileName)];
+        if (!hexColor) return filter === "Monochrome";
+        return window.getHexBucket(hexColor) === filter;
+    }
+
+    Timer {
+        id: markerDebounce
+        interval: 300
+        onTriggered: window.processMarkers()
+    }
+
+    FolderListModel {
+        id: markerModel
+        folder: "file://" + Caching.getCacheDir("wallpaper_picker") + "/colors_markers"
+        showDirs: false
+        nameFilters: ["*_HEX_*"]
+        onCountChanged: markerDebounce.restart()
+        onStatusChanged: { if (status === FolderListModel.Ready) markerDebounce.restart() }
+    }
+    
+    FolderListModel {
+        id: srcModel
+        folder: "file://" + window.srcDir
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
+        showDirs: false
+        onCountChanged: {
+            if (window.isDownloadingWallpaper && window.isDownloaded(window.currentDownloadName)) {
+                window.isDownloadingWallpaper = false;
+            }
+        }
+    }
+
+    function processMarkers() {
+        let newMap = {};
+        for (let i = 0; i < markerModel.count; i++) {
+            let markerName = markerModel.get(i, "fileName") || "";
+            if (!markerName) continue;
+            let splitIdx = markerName.lastIndexOf("_HEX_");
+            if (splitIdx !== -1) {
+                let fName = markerName.substring(0, splitIdx);
+                let hexCode = markerName.substring(splitIdx + 5);
+                newMap[fName] = "#" + hexCode;
+            }
+        }
+        window.colorMap = newMap;
+        window.cacheVersion++;
+        window.updateVisibleCount();
+    }
+
+    function stepToNextValidIndex(direction) {
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (!targetModel || targetModel.count === 0) return;
+        
+        let start = view.currentIndex;
+        let found = -1;
+
+        if (direction === 1) {
+            for (let i = start + 1; i < targetModel.count; i++) {
+                let fname = targetModel.get(i).fileName || "";
+                let isVid = fname.startsWith("000_");
+                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
+                    found = i; break;
+                }
+            }
+        } else {
+            for (let i = start - 1; i >= 0; i--) {
+                let fname = targetModel.get(i).fileName || "";
+                let isVid = fname.startsWith("000_");
+                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
+                    found = i; break;
+                }
+            }
+        }
+
+        if (found !== -1) {
+            view.currentIndex = found;
+            return;
+        }
+
+        let filterOrder = ["All", "Video", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Monochrome"];
+        let currentFilterIdx = filterOrder.indexOf(window.currentFilter);
+
+        if (currentFilterIdx === -1) {
+            let current = start;
+            for (let i = 0; i < targetModel.count; i++) {
+                current = (current + direction + targetModel.count) % targetModel.count;
+                let fname = targetModel.get(current).fileName || "";
+                let isVid = fname.startsWith("000_");
+                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
+                    view.currentIndex = current;
+                    return;
+                }
+            }
+            return;
+        }
+
+        let nextFilterIdx = currentFilterIdx + direction;
+        if (nextFilterIdx >= 0 && nextFilterIdx < filterOrder.length) {
+            window.jumpToLastOnFilterChange = (direction === -1);
+            window.currentFilter = filterOrder[nextFilterIdx];
+        }
+    }
+
+    function cycleFilter(direction) {
+        let currentIdx = -1;
+        for (let i = 0; i < window.filterData.length; i++) {
+            if (window.filterData[i].name === window.currentFilter) {
+                currentIdx = i;
+                break;
+            }
+        }
+        if (currentIdx !== -1) {
+            let nextIdx = (currentIdx + direction + window.filterData.length) % window.filterData.length;
+            window.currentFilter = window.filterData[nextIdx].name;
+        }
+    }
+
+    function applyFilters(forceSnap) {
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (!targetModel || targetModel.count === 0) {
+            window.updateVisibleCount();
+            return;
+        }
+        if (window.currentFilter === "Search") {
+            window.updateVisibleCount();
+            return;
+        }
+
+        let firstValidIndex = -1;
+        let lastValidIndex = -1;
+        let cleanTarget = window.getCleanName(window.targetWallName);
+        let targetIndex = -1;
+
+        for (let i = 0; i < targetModel.count; i++) {
+            let fname = targetModel.get(i).fileName || "";
+            let isVid = fname.startsWith("000_");
+            if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
+                if (firstValidIndex === -1) firstValidIndex = i;
+                lastValidIndex = i;
+                if (cleanTarget !== "" && window.getCleanName(fname) === cleanTarget) {
+                    targetIndex = i;
+                }
+            }
+        }
+
+        let indexToFocus = -1;
+        if (targetIndex !== -1) indexToFocus = targetIndex;
+        else if (window.jumpToLastOnFilterChange && lastValidIndex !== -1) indexToFocus = lastValidIndex;
+        else if (firstValidIndex !== -1) indexToFocus = firstValidIndex;
+
+        window.jumpToLastOnFilterChange = false;
+        if (indexToFocus !== -1) {
+            window.executeFocusRestore(indexToFocus, false, forceSnap === true);
+        }
+        window.updateVisibleCount();
+    }
+
+    onCurrentFilterChanged: {
+        window.isFilterAnimating = true;
+        filterAnimationTimer.restart();
+        window.isModelChanging = true;
+        let returningFromSearch = (window._lastFilter === "Search" && window.currentFilter !== "Search");
+        window._lastFilter = window.currentFilter;
+        
+        if (returningFromSearch) window.searchIndexRestored = false;
+        
+        Qt.callLater(() => {
+            view.forceActiveFocus();
+            if (window.currentFilter === "Search") {
+                if (window.hasSearched) {
+                    window.searchIndexRestored = false;
+                    window.trySearchFocus();
+                }
+            } else {
+                window.applyFilters(returningFromSearch);
+            }
+            window.isModelChanging = false;
+        });
+    }
+
+    Shortcut { 
+        sequence: "Left"; 
+        enabled: !window.isScrollingBlocked && !window.isApplying
+        onActivated: window.stepToNextValidIndex(-1) 
+    }
+    Shortcut { 
+        sequence: "Right"; 
+        enabled: !window.isScrollingBlocked && !window.isApplying
+        onActivated: window.stepToNextValidIndex(1) 
+    }
+    Shortcut { 
+        sequence: "Return"
+        enabled: !searchInput.activeFocus && !window.isScrollingBlocked && !window.isApplying
+        onActivated: { 
+            let targetModel = window.getModelForFilter(window.currentFilter);
+            if (view.currentIndex >= 0 && view.currentIndex < targetModel.count) {
+                let fname = targetModel.get(view.currentIndex).fileName;
+                if (fname) window.applyWallpaper(String(fname), String(fname).startsWith("000_"));
+            }
+        } 
+    }
+    Shortcut { sequence: "Escape"; enabled: !window.isApplying; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
+    Shortcut { sequence: "Tab"; enabled: !window.isApplying; onActivated: window.cycleFilter(1) }
+    Shortcut { sequence: "Backtab"; enabled: !window.isApplying; onActivated: window.cycleFilter(-1) }
+
+    ListModel { id: localProxyModel }
+    ListModel { id: searchProxyModel }
+    readonly property var activeModel: window.currentFilter === "Search" ? searchProxyModel : localProxyModel
+
+    FolderListModel {
+        id: localFolderModel
+        folder: "file://" + window.srcDir
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
+        showDirs: false
+        sortField: FolderListModel.Name
+        onCountChanged: window.syncLocalModel()
+        onStatusChanged: { if (status === FolderListModel.Ready) window.syncLocalModel() }
+    }
+
+    property int _localSyncedCount: 0
+
+    function syncLocalModel() {
+        let folderCount = localFolderModel.count;
+        if (folderCount < window._localSyncedCount) {
+            let wasAllowing = window.allowAddAnimation;
+            window.allowAddAnimation = false;
+            window.isModelChanging = true;
+            localProxyModel.clear();
+            window._localSyncedCount = 0;
+            window.isModelChanging = false;
+            window.syncLocalModel();
+            if (wasAllowing) allowAddAnimationTimer.restart();
+            return;
+        }
+
+        if (folderCount > window._localSyncedCount) {
+            let batch = [];
+            for (let i = window._localSyncedCount; i < folderCount; i++) {
+                let fn = localFolderModel.get(i, "fileName");
+                let fu = localFolderModel.get(i, "fileUrl");
+                if (fn !== undefined) {
+                    batch.push({ "fileName": fn, "fileUrl": String(fu) });
+                }
+            }
+            if (batch.length > 0) localProxyModel.append(batch);
+            window._localSyncedCount = folderCount;
+        }
+
+        if (window.currentFilter !== "Search") window.updateVisibleCount();
+        if (!window.initialFocusSet && window.currentFilter !== "Search" && localProxyModel.count > 0) {
+            window.tryFocus();
+        }
+    }
+
+    function syncSearchModel() {
+        let startIdx = searchProxyModel.count;
+        let endIdx = searchFolderModel.count;
+        if (endIdx < startIdx) {
+            window.isModelChanging = true;
+            searchProxyModel.clear();
+            startIdx = 0;
+            window.isModelChanging = false;
+        }
+
+        let batch = [];
+        for (let i = startIdx; i < endIdx; i++) {
+            let fn = searchFolderModel.get(i, "fileName");
+            let fu = searchFolderModel.get(i, "fileUrl");
+            if (fn !== undefined) {
+                batch.push({ "fileName": fn, "fileUrl": String(fu) });
+            }
+        }
+        if (batch.length > 0) searchProxyModel.append(batch);
+
+        if (window.currentFilter === "Search") window.updateVisibleCount();
+        if (window.currentFilter === "Search" && window.hasSearched) {
+            if (!window.searchIndexRestored) window.trySearchFocus();
+            if (window.isScrollingBlocked && startIdx === 0 && searchProxyModel.count > 0 && window.lastSearchName === "") {
+                view.forceLayout();
+                view.currentIndex = 0;
+                view.positionViewAtIndex(0, ListView.Center);
+            }
+        }
+    }
+
+    FolderListModel {
+        id: searchFolderModel
+        folder: window.searchDir
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
+        showDirs: false
+        sortField: FolderListModel.Name
+        onFolderChanged: {
+            window.isModelChanging = true;
+            searchProxyModel.clear();
+            window.isModelChanging = false;
+        }
+        onCountChanged: window.syncSearchModel()
+        onStatusChanged: { if (status === FolderListModel.Ready) window.syncSearchModel() }
+    }
+
+    ListView {
+        id: view
+        anchors.fill: parent
+        opacity: window.isReady ? 1.0 : 0.0
+        anchors.margins: window.isReady ? 0 : window.s(40)
+        
+        Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutQuart } }
+        Behavior on anchors.margins { NumberAnimation { duration: 700; easing.type: Easing.OutExpo } }
+
+        spacing: 0
+        orientation: ListView.Horizontal
+        clip: false
+        interactive: !window.isScrollingBlocked && !window.isApplying
+        cacheBuffer: 2000
+
+        highlightRangeMode: ListView.StrictlyEnforceRange
+        preferredHighlightBegin: (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2)
+        preferredHighlightEnd: (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2)
+        highlightMoveDuration: window.initialFocusSet ? 500 : 0
+        focus: true
+        
+        onCurrentIndexChanged: {
+            window.isItemAnimating = true;
+            itemAnimationTimer.restart();
+            if (view.model !== searchProxyModel || window.currentFilter !== "Search") return;
+            if (!window.isModelChanging && window.hasSearched && window.searchIndexRestored) {
+                if (currentIndex >= 0 && currentIndex < searchProxyModel.count) {
+                    let fname = searchProxyModel.get(currentIndex).fileName;
+                    if (fname !== undefined && fname !== "") {
+                        window.lastSearchName = String(fname);
+                        searchState.lastName = String(fname);
+                    }
+                }
+            }
+        }
+        
+        add: Transition {
+            enabled: window.allowAddAnimation
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 400; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "scale"; from: 0.5; to: 1; duration: 400; easing.type: Easing.OutBack }
+            }
+        }
+        addDisplaced: Transition {
+            enabled: window.allowAddAnimation
+            NumberAnimation { property: "x"; duration: 400; easing.type: Easing.OutCubic }
+        }
+
+        header: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5) / 2)) }
+        footer: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5) / 2)) }
+        model: window.activeModel
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            onWheel: (wheel) => {
+                if (window.isScrollingBlocked || window.isApplying) {
+                    wheel.accepted = true;
+                    return;
+                }
+                if (scrollThrottle.running) {
+                   wheel.accepted = true;
+                   return;
+                }
+                let dx = wheel.angleDelta.x;
+                let dy = wheel.angleDelta.y;
+                let delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+                scrollAccum += delta;
+
+                if (Math.abs(scrollAccum) >= scrollThreshold) {
+                    window.stepToNextValidIndex(scrollAccum > 0 ? -1 : 1);
+                    scrollAccum = 0;
+                    scrollThrottle.start();
+                }
+                wheel.accepted = true;
+            }        
+        }
+
+        delegate: Item {
+            id: delegateRoot
+            readonly property string safeFileName: fileName !== undefined ? String(fileName) : ""
+            readonly property bool isCurrent: ListView.isCurrentItem && !window.isScrollingBlocked
+            readonly property bool isFakeSelected: window.isScrollingBlocked && index === 0
+            readonly property bool isVisuallyEnlarged: isCurrent || isFakeSelected
+            readonly property bool isVideo: safeFileName.startsWith("000_")
+            readonly property bool matchesFilter: window.checkItemMatchesFilter(safeFileName, isVideo, window.cacheVersion, window.currentFilter)
+            readonly property real targetWidth: isVisuallyEnlarged ? (window.itemWidth * 1.5) : (window.itemWidth * 0.5)
+            readonly property real targetHeight: isVisuallyEnlarged ? (window.itemHeight + window.s(30)) : window.itemHeight
+            
+            readonly property string thumbPath: "file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName)
+
+            width: matchesFilter ? (targetWidth + window.spacing) : 0
+            visible: width > 0.1 || opacity > 0.01
+            opacity: matchesFilter ? (isVisuallyEnlarged ? 1.0 : 0.6) : 0.0
+            scale: matchesFilter ? 1.0 : 0.5
+            height: matchesFilter ? targetHeight : 0
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: window.s(15)
+            z: isVisuallyEnlarged ? 10 : 1
+            
+            Behavior on scale { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+            Behavior on width { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+            Behavior on height { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+            Behavior on opacity { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+
+            Item {
+                anchors.centerIn: parent
+                anchors.horizontalCenterOffset: ((window.itemHeight - height) / 2) * window.skewFactor
+                width: parent.width > 0 ? parent.width * (targetWidth / (targetWidth + window.spacing)) : 0
+                height: parent.height
+
+                transform: Matrix4x4 {
+                    property real s: window.skewFactor
+                    matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+                }
+                
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: delegateRoot.matchesFilter && !window.isScrollingBlocked && !window.isApplying
+                    onClicked: {
+                        view.currentIndex = index;
+                        window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo);
+                    }
+                }
+
+                Image {
+                    anchors.fill: parent
+                    source: thumbPath
+                    sourceSize: Qt.size(256, 256)
+                    fillMode: Image.Stretch
+                    asynchronous: true
+                }
+
+                Item {
+                    anchors.fill: parent
+                    anchors.margins: window.borderWidth
+                    Rectangle { anchors.fill: parent; color: _theme.base }
+                    clip: true
+
+                    Image {
+                        anchors.centerIn: parent
+                        anchors.horizontalCenterOffset: window.s(-50)
+                        width: (window.itemWidth * 1.5) + ((window.itemHeight + window.s(30)) * Math.abs(window.skewFactor)) + window.s(50)
+                        height: window.itemHeight + window.s(30)
+                        fillMode: Image.PreserveAspectCrop
+                        source: thumbPath
+                        sourceSize: Qt.size(400, 400)
+                        asynchronous: true
+
+                        transform: Matrix4x4 {
+                            property real s: -window.skewFactor
+                            matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: filterBarBackground
+        anchors.top: parent.top
+        anchors.topMargin: window.isReady ? window.s(40) : window.s(-100)
+        opacity: window.isReady ? 1.0 : 0.0
+        Behavior on anchors.topMargin { NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
+        Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
+        anchors.horizontalCenter: parent.horizontalCenter
+        z: 20
+        height: window.s(56)
+        width: filterRow.width + window.s(24)
+        radius: window.s(14)
+        color: Qt.rgba(_theme.mantle.r, _theme.mantle.g, _theme.mantle.b, 0.90)
+        border.color: _theme.surface2
+        border.width: 1
+
+        Row {
+            id: filterRow
+            anchors.centerIn: parent
+            spacing: window.s(12)
+
+            Rectangle {
+                id: notifDrawer
+                height: window.s(44)
+                property real paddingLeft: window.showSpinner ? window.s(40) : window.s(16)
+                property real targetWidth: window.showNotification ? Math.min(notifTextDrawer.implicitWidth + paddingLeft + window.s(20), window.s(300)) : 0
+                width: targetWidth
+                visible: width > 0.1
+                radius: window.s(10)
+                clip: true
+                anchors.verticalCenter: parent.verticalCenter
+                color: window.showNotification ? _theme.surface2 : "transparent"
+                border.color: window.showNotification ? _theme.surface1 : "transparent"
+                border.width: 1
+
+                Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
+                Behavior on color { ColorAnimation { duration: 400 } }
+                Behavior on border.color { ColorAnimation { duration: 400 } }
+
+                Item {
+                    visible: window.showSpinner
+                    width: window.s(44)
+                    height: window.s(44)
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Canvas {
+                        id: notifSpinner
+                        width: window.s(14)
+                        height: window.s(14)
+                        anchors.centerIn: parent
+                        property real scaleTrigger: window.s(1)
+                        onScaleTriggerChanged: requestPaint()
+
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            var s = window.s;
+                            ctx.reset();
+                            ctx.lineWidth = s(2);
+                            ctx.strokeStyle = Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.3);
+                            ctx.beginPath();
+                            ctx.arc(s(7), s(7), s(5), 0, Math.PI * 2);
+                            ctx.stroke();
+                            
+                            ctx.strokeStyle = Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.9);
+                            ctx.beginPath();
+                            ctx.arc(s(7), s(7), s(5), 0, Math.PI * 0.5);
+                            ctx.stroke();
+                        }
+                        RotationAnimation on rotation {
+                            loops: Animation.Infinite
+                            from: 0; to: 360
+                            duration: 800
+                            running: window.showSpinner && window.showNotification
+                        }
+                    }
+                }
+
+                Text {
+                    id: notifTextDrawer
+                    anchors.left: parent.left
+                    anchors.leftMargin: window.showSpinner ? window.s(40) : window.s(16)
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.min(implicitWidth, window.s(300) - anchors.leftMargin - window.s(16))
+                    text: window.currentNotification
+                    color: _theme.text
+                    font.family: "JetBrains Mono"
+                    font.pixelSize: window.s(14)
+                    font.bold: true
+                    elide: Text.ElideRight
+                    opacity: window.showNotification ? 0.9 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
+                    Behavior on anchors.leftMargin { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
+                }
+            }
+
+            Rectangle {
+                id: monitorDrawer
+                visible: monitorModel.count > 1
+                height: window.s(44)
+                property real expandedWidth: window.s(44) + monitorListRow.width + window.s(8)
+                width: visible ? (window.isMonitorSelectorOpen ? expandedWidth : window.s(44)) : 0
+                radius: window.s(10)
+                clip: true
+                anchors.verticalCenter: parent.verticalCenter
+                color: window.isMonitorSelectorOpen ? _theme.surface2 : "transparent"
+                border.color: window.isMonitorSelectorOpen ? _theme.text : _theme.surface1
+                border.width: window.isMonitorSelectorOpen ? window.s(2) : 1
+                
+                Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
+                Behavior on color { ColorAnimation { duration: 400 } }
+                Behavior on border.color { ColorAnimation { duration: 400 } }
+
+                MouseArea {
+                    id: monitorIconMouse
+                    width: window.s(44)
+                    height: window.s(44)
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    hoverEnabled: true
+                    enabled: !window.isApplying
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: window.isMonitorSelectorOpen = !window.isMonitorSelectorOpen
+                }
+
+                Canvas {
+                    id: monitorIcon
+                    width: window.s(18)
+                    height: window.s(18)
+                    anchors.centerIn: monitorIconMouse
+                    property string activeColor: window.isMonitorSelectorOpen ? _theme.text : (monitorIconMouse.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
+                    onActiveColorChanged: requestPaint()
+                    property real scaleTrigger: window.s(1)
+                    onScaleTriggerChanged: requestPaint()
+
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        var s = window.s;
+                        ctx.reset();
+                        ctx.lineWidth = s(2);
+                        ctx.strokeStyle = activeColor;
+                        ctx.lineJoin = "round";
+                        ctx.lineCap = "round";
+                        ctx.beginPath();
+                        ctx.rect(s(2), s(3), s(14), s(9));
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(s(9), s(12));
+                        ctx.lineTo(s(9), s(16));
+                        ctx.moveTo(s(5), s(16));
+                        ctx.lineTo(s(13), s(16));
+                        ctx.stroke();
+                    }
+                }
+
+                Row {
+                    id: monitorListRow
+                    anchors.left: monitorIconMouse.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: window.s(8)
+                    opacity: window.isMonitorSelectorOpen ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 300 } }
+
+                    Repeater {
+                        model: monitorModel
+                        delegate: Item {
+                            width: monitorText.contentWidth + window.s(16)
+                            height: window.s(32)
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: window.s(6)
+                                color: model.selected ? _theme.text : _theme.surface1
+                                border.color: model.selected ? _theme.text : _theme.surface2
+                                border.width: 1
+                                Behavior on color { ColorAnimation { duration: 250 } }
+                                Behavior on border.color { ColorAnimation { duration: 250 } }
+                                
+                                Text {
+                                    id: monitorText
+                                    text: model.name
+                                    anchors.centerIn: parent
+                                    color: model.selected ? _theme.base : _theme.text
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: window.s(12)
+                                    font.bold: model.selected
+                                    Behavior on color { ColorAnimation { duration: 250 } }
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                enabled: window.isMonitorSelectorOpen && !window.isApplying
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (model.selected) {
+                                        let activeCount = 0;
+                                        for (let i = 0; i < monitorModel.count; i++) {
+                                            if (monitorModel.get(i).selected) activeCount++;
+                                        }
+                                        if (activeCount > 1) {
+                                            monitorModel.setProperty(index, "selected", false);
+                                        }
+                                    } else {
+                                        monitorModel.setProperty(index, "selected", true);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Repeater {
+                model: window.filterData
+                delegate: Item {
+                    visible: modelData.name !== "Search"
+                    width: !visible ? 0 : ((modelData.name === "Video" || modelData.name === "All") ? window.s(44) : (modelData.hex === "" ? filterText.contentWidth + window.s(24) : window.s(36)))
+                    height: !visible ? 0 : window.s(36)
+                    anchors.verticalCenter: parent.verticalCenter
+                    
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: window.s(10)
+                        color: modelData.hex === "" ? (window.currentFilter === modelData.name ? _theme.surface2 : "transparent") : modelData.hex
+                        border.color: window.currentFilter === modelData.name ? _theme.text : _theme.surface1
+                        border.width: window.currentFilter === modelData.name ? window.s(2) : 1
+                        scale: window.currentFilter === modelData.name ? 1.15 : (filterMouse.containsMouse ? 1.08 : 1.0)
+                        
+                        Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+                        Behavior on border.color { ColorAnimation { duration: 300 } }
+
+                        Text {
+                            id: filterText
+                            visible: modelData.hex === "" && modelData.name !== "Video" && modelData.name !== "All"
+                            text: modelData.label
+                            anchors.centerIn: parent
+                            color: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                            font.family: "JetBrains Mono"
+                            font.pixelSize: window.s(14)
+                            font.bold: window.currentFilter === modelData.name
+                            Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                        }
+
+                        Canvas {
+                            visible: modelData.name === "Video"
+                            width: window.s(14); height: window.s(16)
+                            anchors.centerIn: parent
+                            anchors.horizontalCenterOffset: window.s(2)
+                            property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                            onActiveColorChanged: requestPaint()
+                            property real scaleTrigger: window.s(1)
+                            onScaleTriggerChanged: requestPaint()
+
+                            onPaint: {
+                                var ctx = getContext("2d");
+                                var s = window.s;
+                                ctx.reset();
+                                ctx.fillStyle = activeColor;
+                                ctx.beginPath();
+                                ctx.moveTo(0, 0);
+                                ctx.lineTo(s(14), s(8));
+                                ctx.lineTo(0, s(16));
+                                ctx.closePath();
+                                ctx.fill();
+                            }
+                        }
+
+                        Canvas {
+                            visible: modelData.name === "All"
+                            width: window.s(14); height: window.s(14)
+                            anchors.centerIn: parent
+                            property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                            onActiveColorChanged: requestPaint()
+                            property real scaleTrigger: window.s(1)
+                            onScaleTriggerChanged: requestPaint()
+
+                            onPaint: {
+                                var ctx = getContext("2d");
+                                var s = window.s;
+                                ctx.reset();
+                                ctx.fillStyle = activeColor;
+                                ctx.fillRect(0, 0, s(6), s(6));
+                                ctx.fillRect(s(8), 0, s(6), s(6));
+                                ctx.fillRect(0, s(8), s(6), s(6));
+                                ctx.fillRect(s(8), s(8), s(6), s(6));
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: filterMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: !window.isApplying
+                        onClicked: window.currentFilter = modelData.name
+                        cursorShape: Qt.PointingHandCursor
+                    }
+                }
+            }
+
+            Rectangle {
+                id: searchControlBtn
+                visible: window.currentFilter === "Search" && window.hasSearched
+                width: visible ? window.s(44) : 0
+                height: window.s(44)
+                radius: window.s(10)
+                clip: true
+                anchors.verticalCenter: parent.verticalCenter
+                color: window.isSearchPaused ? _theme.surface2 : "transparent"
+                border.color: window.isSearchPaused ? _theme.text : _theme.surface1
+                border.width: window.isSearchPaused ? window.s(2) : 1
+                
+                Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
+                Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                
+                MouseArea {
+                    id: scMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: !window.isApplying
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: window.isSearchPaused = !window.isSearchPaused
+                }
+                
+                Canvas {
+                    width: window.s(44); height: window.s(44)
+                    anchors.centerIn: parent
+                    property bool paused: window.isSearchPaused
+                    property string activeColor: paused ? _theme.text : (scMouse.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
+                    onActiveColorChanged: requestPaint()
+                    onPausedChanged: requestPaint()
+                    property real scaleTrigger: window.s(1)
+                    onScaleTriggerChanged: requestPaint()
+                    
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        var s = window.s;
+                        ctx.reset();
+                        ctx.fillStyle = activeColor;
+                        if (!paused) {
+                            ctx.fillRect(s(15), s(14), s(4), s(16));
+                            ctx.fillRect(s(25), s(14), s(4), s(16));
+                        } else {
+                            ctx.beginPath();
+                            ctx.moveTo(s(16), s(12));
+                            ctx.lineTo(s(32), s(22));
+                            ctx.lineTo(s(16), s(32));
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                id: searchBox
+                height: window.s(44)
+                width: window.currentFilter === "Search" ? window.s(360) : window.s(44)
+                radius: window.s(10)
+                clip: true
+                anchors.verticalCenter: parent.verticalCenter
+                color: window.currentFilter === "Search" ? Qt.rgba(_theme.surface2.r, _theme.surface2.g, _theme.surface2.b, 0.8) : "transparent"
+                border.color: window.currentFilter === "Search" ? _theme.text : _theme.surface1
+                border.width: window.currentFilter === "Search" ? window.s(2) : 1
+                
+                Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
+                Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                Behavior on border.color { ColorAnimation { duration: 400 } }
+
+                MouseArea {
+                    id: searchMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: !window.isApplying
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (window.currentFilter !== "Search") {
+                            window.currentFilter = "Search";
+                        } else {
+                            window.currentFilter = "All";
+                        }
+                    }
+                }
+
+                Canvas {
+                    id: searchIcon
+                    width: window.s(44)
+                    height: window.s(44)
+                    anchors.left: parent.left
+                    anchors.leftMargin: window.currentFilter === "Search" ? window.s(5) : 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    Behavior on anchors.leftMargin { NumberAnimation { duration: 500; easing.type: Easing.OutExpo } }
+                    property string activeColor: window.currentFilter === "Search" ? _theme.text : (searchMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
+                    onActiveColorChanged: requestPaint()
+                    property real scaleTrigger: window.s(1)
+                    onScaleTriggerChanged: requestPaint()
+
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        var s = window.s;
+                        ctx.reset();
+                        ctx.lineWidth = s(3);
+                        ctx.strokeStyle = activeColor;
+                        ctx.beginPath();
+                        ctx.arc(s(18), s(18), s(7), 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(s(23), s(23));
+                        ctx.lineTo(s(31), s(31));
+                        ctx.stroke();
+                    }
+                }
+
+                TextInput {
+                    id: searchInput
+                    anchors.left: searchIcon.right
+                    anchors.right: submitBtn.left
+                    anchors.rightMargin: window.s(8)
+                    anchors.verticalCenter: parent.verticalCenter
+                    opacity: window.currentFilter === "Search" ? 1.0 : 0.0
+                    visible: opacity > 0
+                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
+                    color: _theme.text
+                    font.family: "JetBrains Mono"
+                    font.pixelSize: window.s(16)
+                    clip: true
+                    
+                    onTextEdited: {
+                        window.hasSearched = false;
+                        searchState.searched = false;
+                    }
+                    onAccepted: {
+                        window.triggerOnlineSearch();
+                        searchInput.focus = false;
+                        view.forceActiveFocus();
+                    }
+                }
+
+                Rectangle {
+                    id: submitBtn
+                    width: window.s(32)
+                    height: window.s(32)
+                    radius: window.s(8)
+                    anchors.right: parent.right
+                    anchors.rightMargin: window.s(8)
+                    anchors.verticalCenter: parent.verticalCenter
+                    opacity: window.currentFilter === "Search" ? 1.0 : 0.0
+                    visible: opacity > 0
+                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
+                    color: submitMouseArea.containsMouse ? _theme.surface1 : "transparent"
+                    border.color: submitMouseArea.containsMouse ? _theme.text : _theme.surface2
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: 300 } }
+
+                    MouseArea {
+                        id: submitMouseArea
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true
+                        enabled: !window.isApplying
+                        onClicked: window.triggerOnlineSearch()
+                    }
+
+                    Canvas {
+                        width: window.s(16)
+                        height: window.s(16)
+                        anchors.centerIn: parent
+                        property string activeColor: submitMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                        onActiveColorChanged: requestPaint()
+                        property real scaleTrigger: window.s(1)
+                        onScaleTriggerChanged: requestPaint()
+                        
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            var s = window.s;
+                            ctx.reset();
+                            ctx.lineWidth = s(2);
+                            ctx.lineCap = "round";
+                            ctx.lineJoin = "round";
+                            ctx.strokeStyle = activeColor;
+                            ctx.beginPath();
+                            ctx.moveTo(s(2), s(8));
+                            ctx.lineTo(s(14), s(8));
+                            ctx.moveTo(s(9), s(3));
+                            ctx.lineTo(s(14), s(8));
+                            ctx.lineTo(s(9), s(13));
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        Quickshell.execDetached(["bash", "-c", "mkdir -p '" + decodeURIComponent(window.searchDir.replace("file://", "")) + "'"]);
+        window.loadMonitors();
+
+        if (searchState.searched) {
+            searchInput.text = searchState.query;
+            window.searchQuery = searchState.query;
+            window.hasSearched = true;
+            window.lastSearchName = searchState.lastName;
+            window.isSearchPaused = true;
+        }
+
+        view.forceActiveFocus();
+        window.processMarkers();
+        Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/wallpaper_thumbnail.sh"]);
+    }
+
+    Component.onDestruction: {
+        if (window.hasSearched) {
+            searchState.query = searchInput.text;
+            searchState.searched = window.hasSearched;
+            searchState.lastName = window.lastSearchName;
+            Quickshell.execDetached(["bash", "-c", "echo 'pause' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
+        } else {
+            Quickshell.execDetached(["bash", "-c", "echo 'stop' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control; for p in \$(pgrep -f ddg_search.sh); do if [ \"\$p\" != \"\$\$\" ] && [ \"\$p\" != \"\$BASHPID\" ]; then kill -9 \$p 2>/dev/null || true; fi; done; pkill -f '[g]et_ddg_links.py'"]);
+        }
+    }
+}
+</file>
+
+<file path="dotfiles/hypr/scripts/quickshell/watchers/audio_fetch.sh">
+#!/usr/bin/env bash
+
+fetch_audio_state() {
+    local dump=""
+    local vol=0
+    local muted="false"
+    local icon="󰝟"
+
+    if command -v wpctl &> /dev/null; then
+        dump=$(LC_ALL=C wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null)
+        vol=$(echo "$dump" | awk '{print int($2*100)}')
+        if echo "$dump" | grep -q "MUTED"; then muted="true"; fi
+    elif command -v pamixer &> /dev/null; then
+        vol=$(LC_ALL=C pamixer --get-volume 2>/dev/null)
+        if LC_ALL=C pamixer --get-mute 2>/dev/null | grep -q "true"; then muted="true"; fi
+    fi
+
+    vol=${vol:-0}
+
+    if [ "$muted" = "true" ]; then icon="󰝟"
+    elif [ "$vol" -ge 70 ]; then icon="󰕾"
+    elif [ "$vol" -ge 30 ]; then icon="󰖀"
+    elif [ "$vol" -gt 0 ]; then icon="󰕿"
+    else icon="󰝟"; fi
+
+    echo "$vol|$muted|$icon"
+}
+
+toggle_mute() {
+    if command -v wpctl &> /dev/null; then
+        LC_ALL=C wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+    elif command -v pamixer &> /dev/null; then
+        LC_ALL=C pamixer --toggle-mute 2>/dev/null
+    fi
+
+    IFS='|' read -r vol muted icon <<< "$(fetch_audio_state)"
+    if [ "$muted" = "true" ]; then notify-send -u low -i audio-volume-muted "Volume" "Muted"
+    else notify-send -u low -i audio-volume-high "Volume" "Unmuted (${vol}%)"; fi
+}
+
+case ${1:-} in
+    --toggle) toggle_mute ;;
+    *)
+        IFS='|' read -r vol muted icon <<< "$(fetch_audio_state)"
+        jq -n -c --arg volume "$vol" --arg icon "$icon" --arg is_muted "$muted" '{volume: $volume, icon: $icon, is_muted: $is_muted}'
+        ;;
+esac
+</file>
+
+<file path="dotfiles/hypr/scripts/quickshell/watchers/bt_wait.sh">
+#!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
+
+PIPE="$QS_RUN_DIR/qs_bt_wait_$$.fifo"
+mkfifo "$PIPE" 2>/dev/null
+
+# Clean target ensuring the entire subshell group is eliminated
+trap 'rm -f "$PIPE"; pkill -P $$ 2>/dev/null; exit 0' EXIT INT TERM
+
+LC_ALL=C dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',arg0='org.bluez.Device1'" 2>/dev/null | grep --line-buffered 'string "Connected"' > "$PIPE" &
+LC_ALL=C dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',arg0='org.bluez.Adapter1'" 2>/dev/null | grep --line-buffered 'string "Powered"' > "$PIPE" &
+read -r _ < "$PIPE"
+
+# Hard limit on execution frequency if dbus spams connection signals
+sleep 1.5
+</file>
+
+<file path="dotfiles/hypr/scripts/quickshell/watchers/kb_wait.sh">
+#!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
+
+PIPE="$QS_RUN_DIR/qs_kb_wait_$$.fifo"
+mkfifo "$PIPE" 2>/dev/null
+
+# Destroys both the grep hook and the hidden socat socket binder
+trap 'rm -f "$PIPE"; pkill -P $$ 2>/dev/null; exit 0' EXIT INT TERM
+
+if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+    LC_ALL=C socat -U - UNIX-CONNECT:$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock 2>/dev/null | grep --line-buffered "activelayout>>" > "$PIPE" &
+else
+    sleep 10 > "$PIPE" &
+fi
+
+read -r _ < "$PIPE"
+sleep 0.05
+</file>
+
+<file path="dotfiles/hypr/scripts/quickshell/watchers/network_fetch.sh">
+#!/usr/bin/env bash
+
+get_wifi_radio() {
+    LC_ALL=C nmcli radio wifi 2>/dev/null
+}
+
+get_wifi_strength() {
+    local signal=$(LC_ALL=C awk 'NR==3 {gsub(/\./,"",$3); print int($3 * 100 / 70)}' /proc/net/wireless 2>/dev/null)
+    echo "${signal:-0}"
+}
+
+get_network_data() {
+    # Fetch NM layout exactly once via singular D-Bus query
+    local NM_DUMP
+    NM_DUMP=$(LC_ALL=C nmcli -t -f DEVICE,TYPE,STATE,CONNECTION d 2>/dev/null)
+
+    local active_iface=$(ip route show default 2>/dev/null | awk '/default/ {print $5; exit}')
+    local iface_type=""
+
+    if [ -n "$active_iface" ]; then
+        iface_type=$(echo "$NM_DUMP" | awk -F: -v dev="$active_iface" '$1==dev {print $2; exit}')
+    fi
+
+    local status=""
+    local ssid=""
+    local icon=""
+    local eth_status="Disconnected"
+
+    if [ "$iface_type" = "ethernet" ]; then
+        status="enabled"
+        ssid="Ethernet"
+        icon="󰈀"
+        eth_status="Connected"
+
+    elif [ "$iface_type" = "wifi" ]; then
+        status="enabled"
+        # Extract connection profile mapped directly to device from the dump
+        ssid=$(echo "$NM_DUMP" | awk -F: -v dev="$active_iface" '$1==dev {print $4; exit}')
+        if [ -z "$ssid" ]; then
+            ssid=$(LC_ALL=C iw dev "$active_iface" link 2>/dev/null | awk '/\s+SSID/ { $1=""; sub(/^ /, ""); print; exit }')
+        fi
+        
+        local signal=$(get_wifi_strength)
+        if [ "$signal" -ge 75 ]; then icon="󰤨"
+        elif [ "$signal" -ge 50 ]; then icon="󰤥"
+        elif [ "$signal" -ge 25 ]; then icon="󰤢"
+        else icon="󰤟"; fi
+
+        local eth_dev=$(echo "$NM_DUMP" | awk -F: '$2=="ethernet" && $3=="connected" && $1 != "lo" {print $1; exit}')
+        if [ -n "$eth_dev" ]; then eth_status="Connected"; fi
+
+    else
+        local radio=$(get_wifi_radio)
+        local wifi_dev=$(echo "$NM_DUMP" | awk -F: '$2=="wifi" {print $1; exit}')
+
+        if [ -z "$wifi_dev" ]; then
+            status="disabled"
+            ssid=""
+            icon="󰈂"
+        elif [ "$radio" = "disabled" ]; then
+            status="disabled"
+            ssid=""
+            icon="󰤮"
+        else
+            status="enabled"
+            ssid=""
+            icon="󰤯"
+        fi
+    fi
+
+    echo "$status|$ssid|$icon|$eth_status"
+}
+
+toggle_wifi() {
+    if [ "$(get_wifi_radio)" = "enabled" ]; then
+        LC_ALL=C nmcli radio wifi off
+        notify-send -u low -i network-wireless-disabled "WiFi" "Disabled"
+    else
+        LC_ALL=C nmcli radio wifi on
+        notify-send -u low -i network-wireless-enabled "WiFi" "Enabled"
+    fi
+}
+
+case ${1:-} in
+    --toggle) toggle_wifi ;;
+    *)
+        IFS='|' read -r status ssid icon eth <<< "$(get_network_data)"
+        jq -n -c \
+            --arg status "$status" \
+            --arg ssid "$ssid" \
+            --arg icon "$icon" \
+            --arg eth "$eth" \
+            '{status: $status, ssid: $ssid, icon: $icon, eth_status: $eth}' ;;
+esac
+</file>
+
+<file path="dotfiles/hypr/scripts/quickshell/watchers/sys_fetcher.sh">
+#!/usr/bin/env bash
+
+CACHE_FILE="/tmp/qs_sys_fetcher_cache.txt"
+
+# 1. Read instantaneous current values
+read -r _ u n s i io ir so st g gn <<< "$(grep '^cpu ' /proc/stat)"
+read rx tx <<< "$(awk -v IGNORECASE=1 '/^ *[ew]/{rx+=$2; tx+=$10} END{print rx, tx}' /proc/net/dev)"
+NOW=$(date +%s%N 2>/dev/null || date +%s000000000)
+
+# 2. Extract previous values from cache
+if [ -f "$CACHE_FILE" ]; then
+    read -r p_u p_n p_s p_i p_io p_ir p_so p_st p_rx p_tx p_now < "$CACHE_FILE"
+else
+    p_u=0; p_n=0; p_s=0; p_i=0; p_io=0; p_ir=0; p_so=0; p_st=0; p_rx=0; p_tx=0; p_now=0
+fi
+
+# 3. Write new state instantly
+echo "$u $n $s $i $io $ir $so $st $rx $tx $NOW" > "$CACHE_FILE"
+
+# 4. Calculate Deltas
+if [ "$p_now" -eq 0 ]; then
+    CPU_USAGE=0
+    RX_RATE=0
+    TX_RATE=0
+else
+    IDLE1=$p_i; TOTAL1=$((p_u + p_n + p_s + p_i + p_io + p_ir + p_so + p_st))
+    IDLE2=$i;   TOTAL2=$((u + n + s + i + io + ir + so + st))
+    DIFF_IDLE=$((IDLE2 - IDLE1))
+    DIFF_TOTAL=$((TOTAL2 - TOTAL1))
+
+    if [ "$DIFF_TOTAL" -eq 0 ]; then CPU_USAGE=0; else CPU_USAGE=$(( 100 * (DIFF_TOTAL - DIFF_IDLE) / DIFF_TOTAL )); fi
+
+    # Enforce strict positive limits to block negative UI byte spikes on network reset
+    TIME_DIFF_SEC=$(awk "BEGIN {print ($NOW - $p_now) / 1000000000}")
+    if awk "BEGIN {exit !($TIME_DIFF_SEC > 0)}"; then
+        RX_RATE=$(awk "BEGIN {val=($rx - $p_rx) / $TIME_DIFF_SEC; printf \"%d\", val>0?val:0}")
+        TX_RATE=$(awk "BEGIN {val=($tx - $p_tx) / $TIME_DIFF_SEC; printf \"%d\", val>0?val:0}")
+    else
+        RX_RATE=0; TX_RATE=0
+    fi
+fi
+
+# --- RAM Calculation (Snapshot) ---
+while IFS=":" read -r key val; do
+    case "$key" in
+        MemTotal) TOTAL_MEM=$(echo "$val" | awk '{print $1}') ;;
+        MemAvailable) AVAIL_MEM=$(echo "$val" | awk '{print $1}') ;;
+    esac
+done < /proc/meminfo
+USED_MEM=$((TOTAL_MEM - AVAIL_MEM))
+RAM_PCT=$(( 100 * USED_MEM / TOTAL_MEM ))
+RAM_GB=$(awk "BEGIN {printf \"%.1f\", $USED_MEM / 1024 / 1024}")
+
+# --- Temperature Calculation (Snapshot) ---
+TEMP_RAW=""
+for hwmon in /sys/class/hwmon/hwmon*; do
+    if [ -f "$hwmon/name" ]; then
+        hwmon_name=$(cat "$hwmon/name" 2>/dev/null)
+        if [[ "$hwmon_name" =~ ^(coretemp|k10temp|zenpower|cpu_thermal|bcm2835_thermal)$ ]]; then
+            if [ -f "$hwmon/temp1_input" ]; then
+                TEMP_RAW=$(cat "$hwmon/temp1_input" 2>/dev/null)
+                break
+            fi
+        fi
+    fi
+done
+
+if [ -z "$TEMP_RAW" ]; then
+    for tz in /sys/class/thermal/thermal_zone*; do
+        if [ -f "$tz/type" ]; then
+            tz_type=$(cat "$tz/type" 2>/dev/null)
+            if [[ "$tz_type" =~ ^(x86_pkg_temp|cpu_thermal|cpu-thermal)$ ]]; then
+                TEMP_RAW=$(cat "$tz/temp" 2>/dev/null)
+                break
+            fi
+        fi
+    done
+fi
+
+if [ -z "$TEMP_RAW" ]; then
+    TEMP_RAW=$(cat /sys/class/hwmon/hwmon0/temp1_input 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)
+fi
+
+if [ "$TEMP_RAW" -gt 1000 ]; then TEMP=$((TEMP_RAW / 1000)); else TEMP=$TEMP_RAW; fi
+
+# --- Output formatted string ---
+echo "$CPU_USAGE|$RAM_PCT|$RAM_GB|$TEMP|$RX_RATE|$TX_RATE"
+</file>
+
 <file path="dotfiles/hypr/scripts/quickshell/Caching.qml">
 pragma Singleton
 import QtQuick
@@ -15234,79 +15050,6 @@ QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
 "$QS_BIN" -p "$QS_TARGET" >/dev/null 2>&1 &
 </file>
 
-<file path="dotfiles/hypr/scripts/wallpaper_thumbnail.sh">
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/wallpaper_thumbnail.sh <==
-#!/usr/bin/env bash
-
-# Strict execution environment: Ensure failures inside the script are caught,
-# but do not use `set -e` globally to prevent a single bad image from killing the batch.
-set -uo pipefail
-
-SRC="$HOME/Pictures/Wallpapers"
-CACHE_DIR="$HOME/.cache/quickshell/wallpaper_picker"
-THUMB="$CACHE_DIR/thumbs"
-COLOR_DIR="$CACHE_DIR/colors_markers"
-
-# Ensure target directories exist before processing
-mkdir -p "$THUMB" "$COLOR_DIR"
-
-# Export the variables so they are accessible by the xargs subshells
-export THUMB COLOR_DIR
-
-# Define the processing logic as an exported function.
-process_wallpaper() {
-    local file="$1"
-    local name
-    name=$(basename "$file")
-
-    local target="$THUMB/$name"
-    local ext="${file##*.}"
-    ext="${ext,,}" # lowercase extension
-
-    # Video processing block
-    if [[ "$ext" =~ ^(mp4|mkv|mov|webm)$ ]]; then
-        target="$THUMB/$name.jpg"
-        if [ ! -f "$target" ]; then
-            # Safe ffmpeg extraction: 1 frame at 1s mark, scaling width to 400, auto-height
-            ffmpeg -hide_banner -loglevel error -y -ss 00:00:01 -i "$file" -frames:v 1 -vf "scale=400:-1" "$target"
-        fi
-    else
-        # Image processing block
-        if [ ! -f "$target" ]; then
-            # Inject memory-bound scaling constraint (-define jpeg:size) before loading the file
-            # This drastically reduces RAM usage and I/O bottlenecks for 4K/8K images.
-            magick -define jpeg:size=800x800 "$file[0]" -strip -thumbnail 400x400^ -gravity center -extent 400x400 "$target"
-        fi
-    fi
-
-    # Dominant color extraction block
-    # Check if a hex marker already exists for this specific file
-    local marker
-    marker=$(find "$COLOR_DIR" -name "${name}_HEX_*" -print -quit)
-
-    if [ -z "$marker" ] && [ -f "$target" ]; then
-        local hex
-        # Extract average color by scaling to 1x1 pixel.
-        # Extract exactly 6 characters to prevent carriage return pollution
-        hex=$(magick "$target" -resize 1x1 -format "%[hex:p{0,0}]" info: 2>/dev/null | cut -c 1-6)
-
-        # Only touch the marker file if the hex string is perfectly 6 characters long
-        if [ -n "$hex" ] && [ "${#hex}" -eq 6 ]; then
-            touch "$COLOR_DIR/${name}_HEX_${hex}"
-        fi
-    fi
-}
-
-export -f process_wallpaper
-
-# Determine safe thread count (leave 1 thread free if possible to prevent UI locking)
-CORES=$(nproc)
-THREADS=$(( CORES > 2 ? CORES - 1 : 1 ))
-
-# Execute the pipeline. Using -print0 and -0 safely handles filenames with spaces/newlines.
-find "$SRC" -maxdepth 1 -type f -print0 | xargs -0 -P "$THREADS" -I {} bash -c 'process_wallpaper "$@"' _ {}
-</file>
-
 <file path="dotfiles/hypr/startup.conf">
 # ~/nix/dotfiles/hypr/startup.conf
 
@@ -15334,6 +15077,55 @@ exec-once = ~/nix/dotfiles/hypr/scripts/quickshell/music/equalizer.sh --init
 exec-once = hyprctl setcursor Bibata-Modern-Ice 24
 </file>
 
+<file path="dotfiles/matugen/extract_raw_colors.sh">
+#!/usr/bin/env bash
+WALL="$1"
+CACHE_FILE="$HOME/.cache/matugen/qs_colors.json"
+
+# 1. $O(1) Color Extraction via Affine Transform
+# Resizing to exactly 2x1 pixels instantly averages the image into two dominant tones, skipping heavy quantization.
+read -r main second <<< "$(magick "$WALL" -resize '2x1!' -format "#%[hex:p{0,0}] #%[hex:p{1,0}]\n" info:)"
+
+# 2. Memory-Safe Saturation Check
+sat=$(magick "$WALL" -resize 16x16 -colorspace HSL -channel s -separate +channel -format "%[fx:mean*100]" info: 2>/dev/null)
+
+if (( $(echo "${sat:-100} < 5" | bc -l) )); then
+    main="#d3d3d3"
+    second="#a9a9a9"
+fi
+
+# 3. Atomic File Writing
+# Generates all 22 keys to perfectly match qs_colors.json.template, preventing QML binding desync
+cat << JSON > "${CACHE_FILE}.tmp"
+{
+  "base": "#11111b",
+  "mantle": "#181825",
+  "crust": "#1e1e2e",
+  "text": "$second",
+  "subtext0": "$second",
+  "subtext1": "$second",
+  "surface0": "#313244",
+  "surface1": "#45475a",
+  "surface2": "#585b70",
+  "overlay0": "#6c7086",
+  "overlay1": "#7f849c",
+  "overlay2": "#9399b2",
+  "blue": "$main",
+  "sapphire": "$main",
+  "peach": "$second",
+  "green": "$main",
+  "red": "#f38ba8",
+  "mauve": "$main",
+  "pink": "$main",
+  "yellow": "$main",
+  "maroon": "#eba0ac",
+  "teal": "$main"
+}
+JSON
+
+mv "${CACHE_FILE}.tmp" "$CACHE_FILE"
+</file>
+
 <file path="README.md">
 My personal declarative configuration for a Wayland-based desktop environment. Built for low latency and reproducibility using Nix Flakes.
 
@@ -15350,103 +15142,61 @@ My personal declarative configuration for a Wayland-based desktop environment. B
 The interface is entirely custom-built in QML. To maintain zero UI lag, heavy hardware polling and network executions are decoupled into asynchronous Python/Bash daemons via IPC. Monitor and scaling states are routed through volatile `~/.cache` files to prevent DRM modeset flashes during compositor reloads.
 </file>
 
-<file path="dotfiles/hypr/scripts/quickshell/clipboard/clip_fetcher.py">
-#!/usr/bin/env python3
-import subprocess
-import json
-import os
-import sys
-import threading
-import concurrent.futures
+<file path="dotfiles/hypr/scripts/quickshell/calendar/diary_manager.sh">
+#!/usr/bin/env bash
+set -euo pipefail
 
-def cleanup_cache(all_lines, cache_dir):
-    valid_ids = set()
-    # Keep top 100 recent IDs to prevent infinite cache bloat
-    for line in all_lines[:100]:
-        if '\t' in line:
-            valid_ids.add(line.split('\t', 1)[0])
-    try:
-        for f in os.listdir(cache_dir):
-            if f.endswith('.png'):
-                iid = f.replace('.png', '')
-                if iid not in valid_ids:
-                    try:
-                        os.remove(os.path.join(cache_dir, f))
-                    except Exception:
-                        pass
-    except Exception:
-        pass
+# Consolidate date extraction into a single, atomic execution
+read -r YEAR MONTH DAY <<< "$(date +'%Y %m %d')"
 
-def decode_image(iid, img_path):
-    if not os.path.exists(img_path):
-        with open(img_path, "wb") as f:
-            subprocess.run(["cliphist", "decode", iid], stdout=f)
-    return {
-        "id": iid,
-        "content": img_path,
-        "type": "image"
-    }
+# Settings based on your layout
+VAULT_DIR="$HOME/Life/Obsidian"
+VAULT_NAME="Obsidian"
+FILENAME="${DAY}.${MONTH}"
+FILEPATH="Diary/${YEAR}/${FILENAME}.md"
+FULL_PATH="${VAULT_DIR}/${FILEPATH}"
+CONTENTS_PATH="${VAULT_DIR}/Diary/Contents.md"
 
-def get_cliphist():
-    # Implement pagination arguments
-    offset = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-    # Slightly smaller limit to make the initial UI pop open faster
-    limit = int(sys.argv[2]) if len(sys.argv) > 2 else 12
+# Ensure the directory exists
+mkdir -p "${VAULT_DIR}/Diary/${YEAR}"
 
-    # Use dynamically provided cache dir from QML or fallback securely
-    cache_dir = sys.argv[3] if len(sys.argv) > 3 else os.environ.get("QS_CACHE_CLIPBOARD", os.path.expanduser("~/.cache/quickshell/clipboard"))
-    os.makedirs(cache_dir, exist_ok=True)
+# 1. Create diary file if it doesn't exist
+if [ ! -f "$FULL_PATH" ]; then
+    echo -e "#diary\n" > "$FULL_PATH"
+fi
 
-    try:
-        # Fetch the entire list quickly
-        result = subprocess.run(["cliphist", "list"], capture_output=True, text=True)
-        all_lines = result.stdout.strip().split('\n')
-        # Slice only the requested chunk
-        lines = all_lines[offset:offset+limit]
+# 2. Update Contents.md if the link isn't already there
+if [ -f "$CONTENTS_PATH" ]; then
+    if ! grep -q "\[\[${FILENAME}\]\]" "$CONTENTS_PATH"; then
+        # Use mktemp for a guaranteed safe, atomic file replacement
+        TMP_FILE=$(mktemp)
         
-        # Move cleanup to a background thread so it doesn't block the UI from receiving data
-        if offset == 0:
-            threading.Thread(target=cleanup_cache, args=(all_lines, cache_dir), daemon=True).start()
-    except Exception as e:
-        print("[]")
-        return
-
-    # Dictionary mapping to ensure threaded operations are rebuilt in exact chronological order
-    items_map = {}
-    image_tasks = []
-    
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        for idx, line in enumerate(lines):
-            if not line: continue
-            parts = line.split('\t', 1)
-            if len(parts) != 2: continue
-            
-            iid, content = parts[0], parts[1]
-            display_content = content.strip()
-
-            # Detect images in cliphist output
-            if "[[ binary data" in content:
-                img_path = os.path.join(cache_dir, f"{iid}.png")
-                # CACHING: Only decode the specific item if it doesn't already exist
-                future = executor.submit(decode_image, iid, img_path)
-                image_tasks.append((idx, future))
-            else:
-                items_map[idx] = {
-                    "id": iid,
-                    "content": display_content,
-                    "type": "text"
-                }
-                
-        for idx, future in image_tasks:
-            items_map[idx] = future.result()
-
-    # Reconstruct the final list maintaining the original chronological order
-    ordered_items = [items_map[idx] for idx in sorted(items_map.keys())]
+        awk -v year="## ${YEAR}" -v entry="- [[${FILENAME}]]" '
+        BEGIN { in_year=0; inserted=0 }
+        $0 == year { in_year=1; print; next }
+        /^## / && in_year { print entry; inserted=1; in_year=0 }
+        { print }
+        END {
+            if (in_year && !inserted) {
+                print entry
+            } else if (!in_year && !inserted) {
+                print ""
+                print year
+                print entry
+            }
+        }
+        ' "$CONTENTS_PATH" > "$TMP_FILE"
         
-    print(json.dumps(ordered_items))
+        mv "$TMP_FILE" "$CONTENTS_PATH"
+    fi
+else
+    # Create the Contents file if missing entirely
+    mkdir -p "$(dirname "$CONTENTS_PATH")"
+    echo -e "## ${YEAR}\n- [[${FILENAME}]]" > "$CONTENTS_PATH"
+fi
 
-if __name__ == "__main__":
-    get_cliphist()
+# 3. Open the specific note directly inside Obsidian using its URI protocol
+xdg-open "obsidian://open?vault=${VAULT_NAME}&file=Diary/${YEAR}/${FILENAME}"
 </file>
 
 <file path="dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml">
@@ -17153,6 +16903,78 @@ Item {
 }
 </file>
 
+<file path="dotfiles/hypr/scripts/wallpaper_thumbnail.sh">
+#!/usr/bin/env bash
+
+# Strict execution environment: Ensure failures inside the script are caught,
+# but do not use `set -e` globally to prevent a single bad image from killing the batch.
+set -uo pipefail
+
+SRC="$HOME/Pictures/Wallpapers"
+CACHE_DIR="$HOME/.cache/quickshell/wallpaper_picker"
+THUMB="$CACHE_DIR/thumbs"
+COLOR_DIR="$CACHE_DIR/colors_markers"
+
+# Ensure target directories exist before processing
+mkdir -p "$THUMB" "$COLOR_DIR"
+
+# Export the variables so they are accessible by the xargs subshells
+export THUMB COLOR_DIR
+
+# Define the processing logic as an exported function.
+process_wallpaper() {
+    local file="$1"
+    local name
+    name=$(basename "$file")
+
+    local target="$THUMB/$name"
+    local ext="${file##*.}"
+    ext="${ext,,}" # lowercase extension
+
+    # Video processing block
+    if [[ "$ext" =~ ^(mp4|mkv|mov|webm)$ ]]; then
+        target="$THUMB/$name.jpg"
+        if [ ! -f "$target" ]; then
+            # Safe ffmpeg extraction: 1 frame at 1s mark, scaling width to 400, auto-height
+            ffmpeg -hide_banner -loglevel error -y -ss 00:00:01 -i "$file" -frames:v 1 -vf "scale=400:-1" "$target"
+        fi
+    else
+        # Image processing block
+        if [ ! -f "$target" ]; then
+            # Inject memory-bound scaling constraint (-define jpeg:size) before loading the file
+            # This drastically reduces RAM usage and I/O bottlenecks for 4K/8K images.
+            magick -define jpeg:size=800x800 "$file[0]" -strip -thumbnail 400x400^ -gravity center -extent 400x400 "$target"
+        fi
+    fi
+
+    # Dominant color extraction block
+    # Check if a hex marker already exists for this specific file
+    local marker
+    marker=$(find "$COLOR_DIR" -name "${name}_HEX_*" -print -quit)
+
+    if [ -z "$marker" ] && [ -f "$target" ]; then
+        local hex
+        # Extract average color by scaling to 1x1 pixel.
+        # Extract exactly 6 characters to prevent carriage return pollution
+        hex=$(magick "$target" -resize 1x1 -format "%[hex:p{0,0}]" info: 2>/dev/null | cut -c 1-6)
+
+        # Only touch the marker file if the hex string is perfectly 6 characters long
+        if [ -n "$hex" ] && [ "${#hex}" -eq 6 ]; then
+            touch "$COLOR_DIR/${name}_HEX_${hex}"
+        fi
+    fi
+}
+
+export -f process_wallpaper
+
+# Determine safe thread count (leave 1 thread free if possible to prevent UI locking)
+CORES=$(nproc)
+THREADS=$(( CORES > 2 ? CORES - 1 : 1 ))
+
+# Execute the pipeline. Using -print0 and -0 safely handles filenames with spaces/newlines.
+find "$SRC" -maxdepth 1 -type f -print0 | xargs -0 -P "$THREADS" -I {} bash -c 'process_wallpaper "$@"' _ {}
+</file>
+
 <file path="dotfiles/hypr/hypridle.conf">
 general {
     lock_cmd = pgrep -f 'quickshell.*Lock\.qml' >/dev/null || ~/.config/hypr/scripts/lock.sh
@@ -18618,87 +18440,172 @@ Item {
 }
 </file>
 
-<file path="dotfiles/hypr/scripts/set_wallpaper.sh">
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/set_wallpaper.sh <==
-#!/usr/bin/env bash
+<file path="dotfiles/hypr/scripts/quickshell/clipboard/clip_fetcher.py">
+#!/usr/bin/env python3
+import subprocess
+import json
+import os
+import sys
+import threading
+import concurrent.futures
 
-WALL="$1"
+def cleanup_cache(all_lines, cache_dir):
+    valid_ids = set()
+    # Keep top 100 recent IDs to prevent infinite cache bloat
+    for line in all_lines[:100]:
+        if '\t' in line:
+            valid_ids.add(line.split('\t', 1)[0])
+    try:
+        for f in os.listdir(cache_dir):
+            if f.endswith('.png'):
+                iid = f.replace('.png', '')
+                if iid not in valid_ids:
+                    try:
+                        os.remove(os.path.join(cache_dir, f))
+                    except Exception:
+                        pass
+    except Exception:
+        pass
 
-# Guard clause to safely exit if invoked without arguments
-if [ -z "$WALL" ]; then
-    exit 1
-fi
+def decode_image(iid, img_path):
+    if not os.path.exists(img_path):
+        with open(img_path, "wb") as f:
+            subprocess.run(["cliphist", "decode", iid], stdout=f)
+    return {
+        "id": iid,
+        "content": img_path,
+        "type": "image"
+    }
 
-# Normalize extension to lowercase for safe, case-insensitive routing
-EXT="${WALL##*.}"
-EXT="${EXT,,}"
-BASENAME=$(basename "$WALL")
+def get_cliphist():
+    # Implement pagination arguments
+    offset = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    # Slightly smaller limit to make the initial UI pop open faster
+    limit = int(sys.argv[2]) if len(sys.argv) > 2 else 12
 
-# 1. Update the wallpaper state cache file instantly
-mkdir -p "$HOME/.cache"
-echo "$WALL" > "$HOME/.cache/current_wallpaper.txt"
+    # Use dynamically provided cache dir from QML or fallback securely
+    cache_dir = sys.argv[3] if len(sys.argv) > 3 else os.environ.get("QS_CACHE_CLIPBOARD", os.path.expanduser("~/.cache/quickshell/clipboard"))
+    os.makedirs(cache_dir, exist_ok=True)
 
-# 2. INSTANT VISUAL PATHWAY (Zero blocking delays, Strict Mutual Exclusion)
-if [[ "$EXT" =~ ^(mp4|mkv|webm)$ ]]; then
-    # Kill images before starting video
-    pkill -f awww-daemon 2>/dev/null
-    pkill -f mpvpaper 2>/dev/null
-    mpvpaper -o "no-audio --loop-playlist --hwdec=vaapi --panscan=1.0" '*' "$WALL" > /dev/null 2>&1 &
-else
-    # Kill video before starting image
-    pkill -f mpvpaper 2>/dev/null
-    # Push the image to the persistent daemon instantly with a fast fade
-    awww img "$WALL" \
-        --transition-type fade \
-        --transition-step 255 \
-        --transition-duration 0.1 \
-        --transition-fps 60 > /dev/null 2>&1
-fi
+    try:
+        # Fetch the entire list quickly
+        result = subprocess.run(["cliphist", "list"], capture_output=True, text=True)
+        all_lines = result.stdout.strip().split('\n')
+        # Slice only the requested chunk
+        lines = all_lines[offset:offset+limit]
+        
+        # Move cleanup to a background thread so it doesn't block the UI from receiving data
+        if offset == 0:
+            threading.Thread(target=cleanup_cache, args=(all_lines, cache_dir), daemon=True).start()
+    except Exception as e:
+        print("[]")
+        return
 
-# 3. ISOLATED WORKER THREAD (Forks immediately)
-(
-    # Check if a fast, low-res thumbnail already exists in the QS cache
-    THUMB_DIR="$HOME/.cache/quickshell/wallpaper_picker/thumbs"
-    CACHED_THUMB="$THUMB_DIR/$BASENAME"
-    if [[ "$EXT" =~ ^(mp4|mkv|webm)$ ]]; then
-        CACHED_THUMB="$THUMB_DIR/$BASENAME.jpg"
-    fi
+    # Dictionary mapping to ensure threaded operations are rebuilt in exact chronological order
+    items_map = {}
+    image_tasks = []
+    
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        for idx, line in enumerate(lines):
+            if not line: continue
+            parts = line.split('\t', 1)
+            if len(parts) != 2: continue
+            
+            iid, content = parts[0], parts[1]
+            display_content = content.strip()
 
-    # Use a PID-isolated temp file
-    FRAME_CACHE="/tmp/wallpaper_frame_$$.jpg"
-    trap 'rm -f "$FRAME_CACHE"' EXIT
+            # Detect images in cliphist output
+            if "[[ binary data" in content:
+                img_path = os.path.join(cache_dir, f"{iid}.png")
+                # CACHING: Only decode the specific item if it doesn't already exist
+                future = executor.submit(decode_image, iid, img_path)
+                image_tasks.append((idx, future))
+            else:
+                items_map[idx] = {
+                    "id": iid,
+                    "content": display_content,
+                    "type": "text"
+                }
+                
+        for idx, future in image_tasks:
+            items_map[idx] = future.result()
 
-    if [ -f "$CACHED_THUMB" ]; then
-        # FAST PATH: The UI has already generated a 400x400 thumbnail. Use it directly for color math.
-        SEED="$CACHED_THUMB"
-    else
-        # SLOW PATH: Generate a temporary frame from the raw file
-        if [[ "$EXT" =~ ^(mp4|mkv|webm)$ ]]; then
-            ffmpeg -y -ss 00:00:00.100 -i "$WALL" -vframes 1 -q:v 8 -vf "scale=400:-1" "$FRAME_CACHE" > /dev/null 2>&1
-            SEED="$FRAME_CACHE"
-        elif [[ "$EXT" == "gif" ]]; then
-            ffmpeg -y -i "$WALL" -vframes 1 -q:v 8 -vf "scale=400:-1" "$FRAME_CACHE" > /dev/null 2>&1
-            SEED="$FRAME_CACHE"
+    # Reconstruct the final list maintaining the original chronological order
+    ordered_items = [items_map[idx] for idx in sorted(items_map.keys())]
+        
+    print(json.dumps(ordered_items))
+
+if __name__ == "__main__":
+    get_cliphist()
+</file>
+
+<file path="modules/home/shell.nix">
+{ ... }:
+
+{
+  programs.zsh = {
+    enable = true;
+
+    enableCompletion = true;
+
+    autosuggestion.enable = true;
+
+    syntaxHighlighting.enable = true;
+
+    history = {
+      size = 10000;
+      path = "$HOME/.zsh_history";
+    };
+
+    initContent = ''
+      if [ -z "$DISPLAY" ] && [ "''${XDG_VTNR:-0}" = "1" ]; then
+          exec start-hyprland
+      fi
+      rebuild() {
+        cd ~/nix || return
+
+        git add -A
+
+        if git diff --cached --quiet && git diff --quiet; then
+          echo "Nothing to commit."
         else
-            SEED="$WALL"
+          if [ $# -eq 0 ]; then
+            git commit -m "Update configuration"
+          else
+            git commit -m "$*"
+          fi
         fi
-    fi
 
-    # High-speed localized color analysis (Now safely operating on a max 400px image, not 4K)
-    sat=$(magick "$SEED[0]" -resize 16x16 -colorspace HSL -channel s -separate +channel -format "%[fx:mean*100]" info: 2>/dev/null)
+        sudo nixos-rebuild switch --flake .#nixos
+      }
 
-    # Failsafe: If magick fails (bad image/format), default to 100 to prevent 'bc' syntax errors
-    if [ -z "$sat" ]; then
-        sat=100
-    fi
+      update() {
+        cd ~/nix || return
 
-    if (( $(echo "$sat < 5" | bc -l) )); then
-        matugen color hex "#808080" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity > /tmp/matugen.log 2>&1
-        "$HOME/nix/dotfiles/matugen/extract_raw_colors.sh" "$SEED"
-    else
-        matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity --source-color-index 0 > /tmp/matugen.log 2>&1
-    fi
-) &
+        git pull
+        nix flake update
+
+        rebuild "flake update"
+      }
+
+      clean() {
+        sudo nix-collect-garbage -d
+      }
+
+      ff() {
+        fastfetch
+      }
+    '';
+
+    shellAliases = {
+    };
+  };
+
+  programs.starship.enable = true;
+
+  xdg.configFile."starship.toml".source =
+    ../../dotfiles/starship/starship.toml;
+}
 </file>
 
 <file path="dotfiles/hypr/scripts/quickshell/music/music_info.sh">
@@ -24218,6 +24125,88 @@ ShellRoot {
 }
 </file>
 
+<file path="dotfiles/hypr/scripts/set_wallpaper.sh">
+#!/usr/bin/env bash
+
+WALL="$1"
+
+# Guard clause to safely exit if invoked without arguments
+if [ -z "$WALL" ]; then
+    exit 1
+fi
+
+# Normalize extension to lowercase for safe, case-insensitive routing
+EXT="${WALL##*.}"
+EXT="${EXT,,}"
+BASENAME=$(basename "$WALL")
+
+# 1. Update the wallpaper state cache file instantly
+mkdir -p "$HOME/.cache"
+echo "$WALL" > "$HOME/.cache/current_wallpaper.txt"
+
+# 2. INSTANT VISUAL PATHWAY (Zero blocking delays, Strict Mutual Exclusion)
+if [[ "$EXT" =~ ^(mp4|mkv|webm)$ ]]; then
+    # Kill images before starting video
+    pkill -f awww-daemon 2>/dev/null
+    pkill -f mpvpaper 2>/dev/null
+    mpvpaper -o "no-audio --loop-playlist --hwdec=vaapi --panscan=1.0" '*' "$WALL" > /dev/null 2>&1 &
+else
+    # Kill video before starting image
+    pkill -f mpvpaper 2>/dev/null
+    # Push the image to the persistent daemon instantly with a fast fade
+    awww img "$WALL" \
+        --transition-type fade \
+        --transition-step 255 \
+        --transition-duration 0.1 \
+        --transition-fps 60 > /dev/null 2>&1
+fi
+
+# 3. ISOLATED WORKER THREAD (Forks immediately)
+(
+    # Check if a fast, low-res thumbnail already exists in the QS cache
+    THUMB_DIR="$HOME/.cache/quickshell/wallpaper_picker/thumbs"
+    CACHED_THUMB="$THUMB_DIR/$BASENAME"
+    if [[ "$EXT" =~ ^(mp4|mkv|webm)$ ]]; then
+        CACHED_THUMB="$THUMB_DIR/$BASENAME.jpg"
+    fi
+
+    # Use a PID-isolated temp file
+    FRAME_CACHE="/tmp/wallpaper_frame_$$.jpg"
+    trap 'rm -f "$FRAME_CACHE"' EXIT
+
+    if [ -f "$CACHED_THUMB" ]; then
+        # FAST PATH: The UI has already generated a 400x400 thumbnail. Use it directly for color math.
+        SEED="$CACHED_THUMB"
+    else
+        # SLOW PATH: Generate a temporary frame from the raw file
+        if [[ "$EXT" =~ ^(mp4|mkv|webm)$ ]]; then
+            ffmpeg -y -ss 00:00:00.100 -i "$WALL" -vframes 1 -q:v 8 -vf "scale=400:-1" "$FRAME_CACHE" > /dev/null 2>&1
+            SEED="$FRAME_CACHE"
+        elif [[ "$EXT" == "gif" ]]; then
+            ffmpeg -y -i "$WALL" -vframes 1 -q:v 8 -vf "scale=400:-1" "$FRAME_CACHE" > /dev/null 2>&1
+            SEED="$FRAME_CACHE"
+        else
+            SEED="$WALL"
+        fi
+    fi
+
+    # High-speed localized color analysis (Now safely operating on a max 400px image, not 4K)
+    sat=$(magick "$SEED[0]" -resize 16x16 -colorspace HSL -channel s -separate +channel -format "%[fx:mean*100]" info: 2>/dev/null)
+
+    # Failsafe: If magick fails (bad image/format), default to 100 to prevent 'bc' syntax errors
+    if [ -z "$sat" ]; then
+        sat=100
+    fi
+
+    if (( $(echo "$sat < 5" | bc -l) )); then
+        matugen color hex "#808080" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity > /tmp/matugen.log 2>&1
+        "$HOME/nix/dotfiles/matugen/extract_raw_colors.sh" "$SEED"
+    else
+        matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity --source-color-index 0 > /tmp/matugen.log 2>&1
+    fi
+) &
+</file>
+
 <file path="dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml">
 import QtQuick
 import QtQuick.Layouts
@@ -28074,13 +28063,29 @@ PanelWindow {
     function resolveComponent(path) {
         if (!path) return null;
         if (componentCache[path]) return componentCache[path];
-        
+
         let comp = Qt.createComponent(path);
+
         if (comp.status === Component.Ready) {
             componentCache[path] = comp;
             return comp;
-        } else {
+        } else if (comp.status === Component.Error) {
             console.log("QML Component compilation error for path:", path, comp.errorString());
+            return null;
+        } else {
+            // Component.Loading (or Null) — not actually an error. Wait for
+            // it to resolve asynchronously, cache it once ready, and
+            // invalidate the layout cache so the next getLayout() call
+            // picks up the now-cached component instead of retrying
+            // Qt.createComponent() from scratch every time.
+            comp.statusChanged.connect(function() {
+                if (comp.status === Component.Ready) {
+                    componentCache[path] = comp;
+                    masterWindow._layoutCacheKey = "";
+                } else if (comp.status === Component.Error) {
+                    console.log("QML Component compilation error for path:", path, comp.errorString());
+                }
+            });
             return null;
         }
     }

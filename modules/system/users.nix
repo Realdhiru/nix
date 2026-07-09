@@ -31,6 +31,14 @@
           command = "/run/current-system/sw/bin/tee /sys/devices/system/cpu/cpufreq/boost";
           options = [ "NOPASSWD" ];
         }
+        {
+          command = "/run/current-system/sw/bin/modprobe -r snd_hda_intel snd_soc_avs";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/modprobe snd_hda_intel";
+          options = [ "NOPASSWD" ];
+        }
       ];
     }
   ];
