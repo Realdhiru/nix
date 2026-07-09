@@ -1,4 +1,3 @@
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/network_fetch.sh <==
 #!/usr/bin/env bash
 
 get_wifi_radio() {

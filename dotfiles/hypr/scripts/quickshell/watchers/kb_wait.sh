@@ -1,4 +1,3 @@
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/kb_wait.sh <==
 #!/usr/bin/env bash
 source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
 

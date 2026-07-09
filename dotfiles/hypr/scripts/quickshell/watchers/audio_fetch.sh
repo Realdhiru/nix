@@ -1,4 +1,3 @@
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/audio_fetch.sh <==
 #!/usr/bin/env bash
 
 fetch_audio_state() {

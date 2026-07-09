@@ -115,13 +115,29 @@ PanelWindow {
     function resolveComponent(path) {
         if (!path) return null;
         if (componentCache[path]) return componentCache[path];
-        
+
         let comp = Qt.createComponent(path);
+
         if (comp.status === Component.Ready) {
             componentCache[path] = comp;
             return comp;
-        } else {
+        } else if (comp.status === Component.Error) {
             console.log("QML Component compilation error for path:", path, comp.errorString());
+            return null;
+        } else {
+            // Component.Loading (or Null) — not actually an error. Wait for
+            // it to resolve asynchronously, cache it once ready, and
+            // invalidate the layout cache so the next getLayout() call
+            // picks up the now-cached component instead of retrying
+            // Qt.createComponent() from scratch every time.
+            comp.statusChanged.connect(function() {
+                if (comp.status === Component.Ready) {
+                    componentCache[path] = comp;
+                    masterWindow._layoutCacheKey = "";
+                } else if (comp.status === Component.Error) {
+                    console.log("QML Component compilation error for path:", path, comp.errorString());
+                }
+            });
             return null;
         }
     }

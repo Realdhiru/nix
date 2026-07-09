@@ -82,12 +82,12 @@ Item {
 
     Process {
         id: monitorProc
-        command: ["sh", "-c", "export PATH=$PATH:/usr/bin:/usr/local/bin:/run/current-system/sw/bin && hyprctl monitors -j"]
+        command: ["hyprctl", "monitors", "-j"]
         running: false
-        
+
         stdout: StdioCollector {
             onStreamFinished: {
-                let response = this.text; 
+                let response = this.text;
                 if (response && response.trim().length > 0) {
                     try {
                         var monitors = JSON.parse(response);
@@ -101,7 +101,6 @@ Item {
                 }
             }
         }
-    }
 
     function loadMonitors() {
         monitorProc.running = true;

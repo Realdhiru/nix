@@ -1,4 +1,3 @@
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/ddg_search.sh <==
 #!/usr/bin/env bash
 
 QUERY="$1"

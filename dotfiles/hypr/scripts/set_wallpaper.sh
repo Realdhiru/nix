@@ -1,4 +1,3 @@
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/set_wallpaper.sh <==
 #!/usr/bin/env bash
 
 WALL="$1"

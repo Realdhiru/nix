@@ -1,4 +1,3 @@
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/wallpaper_thumbnail.sh <==
 #!/usr/bin/env bash
 
 # Strict execution environment: Ensure failures inside the script are caught,

@@ -1,4 +1,3 @@
-# ==> /home/realdhiru/nix/dotfiles/matugen/extract_raw_colors.sh <==
 #!/usr/bin/env bash
 WALL="$1"
 CACHE_FILE="$HOME/.cache/matugen/qs_colors.json"

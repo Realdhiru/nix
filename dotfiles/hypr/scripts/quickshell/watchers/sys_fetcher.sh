@@ -1,4 +1,3 @@
-# ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/sys_fetcher.sh <==
 #!/usr/bin/env bash
 
 CACHE_FILE="/tmp/qs_sys_fetcher_cache.txt"
