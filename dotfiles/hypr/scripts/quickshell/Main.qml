@@ -26,7 +26,35 @@ PanelWindow {
         }
 
         function showOSD(type: string, valStr: string): void {
-            osdPopup.show(type, valStr);
+            let title = type === "volume" ? "Volume" :
+                        type === "mic" ? "Microphone" :
+                        type === "brightness" ? "Brightness" :
+                        type === "kbd" ? "Keyboard Backlight" :
+                        type === "caps" ? "Caps Lock" :
+                        type === "num" ? "Num Lock" : "System";
+
+            let numVal = parseFloat(valStr);
+            let bodyStr = (isNaN(numVal) && valStr !== "100" && valStr !== "0") ? valStr : Math.round(numVal) + "%";
+
+            // IN-PLACE UPDATE: Zero allocation, zero blinking.
+            for (let i = 0; i < activePopupsModel.count; i++) {
+                if (activePopupsModel.get(i).summary === title) {
+                    activePopupsModel.setProperty(i, "body", bodyStr);
+                    activePopupsModel.setProperty(i, "uid", Date.now()); // Updates UID to trigger timer restart
+                    return;
+                }
+            }
+
+            // If not found, spawn a new one (slides in from the right normally)
+            activePopupsModel.insert(0, {
+                "appName": "System",
+                "summary": title,
+                "body": bodyStr,
+                "iconPath": "",
+                "actionsJson": "[]",
+                "uid": Date.now(),
+                "notif": null
+            });
         }
 
         function pushSystemMessage(title: string, body: string, icon: string): void {

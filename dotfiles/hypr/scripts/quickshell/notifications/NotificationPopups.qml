@@ -102,17 +102,17 @@ PanelWindow {
 
             add: Transition {
                 ParallelAnimation {
-                    NumberAnimation { target: ViewTransition.item; property: "opacity"; from: 0.0; to: 1.0; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 200; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: ViewTransition.item; property: "x"; from: popupWindow.implicitWidth * 0.4; to: 0; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 250; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: ViewTransition.item; property: "scale"; from: 0.95; to: 1.0; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 250; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "x"; from: popupWindow.implicitWidth * 0.4; to: 0; duration: 250; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "scale"; from: 0.95; to: 1.0; duration: 250; easing.type: Easing.OutCubic }
                 }
             }
 
             remove: Transition {
                 ParallelAnimation {
-                    NumberAnimation { target: ViewTransition.item; property: "opacity"; to: 0.0; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 150; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: ViewTransition.item; property: "x"; to: popupWindow.implicitWidth * 0.4; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 200; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: ViewTransition.item; property: "scale"; to: 0.95; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "opacity"; to: 0.0; duration: 150; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "x"; to: popupWindow.implicitWidth * 0.4; duration: 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { property: "scale"; to: 0.95; duration: 200; easing.type: Easing.OutCubic }
                 }
             }
 
@@ -125,16 +125,12 @@ PanelWindow {
                 width: ListView.view.width
                 height: contentCol.height + (popupWindow.layoutConfig.padding * 2)
 
+                property string fullAppName: model.appName || ""
                 property string fullSummary: model.summary || ""
                 property string fullBody: model.body || ""
                 property int typeLenSum: 0
                 property int typeLenBody: 0
                 property int popupUid: model.uid
-                
-                property bool isOsd: {
-                    let osdTitles = ["Volume", "Microphone", "Brightness", "Caps Lock", "Num Lock", "Keyboard Backlight"];
-                    return osdTitles.indexOf(fullSummary) !== -1;
-                }
 
                 property var sourceNotif: popupWindow.getNotif(model.uid)
 
@@ -155,20 +151,6 @@ PanelWindow {
                     return 5000;
                 }
 
-                Component.onCompleted: {
-                    if (delegateRoot.isOsd) {
-                        for (let key in popupWindow._notifMap) {
-                            let uid = parseInt(key);
-                            if (uid !== delegateRoot.popupUid) {
-                                let n = popupWindow._notifMap[key];
-                                if (n && n.summary === delegateRoot.fullSummary) {
-                                    popupWindow.removeNotif(uid);
-                                }
-                            }
-                        }
-                    }
-                }
-
                 Connections {
                     target: delegateRoot.sourceNotif || null
                     function onClosed() {
@@ -176,19 +158,34 @@ PanelWindow {
                     }
                 }
 
+                // Reset auto-dismiss timer on in-place IPC updates
+                property string trackedBody: model.body || ""
+                onTrackedBodyChanged: {
+                    if (autoDismissTimer.running) {
+                        autoDismissTimer.restart();
+                    }
+                }
+
+                Timer {
+                    id: autoDismissTimer
+                    interval: delegateRoot.effectiveTimeout > 0 ? delegateRoot.effectiveTimeout : 5000
+                    running: delegateRoot.effectiveTimeout > 0
+                    onTriggered: popupWindow.removeNotif(delegateRoot.popupUid)
+                }
+
                 ParallelAnimation {
                     running: true
                     NumberAnimation {
                         target: delegateRoot; property: "typeLenSum"
-                        from: delegateRoot.isOsd ? fullSummary.length : 0; to: fullSummary.length
-                        duration: delegateRoot.isOsd ? 0 : Math.min(fullSummary.length * 5, 200)
+                        from: 0; to: fullSummary.length
+                        duration: Math.min(fullSummary.length * 5, 200)
                         easing.type: Easing.OutCubic
                     }
                     SequentialAnimation {
                         NumberAnimation {
                             target: delegateRoot; property: "typeLenBody"
-                            from: delegateRoot.isOsd ? fullBody.length : 0; to: fullBody.length
-                            duration: delegateRoot.isOsd ? 0 : Math.min(fullBody.length * 5, 300)
+                            from: 0; to: fullBody.length
+                            duration: Math.min(fullBody.length * 5, 300)
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -220,12 +217,6 @@ PanelWindow {
                         y: (parent.height / 2 - height / 2) + Math.cos(contentWrapper.globalOrbitAngle * 1.5 - index) * -40
                         color: popupCard.blob2Color
                         opacity: 0.10
-                    }
-
-                    Timer {
-                        interval: delegateRoot.effectiveTimeout > 0 ? delegateRoot.effectiveTimeout : 5000
-                        running: delegateRoot.effectiveTimeout > 0
-                        onTriggered: popupWindow.removeNotif(delegateRoot.popupUid)
                     }
 
                     MouseArea {
@@ -265,7 +256,7 @@ PanelWindow {
                         spacing: 6 * popupWindow.uiScale
 
                         Text {
-                            text: model.appName || "System"
+                            text: delegateRoot.fullAppName
                             font.family: "JetBrains Mono"
                             font.weight: Font.Medium
                             font.pixelSize: 12 * popupWindow.uiScale
@@ -316,7 +307,8 @@ PanelWindow {
 
                             Text {
                                 anchors.fill: parent
-                                text: delegateRoot.fullBody.substring(0, delegateRoot.typeLenBody)
+                                // Bypasses typewriter effect for rapid IPC OSD updates, uses typewriter for real notifs
+                                text: (delegateRoot.fullAppName === "System" && !delegateRoot.sourceNotif) ? delegateRoot.fullBody : delegateRoot.fullBody.substring(0, delegateRoot.typeLenBody)
                                 font: hiddenBody.font
                                 color: _theme.subtext0
                                 wrapMode: Text.Wrap
