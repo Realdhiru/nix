@@ -11,7 +11,6 @@ Item {
     id: window
     width: Screen.width
 
-
     Scaler {
         id: scaler
         currentWidth: Screen.width
@@ -101,6 +100,7 @@ Item {
                 }
             }
         }
+    } // FIXED: Missing closing bracket for Process block
 
     function loadMonitors() {
         monitorProc.running = true;
@@ -199,6 +199,7 @@ Item {
         property string lastName: ""
     }
 
+    // FIXED: Property handlers are now strictly bound directly under the root 'window' Item
     onIsSearchPausedChanged: {
         Quickshell.execDetached(["bash", "-c", "echo '" + (isSearchPaused ? "pause" : "run") + "' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
     }
@@ -225,6 +226,29 @@ Item {
                 window.syncSearchModel();
             }
         }
+    }
+
+    onCurrentFilterChanged: {
+        window.isFilterAnimating = true;
+        filterAnimationTimer.restart();
+        window.isModelChanging = true;
+        let returningFromSearch = (window._lastFilter === "Search" && window.currentFilter !== "Search");
+        window._lastFilter = window.currentFilter;
+        
+        if (returningFromSearch) window.searchIndexRestored = false;
+        
+        Qt.callLater(() => {
+            view.forceActiveFocus();
+            if (window.currentFilter === "Search") {
+                if (window.hasSearched) {
+                    window.searchIndexRestored = false;
+                    window.trySearchFocus();
+                }
+            } else {
+                window.applyFilters(returningFromSearch);
+            }
+            window.isModelChanging = false;
+        });
     }
 
     property bool isLoading: localFolderModel.status === FolderListModel.Loading || 
@@ -626,29 +650,6 @@ Item {
             window.executeFocusRestore(indexToFocus, false, forceSnap === true);
         }
         window.updateVisibleCount();
-    }
-
-    onCurrentFilterChanged: {
-        window.isFilterAnimating = true;
-        filterAnimationTimer.restart();
-        window.isModelChanging = true;
-        let returningFromSearch = (window._lastFilter === "Search" && window.currentFilter !== "Search");
-        window._lastFilter = window.currentFilter;
-        
-        if (returningFromSearch) window.searchIndexRestored = false;
-        
-        Qt.callLater(() => {
-            view.forceActiveFocus();
-            if (window.currentFilter === "Search") {
-                if (window.hasSearched) {
-                    window.searchIndexRestored = false;
-                    window.trySearchFocus();
-                }
-            } else {
-                window.applyFilters(returningFromSearch);
-            }
-            window.isModelChanging = false;
-        });
     }
 
     Shortcut { 
@@ -1454,5 +1455,4 @@ Item {
             Quickshell.execDetached(["bash", "-c", "echo 'stop' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control; for p in \$(pgrep -f ddg_search.sh); do if [ \"\$p\" != \"\$\$\" ] && [ \"\$p\" != \"\$BASHPID\" ]; then kill -9 \$p 2>/dev/null || true; fi; done; pkill -f '[g]et_ddg_links.py'"]);
         }
     }
-}
 }
