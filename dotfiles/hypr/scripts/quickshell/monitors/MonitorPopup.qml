@@ -9,6 +9,7 @@ Item {
     id: window
     focus: true
 
+
     // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler
@@ -67,7 +68,6 @@ Item {
 
     property var resList: [
         {w: 3840, h: 2160, l: "4K",   accent: window.pink},
-        {w: 2880, h: 1620, l: "3K",   accent: window.mauve}, // Added laptop 3K panel resolution baseline
         {w: 2560, h: 1440, l: "QHD",  accent: window.mauve},
         {w: 1920, h: 1080, l: "FHD",  accent: window.blue},
         {w: 1600, h: 900,  l: "HD+",  accent: window.teal},
@@ -142,13 +142,18 @@ Item {
         }
     }
 
-    // Adjust keyboard matrix mapping constraints to account for the new 9th element (index 0 to 8)
+    Keys.onReleased: (event) => {
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            window.applyPressed = false;
+        }
+    }
+
     function handleArrowKey(dir) {
         if (monitorsModel.count === 0) return;
 
         if (activeFocusIndex === 0) {
             let activeMon = monitorsModel.get(window.activeEditIndex);
-            let idx = 3; // Adjusted index fallback to point to FHD
+            let idx = 2; // Default FHD
             for (let i = 0; i < window.resList.length; i++) {
                 if (window.resList[i].w === activeMon.resW && window.resList[i].h === activeMon.resH) {
                     idx = i; break;
@@ -156,9 +161,9 @@ Item {
             }
 
             if (dir === "Left" && idx % 2 !== 0) idx--;
-            else if (dir === "Right" && idx % 2 === 0 && idx < 8) idx++;
+            else if (dir === "Right" && idx % 2 === 0 && idx < 7) idx++;
             else if (dir === "Up" && idx >= 2) idx -= 2;
-            else if (dir === "Down" && idx <= 6) idx += 2;
+            else if (dir === "Down" && idx <= 5) idx += 2;
 
             window.selectedResAccent = window.resList[idx].accent;
             monitorsModel.setProperty(window.activeEditIndex, "resW", window.resList[idx].w);
@@ -179,12 +184,6 @@ Item {
             if (dir === "Left" && cIdx > 0) cIdx--;
             else if (dir === "Right" && cIdx < sliderContainer.rates.length - 1) cIdx++;
             sliderContainer.updateSelectionVisual(cIdx);
-        }
-    }
-
-    Keys.onReleased: (event) => {
-        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            window.applyPressed = false;
         }
     }
 
@@ -381,7 +380,6 @@ Item {
             if (m.transform !== 0) {
                 monitorStr += ",transform," + m.transform;
             }
-            monitorStr += ",bitdepth,10"; // FIXED: Explicitly appends 10-bit depth output properties
 
             let jsonMonitorsArray = [{
                 name: m.name, resW: m.resW, resH: m.resH, rate: parseInt(m.rate),
@@ -444,7 +442,7 @@ Item {
                     let snapped = getTightSnap(
                         rects[i].x, rects[i].y,
                         r0.x, r0.y,
-                        r0.w, r0.h, rects[i].w, rects[i].h, 25
+                        r0.w, r0.h, rects[i].w, rects[i].h, 25 // Intentionally unscaled (Physical display coordinates)
                     );
                     let dist = Math.hypot(rects[i].x - snapped.x, rects[i].y - snapped.y);
                     if (dist < bestDist) {
@@ -477,7 +475,6 @@ Item {
                 if (r.transform !== 0) {
                     monitorStr += ",transform," + r.transform;
                 }
-                monitorStr += ",bitdepth,10"; // FIXED: Explicitly appends 10-bit depth output properties
 
                 batchCmds.push("keyword monitor " + monitorStr);
                 confLines.push("monitor=" + monitorStr);
@@ -501,6 +498,7 @@ Item {
             window.debugLog("Executed multi monitor apply: " + fullHyprCmd);
         }
     }
+
 
     // -------------------------------------------------------------------------
     // UI LAYOUT
@@ -633,6 +631,7 @@ Item {
                         Rectangle {
                             id: screenBezel
 
+                            // Perfect aspect ratio AND scales up physically on the desk at higher resolutions
                             width: window.s(320) * (window.currentSimW / 1920.0)
                             height: window.s(320) * (window.currentSimH / 1920.0)
 
@@ -690,8 +689,11 @@ Item {
                                     width: window.s(160)
                                     height: window.s(100)
 
+                                    // 1. Counteract the environmental zoom factor
                                     property real counterScale: 1.0 / singleMonitorZoom.scale
 
+                                    // 2. Compute a safe physical boundary based on current visual rotation
+                                    // If rotated (portrait), we compare the wrapper's height to the screen's width, etc.
                                     property real maxPhysicalScale: window.currentIsPortrait
                                         ? Math.min((parent.width * 0.9) / height, (parent.height * 0.9) / width)
                                         : Math.min((parent.width * 0.9) / width, (parent.height * 0.9) / height)
@@ -702,6 +704,7 @@ Item {
                                         anchors.centerIn: parent
                                         spacing: window.s(4)
 
+                                        // Restored Rotation: Acts as a pointer to the monitor's physical bottom
                                         rotation: window.currentTransform * 90
                                         Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
 
@@ -864,6 +867,7 @@ Item {
                                             height: window.s(80)
 
                                             property real idealScale: 1.2 / transformNode.scale
+                                            // Ensure the bounded box checks against the correct axis when visually rotated
                                             property real maxPhysicalScale: isPortrait
                                                 ? Math.min((parent.width * 0.9) / height, (parent.height * 0.9) / width)
                                                 : Math.min((parent.width * 0.9) / width, (parent.height * 0.9) / height)
@@ -874,6 +878,7 @@ Item {
                                                 anchors.centerIn: parent
                                                 spacing: window.s(2)
 
+                                                // Restored Rotation for Multi-Monitor cards
                                                 rotation: model.transform * 90
                                                 Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
 
@@ -1002,7 +1007,7 @@ Item {
                 anchors.left: leftVisualArea.right
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: window.s(-10)
+                anchors.verticalCenterOffset: window.s(-10) // Tweak layout slightly downwards
                 anchors.leftMargin: window.s(10)
                 anchors.rightMargin: window.s(30)
                 height: rightSideContainer.implicitHeight
@@ -1012,7 +1017,6 @@ Item {
 
                 SequentialAnimation {
                     id: menuTransitionAnim
-                    document.onCompleted: {}
                     ParallelAnimation {
                         ScaleAnimator {
                             target: rightSideContainer
@@ -1082,7 +1086,7 @@ Item {
                                     anchors.margins: window.s(12)
                                     spacing: window.s(8)
 
-                                    text {
+                                    Text {
                                         font.family: "JetBrains Mono"
                                         font.weight: isSel ? Font.Black : Font.Bold
                                         font.pixelSize: window.s(15)
@@ -1135,6 +1139,8 @@ Item {
 
                         Rectangle {
                             id: clockDial
+                            // Use Layout properties instead of standard width/height to prevent
+                            // the layout engine from breaking your dimensions during resize
                             Layout.preferredWidth: window.s(120)
                             Layout.preferredHeight: window.s(120)
                             Layout.alignment: Qt.AlignCenter
@@ -1147,6 +1153,7 @@ Item {
                             Behavior on border.color { ColorAnimation { duration: 200 } }
                             Behavior on border.width { NumberAnimation { duration: 200 } }
 
+                            // 12-Hour Clock Tick Marks
                             Repeater {
                                 model: 12
                                 Item {
@@ -1164,6 +1171,7 @@ Item {
                                 }
                             }
 
+                            // The Interactive Pointer
                             Item {
                                 id: dialPointer
                                 anchors.fill: parent
@@ -1171,6 +1179,7 @@ Item {
                                 rotation: activeTransform * 90
                                 Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack;} }
 
+                                // Pointer Line
                                 Rectangle {
                                     width: window.s(5)
                                     height: parent.height / 2 - window.s(20)
@@ -1181,9 +1190,10 @@ Item {
                                     Behavior on color { ColorAnimation { duration: 300 } }
                                 }
 
+                                // Center Dot
                                 Rectangle {
                                     width: window.s(18)
-                                    height: window.s(18)
+                                    height: window.s(18) // Replaced height: width binding
                                     radius: width / 2
                                     color: window.base
                                     border.color: window.selectedResAccent
@@ -1225,8 +1235,7 @@ Item {
                         }
 
                         Item { Layout.fillWidth: true }
-                    }
-                    Item { Layout.preferredHeight: window.s(2) }
+                    }                    Item { Layout.preferredHeight: window.s(2) }
 
                     // --- REFRESH RATE SLIDER SECTION ---
                     Item {
@@ -1362,7 +1371,9 @@ Item {
 
                     Item { Layout.preferredHeight: window.s(15) }
 
-                    // --- FLOATING APPLY BUTTON ---
+                    // ==========================================
+                    // FLOATING APPLY BUTTON
+                    // ==========================================
                     Item {
                         id: applyButtonContainer
                         Layout.alignment: Qt.AlignRight
