@@ -11,13 +11,9 @@ import "../WindowRegistry.js" as Registry
 PanelWindow {
     id: popupWindow
 
-
     property var popupModel
     property real uiScale: 1.0
 
-    // Local map — live QObjects are stored here directly via storeNotif()
-    // called from Main.qml's onNotification handler. Never crosses window
-    // boundaries via a binding, which is what was breaking sourceNotif.
     property var _notifMap: ({})
 
     function storeNotif(uid, notif) {
@@ -106,17 +102,17 @@ PanelWindow {
 
             add: Transition {
                 ParallelAnimation {
-                    NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic }
-                    NumberAnimation { property: "x"; from: popupWindow.implicitWidth * 0.4; to: 0; duration: 250; easing.type: Easing.OutCubic }
-                    NumberAnimation { property: "scale"; from: 0.95; to: 1.0; duration: 250; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: ViewTransition.item; property: "opacity"; from: 0.0; to: 1.0; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: ViewTransition.item; property: "x"; from: popupWindow.implicitWidth * 0.4; to: 0; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 250; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: ViewTransition.item; property: "scale"; from: 0.95; to: 1.0; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 250; easing.type: Easing.OutCubic }
                 }
             }
 
             remove: Transition {
                 ParallelAnimation {
-                    NumberAnimation { property: "opacity"; to: 0.0; duration: 150; easing.type: Easing.OutCubic }
-                    NumberAnimation { property: "x"; to: popupWindow.implicitWidth * 0.4; duration: 200; easing.type: Easing.OutCubic }
-                    NumberAnimation { property: "scale"; to: 0.95; duration: 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: ViewTransition.item; property: "opacity"; to: 0.0; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 150; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: ViewTransition.item; property: "x"; to: popupWindow.implicitWidth * 0.4; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 200; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: ViewTransition.item; property: "scale"; to: 0.95; duration: (ViewTransition.item && ViewTransition.item.isOsd) ? 0 : 200; easing.type: Easing.OutCubic }
                 }
             }
 
@@ -134,6 +130,11 @@ PanelWindow {
                 property int typeLenSum: 0
                 property int typeLenBody: 0
                 property int popupUid: model.uid
+                
+                property bool isOsd: {
+                    let osdTitles = ["Volume", "Microphone", "Brightness", "Caps Lock", "Num Lock", "Keyboard Backlight"];
+                    return osdTitles.indexOf(fullSummary) !== -1;
+                }
 
                 property var sourceNotif: popupWindow.getNotif(model.uid)
 
@@ -154,6 +155,20 @@ PanelWindow {
                     return 5000;
                 }
 
+                Component.onCompleted: {
+                    if (delegateRoot.isOsd) {
+                        for (let key in popupWindow._notifMap) {
+                            let uid = parseInt(key);
+                            if (uid !== delegateRoot.popupUid) {
+                                let n = popupWindow._notifMap[key];
+                                if (n && n.summary === delegateRoot.fullSummary) {
+                                    popupWindow.removeNotif(uid);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Connections {
                     target: delegateRoot.sourceNotif || null
                     function onClosed() {
@@ -165,15 +180,15 @@ PanelWindow {
                     running: true
                     NumberAnimation {
                         target: delegateRoot; property: "typeLenSum"
-                        from: 0; to: fullSummary.length
-                        duration: Math.min(fullSummary.length * 5, 200)
+                        from: delegateRoot.isOsd ? fullSummary.length : 0; to: fullSummary.length
+                        duration: delegateRoot.isOsd ? 0 : Math.min(fullSummary.length * 5, 200)
                         easing.type: Easing.OutCubic
                     }
                     SequentialAnimation {
                         NumberAnimation {
                             target: delegateRoot; property: "typeLenBody"
-                            from: 0; to: fullBody.length
-                            duration: Math.min(fullBody.length * 5, 300)
+                            from: delegateRoot.isOsd ? fullBody.length : 0; to: fullBody.length
+                            duration: delegateRoot.isOsd ? 0 : Math.min(fullBody.length * 5, 300)
                             easing.type: Easing.OutCubic
                         }
                     }
