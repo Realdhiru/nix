@@ -29,10 +29,6 @@ PanelWindow {
     width: 240 * uiScale
     height: 56 * uiScale
 
-    opacity: osdTimer.running ? 1.0 : 0.0
-    visible: opacity > 0.01
-    Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-
     MatugenColors { id: _theme }
 
     property string osdType: "volume"
@@ -60,6 +56,12 @@ PanelWindow {
 
     Rectangle {
         anchors.fill: parent
+        
+        // FIXED: Opacity and animations moved inside the child Rectangle
+        opacity: osdTimer.running ? 1.0 : 0.0
+        visible: opacity > 0.01
+        Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+
         radius: 28 * uiScale
         color: Qt.rgba(_theme.base.r, _theme.base.g, _theme.base.b, 0.95)
         border.color: _theme.surface1
