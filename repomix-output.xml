@@ -113,6 +113,7 @@ dotfiles/
           battery_wait.sh
           bt_fetch.sh
           bt_wait.sh
+          cava_topbar.conf
           kb_fetch.sh
           kb_wait.sh
           network_fetch.sh
@@ -157,6 +158,7 @@ dotfiles/
     layout.conf
     misc.conf
     rules.conf
+    settings.json
     startup.conf
   matugen/
     templates/
@@ -186,7 +188,6 @@ hosts/
     hardware-configuration.nix
 modules/
   home/
-    quickshell.nix
     shell.nix
     spicetify.nix
     theme.nix
@@ -2793,17 +2794,6 @@ dwindle {
 }
 </file>
 
-<file path="dotfiles/hypr/misc.conf">
-# https://wiki.hypr.land/Configuring/Variables/#misc
-misc {
-    force_default_wallpaper = 0 # Set to 0 or 1 to disable the anime mascot wallpapers
-    disable_hyprland_logo = false # If true disables the random hyprland logo / anime girl background. :(
-}
-
-# POWER OPTIMIZATION: Drops monitor refresh rate to save power when the screen is static
-# vfr = true
-</file>
-
 <file path="dotfiles/hypr/rules.conf">
 #windowrule = opaque true, match:class zen
 #windowrule = opaque true, match:class ^mpv
@@ -3629,16 +3619,6 @@ return config
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
-}
-</file>
-
-<file path="modules/home/quickshell.nix">
-{ config, ... }:
-
-{
-  xdg.configFile."quickshell".source =
-    config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/hypr/scripts/quickshell";
 }
 </file>
 
@@ -7487,6 +7467,23 @@ case $1 in
 esac
 </file>
 
+<file path="dotfiles/hypr/scripts/quickshell/watchers/cava_topbar.conf">
+[general]
+bars = 7
+framerate = 30
+autosens = 1
+sensitivity = 100
+
+[output]
+method = raw
+raw_target = /dev/stdout
+data_format = ascii
+ascii_max_range = 100
+bar_delimiter = 59
+frame_delimiter = 10
+channels = mono
+</file>
+
 <file path="dotfiles/hypr/scripts/quickshell/Floating.qml">
 import QtQuick
 import QtQuick.Layouts
@@ -9324,120 +9321,19 @@ source = ~/.cache/hypr_power_monitor.conf
 monitor=,preferred,auto,2,bitdepth,10
 </file>
 
+<file path="dotfiles/hypr/misc.conf">
+# https://wiki.hypr.land/Configuring/Variables/#misc
+misc {
+    force_default_wallpaper = 0 # Set to 0 or 1 to disable the anime mascot wallpapers
+    disable_hyprland_logo = false # If true disables the random hyprland logo / anime girl background. :(
+}
+
+# POWER OPTIMIZATION: Drops monitor refresh rate to save power when the screen is static
+# vfr = true # test edit Thu Jul  9 01:25:32 PM IST 2026
+</file>
+
 <file path="dotfiles/secrets/.gitkeep">
 
-</file>
-
-<file path="modules/system/users.nix">
-{ pkgs, ... }:
-
-{
-  users.users.realdhiru = {
-    isNormalUser = true;
-
-    extraGroups = [
-      "wheel"
-      "networkmanager"
-    ];
-    shell = pkgs.zsh;
-  };
-
-  services.getty.autologinUser = "realdhiru";
-  services.getty.autologinOnce = true;
-
-  # Narrowly-scoped passwordless sudo for the two exact CPU turbo/boost
-  # toggle commands the Quickshell power-profile popup needs to write.
-  # This is intentionally NOT a blanket grant on `tee` or `tlp` — sudoers
-  # matches the full command line verbatim, so only these two precise
-  # sysfs writes are permitted without a password, nothing else.
-  security.sudo.extraRules = [
-    {
-      users = [ "realdhiru" ];
-      commands = [
-        {
-          command = "/run/current-system/sw/bin/tee /sys/devices/system/cpu/intel_pstate/no_turbo";
-          options = [ "NOPASSWD" ];
-        }
-        {
-          command = "/run/current-system/sw/bin/tee /sys/devices/system/cpu/cpufreq/boost";
-          options = [ "NOPASSWD" ];
-        }
-      ];
-    }
-  ];
-}
-</file>
-
-<file path="home.nix">
-{ config, pkgs, ... }:
-
-{
-  imports = [
-    ./modules/home/shell.nix
-    ./modules/home/quickshell.nix
-    ./modules/home/spicetify.nix
-    ./modules/home/theme.nix
-  ];
-
-  # Global Cursor Configuration
-  home.pointerCursor = {
-    gtk.enable = true;
-    x11.enable = true;
-    name = "Bibata-Modern-Ice";
-    package = pkgs.bibata-cursors;
-    size = 24;
-  };
-
-  # Explicitly configure the internal activation option at the user level
-  home.activation = {
-    enableBackup = config.lib.dag.entryAfter [ "writeBoundary" ] ''
-      # This forces Home Manager to handle colliding targets gracefully without crashing systemd
-      export HOME_MANAGER_BACKUP_EXT="backup"
-    '';
-
-    initPowerMonitor = config.lib.dag.entryAfter [ "writeBoundary" ] ''
-      # Ensure dynamic state files exist before Hyprland boots to prevent parsing errors
-      mkdir -p $HOME/.cache
-      touch $HOME/.cache/hypr_power_monitor.conf
-    '';
-  };
-
-  # Hardware Acceleration Flags for Brave
-  home.file.".config/brave-flags.conf".text = ''
-    --ozone-platform-hint=auto
-    --enable-features=AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder
-  '';
-
-  xdg.configFile."hypr" = {
-    source = ./dotfiles/hypr;
-    force = true;
-  };
-
-  xdg.configFile."rofi" = {
-    source = ./dotfiles/rofi;
-    force = true;
-  };
-
-  xdg.configFile."wezterm".source =
-    config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/wezterm";
-
-  xdg.configFile."fastfetch/config.jsonc".source = ./dotfiles/fastfetch/config.jsonc;
-
-  xdg.configFile."matugen".source =
-    config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/matugen";
-
-  services.easyeffects.enable = true;
-  services.playerctld.enable = true;
-
-  home.username = "realdhiru";
-  home.homeDirectory = "/home/realdhiru";
-
-  home.stateVersion = "26.11";
-
-  programs.home-manager.enable = true;
-}
 </file>
 
 <file path="dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml">
@@ -13157,1466 +13053,6 @@ done
 echo "=== Pipeline finished ===" >> "$LOG_FILE"
 </file>
 
-<file path="dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml">
-import QtQuick
-import QtQuick.Layouts
-import QtQuick.Window
-import QtCore
-import Qt.labs.folderlistmodel
-import Quickshell
-import Quickshell.Io
-import "../" 
-
-Item {
-    id: window
-    width: Screen.width
-
-
-    Scaler {
-        id: scaler
-        currentWidth: Screen.width
-    }
-    
-    function s(val) { 
-        return scaler.s(val); 
-    }
-
-    MatugenColors { id: _theme }
-
-    property string widgetArg: ""
-    property string targetWallName: ""
-    property bool initialFocusSet: false
-    property int visibleItemCount: -1
-    property int scrollAccum: 0
-    property real scrollThreshold: window.s(300)
-
-    property string currentFilter: "All"
-    property string _lastFilter: "All"
-    property string searchQuery: ""
-    property bool isOnlineSearch: false
-    property bool isSearchPaused: false
-    property bool hasSearched: false
-    property var colorMap: ({})
-    property int cacheVersion: 0 
-    
-    property bool isDownloadingWallpaper: false
-    property string currentDownloadName: ""
-    
-    property bool isApplying: false
-    property bool isMonitorSelectorOpen: false
-
-    property bool allowAddAnimation: false
-    
-    Timer {
-        id: applyUnlockTimer
-        interval: 250
-        onTriggered: window.isApplying = false
-    }
-    
-    property bool isStartup: localFolderModel.status === FolderListModel.Loading || srcModel.status === FolderListModel.Loading
-    property bool isReady: visible && localFolderModel.status === FolderListModel.Ready
-    property bool isSearchActive: window.currentFilter === "Search" && window.hasSearched && searchFolderModel.status === FolderListModel.Loading
-    
-    property string lastSearchName: ""
-    property bool isModelChanging: false
-    property bool searchIndexRestored: false
-    
-    property bool isScrollingBlocked: window.currentFilter === "Search" && window.hasSearched && window.isSearchActive && !window.isSearchPaused
-    property bool jumpToLastOnFilterChange: false
-
-    readonly property var filterData: [
-        { name: "All", hex: "", label: "All" },
-        { name: "Video", hex: "", label: "Vid" },
-        { name: "Red", hex: "#FF4500", label: "" },
-        { name: "Orange", hex: "#FFA500", label: "" },
-        { name: "Yellow", hex: "#FFD700", label: "" },
-        { name: "Green", hex: "#32CD32", label: "" },
-        { name: "Blue", hex: "#1E90FF", label: "" },
-        { name: "Purple", hex: "#8A2BE2", label: "" },
-        { name: "Pink", hex: "#FF69B4", label: "" },
-        { name: "Monochrome", hex: "#A9A9A9", label: "" },
-        { name: "Search", hex: "", label: "Search" } 
-    ]
-
-    ListModel { id: monitorModel }
-
-    Process {
-        id: monitorProc
-        command: ["hyprctl", "monitors", "-j"]
-        running: false
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let response = this.text;
-                if (response && response.trim().length > 0) {
-                    try {
-                        var monitors = JSON.parse(response);
-                        monitorModel.clear();
-                        for (var i = 0; i < monitors.length; i++) {
-                            monitorModel.append({ "name": monitors[i].name, "selected": true });
-                        }
-                    } catch(e) {
-                        console.log("[MonitorSync] ERROR parsing JSON: " + e);
-                    }
-                }
-            }
-        }
-
-    function loadMonitors() {
-        monitorProc.running = true;
-    }
-
-    function getMonitorOutputs() {
-        if (monitorModel.count <= 1) return "all"; 
-        let selected = [];
-        for (let i = 0; i < monitorModel.count; i++) {
-            if (monitorModel.get(i).selected) {
-                selected.push(monitorModel.get(i).name);
-            }
-        }
-        if (selected.length === 0) return "none";
-        if (selected.length === monitorModel.count) return "all";
-        return selected.join(",");
-    }
-
-    function applyWallpaper(safeFileName, isVideo) {
-        if (!safeFileName || window.isApplying) return;
-        
-        let outputs = window.getMonitorOutputs();
-        if (outputs === "none") return;
-        
-        window.isApplying = true;
-        applyUnlockTimer.restart();
-        
-        window.targetWallName = safeFileName;
-        let cleanName = window.getCleanName(safeFileName);
-        let reloadScript = Qt.resolvedUrl("matugen_reload.sh").toString();
-        
-        if (reloadScript.startsWith("file://")) {
-            reloadScript = decodeURIComponent(reloadScript.substring(7));
-        }
-
-        const escapeBash = (str) => String(str).replace(/(["\\$`])/g, '\\$1');
-        
-        if (window.currentFilter === "Search" && window.hasSearched) {
-            let alreadyExists = window.isDownloaded(safeFileName);
-            let destFile = window.srcDir + "/" + safeFileName;
-            let finalThumb = "file://" + window.srcDir + "/" + safeFileName;
-            let tempThumb = decodeURIComponent(window.searchDir.replace("file://", "")) + "/" + safeFileName;
-            let mapFile = Caching.getCacheDir("wallpaper_picker") + "/search_map.txt";
-
-            if (alreadyExists) {
-                const applyScript = `
-                    export DEST_FILE="${escapeBash(destFile)}"
-                    export FINAL_THUMB="${escapeBash(finalThumb)}"
-                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
-                    
-                    ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
-                `;
-                Quickshell.execDetached(["bash", "-c", applyScript]);
-            } else {
-                window.isDownloadingWallpaper = true;
-                window.currentDownloadName = safeFileName;
-
-                const downloadScript = `
-                    export SAFE_NAME="${escapeBash(safeFileName)}"
-                    export DEST_FILE="${escapeBash(destFile)}"
-                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
-                    export MAP_FILE="${escapeBash(mapFile)}"
-                    
-                    URL=\$(awk -F'|' -v fname="\$SAFE_NAME" '\$1 == fname {print \$2; exit}' "\$MAP_FILE")
-                    if [ -n "\$URL" ]; then
-                        curl -s -L -A "Mozilla/5.0" "\$URL" -o "$DEST_FILE.tmp"
-                        if file "$DEST_FILE.tmp" | grep -iq "webp"; then
-                            magick "$DEST_FILE.tmp" "$DEST_FILE"
-                            rm -f "$DEST_FILE.tmp"
-                        else
-                            mv "$DEST_FILE.tmp" "$DEST_FILE"
-                        fi
-                        
-                        ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
-                    fi
-                `;
-                Quickshell.execDetached(["bash", "-c", downloadScript]);
-            }
-            return;
-        }
-
-        const originalFile = window.srcDir + "/" + cleanName;
-        const escOriginal = escapeBash(originalFile);
-
-        const fullScript = `
-            ~/.config/hypr/scripts/set_wallpaper.sh "${escOriginal}"
-        `;
-        Quickshell.execDetached(["bash", "-c", fullScript]);
-    }
-    
-    Settings {
-        id: searchState
-        category: "QS_WallpaperPicker"
-        property string query: ""
-        property bool searched: false
-        property string lastName: ""
-    }
-
-    onIsSearchPausedChanged: {
-        Quickshell.execDetached(["bash", "-c", "echo '" + (isSearchPaused ? "pause" : "run") + "' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
-    }
-
-    onVisibleChanged: {
-        if (!visible) {
-            window.initialFocusSet = false;
-            window.allowAddAnimation = false;
-            window.searchIndexRestored = false;
-            window.isApplying = false;
-            window.isMonitorSelectorOpen = false;
-            if (window.hasSearched) {
-                window.isSearchPaused = true;
-            }
-        } else {
-            window.isFilterAnimating = true;
-            filterAnimationTimer.restart();
-            if (window.currentFilter !== "Search") {
-                window.applyFilters(true);
-            } else if (window.hasSearched) {
-                window.searchIndexRestored = false;
-                window.isSearchPaused = true;
-                window.trySearchFocus();
-                window.syncSearchModel();
-            }
-        }
-    }
-
-    property bool isLoading: localFolderModel.status === FolderListModel.Loading || 
-                             srcModel.status === FolderListModel.Loading ||
-                             (window.currentFilter === "Search" && searchFolderModel.status === FolderListModel.Loading)
-
-    property bool showSpinner: window.isDownloadingWallpaper || 
-                               (window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused) || 
-                               (window.currentFilter !== "Search" && window.isLoading)
-
-    property string currentNotification: {
-        if (window.isDownloadingWallpaper) return "Downloading wallpaper...";
-        if (window.currentFilter === "Search") {
-            if (!window.hasSearched) return "Type something to search...";
-            if (window.isSearchPaused) return "Search Paused";
-            if (window.visibleItemCount === 0) return "Searching DDG (FHD+)...";
-            return "Parsing wallpapers...";
-        }
-        if (isLoading) return "Parsing wallpapers...";
-        if (window.visibleItemCount === 0) return "No wallpapers found";
-        if (window.currentFilter === "All") return "";
-        if (window.currentFilter === "Video") return "Videos";
-        return window.currentFilter;
-    }
-    
-    property bool showNotification: !window.isStartup && currentNotification !== ""
-
-    function getCleanName(name) {
-        if (!name) return "";
-        let clean = String(name);
-        return clean.startsWith("000_") ? clean.substring(4) : clean;
-    }
-
-    function isDownloaded(name) {
-        if (!name) return false;
-        for (let i = 0; i < srcModel.count; i++) {
-            if (srcModel.get(i, "fileName") === name) return true;
-        }
-        return false;
-    }
-
-    onWidgetArgChanged: {
-        if (widgetArg !== "") {
-            targetWallName = widgetArg;
-            initialFocusSet = false;
-            tryFocus();
-        }
-    }
-
-    function executeFocusRestore(targetIndex, isSearchRestore, requirePositioning) {
-        let targetModel = window.getModelForFilter(window.currentFilter);
-        if (targetIndex !== -1 && targetIndex < targetModel.count) {
-            window.isModelChanging = true;
-            if (requirePositioning) {
-                view.forceLayout();
-                view.positionViewAtIndex(targetIndex, ListView.Center);
-            }
-            view.currentIndex = targetIndex;
-            if (isSearchRestore) {
-                window.searchIndexRestored = true;
-            }
-            window.isModelChanging = false;
-            window.initialFocusSet = true;
-            allowAddAnimationTimer.restart();
-        } else if (isSearchRestore) {
-            window.searchIndexRestored = true;
-        }
-    }
-
-    Timer {
-        id: allowAddAnimationTimer
-        interval: 600
-        onTriggered: window.allowAddAnimation = true
-    }
-
-    function tryFocus() {
-        if (initialFocusSet) return;
-        if (localProxyModel.count > 0) {
-            let foundIndex = -1;
-            let cleanTarget = window.getCleanName(targetWallName);
-            if (cleanTarget !== "") {
-                for (let i = 0; i < localProxyModel.count; i++) {
-                    let fname = localProxyModel.get(i).fileName || "";
-                    if (window.getCleanName(fname) === cleanTarget) {
-                        foundIndex = i;
-                        break;
-                    }
-                }
-            }
-            let finalIndex = foundIndex !== -1 ? foundIndex : 0;
-            window.executeFocusRestore(finalIndex, false, true);
-        }
-    }
-    
-    function trySearchFocus() {
-        if (window.searchIndexRestored || searchProxyModel.count === 0) return;
-        if (window.lastSearchName === "") {
-             window.searchIndexRestored = true;
-             return;
-        }
-        for (let i = 0; i < searchProxyModel.count; i++) {
-            let fname = searchProxyModel.get(i).fileName || "";
-            if (fname === window.lastSearchName) {
-                window.executeFocusRestore(i, true, true);
-                return;
-            }
-        }
-        if (searchFolderModel.status === FolderListModel.Ready && searchProxyModel.count === searchFolderModel.count) {
-             window.searchIndexRestored = true;
-        }
-    }
-
-    function getModelForFilter(filter) {
-        return filter === "Search" ? searchProxyModel : localProxyModel;
-    }
-
-    function updateVisibleCount() {
-        let targetModel = window.getModelForFilter(window.currentFilter);
-        if (!targetModel || targetModel.count === 0) {
-            window.visibleItemCount = 0;
-            return;
-        }
-        let count = 0;
-        for (let i = 0; i < targetModel.count; i++) {
-            let fname = targetModel.get(i).fileName || "";
-            let isVid = fname.startsWith("000_");
-            if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                count++;
-            }
-        }
-        window.visibleItemCount = count;
-    }
-
-    function triggerOnlineSearch() {
-        if (searchInput.text.trim() === "") return;
-        window.isModelChanging = true;
-        searchProxyModel.clear();
-        window.lastSearchName = "";
-        searchState.lastName = "";
-        if (window.currentFilter === "Search") {
-            view.currentIndex = 0;
-            view.positionViewAtIndex(0, ListView.Center);
-        }
-        window.isModelChanging = false;
-        window.searchIndexRestored = true;
-        window.isOnlineSearch = true;
-        window.hasSearched = true;
-        window.visibleItemCount = 0;
-        searchState.searched = true;
-        searchState.query = searchInput.text.trim();
-        window.isSearchPaused = false;
-        window.searchQuery = searchInput.text.trim();
-        
-        let rawSearchDir = decodeURIComponent(window.searchDir.replace(/^file:\/\//, ""));
-        let scriptPath = decodeURIComponent(Qt.resolvedUrl("ddg_search.sh").toString().replace(/^file:\/\//, ""));
-        
-        const cmd = `
-            exec > ${Caching.logDir}/ddg_run.log 2>&1
-            export PATH=$PATH:/run/current-system/sw/bin
-            echo 'stop' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
-            for p in \$(pgrep -f ddg_search.sh); do
-                if [ "\$p" != "\$\$" ] && [ "\$p" != "\$BASHPID" ]; then
-                    kill -9 \$p 2>/dev/null || true
-                fi
-            done
-            pkill -f "[g]et_ddg_links.py" || true
-            sleep 0.2
-            rm -rf "${rawSearchDir}"/* || true
-            rm -f "${rawSearchDir}/../search_map.txt" || true
-            echo 'run' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
-            bash "${scriptPath}" "${window.searchQuery}" &
-        `;
-        Quickshell.execDetached(["bash", "-c", cmd]);
-        searchInput.focus = false;
-        view.forceActiveFocus();
-    }
-
-    readonly property string homeDir: "file://" + Quickshell.env("HOME")
-    readonly property string searchDir: "file://" + Caching.getCacheDir("wallpaper_picker") + "/search_thumbs"
-    readonly property string srcDir: {
-        const dir = Quickshell.env("WALLPAPER_DIR")
-        return (dir && dir !== "") ? dir : Quickshell.env("HOME") + "/Pictures/Wallpapers"
-    }
-
-    readonly property real itemWidth: window.s(400)
-    readonly property real itemHeight: window.s(420)
-    readonly property real borderWidth: window.s(3)
-    readonly property real spacing: window.s(10)
-    readonly property real skewFactor: -0.35
-
-    Timer { id: scrollThrottle; interval: 150 }
-
-    property bool isFilterAnimating: false
-    Timer {
-        id: filterAnimationTimer
-        interval: 800
-        onTriggered: window.isFilterAnimating = false
-    }
-
-    property bool isItemAnimating: false
-    Timer {
-        id: itemAnimationTimer
-        interval: 500
-        onTriggered: window.isItemAnimating = false
-    }
-
-    function getHexBucket(hexStr) {
-        if (!hexStr) return "Monochrome";
-        hexStr = String(hexStr).trim().replace(/#/g, '');
-        if (hexStr.length > 6) hexStr = hexStr.substring(0, 6);
-        if (hexStr.length !== 6) return "Monochrome";
-
-        let r = parseInt(hexStr.substring(0,2), 16) / 255;
-        let g = parseInt(hexStr.substring(2,4), 16) / 255;
-        let b = parseInt(hexStr.substring(4,6), 16) / 255;
-        if (isNaN(r) || isNaN(g) || isNaN(b)) return "Monochrome";
-
-        let max = Math.max(r, g, b), min = Math.min(r, g, b);
-        let d = max - min;
-        let h = 0;
-        let s = max === 0 ? 0 : d / max;
-        let v = max;
-
-        if (max !== min) {
-            if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-            else if (max === g) h = (b - r) / d + 2;
-            else h = (r - g) / d + 4;
-            h /= 6;
-        }
-        h = h * 360;
-
-        if (s < 0.05 || v < 0.08) return "Monochrome";
-        if (h >= 345 || h < 15) return "Red";
-        if (h >= 15 && h < 45) return "Orange";
-        if (h >= 45 && h < 75) return "Yellow";
-        if (h >= 75 && h < 165) return "Green";
-        if (h >= 165 && h < 260) return "Blue";
-        if (h >= 260 && h < 315) return "Purple";
-        if (h >= 315 && h < 345) return "Pink";
-        return "Monochrome";
-    }
-
-    function checkItemMatchesFilter(fileName, isVid, cv, filter) {
-        if (filter === "Search") return true;
-        if (filter === "All") return true;
-        if (filter === "Video") return isVid;
-        let hexColor = window.colorMap[String(fileName)];
-        if (!hexColor) return filter === "Monochrome";
-        return window.getHexBucket(hexColor) === filter;
-    }
-
-    Timer {
-        id: markerDebounce
-        interval: 300
-        onTriggered: window.processMarkers()
-    }
-
-    FolderListModel {
-        id: markerModel
-        folder: "file://" + Caching.getCacheDir("wallpaper_picker") + "/colors_markers"
-        showDirs: false
-        nameFilters: ["*_HEX_*"]
-        onCountChanged: markerDebounce.restart()
-        onStatusChanged: { if (status === FolderListModel.Ready) markerDebounce.restart() }
-    }
-    
-    FolderListModel {
-        id: srcModel
-        folder: "file://" + window.srcDir
-        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
-        showDirs: false
-        onCountChanged: {
-            if (window.isDownloadingWallpaper && window.isDownloaded(window.currentDownloadName)) {
-                window.isDownloadingWallpaper = false;
-            }
-        }
-    }
-
-    function processMarkers() {
-        let newMap = {};
-        for (let i = 0; i < markerModel.count; i++) {
-            let markerName = markerModel.get(i, "fileName") || "";
-            if (!markerName) continue;
-            let splitIdx = markerName.lastIndexOf("_HEX_");
-            if (splitIdx !== -1) {
-                let fName = markerName.substring(0, splitIdx);
-                let hexCode = markerName.substring(splitIdx + 5);
-                newMap[fName] = "#" + hexCode;
-            }
-        }
-        window.colorMap = newMap;
-        window.cacheVersion++;
-        window.updateVisibleCount();
-    }
-
-    function stepToNextValidIndex(direction) {
-        let targetModel = window.getModelForFilter(window.currentFilter);
-        if (!targetModel || targetModel.count === 0) return;
-        
-        let start = view.currentIndex;
-        let found = -1;
-
-        if (direction === 1) {
-            for (let i = start + 1; i < targetModel.count; i++) {
-                let fname = targetModel.get(i).fileName || "";
-                let isVid = fname.startsWith("000_");
-                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                    found = i; break;
-                }
-            }
-        } else {
-            for (let i = start - 1; i >= 0; i--) {
-                let fname = targetModel.get(i).fileName || "";
-                let isVid = fname.startsWith("000_");
-                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                    found = i; break;
-                }
-            }
-        }
-
-        if (found !== -1) {
-            view.currentIndex = found;
-            return;
-        }
-
-        let filterOrder = ["All", "Video", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Monochrome"];
-        let currentFilterIdx = filterOrder.indexOf(window.currentFilter);
-
-        if (currentFilterIdx === -1) {
-            let current = start;
-            for (let i = 0; i < targetModel.count; i++) {
-                current = (current + direction + targetModel.count) % targetModel.count;
-                let fname = targetModel.get(current).fileName || "";
-                let isVid = fname.startsWith("000_");
-                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                    view.currentIndex = current;
-                    return;
-                }
-            }
-            return;
-        }
-
-        let nextFilterIdx = currentFilterIdx + direction;
-        if (nextFilterIdx >= 0 && nextFilterIdx < filterOrder.length) {
-            window.jumpToLastOnFilterChange = (direction === -1);
-            window.currentFilter = filterOrder[nextFilterIdx];
-        }
-    }
-
-    function cycleFilter(direction) {
-        let currentIdx = -1;
-        for (let i = 0; i < window.filterData.length; i++) {
-            if (window.filterData[i].name === window.currentFilter) {
-                currentIdx = i;
-                break;
-            }
-        }
-        if (currentIdx !== -1) {
-            let nextIdx = (currentIdx + direction + window.filterData.length) % window.filterData.length;
-            window.currentFilter = window.filterData[nextIdx].name;
-        }
-    }
-
-    function applyFilters(forceSnap) {
-        let targetModel = window.getModelForFilter(window.currentFilter);
-        if (!targetModel || targetModel.count === 0) {
-            window.updateVisibleCount();
-            return;
-        }
-        if (window.currentFilter === "Search") {
-            window.updateVisibleCount();
-            return;
-        }
-
-        let firstValidIndex = -1;
-        let lastValidIndex = -1;
-        let cleanTarget = window.getCleanName(window.targetWallName);
-        let targetIndex = -1;
-
-        for (let i = 0; i < targetModel.count; i++) {
-            let fname = targetModel.get(i).fileName || "";
-            let isVid = fname.startsWith("000_");
-            if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                if (firstValidIndex === -1) firstValidIndex = i;
-                lastValidIndex = i;
-                if (cleanTarget !== "" && window.getCleanName(fname) === cleanTarget) {
-                    targetIndex = i;
-                }
-            }
-        }
-
-        let indexToFocus = -1;
-        if (targetIndex !== -1) indexToFocus = targetIndex;
-        else if (window.jumpToLastOnFilterChange && lastValidIndex !== -1) indexToFocus = lastValidIndex;
-        else if (firstValidIndex !== -1) indexToFocus = firstValidIndex;
-
-        window.jumpToLastOnFilterChange = false;
-        if (indexToFocus !== -1) {
-            window.executeFocusRestore(indexToFocus, false, forceSnap === true);
-        }
-        window.updateVisibleCount();
-    }
-
-    onCurrentFilterChanged: {
-        window.isFilterAnimating = true;
-        filterAnimationTimer.restart();
-        window.isModelChanging = true;
-        let returningFromSearch = (window._lastFilter === "Search" && window.currentFilter !== "Search");
-        window._lastFilter = window.currentFilter;
-        
-        if (returningFromSearch) window.searchIndexRestored = false;
-        
-        Qt.callLater(() => {
-            view.forceActiveFocus();
-            if (window.currentFilter === "Search") {
-                if (window.hasSearched) {
-                    window.searchIndexRestored = false;
-                    window.trySearchFocus();
-                }
-            } else {
-                window.applyFilters(returningFromSearch);
-            }
-            window.isModelChanging = false;
-        });
-    }
-
-    Shortcut { 
-        sequence: "Left"; 
-        enabled: !window.isScrollingBlocked && !window.isApplying
-        onActivated: window.stepToNextValidIndex(-1) 
-    }
-    Shortcut { 
-        sequence: "Right"; 
-        enabled: !window.isScrollingBlocked && !window.isApplying
-        onActivated: window.stepToNextValidIndex(1) 
-    }
-    Shortcut { 
-        sequence: "Return"
-        enabled: !searchInput.activeFocus && !window.isScrollingBlocked && !window.isApplying
-        onActivated: { 
-            let targetModel = window.getModelForFilter(window.currentFilter);
-            if (view.currentIndex >= 0 && view.currentIndex < targetModel.count) {
-                let fname = targetModel.get(view.currentIndex).fileName;
-                if (fname) window.applyWallpaper(String(fname), String(fname).startsWith("000_"));
-            }
-        } 
-    }
-    Shortcut { sequence: "Escape"; enabled: !window.isApplying; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
-    Shortcut { sequence: "Tab"; enabled: !window.isApplying; onActivated: window.cycleFilter(1) }
-    Shortcut { sequence: "Backtab"; enabled: !window.isApplying; onActivated: window.cycleFilter(-1) }
-
-    ListModel { id: localProxyModel }
-    ListModel { id: searchProxyModel }
-    readonly property var activeModel: window.currentFilter === "Search" ? searchProxyModel : localProxyModel
-
-    FolderListModel {
-        id: localFolderModel
-        folder: "file://" + window.srcDir
-        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
-        showDirs: false
-        sortField: FolderListModel.Name
-        onCountChanged: window.syncLocalModel()
-        onStatusChanged: { if (status === FolderListModel.Ready) window.syncLocalModel() }
-    }
-
-    property int _localSyncedCount: 0
-
-    function syncLocalModel() {
-        let folderCount = localFolderModel.count;
-        if (folderCount < window._localSyncedCount) {
-            let wasAllowing = window.allowAddAnimation;
-            window.allowAddAnimation = false;
-            window.isModelChanging = true;
-            localProxyModel.clear();
-            window._localSyncedCount = 0;
-            window.isModelChanging = false;
-            window.syncLocalModel();
-            if (wasAllowing) allowAddAnimationTimer.restart();
-            return;
-        }
-
-        if (folderCount > window._localSyncedCount) {
-            let batch = [];
-            for (let i = window._localSyncedCount; i < folderCount; i++) {
-                let fn = localFolderModel.get(i, "fileName");
-                let fu = localFolderModel.get(i, "fileUrl");
-                if (fn !== undefined) {
-                    batch.push({ "fileName": fn, "fileUrl": String(fu) });
-                }
-            }
-            if (batch.length > 0) localProxyModel.append(batch);
-            window._localSyncedCount = folderCount;
-        }
-
-        if (window.currentFilter !== "Search") window.updateVisibleCount();
-        if (!window.initialFocusSet && window.currentFilter !== "Search" && localProxyModel.count > 0) {
-            window.tryFocus();
-        }
-    }
-
-    function syncSearchModel() {
-        let startIdx = searchProxyModel.count;
-        let endIdx = searchFolderModel.count;
-        if (endIdx < startIdx) {
-            window.isModelChanging = true;
-            searchProxyModel.clear();
-            startIdx = 0;
-            window.isModelChanging = false;
-        }
-
-        let batch = [];
-        for (let i = startIdx; i < endIdx; i++) {
-            let fn = searchFolderModel.get(i, "fileName");
-            let fu = searchFolderModel.get(i, "fileUrl");
-            if (fn !== undefined) {
-                batch.push({ "fileName": fn, "fileUrl": String(fu) });
-            }
-        }
-        if (batch.length > 0) searchProxyModel.append(batch);
-
-        if (window.currentFilter === "Search") window.updateVisibleCount();
-        if (window.currentFilter === "Search" && window.hasSearched) {
-            if (!window.searchIndexRestored) window.trySearchFocus();
-            if (window.isScrollingBlocked && startIdx === 0 && searchProxyModel.count > 0 && window.lastSearchName === "") {
-                view.forceLayout();
-                view.currentIndex = 0;
-                view.positionViewAtIndex(0, ListView.Center);
-            }
-        }
-    }
-
-    FolderListModel {
-        id: searchFolderModel
-        folder: window.searchDir
-        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
-        showDirs: false
-        sortField: FolderListModel.Name
-        onFolderChanged: {
-            window.isModelChanging = true;
-            searchProxyModel.clear();
-            window.isModelChanging = false;
-        }
-        onCountChanged: window.syncSearchModel()
-        onStatusChanged: { if (status === FolderListModel.Ready) window.syncSearchModel() }
-    }
-
-    ListView {
-        id: view
-        anchors.fill: parent
-        opacity: window.isReady ? 1.0 : 0.0
-        anchors.margins: window.isReady ? 0 : window.s(40)
-        
-        Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutQuart } }
-        Behavior on anchors.margins { NumberAnimation { duration: 700; easing.type: Easing.OutExpo } }
-
-        spacing: 0
-        orientation: ListView.Horizontal
-        clip: false
-        interactive: !window.isScrollingBlocked && !window.isApplying
-        cacheBuffer: 2000
-
-        highlightRangeMode: ListView.StrictlyEnforceRange
-        preferredHighlightBegin: (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2)
-        preferredHighlightEnd: (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2)
-        highlightMoveDuration: window.initialFocusSet ? 500 : 0
-        focus: true
-        
-        onCurrentIndexChanged: {
-            window.isItemAnimating = true;
-            itemAnimationTimer.restart();
-            if (view.model !== searchProxyModel || window.currentFilter !== "Search") return;
-            if (!window.isModelChanging && window.hasSearched && window.searchIndexRestored) {
-                if (currentIndex >= 0 && currentIndex < searchProxyModel.count) {
-                    let fname = searchProxyModel.get(currentIndex).fileName;
-                    if (fname !== undefined && fname !== "") {
-                        window.lastSearchName = String(fname);
-                        searchState.lastName = String(fname);
-                    }
-                }
-            }
-        }
-        
-        add: Transition {
-            enabled: window.allowAddAnimation
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 400; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "scale"; from: 0.5; to: 1; duration: 400; easing.type: Easing.OutBack }
-            }
-        }
-        addDisplaced: Transition {
-            enabled: window.allowAddAnimation
-            NumberAnimation { property: "x"; duration: 400; easing.type: Easing.OutCubic }
-        }
-
-        header: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5) / 2)) }
-        footer: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5) / 2)) }
-        model: window.activeModel
-
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.NoButton
-            onWheel: (wheel) => {
-                if (window.isScrollingBlocked || window.isApplying) {
-                    wheel.accepted = true;
-                    return;
-                }
-                if (scrollThrottle.running) {
-                   wheel.accepted = true;
-                   return;
-                }
-                let dx = wheel.angleDelta.x;
-                let dy = wheel.angleDelta.y;
-                let delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
-                scrollAccum += delta;
-
-                if (Math.abs(scrollAccum) >= scrollThreshold) {
-                    window.stepToNextValidIndex(scrollAccum > 0 ? -1 : 1);
-                    scrollAccum = 0;
-                    scrollThrottle.start();
-                }
-                wheel.accepted = true;
-            }        
-        }
-
-        delegate: Item {
-            id: delegateRoot
-            readonly property string safeFileName: fileName !== undefined ? String(fileName) : ""
-            readonly property bool isCurrent: ListView.isCurrentItem && !window.isScrollingBlocked
-            readonly property bool isFakeSelected: window.isScrollingBlocked && index === 0
-            readonly property bool isVisuallyEnlarged: isCurrent || isFakeSelected
-            readonly property bool isVideo: safeFileName.startsWith("000_")
-            readonly property bool matchesFilter: window.checkItemMatchesFilter(safeFileName, isVideo, window.cacheVersion, window.currentFilter)
-            readonly property real targetWidth: isVisuallyEnlarged ? (window.itemWidth * 1.5) : (window.itemWidth * 0.5)
-            readonly property real targetHeight: isVisuallyEnlarged ? (window.itemHeight + window.s(30)) : window.itemHeight
-            
-            readonly property string thumbPath: "file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName)
-
-            width: matchesFilter ? (targetWidth + window.spacing) : 0
-            visible: width > 0.1 || opacity > 0.01
-            opacity: matchesFilter ? (isVisuallyEnlarged ? 1.0 : 0.6) : 0.0
-            scale: matchesFilter ? 1.0 : 0.5
-            height: matchesFilter ? targetHeight : 0
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: window.s(15)
-            z: isVisuallyEnlarged ? 10 : 1
-            
-            Behavior on scale { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-            Behavior on width { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-            Behavior on height { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-            Behavior on opacity { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-
-            Item {
-                anchors.centerIn: parent
-                anchors.horizontalCenterOffset: ((window.itemHeight - height) / 2) * window.skewFactor
-                width: parent.width > 0 ? parent.width * (targetWidth / (targetWidth + window.spacing)) : 0
-                height: parent.height
-
-                transform: Matrix4x4 {
-                    property real s: window.skewFactor
-                    matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-                }
-                
-                MouseArea {
-                    anchors.fill: parent
-                    enabled: delegateRoot.matchesFilter && !window.isScrollingBlocked && !window.isApplying
-                    onClicked: {
-                        view.currentIndex = index;
-                        window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo);
-                    }
-                }
-
-                Image {
-                    anchors.fill: parent
-                    source: thumbPath
-                    sourceSize: Qt.size(256, 256)
-                    fillMode: Image.Stretch
-                    asynchronous: true
-                }
-
-                Item {
-                    anchors.fill: parent
-                    anchors.margins: window.borderWidth
-                    Rectangle { anchors.fill: parent; color: _theme.base }
-                    clip: true
-
-                    Image {
-                        anchors.centerIn: parent
-                        anchors.horizontalCenterOffset: window.s(-50)
-                        width: (window.itemWidth * 1.5) + ((window.itemHeight + window.s(30)) * Math.abs(window.skewFactor)) + window.s(50)
-                        height: window.itemHeight + window.s(30)
-                        fillMode: Image.PreserveAspectCrop
-                        source: thumbPath
-                        sourceSize: Qt.size(400, 400)
-                        asynchronous: true
-
-                        transform: Matrix4x4 {
-                            property real s: -window.skewFactor
-                            matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Rectangle {
-        id: filterBarBackground
-        anchors.top: parent.top
-        anchors.topMargin: window.isReady ? window.s(40) : window.s(-100)
-        opacity: window.isReady ? 1.0 : 0.0
-        Behavior on anchors.topMargin { NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
-        Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
-        anchors.horizontalCenter: parent.horizontalCenter
-        z: 20
-        height: window.s(56)
-        width: filterRow.width + window.s(24)
-        radius: window.s(14)
-        color: Qt.rgba(_theme.mantle.r, _theme.mantle.g, _theme.mantle.b, 0.90)
-        border.color: _theme.surface2
-        border.width: 1
-
-        Row {
-            id: filterRow
-            anchors.centerIn: parent
-            spacing: window.s(12)
-
-            Rectangle {
-                id: notifDrawer
-                height: window.s(44)
-                property real paddingLeft: window.showSpinner ? window.s(40) : window.s(16)
-                property real targetWidth: window.showNotification ? Math.min(notifTextDrawer.implicitWidth + paddingLeft + window.s(20), window.s(300)) : 0
-                width: targetWidth
-                visible: width > 0.1
-                radius: window.s(10)
-                clip: true
-                anchors.verticalCenter: parent.verticalCenter
-                color: window.showNotification ? _theme.surface2 : "transparent"
-                border.color: window.showNotification ? _theme.surface1 : "transparent"
-                border.width: 1
-
-                Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400 } }
-                Behavior on border.color { ColorAnimation { duration: 400 } }
-
-                Item {
-                    visible: window.showSpinner
-                    width: window.s(44)
-                    height: window.s(44)
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    Canvas {
-                        id: notifSpinner
-                        width: window.s(14)
-                        height: window.s(14)
-                        anchors.centerIn: parent
-                        property real scaleTrigger: window.s(1)
-                        onScaleTriggerChanged: requestPaint()
-
-                        onPaint: {
-                            var ctx = getContext("2d");
-                            var s = window.s;
-                            ctx.reset();
-                            ctx.lineWidth = s(2);
-                            ctx.strokeStyle = Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.3);
-                            ctx.beginPath();
-                            ctx.arc(s(7), s(7), s(5), 0, Math.PI * 2);
-                            ctx.stroke();
-                            
-                            ctx.strokeStyle = Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.9);
-                            ctx.beginPath();
-                            ctx.arc(s(7), s(7), s(5), 0, Math.PI * 0.5);
-                            ctx.stroke();
-                        }
-                        RotationAnimation on rotation {
-                            loops: Animation.Infinite
-                            from: 0; to: 360
-                            duration: 800
-                            running: window.showSpinner && window.showNotification
-                        }
-                    }
-                }
-
-                Text {
-                    id: notifTextDrawer
-                    anchors.left: parent.left
-                    anchors.leftMargin: window.showSpinner ? window.s(40) : window.s(16)
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: Math.min(implicitWidth, window.s(300) - anchors.leftMargin - window.s(16))
-                    text: window.currentNotification
-                    color: _theme.text
-                    font.family: "JetBrains Mono"
-                    font.pixelSize: window.s(14)
-                    font.bold: true
-                    elide: Text.ElideRight
-                    opacity: window.showNotification ? 0.9 : 0.0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
-                    Behavior on anchors.leftMargin { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                }
-            }
-
-            Rectangle {
-                id: monitorDrawer
-                visible: monitorModel.count > 1
-                height: window.s(44)
-                property real expandedWidth: window.s(44) + monitorListRow.width + window.s(8)
-                width: visible ? (window.isMonitorSelectorOpen ? expandedWidth : window.s(44)) : 0
-                radius: window.s(10)
-                clip: true
-                anchors.verticalCenter: parent.verticalCenter
-                color: window.isMonitorSelectorOpen ? _theme.surface2 : "transparent"
-                border.color: window.isMonitorSelectorOpen ? _theme.text : _theme.surface1
-                border.width: window.isMonitorSelectorOpen ? window.s(2) : 1
-                
-                Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400 } }
-                Behavior on border.color { ColorAnimation { duration: 400 } }
-
-                MouseArea {
-                    id: monitorIconMouse
-                    width: window.s(44)
-                    height: window.s(44)
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    hoverEnabled: true
-                    enabled: !window.isApplying
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: window.isMonitorSelectorOpen = !window.isMonitorSelectorOpen
-                }
-
-                Canvas {
-                    id: monitorIcon
-                    width: window.s(18)
-                    height: window.s(18)
-                    anchors.centerIn: monitorIconMouse
-                    property string activeColor: window.isMonitorSelectorOpen ? _theme.text : (monitorIconMouse.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
-                    onActiveColorChanged: requestPaint()
-                    property real scaleTrigger: window.s(1)
-                    onScaleTriggerChanged: requestPaint()
-
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        var s = window.s;
-                        ctx.reset();
-                        ctx.lineWidth = s(2);
-                        ctx.strokeStyle = activeColor;
-                        ctx.lineJoin = "round";
-                        ctx.lineCap = "round";
-                        ctx.beginPath();
-                        ctx.rect(s(2), s(3), s(14), s(9));
-                        ctx.stroke();
-                        ctx.beginPath();
-                        ctx.moveTo(s(9), s(12));
-                        ctx.lineTo(s(9), s(16));
-                        ctx.moveTo(s(5), s(16));
-                        ctx.lineTo(s(13), s(16));
-                        ctx.stroke();
-                    }
-                }
-
-                Row {
-                    id: monitorListRow
-                    anchors.left: monitorIconMouse.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: window.s(8)
-                    opacity: window.isMonitorSelectorOpen ? 1.0 : 0.0
-                    Behavior on opacity { NumberAnimation { duration: 300 } }
-
-                    Repeater {
-                        model: monitorModel
-                        delegate: Item {
-                            width: monitorText.contentWidth + window.s(16)
-                            height: window.s(32)
-                            anchors.verticalCenter: parent.verticalCenter
-                            
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: window.s(6)
-                                color: model.selected ? _theme.text : _theme.surface1
-                                border.color: model.selected ? _theme.text : _theme.surface2
-                                border.width: 1
-                                Behavior on color { ColorAnimation { duration: 250 } }
-                                Behavior on border.color { ColorAnimation { duration: 250 } }
-                                
-                                Text {
-                                    id: monitorText
-                                    text: model.name
-                                    anchors.centerIn: parent
-                                    color: model.selected ? _theme.base : _theme.text
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: window.s(12)
-                                    font.bold: model.selected
-                                    Behavior on color { ColorAnimation { duration: 250 } }
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                enabled: window.isMonitorSelectorOpen && !window.isApplying
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (model.selected) {
-                                        let activeCount = 0;
-                                        for (let i = 0; i < monitorModel.count; i++) {
-                                            if (monitorModel.get(i).selected) activeCount++;
-                                        }
-                                        if (activeCount > 1) {
-                                            monitorModel.setProperty(index, "selected", false);
-                                        }
-                                    } else {
-                                        monitorModel.setProperty(index, "selected", true);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Repeater {
-                model: window.filterData
-                delegate: Item {
-                    visible: modelData.name !== "Search"
-                    width: !visible ? 0 : ((modelData.name === "Video" || modelData.name === "All") ? window.s(44) : (modelData.hex === "" ? filterText.contentWidth + window.s(24) : window.s(36)))
-                    height: !visible ? 0 : window.s(36)
-                    anchors.verticalCenter: parent.verticalCenter
-                    
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: window.s(10)
-                        color: modelData.hex === "" ? (window.currentFilter === modelData.name ? _theme.surface2 : "transparent") : modelData.hex
-                        border.color: window.currentFilter === modelData.name ? _theme.text : _theme.surface1
-                        border.width: window.currentFilter === modelData.name ? window.s(2) : 1
-                        scale: window.currentFilter === modelData.name ? 1.15 : (filterMouse.containsMouse ? 1.08 : 1.0)
-                        
-                        Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
-                        Behavior on border.color { ColorAnimation { duration: 300 } }
-
-                        Text {
-                            id: filterText
-                            visible: modelData.hex === "" && modelData.name !== "Video" && modelData.name !== "All"
-                            text: modelData.label
-                            anchors.centerIn: parent
-                            color: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
-                            font.family: "JetBrains Mono"
-                            font.pixelSize: window.s(14)
-                            font.bold: window.currentFilter === modelData.name
-                            Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
-                        }
-
-                        Canvas {
-                            visible: modelData.name === "Video"
-                            width: window.s(14); height: window.s(16)
-                            anchors.centerIn: parent
-                            anchors.horizontalCenterOffset: window.s(2)
-                            property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
-                            onActiveColorChanged: requestPaint()
-                            property real scaleTrigger: window.s(1)
-                            onScaleTriggerChanged: requestPaint()
-
-                            onPaint: {
-                                var ctx = getContext("2d");
-                                var s = window.s;
-                                ctx.reset();
-                                ctx.fillStyle = activeColor;
-                                ctx.beginPath();
-                                ctx.moveTo(0, 0);
-                                ctx.lineTo(s(14), s(8));
-                                ctx.lineTo(0, s(16));
-                                ctx.closePath();
-                                ctx.fill();
-                            }
-                        }
-
-                        Canvas {
-                            visible: modelData.name === "All"
-                            width: window.s(14); height: window.s(14)
-                            anchors.centerIn: parent
-                            property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
-                            onActiveColorChanged: requestPaint()
-                            property real scaleTrigger: window.s(1)
-                            onScaleTriggerChanged: requestPaint()
-
-                            onPaint: {
-                                var ctx = getContext("2d");
-                                var s = window.s;
-                                ctx.reset();
-                                ctx.fillStyle = activeColor;
-                                ctx.fillRect(0, 0, s(6), s(6));
-                                ctx.fillRect(s(8), 0, s(6), s(6));
-                                ctx.fillRect(0, s(8), s(6), s(6));
-                                ctx.fillRect(s(8), s(8), s(6), s(6));
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: filterMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        enabled: !window.isApplying
-                        onClicked: window.currentFilter = modelData.name
-                        cursorShape: Qt.PointingHandCursor
-                    }
-                }
-            }
-
-            Rectangle {
-                id: searchControlBtn
-                visible: window.currentFilter === "Search" && window.hasSearched
-                width: visible ? window.s(44) : 0
-                height: window.s(44)
-                radius: window.s(10)
-                clip: true
-                anchors.verticalCenter: parent.verticalCenter
-                color: window.isSearchPaused ? _theme.surface2 : "transparent"
-                border.color: window.isSearchPaused ? _theme.text : _theme.surface1
-                border.width: window.isSearchPaused ? window.s(2) : 1
-                
-                Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
-                
-                MouseArea {
-                    id: scMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    enabled: !window.isApplying
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: window.isSearchPaused = !window.isSearchPaused
-                }
-                
-                Canvas {
-                    width: window.s(44); height: window.s(44)
-                    anchors.centerIn: parent
-                    property bool paused: window.isSearchPaused
-                    property string activeColor: paused ? _theme.text : (scMouse.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
-                    onActiveColorChanged: requestPaint()
-                    onPausedChanged: requestPaint()
-                    property real scaleTrigger: window.s(1)
-                    onScaleTriggerChanged: requestPaint()
-                    
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        var s = window.s;
-                        ctx.reset();
-                        ctx.fillStyle = activeColor;
-                        if (!paused) {
-                            ctx.fillRect(s(15), s(14), s(4), s(16));
-                            ctx.fillRect(s(25), s(14), s(4), s(16));
-                        } else {
-                            ctx.beginPath();
-                            ctx.moveTo(s(16), s(12));
-                            ctx.lineTo(s(32), s(22));
-                            ctx.lineTo(s(16), s(32));
-                            ctx.closePath();
-                            ctx.fill();
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                id: searchBox
-                height: window.s(44)
-                width: window.currentFilter === "Search" ? window.s(360) : window.s(44)
-                radius: window.s(10)
-                clip: true
-                anchors.verticalCenter: parent.verticalCenter
-                color: window.currentFilter === "Search" ? Qt.rgba(_theme.surface2.r, _theme.surface2.g, _theme.surface2.b, 0.8) : "transparent"
-                border.color: window.currentFilter === "Search" ? _theme.text : _theme.surface1
-                border.width: window.currentFilter === "Search" ? window.s(2) : 1
-                
-                Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
-                Behavior on border.color { ColorAnimation { duration: 400 } }
-
-                MouseArea {
-                    id: searchMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    enabled: !window.isApplying
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (window.currentFilter !== "Search") {
-                            window.currentFilter = "Search";
-                        } else {
-                            window.currentFilter = "All";
-                        }
-                    }
-                }
-
-                Canvas {
-                    id: searchIcon
-                    width: window.s(44)
-                    height: window.s(44)
-                    anchors.left: parent.left
-                    anchors.leftMargin: window.currentFilter === "Search" ? window.s(5) : 0
-                    anchors.verticalCenter: parent.verticalCenter
-                    Behavior on anchors.leftMargin { NumberAnimation { duration: 500; easing.type: Easing.OutExpo } }
-                    property string activeColor: window.currentFilter === "Search" ? _theme.text : (searchMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
-                    onActiveColorChanged: requestPaint()
-                    property real scaleTrigger: window.s(1)
-                    onScaleTriggerChanged: requestPaint()
-
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        var s = window.s;
-                        ctx.reset();
-                        ctx.lineWidth = s(3);
-                        ctx.strokeStyle = activeColor;
-                        ctx.beginPath();
-                        ctx.arc(s(18), s(18), s(7), 0, Math.PI * 2);
-                        ctx.stroke();
-                        ctx.beginPath();
-                        ctx.moveTo(s(23), s(23));
-                        ctx.lineTo(s(31), s(31));
-                        ctx.stroke();
-                    }
-                }
-
-                TextInput {
-                    id: searchInput
-                    anchors.left: searchIcon.right
-                    anchors.right: submitBtn.left
-                    anchors.rightMargin: window.s(8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    opacity: window.currentFilter === "Search" ? 1.0 : 0.0
-                    visible: opacity > 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
-                    color: _theme.text
-                    font.family: "JetBrains Mono"
-                    font.pixelSize: window.s(16)
-                    clip: true
-                    
-                    onTextEdited: {
-                        window.hasSearched = false;
-                        searchState.searched = false;
-                    }
-                    onAccepted: {
-                        window.triggerOnlineSearch();
-                        searchInput.focus = false;
-                        view.forceActiveFocus();
-                    }
-                }
-
-                Rectangle {
-                    id: submitBtn
-                    width: window.s(32)
-                    height: window.s(32)
-                    radius: window.s(8)
-                    anchors.right: parent.right
-                    anchors.rightMargin: window.s(8)
-                    anchors.verticalCenter: parent.verticalCenter
-                    opacity: window.currentFilter === "Search" ? 1.0 : 0.0
-                    visible: opacity > 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
-                    color: submitMouseArea.containsMouse ? _theme.surface1 : "transparent"
-                    border.color: submitMouseArea.containsMouse ? _theme.text : _theme.surface2
-                    border.width: 1
-                    Behavior on color { ColorAnimation { duration: 300 } }
-
-                    MouseArea {
-                        id: submitMouseArea
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        hoverEnabled: true
-                        enabled: !window.isApplying
-                        onClicked: window.triggerOnlineSearch()
-                    }
-
-                    Canvas {
-                        width: window.s(16)
-                        height: window.s(16)
-                        anchors.centerIn: parent
-                        property string activeColor: submitMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
-                        onActiveColorChanged: requestPaint()
-                        property real scaleTrigger: window.s(1)
-                        onScaleTriggerChanged: requestPaint()
-                        
-                        onPaint: {
-                            var ctx = getContext("2d");
-                            var s = window.s;
-                            ctx.reset();
-                            ctx.lineWidth = s(2);
-                            ctx.lineCap = "round";
-                            ctx.lineJoin = "round";
-                            ctx.strokeStyle = activeColor;
-                            ctx.beginPath();
-                            ctx.moveTo(s(2), s(8));
-                            ctx.lineTo(s(14), s(8));
-                            ctx.moveTo(s(9), s(3));
-                            ctx.lineTo(s(14), s(8));
-                            ctx.lineTo(s(9), s(13));
-                            ctx.stroke();
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Component.onCompleted: {
-        Quickshell.execDetached(["bash", "-c", "mkdir -p '" + decodeURIComponent(window.searchDir.replace("file://", "")) + "'"]);
-        window.loadMonitors();
-
-        if (searchState.searched) {
-            searchInput.text = searchState.query;
-            window.searchQuery = searchState.query;
-            window.hasSearched = true;
-            window.lastSearchName = searchState.lastName;
-            window.isSearchPaused = true;
-        }
-
-        view.forceActiveFocus();
-        window.processMarkers();
-        Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/wallpaper_thumbnail.sh"]);
-    }
-
-    Component.onDestruction: {
-        if (window.hasSearched) {
-            searchState.query = searchInput.text;
-            searchState.searched = window.hasSearched;
-            searchState.lastName = window.lastSearchName;
-            Quickshell.execDetached(["bash", "-c", "echo 'pause' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
-        } else {
-            Quickshell.execDetached(["bash", "-c", "echo 'stop' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control; for p in \$(pgrep -f ddg_search.sh); do if [ \"\$p\" != \"\$\$\" ] && [ \"\$p\" != \"\$BASHPID\" ]; then kill -9 \$p 2>/dev/null || true; fi; done; pkill -f '[g]et_ddg_links.py'"]);
-        }
-    }
-}
-</file>
-
 <file path="dotfiles/hypr/scripts/quickshell/watchers/audio_fetch.sh">
 #!/usr/bin/env bash
 
@@ -15050,6 +13486,30 @@ QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
 "$QS_BIN" -p "$QS_TARGET" >/dev/null 2>&1 &
 </file>
 
+<file path="dotfiles/hypr/settings.json">
+{
+  "uiScale": 1,
+  "openGuideAtStartup": true,
+  "topbarHelpIcon": true,
+  "wallpaperDir": "/home/realdhiru/Pictures/Wallpapers",
+  "language": "",
+  "kbOptions": "grp:alt_shift_toggle",
+  "workspaceCount": 8,
+  "monitors": [
+    {
+      "name": "eDP-1",
+      "resW": 3840,
+      "resH": 2160,
+      "rate": 120,
+      "x": 0,
+      "y": 0,
+      "scale": 2,
+      "transform": 0
+    }
+  ]
+}
+</file>
+
 <file path="dotfiles/hypr/startup.conf">
 # ~/nix/dotfiles/hypr/startup.conf
 
@@ -15124,6 +13584,127 @@ cat << JSON > "${CACHE_FILE}.tmp"
 JSON
 
 mv "${CACHE_FILE}.tmp" "$CACHE_FILE"
+</file>
+
+<file path="modules/system/users.nix">
+{ pkgs, ... }:
+
+{
+  users.users.realdhiru = {
+    isNormalUser = true;
+
+    extraGroups = [
+      "wheel"
+      "networkmanager"
+    ];
+    shell = pkgs.zsh;
+  };
+
+  services.getty.autologinUser = "realdhiru";
+  services.getty.autologinOnce = true;
+
+  # Narrowly-scoped passwordless sudo for the two exact CPU turbo/boost
+  # toggle commands the Quickshell power-profile popup needs to write.
+  # This is intentionally NOT a blanket grant on `tee` or `tlp` — sudoers
+  # matches the full command line verbatim, so only these two precise
+  # sysfs writes are permitted without a password, nothing else.
+  security.sudo.extraRules = [
+    {
+      users = [ "realdhiru" ];
+      commands = [
+        {
+          command = "/run/current-system/sw/bin/tee /sys/devices/system/cpu/intel_pstate/no_turbo";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/tee /sys/devices/system/cpu/cpufreq/boost";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/modprobe -r snd_hda_intel snd_soc_avs";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/modprobe snd_hda_intel";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    }
+  ];
+}
+</file>
+
+<file path="home.nix">
+{ config, pkgs, ... }:
+
+{
+  imports = [
+    ./modules/home/shell.nix
+    ./modules/home/spicetify.nix
+    ./modules/home/theme.nix
+  ];
+
+  # Global Cursor Configuration
+  home.pointerCursor = {
+    gtk.enable = true;
+    x11.enable = true;
+    name = "Bibata-Modern-Ice";
+    package = pkgs.bibata-cursors;
+    size = 24;
+  };
+
+  # Explicitly configure the internal activation option at the user level
+  home.activation = {
+    enableBackup = config.lib.dag.entryAfter [ "writeBoundary" ] ''
+      # This forces Home Manager to handle colliding targets gracefully without crashing systemd
+      export HOME_MANAGER_BACKUP_EXT="backup"
+    '';
+
+    initPowerMonitor = config.lib.dag.entryAfter [ "writeBoundary" ] ''
+      # Ensure dynamic state files exist before Hyprland boots to prevent parsing errors
+      mkdir -p $HOME/.cache
+      touch $HOME/.cache/hypr_power_monitor.conf
+    '';
+  };
+
+  # Hardware Acceleration Flags for Brave
+  home.file.".config/brave-flags.conf".text = ''
+    --ozone-platform-hint=auto
+    --enable-features=AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder
+  '';
+
+  xdg.configFile."hypr" = {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/hypr";
+    force = true;
+  };
+
+  xdg.configFile."rofi" = {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/rofi";
+    force = true;
+  };
+
+  xdg.configFile."wezterm".source =
+    config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/wezterm";
+
+  xdg.configFile."fastfetch/config.jsonc".source = ./dotfiles/fastfetch/config.jsonc;
+
+  xdg.configFile."matugen".source =
+    config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/matugen";
+
+  services.easyeffects.enable = true;
+  services.playerctld.enable = true;
+
+  home.username = "realdhiru";
+  home.homeDirectory = "/home/realdhiru";
+
+  home.stateVersion = "26.11";
+
+  programs.home-manager.enable = true;
+}
 </file>
 
 <file path="README.md">
@@ -18537,6 +17118,1467 @@ def get_cliphist():
 
 if __name__ == "__main__":
     get_cliphist()
+</file>
+
+<file path="dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml">
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Window
+import QtCore
+import Qt.labs.folderlistmodel
+import Quickshell
+import Quickshell.Io
+import "../" 
+
+Item {
+    id: window
+    width: Screen.width
+
+    Scaler {
+        id: scaler
+        currentWidth: Screen.width
+    }
+    
+    function s(val) { 
+        return scaler.s(val); 
+    }
+
+    MatugenColors { id: _theme }
+
+    property string widgetArg: ""
+    property string targetWallName: ""
+    property bool initialFocusSet: false
+    property int visibleItemCount: -1
+    property int scrollAccum: 0
+    property real scrollThreshold: window.s(300)
+
+    property string currentFilter: "All"
+    property string _lastFilter: "All"
+    property string searchQuery: ""
+    property bool isOnlineSearch: false
+    property bool isSearchPaused: false
+    property bool hasSearched: false
+    property var colorMap: ({})
+    property int cacheVersion: 0 
+    
+    property bool isDownloadingWallpaper: false
+    property string currentDownloadName: ""
+    
+    property bool isApplying: false
+    property bool isMonitorSelectorOpen: false
+
+    property bool allowAddAnimation: false
+    
+    Timer {
+        id: applyUnlockTimer
+        interval: 250
+        onTriggered: window.isApplying = false
+    }
+    
+    property bool isStartup: localFolderModel.status === FolderListModel.Loading || srcModel.status === FolderListModel.Loading
+    property bool isReady: visible && localFolderModel.status === FolderListModel.Ready
+    property bool isSearchActive: window.currentFilter === "Search" && window.hasSearched && searchFolderModel.status === FolderListModel.Loading
+    
+    property string lastSearchName: ""
+    property bool isModelChanging: false
+    property bool searchIndexRestored: false
+    
+    property bool isScrollingBlocked: window.currentFilter === "Search" && window.hasSearched && window.isSearchActive && !window.isSearchPaused
+    property bool jumpToLastOnFilterChange: false
+
+    readonly property var filterData: [
+        { name: "All", hex: "", label: "All" },
+        { name: "Video", hex: "", label: "Vid" },
+        { name: "Red", hex: "#FF4500", label: "" },
+        { name: "Orange", hex: "#FFA500", label: "" },
+        { name: "Yellow", hex: "#FFD700", label: "" },
+        { name: "Green", hex: "#32CD32", label: "" },
+        { name: "Blue", hex: "#1E90FF", label: "" },
+        { name: "Purple", hex: "#8A2BE2", label: "" },
+        { name: "Pink", hex: "#FF69B4", label: "" },
+        { name: "Monochrome", hex: "#A9A9A9", label: "" },
+        { name: "Search", hex: "", label: "Search" } 
+    ]
+
+    ListModel { id: monitorModel }
+
+    Process {
+        id: monitorProc
+        command: ["hyprctl", "monitors", "-j"]
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let response = this.text;
+                if (response && response.trim().length > 0) {
+                    try {
+                        var monitors = JSON.parse(response);
+                        monitorModel.clear();
+                        for (var i = 0; i < monitors.length; i++) {
+                            monitorModel.append({ "name": monitors[i].name, "selected": true });
+                        }
+                    } catch(e) {
+                        console.log("[MonitorSync] ERROR parsing JSON: " + e);
+                    }
+                }
+            }
+        }
+    } // FIXED: Missing closing bracket for Process block
+
+    function loadMonitors() {
+        monitorProc.running = true;
+    }
+
+    function getMonitorOutputs() {
+        if (monitorModel.count <= 1) return "all"; 
+        let selected = [];
+        for (let i = 0; i < monitorModel.count; i++) {
+            if (monitorModel.get(i).selected) {
+                selected.push(monitorModel.get(i).name);
+            }
+        }
+        if (selected.length === 0) return "none";
+        if (selected.length === monitorModel.count) return "all";
+        return selected.join(",");
+    }
+
+    function applyWallpaper(safeFileName, isVideo) {
+        if (!safeFileName || window.isApplying) return;
+        
+        let outputs = window.getMonitorOutputs();
+        if (outputs === "none") return;
+        
+        window.isApplying = true;
+        applyUnlockTimer.restart();
+        
+        window.targetWallName = safeFileName;
+        let cleanName = window.getCleanName(safeFileName);
+        let reloadScript = Qt.resolvedUrl("matugen_reload.sh").toString();
+        
+        if (reloadScript.startsWith("file://")) {
+            reloadScript = decodeURIComponent(reloadScript.substring(7));
+        }
+
+        const escapeBash = (str) => String(str).replace(/(["\\$`])/g, '\\$1');
+        
+        if (window.currentFilter === "Search" && window.hasSearched) {
+            let alreadyExists = window.isDownloaded(safeFileName);
+            let destFile = window.srcDir + "/" + safeFileName;
+            let finalThumb = "file://" + window.srcDir + "/" + safeFileName;
+            let tempThumb = decodeURIComponent(window.searchDir.replace("file://", "")) + "/" + safeFileName;
+            let mapFile = Caching.getCacheDir("wallpaper_picker") + "/search_map.txt";
+
+            if (alreadyExists) {
+                const applyScript = `
+                    export DEST_FILE="${escapeBash(destFile)}"
+                    export FINAL_THUMB="${escapeBash(finalThumb)}"
+                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
+                    
+                    ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
+                `;
+                Quickshell.execDetached(["bash", "-c", applyScript]);
+            } else {
+                window.isDownloadingWallpaper = true;
+                window.currentDownloadName = safeFileName;
+
+                const downloadScript = `
+                    export SAFE_NAME="${escapeBash(safeFileName)}"
+                    export DEST_FILE="${escapeBash(destFile)}"
+                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
+                    export MAP_FILE="${escapeBash(mapFile)}"
+                    
+                    URL=\$(awk -F'|' -v fname="\$SAFE_NAME" '\$1 == fname {print \$2; exit}' "\$MAP_FILE")
+                    if [ -n "\$URL" ]; then
+                        curl -s -L -A "Mozilla/5.0" "\$URL" -o "$DEST_FILE.tmp"
+                        if file "$DEST_FILE.tmp" | grep -iq "webp"; then
+                            magick "$DEST_FILE.tmp" "$DEST_FILE"
+                            rm -f "$DEST_FILE.tmp"
+                        else
+                            mv "$DEST_FILE.tmp" "$DEST_FILE"
+                        fi
+                        
+                        ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
+                    fi
+                `;
+                Quickshell.execDetached(["bash", "-c", downloadScript]);
+            }
+            return;
+        }
+
+        const originalFile = window.srcDir + "/" + cleanName;
+        const escOriginal = escapeBash(originalFile);
+
+        const fullScript = `
+            ~/.config/hypr/scripts/set_wallpaper.sh "${escOriginal}"
+        `;
+        Quickshell.execDetached(["bash", "-c", fullScript]);
+    }
+    
+    Settings {
+        id: searchState
+        category: "QS_WallpaperPicker"
+        property string query: ""
+        property bool searched: false
+        property string lastName: ""
+    }
+
+    // FIXED: Property handlers are now strictly bound directly under the root 'window' Item
+    onIsSearchPausedChanged: {
+        Quickshell.execDetached(["bash", "-c", "echo '" + (isSearchPaused ? "pause" : "run") + "' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
+    }
+
+    onVisibleChanged: {
+        if (!visible) {
+            window.initialFocusSet = false;
+            window.allowAddAnimation = false;
+            window.searchIndexRestored = false;
+            window.isApplying = false;
+            window.isMonitorSelectorOpen = false;
+            if (window.hasSearched) {
+                window.isSearchPaused = true;
+            }
+        } else {
+            window.isFilterAnimating = true;
+            filterAnimationTimer.restart();
+            if (window.currentFilter !== "Search") {
+                window.applyFilters(true);
+            } else if (window.hasSearched) {
+                window.searchIndexRestored = false;
+                window.isSearchPaused = true;
+                window.trySearchFocus();
+                window.syncSearchModel();
+            }
+        }
+    }
+
+    onCurrentFilterChanged: {
+        window.isFilterAnimating = true;
+        filterAnimationTimer.restart();
+        window.isModelChanging = true;
+        let returningFromSearch = (window._lastFilter === "Search" && window.currentFilter !== "Search");
+        window._lastFilter = window.currentFilter;
+        
+        if (returningFromSearch) window.searchIndexRestored = false;
+        
+        Qt.callLater(() => {
+            view.forceActiveFocus();
+            if (window.currentFilter === "Search") {
+                if (window.hasSearched) {
+                    window.searchIndexRestored = false;
+                    window.trySearchFocus();
+                }
+            } else {
+                window.applyFilters(returningFromSearch);
+            }
+            window.isModelChanging = false;
+        });
+    }
+
+    property bool isLoading: localFolderModel.status === FolderListModel.Loading || 
+                             srcModel.status === FolderListModel.Loading ||
+                             (window.currentFilter === "Search" && searchFolderModel.status === FolderListModel.Loading)
+
+    property bool showSpinner: window.isDownloadingWallpaper || 
+                               (window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused) || 
+                               (window.currentFilter !== "Search" && window.isLoading)
+
+    property string currentNotification: {
+        if (window.isDownloadingWallpaper) return "Downloading wallpaper...";
+        if (window.currentFilter === "Search") {
+            if (!window.hasSearched) return "Type something to search...";
+            if (window.isSearchPaused) return "Search Paused";
+            if (window.visibleItemCount === 0) return "Searching DDG (FHD+)...";
+            return "Parsing wallpapers...";
+        }
+        if (isLoading) return "Parsing wallpapers...";
+        if (window.visibleItemCount === 0) return "No wallpapers found";
+        if (window.currentFilter === "All") return "";
+        if (window.currentFilter === "Video") return "Videos";
+        return window.currentFilter;
+    }
+    
+    property bool showNotification: !window.isStartup && currentNotification !== ""
+
+    function getCleanName(name) {
+        if (!name) return "";
+        let clean = String(name);
+        return clean.startsWith("000_") ? clean.substring(4) : clean;
+    }
+
+    function isDownloaded(name) {
+        if (!name) return false;
+        for (let i = 0; i < srcModel.count; i++) {
+            if (srcModel.get(i, "fileName") === name) return true;
+        }
+        return false;
+    }
+
+    onWidgetArgChanged: {
+        if (widgetArg !== "") {
+            targetWallName = widgetArg;
+            initialFocusSet = false;
+            tryFocus();
+        }
+    }
+
+    function executeFocusRestore(targetIndex, isSearchRestore, requirePositioning) {
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (targetIndex !== -1 && targetIndex < targetModel.count) {
+            window.isModelChanging = true;
+            if (requirePositioning) {
+                view.forceLayout();
+                view.positionViewAtIndex(targetIndex, ListView.Center);
+            }
+            view.currentIndex = targetIndex;
+            if (isSearchRestore) {
+                window.searchIndexRestored = true;
+            }
+            window.isModelChanging = false;
+            window.initialFocusSet = true;
+            allowAddAnimationTimer.restart();
+        } else if (isSearchRestore) {
+            window.searchIndexRestored = true;
+        }
+    }
+
+    Timer {
+        id: allowAddAnimationTimer
+        interval: 600
+        onTriggered: window.allowAddAnimation = true
+    }
+
+    function tryFocus() {
+        if (initialFocusSet) return;
+        if (localProxyModel.count > 0) {
+            let foundIndex = -1;
+            let cleanTarget = window.getCleanName(targetWallName);
+            if (cleanTarget !== "") {
+                for (let i = 0; i < localProxyModel.count; i++) {
+                    let fname = localProxyModel.get(i).fileName || "";
+                    if (window.getCleanName(fname) === cleanTarget) {
+                        foundIndex = i;
+                        break;
+                    }
+                }
+            }
+            let finalIndex = foundIndex !== -1 ? foundIndex : 0;
+            window.executeFocusRestore(finalIndex, false, true);
+        }
+    }
+    
+    function trySearchFocus() {
+        if (window.searchIndexRestored || searchProxyModel.count === 0) return;
+        if (window.lastSearchName === "") {
+             window.searchIndexRestored = true;
+             return;
+        }
+        for (let i = 0; i < searchProxyModel.count; i++) {
+            let fname = searchProxyModel.get(i).fileName || "";
+            if (fname === window.lastSearchName) {
+                window.executeFocusRestore(i, true, true);
+                return;
+            }
+        }
+        if (searchFolderModel.status === FolderListModel.Ready && searchProxyModel.count === searchFolderModel.count) {
+             window.searchIndexRestored = true;
+        }
+    }
+
+    function getModelForFilter(filter) {
+        return filter === "Search" ? searchProxyModel : localProxyModel;
+    }
+
+    function updateVisibleCount() {
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (!targetModel || targetModel.count === 0) {
+            window.visibleItemCount = 0;
+            return;
+        }
+        let count = 0;
+        for (let i = 0; i < targetModel.count; i++) {
+            let fname = targetModel.get(i).fileName || "";
+            let isVid = fname.startsWith("000_");
+            if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
+                count++;
+            }
+        }
+        window.visibleItemCount = count;
+    }
+
+    function triggerOnlineSearch() {
+        if (searchInput.text.trim() === "") return;
+        window.isModelChanging = true;
+        searchProxyModel.clear();
+        window.lastSearchName = "";
+        searchState.lastName = "";
+        if (window.currentFilter === "Search") {
+            view.currentIndex = 0;
+            view.positionViewAtIndex(0, ListView.Center);
+        }
+        window.isModelChanging = false;
+        window.searchIndexRestored = true;
+        window.isOnlineSearch = true;
+        window.hasSearched = true;
+        window.visibleItemCount = 0;
+        searchState.searched = true;
+        searchState.query = searchInput.text.trim();
+        window.isSearchPaused = false;
+        window.searchQuery = searchInput.text.trim();
+        
+        let rawSearchDir = decodeURIComponent(window.searchDir.replace(/^file:\/\//, ""));
+        let scriptPath = decodeURIComponent(Qt.resolvedUrl("ddg_search.sh").toString().replace(/^file:\/\//, ""));
+        
+        const cmd = `
+            exec > ${Caching.logDir}/ddg_run.log 2>&1
+            export PATH=$PATH:/run/current-system/sw/bin
+            echo 'stop' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
+            for p in \$(pgrep -f ddg_search.sh); do
+                if [ "\$p" != "\$\$" ] && [ "\$p" != "\$BASHPID" ]; then
+                    kill -9 \$p 2>/dev/null || true
+                fi
+            done
+            pkill -f "[g]et_ddg_links.py" || true
+            sleep 0.2
+            rm -rf "${rawSearchDir}"/* || true
+            rm -f "${rawSearchDir}/../search_map.txt" || true
+            echo 'run' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
+            bash "${scriptPath}" "${window.searchQuery}" &
+        `;
+        Quickshell.execDetached(["bash", "-c", cmd]);
+        searchInput.focus = false;
+        view.forceActiveFocus();
+    }
+
+    readonly property string homeDir: "file://" + Quickshell.env("HOME")
+    readonly property string searchDir: "file://" + Caching.getCacheDir("wallpaper_picker") + "/search_thumbs"
+    readonly property string srcDir: {
+        const dir = Quickshell.env("WALLPAPER_DIR")
+        return (dir && dir !== "") ? dir : Quickshell.env("HOME") + "/Pictures/Wallpapers"
+    }
+
+    readonly property real itemWidth: window.s(400)
+    readonly property real itemHeight: window.s(420)
+    readonly property real borderWidth: window.s(3)
+    readonly property real spacing: window.s(10)
+    readonly property real skewFactor: -0.35
+
+    Timer { id: scrollThrottle; interval: 150 }
+
+    property bool isFilterAnimating: false
+    Timer {
+        id: filterAnimationTimer
+        interval: 800
+        onTriggered: window.isFilterAnimating = false
+    }
+
+    property bool isItemAnimating: false
+    Timer {
+        id: itemAnimationTimer
+        interval: 500
+        onTriggered: window.isItemAnimating = false
+    }
+
+    function getHexBucket(hexStr) {
+        if (!hexStr) return "Monochrome";
+        hexStr = String(hexStr).trim().replace(/#/g, '');
+        if (hexStr.length > 6) hexStr = hexStr.substring(0, 6);
+        if (hexStr.length !== 6) return "Monochrome";
+
+        let r = parseInt(hexStr.substring(0,2), 16) / 255;
+        let g = parseInt(hexStr.substring(2,4), 16) / 255;
+        let b = parseInt(hexStr.substring(4,6), 16) / 255;
+        if (isNaN(r) || isNaN(g) || isNaN(b)) return "Monochrome";
+
+        let max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let d = max - min;
+        let h = 0;
+        let s = max === 0 ? 0 : d / max;
+        let v = max;
+
+        if (max !== min) {
+            if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+            else if (max === g) h = (b - r) / d + 2;
+            else h = (r - g) / d + 4;
+            h /= 6;
+        }
+        h = h * 360;
+
+        if (s < 0.05 || v < 0.08) return "Monochrome";
+        if (h >= 345 || h < 15) return "Red";
+        if (h >= 15 && h < 45) return "Orange";
+        if (h >= 45 && h < 75) return "Yellow";
+        if (h >= 75 && h < 165) return "Green";
+        if (h >= 165 && h < 260) return "Blue";
+        if (h >= 260 && h < 315) return "Purple";
+        if (h >= 315 && h < 345) return "Pink";
+        return "Monochrome";
+    }
+
+    function checkItemMatchesFilter(fileName, isVid, cv, filter) {
+        if (filter === "Search") return true;
+        if (filter === "All") return true;
+        if (filter === "Video") return isVid;
+        let hexColor = window.colorMap[String(fileName)];
+        if (!hexColor) return filter === "Monochrome";
+        return window.getHexBucket(hexColor) === filter;
+    }
+
+    Timer {
+        id: markerDebounce
+        interval: 300
+        onTriggered: window.processMarkers()
+    }
+
+    FolderListModel {
+        id: markerModel
+        folder: "file://" + Caching.getCacheDir("wallpaper_picker") + "/colors_markers"
+        showDirs: false
+        nameFilters: ["*_HEX_*"]
+        onCountChanged: markerDebounce.restart()
+        onStatusChanged: { if (status === FolderListModel.Ready) markerDebounce.restart() }
+    }
+    
+    FolderListModel {
+        id: srcModel
+        folder: "file://" + window.srcDir
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
+        showDirs: false
+        onCountChanged: {
+            if (window.isDownloadingWallpaper && window.isDownloaded(window.currentDownloadName)) {
+                window.isDownloadingWallpaper = false;
+            }
+        }
+    }
+
+    function processMarkers() {
+        let newMap = {};
+        for (let i = 0; i < markerModel.count; i++) {
+            let markerName = markerModel.get(i, "fileName") || "";
+            if (!markerName) continue;
+            let splitIdx = markerName.lastIndexOf("_HEX_");
+            if (splitIdx !== -1) {
+                let fName = markerName.substring(0, splitIdx);
+                let hexCode = markerName.substring(splitIdx + 5);
+                newMap[fName] = "#" + hexCode;
+            }
+        }
+        window.colorMap = newMap;
+        window.cacheVersion++;
+        window.updateVisibleCount();
+    }
+
+    function stepToNextValidIndex(direction) {
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (!targetModel || targetModel.count === 0) return;
+        
+        let start = view.currentIndex;
+        let found = -1;
+
+        if (direction === 1) {
+            for (let i = start + 1; i < targetModel.count; i++) {
+                let fname = targetModel.get(i).fileName || "";
+                let isVid = fname.startsWith("000_");
+                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
+                    found = i; break;
+                }
+            }
+        } else {
+            for (let i = start - 1; i >= 0; i--) {
+                let fname = targetModel.get(i).fileName || "";
+                let isVid = fname.startsWith("000_");
+                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
+                    found = i; break;
+                }
+            }
+        }
+
+        if (found !== -1) {
+            view.currentIndex = found;
+            return;
+        }
+
+        let filterOrder = ["All", "Video", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Monochrome"];
+        let currentFilterIdx = filterOrder.indexOf(window.currentFilter);
+
+        if (currentFilterIdx === -1) {
+            let current = start;
+            for (let i = 0; i < targetModel.count; i++) {
+                current = (current + direction + targetModel.count) % targetModel.count;
+                let fname = targetModel.get(current).fileName || "";
+                let isVid = fname.startsWith("000_");
+                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
+                    view.currentIndex = current;
+                    return;
+                }
+            }
+            return;
+        }
+
+        let nextFilterIdx = currentFilterIdx + direction;
+        if (nextFilterIdx >= 0 && nextFilterIdx < filterOrder.length) {
+            window.jumpToLastOnFilterChange = (direction === -1);
+            window.currentFilter = filterOrder[nextFilterIdx];
+        }
+    }
+
+    function cycleFilter(direction) {
+        let currentIdx = -1;
+        for (let i = 0; i < window.filterData.length; i++) {
+            if (window.filterData[i].name === window.currentFilter) {
+                currentIdx = i;
+                break;
+            }
+        }
+        if (currentIdx !== -1) {
+            let nextIdx = (currentIdx + direction + window.filterData.length) % window.filterData.length;
+            window.currentFilter = window.filterData[nextIdx].name;
+        }
+    }
+
+    function applyFilters(forceSnap) {
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (!targetModel || targetModel.count === 0) {
+            window.updateVisibleCount();
+            return;
+        }
+        if (window.currentFilter === "Search") {
+            window.updateVisibleCount();
+            return;
+        }
+
+        let firstValidIndex = -1;
+        let lastValidIndex = -1;
+        let cleanTarget = window.getCleanName(window.targetWallName);
+        let targetIndex = -1;
+
+        for (let i = 0; i < targetModel.count; i++) {
+            let fname = targetModel.get(i).fileName || "";
+            let isVid = fname.startsWith("000_");
+            if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
+                if (firstValidIndex === -1) firstValidIndex = i;
+                lastValidIndex = i;
+                if (cleanTarget !== "" && window.getCleanName(fname) === cleanTarget) {
+                    targetIndex = i;
+                }
+            }
+        }
+
+        let indexToFocus = -1;
+        if (targetIndex !== -1) indexToFocus = targetIndex;
+        else if (window.jumpToLastOnFilterChange && lastValidIndex !== -1) indexToFocus = lastValidIndex;
+        else if (firstValidIndex !== -1) indexToFocus = firstValidIndex;
+
+        window.jumpToLastOnFilterChange = false;
+        if (indexToFocus !== -1) {
+            window.executeFocusRestore(indexToFocus, false, forceSnap === true);
+        }
+        window.updateVisibleCount();
+    }
+
+    Shortcut { 
+        sequence: "Left"; 
+        enabled: !window.isScrollingBlocked && !window.isApplying
+        onActivated: window.stepToNextValidIndex(-1) 
+    }
+    Shortcut { 
+        sequence: "Right"; 
+        enabled: !window.isScrollingBlocked && !window.isApplying
+        onActivated: window.stepToNextValidIndex(1) 
+    }
+    Shortcut { 
+        sequence: "Return"
+        enabled: !searchInput.activeFocus && !window.isScrollingBlocked && !window.isApplying
+        onActivated: { 
+            let targetModel = window.getModelForFilter(window.currentFilter);
+            if (view.currentIndex >= 0 && view.currentIndex < targetModel.count) {
+                let fname = targetModel.get(view.currentIndex).fileName;
+                if (fname) window.applyWallpaper(String(fname), String(fname).startsWith("000_"));
+            }
+        } 
+    }
+    Shortcut { sequence: "Escape"; enabled: !window.isApplying; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
+    Shortcut { sequence: "Tab"; enabled: !window.isApplying; onActivated: window.cycleFilter(1) }
+    Shortcut { sequence: "Backtab"; enabled: !window.isApplying; onActivated: window.cycleFilter(-1) }
+
+    ListModel { id: localProxyModel }
+    ListModel { id: searchProxyModel }
+    readonly property var activeModel: window.currentFilter === "Search" ? searchProxyModel : localProxyModel
+
+    FolderListModel {
+        id: localFolderModel
+        folder: "file://" + window.srcDir
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
+        showDirs: false
+        sortField: FolderListModel.Name
+        onCountChanged: window.syncLocalModel()
+        onStatusChanged: { if (status === FolderListModel.Ready) window.syncLocalModel() }
+    }
+
+    property int _localSyncedCount: 0
+
+    function syncLocalModel() {
+        let folderCount = localFolderModel.count;
+        if (folderCount < window._localSyncedCount) {
+            let wasAllowing = window.allowAddAnimation;
+            window.allowAddAnimation = false;
+            window.isModelChanging = true;
+            localProxyModel.clear();
+            window._localSyncedCount = 0;
+            window.isModelChanging = false;
+            window.syncLocalModel();
+            if (wasAllowing) allowAddAnimationTimer.restart();
+            return;
+        }
+
+        if (folderCount > window._localSyncedCount) {
+            let batch = [];
+            for (let i = window._localSyncedCount; i < folderCount; i++) {
+                let fn = localFolderModel.get(i, "fileName");
+                let fu = localFolderModel.get(i, "fileUrl");
+                if (fn !== undefined) {
+                    batch.push({ "fileName": fn, "fileUrl": String(fu) });
+                }
+            }
+            if (batch.length > 0) localProxyModel.append(batch);
+            window._localSyncedCount = folderCount;
+        }
+
+        if (window.currentFilter !== "Search") window.updateVisibleCount();
+        if (!window.initialFocusSet && window.currentFilter !== "Search" && localProxyModel.count > 0) {
+            window.tryFocus();
+        }
+    }
+
+    function syncSearchModel() {
+        let startIdx = searchProxyModel.count;
+        let endIdx = searchFolderModel.count;
+        if (endIdx < startIdx) {
+            window.isModelChanging = true;
+            searchProxyModel.clear();
+            startIdx = 0;
+            window.isModelChanging = false;
+        }
+
+        let batch = [];
+        for (let i = startIdx; i < endIdx; i++) {
+            let fn = searchFolderModel.get(i, "fileName");
+            let fu = searchFolderModel.get(i, "fileUrl");
+            if (fn !== undefined) {
+                batch.push({ "fileName": fn, "fileUrl": String(fu) });
+            }
+        }
+        if (batch.length > 0) searchProxyModel.append(batch);
+
+        if (window.currentFilter === "Search") window.updateVisibleCount();
+        if (window.currentFilter === "Search" && window.hasSearched) {
+            if (!window.searchIndexRestored) window.trySearchFocus();
+            if (window.isScrollingBlocked && startIdx === 0 && searchProxyModel.count > 0 && window.lastSearchName === "") {
+                view.forceLayout();
+                view.currentIndex = 0;
+                view.positionViewAtIndex(0, ListView.Center);
+            }
+        }
+    }
+
+    FolderListModel {
+        id: searchFolderModel
+        folder: window.searchDir
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
+        showDirs: false
+        sortField: FolderListModel.Name
+        onFolderChanged: {
+            window.isModelChanging = true;
+            searchProxyModel.clear();
+            window.isModelChanging = false;
+        }
+        onCountChanged: window.syncSearchModel()
+        onStatusChanged: { if (status === FolderListModel.Ready) window.syncSearchModel() }
+    }
+
+    ListView {
+        id: view
+        anchors.fill: parent
+        opacity: window.isReady ? 1.0 : 0.0
+        anchors.margins: window.isReady ? 0 : window.s(40)
+        
+        Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutQuart } }
+        Behavior on anchors.margins { NumberAnimation { duration: 700; easing.type: Easing.OutExpo } }
+
+        spacing: 0
+        orientation: ListView.Horizontal
+        clip: false
+        interactive: !window.isScrollingBlocked && !window.isApplying
+        cacheBuffer: 2000
+
+        highlightRangeMode: ListView.StrictlyEnforceRange
+        preferredHighlightBegin: (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2)
+        preferredHighlightEnd: (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2)
+        highlightMoveDuration: window.initialFocusSet ? 500 : 0
+        focus: true
+        
+        onCurrentIndexChanged: {
+            window.isItemAnimating = true;
+            itemAnimationTimer.restart();
+            if (view.model !== searchProxyModel || window.currentFilter !== "Search") return;
+            if (!window.isModelChanging && window.hasSearched && window.searchIndexRestored) {
+                if (currentIndex >= 0 && currentIndex < searchProxyModel.count) {
+                    let fname = searchProxyModel.get(currentIndex).fileName;
+                    if (fname !== undefined && fname !== "") {
+                        window.lastSearchName = String(fname);
+                        searchState.lastName = String(fname);
+                    }
+                }
+            }
+        }
+        
+        add: Transition {
+            enabled: window.allowAddAnimation
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 400; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "scale"; from: 0.5; to: 1; duration: 400; easing.type: Easing.OutBack }
+            }
+        }
+        addDisplaced: Transition {
+            enabled: window.allowAddAnimation
+            NumberAnimation { property: "x"; duration: 400; easing.type: Easing.OutCubic }
+        }
+
+        header: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5) / 2)) }
+        footer: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5) / 2)) }
+        model: window.activeModel
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
+            onWheel: (wheel) => {
+                if (window.isScrollingBlocked || window.isApplying) {
+                    wheel.accepted = true;
+                    return;
+                }
+                if (scrollThrottle.running) {
+                   wheel.accepted = true;
+                   return;
+                }
+                let dx = wheel.angleDelta.x;
+                let dy = wheel.angleDelta.y;
+                let delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+                scrollAccum += delta;
+
+                if (Math.abs(scrollAccum) >= scrollThreshold) {
+                    window.stepToNextValidIndex(scrollAccum > 0 ? -1 : 1);
+                    scrollAccum = 0;
+                    scrollThrottle.start();
+                }
+                wheel.accepted = true;
+            }        
+        }
+
+        delegate: Item {
+            id: delegateRoot
+            readonly property string safeFileName: fileName !== undefined ? String(fileName) : ""
+            readonly property bool isCurrent: ListView.isCurrentItem && !window.isScrollingBlocked
+            readonly property bool isFakeSelected: window.isScrollingBlocked && index === 0
+            readonly property bool isVisuallyEnlarged: isCurrent || isFakeSelected
+            readonly property bool isVideo: safeFileName.startsWith("000_")
+            readonly property bool matchesFilter: window.checkItemMatchesFilter(safeFileName, isVideo, window.cacheVersion, window.currentFilter)
+            readonly property real targetWidth: isVisuallyEnlarged ? (window.itemWidth * 1.5) : (window.itemWidth * 0.5)
+            readonly property real targetHeight: isVisuallyEnlarged ? (window.itemHeight + window.s(30)) : window.itemHeight
+            
+            readonly property string thumbPath: "file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName)
+
+            width: matchesFilter ? (targetWidth + window.spacing) : 0
+            visible: width > 0.1 || opacity > 0.01
+            opacity: matchesFilter ? (isVisuallyEnlarged ? 1.0 : 0.6) : 0.0
+            scale: matchesFilter ? 1.0 : 0.5
+            height: matchesFilter ? targetHeight : 0
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: window.s(15)
+            z: isVisuallyEnlarged ? 10 : 1
+            
+            Behavior on scale { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+            Behavior on width { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+            Behavior on height { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+            Behavior on opacity { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+
+            Item {
+                anchors.centerIn: parent
+                anchors.horizontalCenterOffset: ((window.itemHeight - height) / 2) * window.skewFactor
+                width: parent.width > 0 ? parent.width * (targetWidth / (targetWidth + window.spacing)) : 0
+                height: parent.height
+
+                transform: Matrix4x4 {
+                    property real s: window.skewFactor
+                    matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+                }
+                
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: delegateRoot.matchesFilter && !window.isScrollingBlocked && !window.isApplying
+                    onClicked: {
+                        view.currentIndex = index;
+                        window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo);
+                    }
+                }
+
+                Image {
+                    anchors.fill: parent
+                    source: thumbPath
+                    sourceSize: Qt.size(256, 256)
+                    fillMode: Image.Stretch
+                    asynchronous: true
+                }
+
+                Item {
+                    anchors.fill: parent
+                    anchors.margins: window.borderWidth
+                    Rectangle { anchors.fill: parent; color: _theme.base }
+                    clip: true
+
+                    Image {
+                        anchors.centerIn: parent
+                        anchors.horizontalCenterOffset: window.s(-50)
+                        width: (window.itemWidth * 1.5) + ((window.itemHeight + window.s(30)) * Math.abs(window.skewFactor)) + window.s(50)
+                        height: window.itemHeight + window.s(30)
+                        fillMode: Image.PreserveAspectCrop
+                        source: thumbPath
+                        sourceSize: Qt.size(400, 400)
+                        asynchronous: true
+
+                        transform: Matrix4x4 {
+                            property real s: -window.skewFactor
+                            matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: filterBarBackground
+        anchors.top: parent.top
+        anchors.topMargin: window.isReady ? window.s(40) : window.s(-100)
+        opacity: window.isReady ? 1.0 : 0.0
+        Behavior on anchors.topMargin { NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
+        Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
+        anchors.horizontalCenter: parent.horizontalCenter
+        z: 20
+        height: window.s(56)
+        width: filterRow.width + window.s(24)
+        radius: window.s(14)
+        color: Qt.rgba(_theme.mantle.r, _theme.mantle.g, _theme.mantle.b, 0.90)
+        border.color: _theme.surface2
+        border.width: 1
+
+        Row {
+            id: filterRow
+            anchors.centerIn: parent
+            spacing: window.s(12)
+
+            Rectangle {
+                id: notifDrawer
+                height: window.s(44)
+                property real paddingLeft: window.showSpinner ? window.s(40) : window.s(16)
+                property real targetWidth: window.showNotification ? Math.min(notifTextDrawer.implicitWidth + paddingLeft + window.s(20), window.s(300)) : 0
+                width: targetWidth
+                visible: width > 0.1
+                radius: window.s(10)
+                clip: true
+                anchors.verticalCenter: parent.verticalCenter
+                color: window.showNotification ? _theme.surface2 : "transparent"
+                border.color: window.showNotification ? _theme.surface1 : "transparent"
+                border.width: 1
+
+                Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
+                Behavior on color { ColorAnimation { duration: 400 } }
+                Behavior on border.color { ColorAnimation { duration: 400 } }
+
+                Item {
+                    visible: window.showSpinner
+                    width: window.s(44)
+                    height: window.s(44)
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Canvas {
+                        id: notifSpinner
+                        width: window.s(14)
+                        height: window.s(14)
+                        anchors.centerIn: parent
+                        property real scaleTrigger: window.s(1)
+                        onScaleTriggerChanged: requestPaint()
+
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            var s = window.s;
+                            ctx.reset();
+                            ctx.lineWidth = s(2);
+                            ctx.strokeStyle = Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.3);
+                            ctx.beginPath();
+                            ctx.arc(s(7), s(7), s(5), 0, Math.PI * 2);
+                            ctx.stroke();
+                            
+                            ctx.strokeStyle = Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.9);
+                            ctx.beginPath();
+                            ctx.arc(s(7), s(7), s(5), 0, Math.PI * 0.5);
+                            ctx.stroke();
+                        }
+                        RotationAnimation on rotation {
+                            loops: Animation.Infinite
+                            from: 0; to: 360
+                            duration: 800
+                            running: window.showSpinner && window.showNotification
+                        }
+                    }
+                }
+
+                Text {
+                    id: notifTextDrawer
+                    anchors.left: parent.left
+                    anchors.leftMargin: window.showSpinner ? window.s(40) : window.s(16)
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.min(implicitWidth, window.s(300) - anchors.leftMargin - window.s(16))
+                    text: window.currentNotification
+                    color: _theme.text
+                    font.family: "JetBrains Mono"
+                    font.pixelSize: window.s(14)
+                    font.bold: true
+                    elide: Text.ElideRight
+                    opacity: window.showNotification ? 0.9 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
+                    Behavior on anchors.leftMargin { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
+                }
+            }
+
+            Rectangle {
+                id: monitorDrawer
+                visible: monitorModel.count > 1
+                height: window.s(44)
+                property real expandedWidth: window.s(44) + monitorListRow.width + window.s(8)
+                width: visible ? (window.isMonitorSelectorOpen ? expandedWidth : window.s(44)) : 0
+                radius: window.s(10)
+                clip: true
+                anchors.verticalCenter: parent.verticalCenter
+                color: window.isMonitorSelectorOpen ? _theme.surface2 : "transparent"
+                border.color: window.isMonitorSelectorOpen ? _theme.text : _theme.surface1
+                border.width: window.isMonitorSelectorOpen ? window.s(2) : 1
+                
+                Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
+                Behavior on color { ColorAnimation { duration: 400 } }
+                Behavior on border.color { ColorAnimation { duration: 400 } }
+
+                MouseArea {
+                    id: monitorIconMouse
+                    width: window.s(44)
+                    height: window.s(44)
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    hoverEnabled: true
+                    enabled: !window.isApplying
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: window.isMonitorSelectorOpen = !window.isMonitorSelectorOpen
+                }
+
+                Canvas {
+                    id: monitorIcon
+                    width: window.s(18)
+                    height: window.s(18)
+                    anchors.centerIn: monitorIconMouse
+                    property string activeColor: window.isMonitorSelectorOpen ? _theme.text : (monitorIconMouse.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
+                    onActiveColorChanged: requestPaint()
+                    property real scaleTrigger: window.s(1)
+                    onScaleTriggerChanged: requestPaint()
+
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        var s = window.s;
+                        ctx.reset();
+                        ctx.lineWidth = s(2);
+                        ctx.strokeStyle = activeColor;
+                        ctx.lineJoin = "round";
+                        ctx.lineCap = "round";
+                        ctx.beginPath();
+                        ctx.rect(s(2), s(3), s(14), s(9));
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(s(9), s(12));
+                        ctx.lineTo(s(9), s(16));
+                        ctx.moveTo(s(5), s(16));
+                        ctx.lineTo(s(13), s(16));
+                        ctx.stroke();
+                    }
+                }
+
+                Row {
+                    id: monitorListRow
+                    anchors.left: monitorIconMouse.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: window.s(8)
+                    opacity: window.isMonitorSelectorOpen ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 300 } }
+
+                    Repeater {
+                        model: monitorModel
+                        delegate: Item {
+                            width: monitorText.contentWidth + window.s(16)
+                            height: window.s(32)
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: window.s(6)
+                                color: model.selected ? _theme.text : _theme.surface1
+                                border.color: model.selected ? _theme.text : _theme.surface2
+                                border.width: 1
+                                Behavior on color { ColorAnimation { duration: 250 } }
+                                Behavior on border.color { ColorAnimation { duration: 250 } }
+                                
+                                Text {
+                                    id: monitorText
+                                    text: model.name
+                                    anchors.centerIn: parent
+                                    color: model.selected ? _theme.base : _theme.text
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: window.s(12)
+                                    font.bold: model.selected
+                                    Behavior on color { ColorAnimation { duration: 250 } }
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                enabled: window.isMonitorSelectorOpen && !window.isApplying
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (model.selected) {
+                                        let activeCount = 0;
+                                        for (let i = 0; i < monitorModel.count; i++) {
+                                            if (monitorModel.get(i).selected) activeCount++;
+                                        }
+                                        if (activeCount > 1) {
+                                            monitorModel.setProperty(index, "selected", false);
+                                        }
+                                    } else {
+                                        monitorModel.setProperty(index, "selected", true);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Repeater {
+                model: window.filterData
+                delegate: Item {
+                    visible: modelData.name !== "Search"
+                    width: !visible ? 0 : ((modelData.name === "Video" || modelData.name === "All") ? window.s(44) : (modelData.hex === "" ? filterText.contentWidth + window.s(24) : window.s(36)))
+                    height: !visible ? 0 : window.s(36)
+                    anchors.verticalCenter: parent.verticalCenter
+                    
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: window.s(10)
+                        color: modelData.hex === "" ? (window.currentFilter === modelData.name ? _theme.surface2 : "transparent") : modelData.hex
+                        border.color: window.currentFilter === modelData.name ? _theme.text : _theme.surface1
+                        border.width: window.currentFilter === modelData.name ? window.s(2) : 1
+                        scale: window.currentFilter === modelData.name ? 1.15 : (filterMouse.containsMouse ? 1.08 : 1.0)
+                        
+                        Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+                        Behavior on border.color { ColorAnimation { duration: 300 } }
+
+                        Text {
+                            id: filterText
+                            visible: modelData.hex === "" && modelData.name !== "Video" && modelData.name !== "All"
+                            text: modelData.label
+                            anchors.centerIn: parent
+                            color: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                            font.family: "JetBrains Mono"
+                            font.pixelSize: window.s(14)
+                            font.bold: window.currentFilter === modelData.name
+                            Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                        }
+
+                        Canvas {
+                            visible: modelData.name === "Video"
+                            width: window.s(14); height: window.s(16)
+                            anchors.centerIn: parent
+                            anchors.horizontalCenterOffset: window.s(2)
+                            property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                            onActiveColorChanged: requestPaint()
+                            property real scaleTrigger: window.s(1)
+                            onScaleTriggerChanged: requestPaint()
+
+                            onPaint: {
+                                var ctx = getContext("2d");
+                                var s = window.s;
+                                ctx.reset();
+                                ctx.fillStyle = activeColor;
+                                ctx.beginPath();
+                                ctx.moveTo(0, 0);
+                                ctx.lineTo(s(14), s(8));
+                                ctx.lineTo(0, s(16));
+                                ctx.closePath();
+                                ctx.fill();
+                            }
+                        }
+
+                        Canvas {
+                            visible: modelData.name === "All"
+                            width: window.s(14); height: window.s(14)
+                            anchors.centerIn: parent
+                            property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                            onActiveColorChanged: requestPaint()
+                            property real scaleTrigger: window.s(1)
+                            onScaleTriggerChanged: requestPaint()
+
+                            onPaint: {
+                                var ctx = getContext("2d");
+                                var s = window.s;
+                                ctx.reset();
+                                ctx.fillStyle = activeColor;
+                                ctx.fillRect(0, 0, s(6), s(6));
+                                ctx.fillRect(s(8), 0, s(6), s(6));
+                                ctx.fillRect(0, s(8), s(6), s(6));
+                                ctx.fillRect(s(8), s(8), s(6), s(6));
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: filterMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: !window.isApplying
+                        onClicked: window.currentFilter = modelData.name
+                        cursorShape: Qt.PointingHandCursor
+                    }
+                }
+            }
+
+            Rectangle {
+                id: searchControlBtn
+                visible: window.currentFilter === "Search" && window.hasSearched
+                width: visible ? window.s(44) : 0
+                height: window.s(44)
+                radius: window.s(10)
+                clip: true
+                anchors.verticalCenter: parent.verticalCenter
+                color: window.isSearchPaused ? _theme.surface2 : "transparent"
+                border.color: window.isSearchPaused ? _theme.text : _theme.surface1
+                border.width: window.isSearchPaused ? window.s(2) : 1
+                
+                Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
+                Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                
+                MouseArea {
+                    id: scMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: !window.isApplying
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: window.isSearchPaused = !window.isSearchPaused
+                }
+                
+                Canvas {
+                    width: window.s(44); height: window.s(44)
+                    anchors.centerIn: parent
+                    property bool paused: window.isSearchPaused
+                    property string activeColor: paused ? _theme.text : (scMouse.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
+                    onActiveColorChanged: requestPaint()
+                    onPausedChanged: requestPaint()
+                    property real scaleTrigger: window.s(1)
+                    onScaleTriggerChanged: requestPaint()
+                    
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        var s = window.s;
+                        ctx.reset();
+                        ctx.fillStyle = activeColor;
+                        if (!paused) {
+                            ctx.fillRect(s(15), s(14), s(4), s(16));
+                            ctx.fillRect(s(25), s(14), s(4), s(16));
+                        } else {
+                            ctx.beginPath();
+                            ctx.moveTo(s(16), s(12));
+                            ctx.lineTo(s(32), s(22));
+                            ctx.lineTo(s(16), s(32));
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                id: searchBox
+                height: window.s(44)
+                width: window.currentFilter === "Search" ? window.s(360) : window.s(44)
+                radius: window.s(10)
+                clip: true
+                anchors.verticalCenter: parent.verticalCenter
+                color: window.currentFilter === "Search" ? Qt.rgba(_theme.surface2.r, _theme.surface2.g, _theme.surface2.b, 0.8) : "transparent"
+                border.color: window.currentFilter === "Search" ? _theme.text : _theme.surface1
+                border.width: window.currentFilter === "Search" ? window.s(2) : 1
+                
+                Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
+                Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                Behavior on border.color { ColorAnimation { duration: 400 } }
+
+                MouseArea {
+                    id: searchMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: !window.isApplying
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (window.currentFilter !== "Search") {
+                            window.currentFilter = "Search";
+                        } else {
+                            window.currentFilter = "All";
+                        }
+                    }
+                }
+
+                Canvas {
+                    id: searchIcon
+                    width: window.s(44)
+                    height: window.s(44)
+                    anchors.left: parent.left
+                    anchors.leftMargin: window.currentFilter === "Search" ? window.s(5) : 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    Behavior on anchors.leftMargin { NumberAnimation { duration: 500; easing.type: Easing.OutExpo } }
+                    property string activeColor: window.currentFilter === "Search" ? _theme.text : (searchMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
+                    onActiveColorChanged: requestPaint()
+                    property real scaleTrigger: window.s(1)
+                    onScaleTriggerChanged: requestPaint()
+
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        var s = window.s;
+                        ctx.reset();
+                        ctx.lineWidth = s(3);
+                        ctx.strokeStyle = activeColor;
+                        ctx.beginPath();
+                        ctx.arc(s(18), s(18), s(7), 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(s(23), s(23));
+                        ctx.lineTo(s(31), s(31));
+                        ctx.stroke();
+                    }
+                }
+
+                TextInput {
+                    id: searchInput
+                    anchors.left: searchIcon.right
+                    anchors.right: submitBtn.left
+                    anchors.rightMargin: window.s(8)
+                    anchors.verticalCenter: parent.verticalCenter
+                    opacity: window.currentFilter === "Search" ? 1.0 : 0.0
+                    visible: opacity > 0
+                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
+                    color: _theme.text
+                    font.family: "JetBrains Mono"
+                    font.pixelSize: window.s(16)
+                    clip: true
+                    
+                    onTextEdited: {
+                        window.hasSearched = false;
+                        searchState.searched = false;
+                    }
+                    onAccepted: {
+                        window.triggerOnlineSearch();
+                        searchInput.focus = false;
+                        view.forceActiveFocus();
+                    }
+                }
+
+                Rectangle {
+                    id: submitBtn
+                    width: window.s(32)
+                    height: window.s(32)
+                    radius: window.s(8)
+                    anchors.right: parent.right
+                    anchors.rightMargin: window.s(8)
+                    anchors.verticalCenter: parent.verticalCenter
+                    opacity: window.currentFilter === "Search" ? 1.0 : 0.0
+                    visible: opacity > 0
+                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
+                    color: submitMouseArea.containsMouse ? _theme.surface1 : "transparent"
+                    border.color: submitMouseArea.containsMouse ? _theme.text : _theme.surface2
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: 300 } }
+
+                    MouseArea {
+                        id: submitMouseArea
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true
+                        enabled: !window.isApplying
+                        onClicked: window.triggerOnlineSearch()
+                    }
+
+                    Canvas {
+                        width: window.s(16)
+                        height: window.s(16)
+                        anchors.centerIn: parent
+                        property string activeColor: submitMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                        onActiveColorChanged: requestPaint()
+                        property real scaleTrigger: window.s(1)
+                        onScaleTriggerChanged: requestPaint()
+                        
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            var s = window.s;
+                            ctx.reset();
+                            ctx.lineWidth = s(2);
+                            ctx.lineCap = "round";
+                            ctx.lineJoin = "round";
+                            ctx.strokeStyle = activeColor;
+                            ctx.beginPath();
+                            ctx.moveTo(s(2), s(8));
+                            ctx.lineTo(s(14), s(8));
+                            ctx.moveTo(s(9), s(3));
+                            ctx.lineTo(s(14), s(8));
+                            ctx.lineTo(s(9), s(13));
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        Quickshell.execDetached(["bash", "-c", "mkdir -p '" + decodeURIComponent(window.searchDir.replace("file://", "")) + "'"]);
+        window.loadMonitors();
+
+        if (searchState.searched) {
+            searchInput.text = searchState.query;
+            window.searchQuery = searchState.query;
+            window.hasSearched = true;
+            window.lastSearchName = searchState.lastName;
+            window.isSearchPaused = true;
+        }
+
+        view.forceActiveFocus();
+        window.processMarkers();
+        Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/wallpaper_thumbnail.sh"]);
+    }
+
+    Component.onDestruction: {
+        if (window.hasSearched) {
+            searchState.query = searchInput.text;
+            searchState.searched = window.hasSearched;
+            searchState.lastName = window.lastSearchName;
+            Quickshell.execDetached(["bash", "-c", "echo 'pause' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
+        } else {
+            Quickshell.execDetached(["bash", "-c", "echo 'stop' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control; for p in \$(pgrep -f ddg_search.sh); do if [ \"\$p\" != \"\$\$\" ] && [ \"\$p\" != \"\$BASHPID\" ]; then kill -9 \$p 2>/dev/null || true; fi; done; pkill -f '[g]et_ddg_links.py'"]);
+        }
+    }
+}
 </file>
 
 <file path="modules/home/shell.nix">
@@ -26716,6 +26758,604 @@ Item {
 }
 </file>
 
+<file path="dotfiles/hypr/scripts/quickshell/Main.qml">
+import QtQuick
+import QtQuick.Window
+import QtQuick.Controls
+import Quickshell
+import Quickshell.Io
+import Quickshell.Wayland
+import Quickshell.Services.Notifications
+import "WindowRegistry.js" as Registry
+
+import "notifications" as Notifs
+
+PanelWindow {
+    id: masterWindow
+    color: "transparent"
+
+
+    Keys.onEscapePressed: (event) => {
+        switchWidget("hidden", "");
+        event.accepted = true;
+    }
+
+    IpcHandler {
+        target: "main"
+
+        function forceReload(): void {
+            Quickshell.reload(true)
+        }
+
+        function handleCommand(cmd: string, targetWidget: string, arg: string): void {
+            cmd = cmd || "";
+            targetWidget = targetWidget || "";
+            arg = arg || "";
+
+            let isClosing = (masterWindow.currentActive !== "hidden" && !masterWindow.isVisible);
+            let effectivelyActive = isClosing ? "hidden" : masterWindow.currentActive;
+            console.log("IPC", cmd, targetWidget, effectivelyActive);
+
+            if (cmd === "close") {
+                switchWidget("hidden", "");
+            } else if (cmd === "toggle" || cmd === "open") {
+                delayedClear.stop();
+
+                if (targetWidget === effectivelyActive) {
+                    let currentItem = widgetStack.currentItem;
+
+                    if (arg !== "" && currentItem && currentItem.activeMode !== undefined && currentItem.activeMode !== arg) {
+                        currentItem.activeMode = arg;
+                    } else if (cmd === "toggle") {
+                        switchWidget("hidden", "");
+                    }
+                } else if (getLayout(targetWidget)) {
+                    switchWidget(targetWidget, arg);
+                }
+            } else if (getLayout(cmd)) {
+                let legacyArg = targetWidget;
+                delayedClear.stop();
+
+                if (cmd === effectivelyActive) {
+                    let currentItem = widgetStack.currentItem;
+                    if (legacyArg !== "" && currentItem && currentItem.activeMode !== undefined && currentItem.activeMode !== legacyArg) {
+                        currentItem.activeMode = legacyArg;
+                    } else {
+                        switchWidget("hidden", "");
+                    }
+                } else {
+                    switchWidget(cmd, legacyArg);
+                }
+            }
+        }
+    }
+
+    WlrLayershell.namespace: "qs-master"
+    WlrLayershell.layer: WlrLayer.Overlay
+
+    exclusionMode: ExclusionMode.Ignore
+    focusable: true
+
+    implicitWidth: masterWindow.screen.width
+    implicitHeight: masterWindow.screen.height
+
+    visible: isVisible
+
+    mask: Region { item: topBarHole; intersection: Intersection.Xor }
+
+    Item {
+        id: topBarHole
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 48
+
+        anchors.leftMargin: (masterWindow.currentActive !== "hidden" && masterWindow.animX < 10 && masterWindow.animY < height) ? masterWindow.animW : 0
+        anchors.rightMargin: (masterWindow.currentActive !== "hidden" && (masterWindow.animX + masterWindow.animW) > (parent.width - 10) && masterWindow.animY < height) ? masterWindow.animW : 0
+
+        Behavior on anchors.leftMargin {
+            enabled: masterWindow.currentActive !== "hidden"
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+        Behavior on anchors.rightMargin {
+            enabled: masterWindow.currentActive !== "hidden"
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        enabled: masterWindow.isVisible
+        onClicked: switchWidget("hidden", "")
+    }
+
+    property var widgetCache: ({})
+
+    property var componentCache: ({})
+
+    function resolveComponent(path) {
+        if (!path) return null;
+        if (componentCache[path]) return componentCache[path];
+
+        let comp = Qt.createComponent(path);
+
+        if (comp.status === Component.Ready) {
+            componentCache[path] = comp;
+            return comp;
+        } else if (comp.status === Component.Error) {
+            console.log("QML Component compilation error for path:", path, comp.errorString());
+            return null;
+        } else {
+            // Component.Loading (or Null) — not actually an error. Wait for
+            // it to resolve asynchronously, cache it once ready, and
+            // invalidate the layout cache so the next getLayout() call
+            // picks up the now-cached component instead of retrying
+            // Qt.createComponent() from scratch every time.
+            comp.statusChanged.connect(function() {
+                if (comp.status === Component.Ready) {
+                    componentCache[path] = comp;
+                    masterWindow._layoutCacheKey = "";
+                } else if (comp.status === Component.Error) {
+                    console.log("QML Component compilation error for path:", path, comp.errorString());
+                }
+            });
+            return null;
+        }
+    }
+
+    function preloadWidget(name) {
+        if (widgetCache[name]) return;
+        let t = getLayout(name);
+        if (!t || !t.comp) return;
+        
+        // Attached directly to masterWindow instead of a dummy invisible container to prevent focus scope corruption
+        let obj = t.comp.createObject(masterWindow, {
+            "notifModel": masterWindow.notifModel,
+            "liveNotifs": masterWindow.liveNotifs,
+            "visible": false
+        });
+        if (obj) widgetCache[name] = obj;
+    }
+
+    Component.onCompleted: {
+        preloadStaggerTimer.start();
+    }
+
+    Timer {
+        id: preloadStaggerTimer
+        interval: 900
+        repeat: false
+        onTriggered: {
+            preloadWidget("battery");
+            preloadWidget("network");
+            preloadWidget("volume");
+            preloadWidget("music");
+            preloadWidget("clipboard");
+            preloadWidget("monitors");
+            preloadWidget("focustime");
+            preloadWidget("guide");
+            preloadWidget("calendar");
+            preloadWidget("wallpaper");
+        }
+    }
+
+    property string currentActive: "hidden"
+
+    onCurrentActiveChanged: {
+        Quickshell.execDetached(["bash", "-c", "echo '" + currentActive + "' > " + Caching.runDir + "/current_widget"]);
+    }
+
+    property bool isVisible: false
+    property string activeArg: ""
+    property bool disableMorph: false
+
+    property int morphDuration: 160
+    property int morphDurationShift: 210
+    property int exitDuration: 160
+
+    property real animW: 1
+    property real animH: 1
+    property real animX: 0
+    property real animY: 0
+
+    property real targetW: 1
+    property real targetH: 1
+
+    property real globalUiScale: 1.0
+
+    ListModel { id: globalNotificationHistory }
+    ListModel { id: activePopupsModel }
+
+    property var liveNotifs: ({})
+    property int _popupCounter: 0
+
+    property bool isStartup: true
+    Timer {
+        id: startupTimer
+        interval: 500
+        running: true
+        onTriggered: masterWindow.isStartup = false
+    }
+
+    function removePopup(uid) {
+        for (let i = 0; i < activePopupsModel.count; i++) {
+            if (activePopupsModel.get(i).uid === uid) {
+                activePopupsModel.remove(i);
+                break;
+            }
+        }
+    }
+
+    NotificationServer {
+        id: globalNotificationServer
+        bodySupported: true
+        actionsSupported: true
+        imageSupported: true
+
+        onNotification: (n) => {
+            n.tracked = true;
+
+            let extractedActions = [];
+            if (n.actions) {
+                for (let i = 0; i < n.actions.length; i++) {
+                    extractedActions.push({
+                        "id": n.actions[i].identifier || "",
+                        "text": n.actions[i].text || n.actions[i].name || "Action"
+                    });
+                }
+            }
+
+            masterWindow._popupCounter++;
+            let currentUid = masterWindow._popupCounter;
+
+            masterWindow.liveNotifs[currentUid] = n;
+
+            let notifData = {
+                "appName":     n.appName  !== "" ? n.appName  : "System",
+                "summary":     n.summary  !== "" ? n.summary  : "No Title",
+                "body":        n.body     !== "" ? n.body     : "",
+                "iconPath":    n.appIcon  !== "" ? n.appIcon  : "",
+                "actionsJson": JSON.stringify(extractedActions),
+                "uid":         currentUid,
+                "notif":       n
+            };
+
+            globalNotificationHistory.insert(0, notifData);
+
+            if (!masterWindow.isStartup) {
+                activePopupsModel.append(notifData);
+                osdPopups.storeNotif(currentUid, n);
+            }
+        }
+    }
+
+    property var notifModel: globalNotificationHistory
+
+    Notifs.NotificationPopups {
+        id: osdPopups
+        popupModel: activePopupsModel
+        uiScale: masterWindow.globalUiScale
+        onRemoveRequested: (uid) => masterWindow.removePopup(uid)
+    }
+    onGlobalUiScaleChanged: { handleNativeScreenChange(); }
+
+    Process {
+        id: settingsReader
+        command: ["bash", "-c", "cat ~/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
+                        let parsed = JSON.parse(this.text);
+                        if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
+                            masterWindow.globalUiScale = parsed.uiScale;
+                        }
+                    }
+                } catch (e) {
+                    console.log("Error parsing settings.json in main.qml:", e);
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: settingsPollTimer
+        interval: 3000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            settingsReader.running = false;
+            settingsReader.running = true;
+        }
+    }
+
+    property var    _layoutCache:    ({})
+    property string _layoutCacheKey: ""
+
+    function getLayout(name) {
+        let key = name + "|" + masterWindow.width + "|" + masterWindow.height + "|" + masterWindow.globalUiScale;
+        if (_layoutCacheKey === key) return _layoutCache[key];
+        let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
+        
+        if (result && result.comp && typeof result.comp === "string") {
+            result.comp = resolveComponent(result.comp);
+        }
+        
+        _layoutCache = {};
+        _layoutCache[key] = result;
+        _layoutCacheKey = key;
+        return result;
+    }
+
+    Connections {
+        target: masterWindow
+        function onWidthChanged()  { _layoutCacheKey = ""; handleNativeScreenChange(); }
+        function onHeightChanged() { _layoutCacheKey = ""; handleNativeScreenChange(); }
+    }
+
+    function handleNativeScreenChange() {
+        if (masterWindow.currentActive === "hidden") return;
+
+        let t = getLayout(masterWindow.currentActive);
+        if (!t) return;
+
+        let currentItem = widgetStack.currentItem;
+        let finalW = (currentItem && currentItem.targetMasterWidth  !== undefined) ? currentItem.targetMasterWidth  : t.w;
+        let finalH = (currentItem && currentItem.targetMasterHeight !== undefined) ? currentItem.targetMasterHeight : t.h;
+        let finalX = t.rx;
+        if (currentItem && currentItem.targetMasterWidth !== undefined && finalW !== t.w) {
+            finalX = Math.floor((masterWindow.width / 2) - (finalW / 2));
+        }
+
+        masterWindow.animX = finalX;
+        masterWindow.animY = t.ry;
+        masterWindow.animW = finalW;
+        masterWindow.animH = finalH;
+        masterWindow.targetW = finalW;
+        masterWindow.targetH = finalH;
+    }
+
+    // Timer ensures activeFocus is forced only AFTER Wayland compositor maps the visible surface
+    Timer {
+        id: focusTimer
+        interval: 50
+        onTriggered: {
+            if (masterWindow.isVisible && widgetStack.currentItem) {
+                widgetStack.forceActiveFocus();
+                widgetStack.currentItem.focus = false;
+                widgetStack.currentItem.focus = true;
+                widgetStack.currentItem.forceActiveFocus();
+            }
+        }
+    }
+
+    onIsVisibleChanged: {
+        if (isVisible) focusTimer.restart();
+        else focusTimer.stop();
+    }
+
+    Item {
+        x: masterWindow.animX
+        y: masterWindow.animY
+        width:  masterWindow.animW
+        height: masterWindow.animH
+        clip: true
+
+        Behavior on x {
+            enabled: !masterWindow.disableMorph
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+        Behavior on y {
+            enabled: !masterWindow.disableMorph
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+        Behavior on width {
+            enabled: !masterWindow.disableMorph
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+        Behavior on height {
+            enabled: !masterWindow.disableMorph
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+        }
+
+        opacity: masterWindow.isVisible ? 1.0 : 0.0
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 160
+                easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic
+            }
+        }
+
+        MouseArea { anchors.fill: parent }
+
+        Item {
+            anchors.fill: parent
+
+            StackView {
+                id: widgetStack
+                anchors.fill: parent
+                focus: true
+
+                Keys.onEscapePressed: (event) => {
+                    switchWidget("hidden", "");
+                    event.accepted = true;
+                }
+
+                onCurrentItemChanged: {
+                    if (currentItem) currentItem.forceActiveFocus();
+                }
+
+                replaceEnter: Transition {
+                    ParallelAnimation {
+                        NumberAnimation {
+                            property: "opacity"
+                            from: 0.0; to: 1.0
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.OutQuint
+                        }
+                        NumberAnimation {
+                            property: "scale"
+                            from: 0.98; to: 1.0
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                }
+
+                replaceExit: Transition {
+                    ParallelAnimation {
+                        NumberAnimation {
+                            property: "opacity"
+                            from: 1.0; to: 0.0
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.InQuint
+                        }
+                        NumberAnimation {
+                            property: "scale"
+                            from: 1.0; to: 0.98
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    function switchWidget(newWidget, arg) {
+        console.log("switchWidget:", newWidget)
+        delayedClear.stop();
+
+        if (newWidget === "hidden") {
+            if (currentActive !== "hidden") {
+                masterWindow.morphDuration = masterWindow.exitDuration;
+                masterWindow.disableMorph = false;
+
+                masterWindow.animW = 1;
+                masterWindow.animH = 1;
+                masterWindow.isVisible = false;
+
+                delayedClear.start();
+            }
+        } else {
+            if (currentActive === "hidden" || !masterWindow.isVisible) {
+                masterWindow.morphDuration = 230;
+                masterWindow.disableMorph = false;
+
+                let t = getLayout(newWidget);
+                masterWindow.animX = t.rx;
+                masterWindow.animY = t.ry;
+                masterWindow.animW = t.w;
+                masterWindow.animH = t.h;
+                masterWindow.targetW = t.w;
+                masterWindow.targetH = t.h;
+            } else {
+                masterWindow.morphDuration = masterWindow.morphDurationShift;
+                masterWindow.disableMorph = false;
+            }
+
+            executeSwitch(newWidget, arg, false);
+        }
+    }
+    
+    function executeSwitch(newWidget, arg, immediate) {
+        console.log("executeSwitch:", newWidget)
+        masterWindow.currentActive = newWidget;
+        masterWindow.activeArg = arg;
+
+        let t = getLayout(newWidget);
+        if (!t || !t.comp) return;
+
+        masterWindow.animX = t.rx;
+        masterWindow.animY = t.ry;
+        masterWindow.animW = t.w;
+        masterWindow.animH = t.h;
+        masterWindow.targetW = t.w;
+        masterWindow.targetH = t.h;
+
+        let props = {};
+        props["notifModel"]   = masterWindow.notifModel;
+        props["liveNotifs"]   = masterWindow.liveNotifs;
+        props["layoutWidth"]  = t.w;
+        props["layoutHeight"] = t.h;
+        if (newWidget === "wallpaper") props["widgetArg"] = arg;
+
+        let cached = widgetCache[newWidget];
+        if (cached) {
+            if (cached.notifModel   !== undefined) cached.notifModel   = masterWindow.notifModel;
+            if (cached.liveNotifs   !== undefined) cached.liveNotifs   = masterWindow.liveNotifs;
+            if (cached.layoutWidth  !== undefined) cached.layoutWidth  = t.w;
+            if (cached.layoutHeight !== undefined) cached.layoutHeight = t.h;
+            if (newWidget === "wallpaper" && cached.widgetArg !== undefined) cached.widgetArg = arg;
+            if (arg !== "" && cached.activeMode !== undefined) cached.activeMode = arg;
+
+            cached.visible = true;
+            if (immediate) {
+                widgetStack.replace(cached, {}, StackView.Immediate);
+            } else {
+                widgetStack.replace(cached, {});
+            }
+        } else {
+            // Attach directly to masterWindow (not widgetStack) so the object
+            // survives being popped off the StackView, mirroring exactly
+            // what preloadWidget() already does for the stagger-preloaded
+            // widgets. Without this, the object created below is owned by
+            // the StackView and gets destroyed on the next replace(), which
+            // is why monitors/focustime/guide/calendar/wallpaper previously
+            // lost all internal state on every close.
+            let obj = t.comp.createObject(masterWindow, props);
+            if (obj) {
+                widgetCache[newWidget] = obj;
+                if (immediate) {
+                    widgetStack.replace(obj, {}, StackView.Immediate);
+                } else {
+                    widgetStack.replace(obj, {});
+                }
+            } else {
+                console.log("Failed to create widget instance for:", newWidget);
+                if (immediate) {
+                    widgetStack.replace(t.comp, props, StackView.Immediate);
+                } else {
+                    widgetStack.replace(t.comp, props);
+                }
+            }
+        }
+
+        let currentItem = widgetStack.currentItem;
+        if (currentItem) {
+            if (currentItem.targetMasterWidth !== undefined) {
+                let dynW = currentItem.targetMasterWidth;
+                masterWindow.animW = dynW;
+                masterWindow.targetW = dynW;
+                masterWindow.animX = Math.floor((masterWindow.width / 2) - (dynW / 2));
+            }
+            if (currentItem.targetMasterHeight !== undefined) {
+                masterWindow.animH = currentItem.targetMasterHeight;
+                masterWindow.targetH = currentItem.targetMasterHeight;
+            }
+        }
+
+        masterWindow.isVisible = true;
+        focusTimer.restart();
+    }
+
+    Timer {
+        id: delayedClear
+        interval: 200
+
+        onTriggered: {
+            if (!masterWindow.isVisible) {
+                masterWindow.currentActive = "hidden";
+                widgetStack.clear();
+                masterWindow.disableMorph = false;
+            }
+        }
+    }
+}
+</file>
+
 <file path="dotfiles/hypr/scripts/quickshell/TopBar.qml">
 // dotfiles/hypr/scripts/quickshell/TopBar.qml
 import QtQuick
@@ -27942,604 +28582,6 @@ function getPopupLayout(mw, mh, userScale) {
         radius: s(14, scale),
         padding: s(12, scale)
     };
-}
-</file>
-
-<file path="dotfiles/hypr/scripts/quickshell/Main.qml">
-import QtQuick
-import QtQuick.Window
-import QtQuick.Controls
-import Quickshell
-import Quickshell.Io
-import Quickshell.Wayland
-import Quickshell.Services.Notifications
-import "WindowRegistry.js" as Registry
-
-import "notifications" as Notifs
-
-PanelWindow {
-    id: masterWindow
-    color: "transparent"
-
-
-    Keys.onEscapePressed: (event) => {
-        switchWidget("hidden", "");
-        event.accepted = true;
-    }
-
-    IpcHandler {
-        target: "main"
-
-        function forceReload(): void {
-            Quickshell.reload(true)
-        }
-
-        function handleCommand(cmd: string, targetWidget: string, arg: string): void {
-            cmd = cmd || "";
-            targetWidget = targetWidget || "";
-            arg = arg || "";
-
-            let isClosing = (masterWindow.currentActive !== "hidden" && !masterWindow.isVisible);
-            let effectivelyActive = isClosing ? "hidden" : masterWindow.currentActive;
-            console.log("IPC", cmd, targetWidget, effectivelyActive);
-
-            if (cmd === "close") {
-                switchWidget("hidden", "");
-            } else if (cmd === "toggle" || cmd === "open") {
-                delayedClear.stop();
-
-                if (targetWidget === effectivelyActive) {
-                    let currentItem = widgetStack.currentItem;
-
-                    if (arg !== "" && currentItem && currentItem.activeMode !== undefined && currentItem.activeMode !== arg) {
-                        currentItem.activeMode = arg;
-                    } else if (cmd === "toggle") {
-                        switchWidget("hidden", "");
-                    }
-                } else if (getLayout(targetWidget)) {
-                    switchWidget(targetWidget, arg);
-                }
-            } else if (getLayout(cmd)) {
-                let legacyArg = targetWidget;
-                delayedClear.stop();
-
-                if (cmd === effectivelyActive) {
-                    let currentItem = widgetStack.currentItem;
-                    if (legacyArg !== "" && currentItem && currentItem.activeMode !== undefined && currentItem.activeMode !== legacyArg) {
-                        currentItem.activeMode = legacyArg;
-                    } else {
-                        switchWidget("hidden", "");
-                    }
-                } else {
-                    switchWidget(cmd, legacyArg);
-                }
-            }
-        }
-    }
-
-    WlrLayershell.namespace: "qs-master"
-    WlrLayershell.layer: WlrLayer.Overlay
-
-    exclusionMode: ExclusionMode.Ignore
-    focusable: true
-
-    implicitWidth: masterWindow.screen.width
-    implicitHeight: masterWindow.screen.height
-
-    visible: isVisible
-
-    mask: Region { item: topBarHole; intersection: Intersection.Xor }
-
-    Item {
-        id: topBarHole
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: 48
-
-        anchors.leftMargin: (masterWindow.currentActive !== "hidden" && masterWindow.animX < 10 && masterWindow.animY < height) ? masterWindow.animW : 0
-        anchors.rightMargin: (masterWindow.currentActive !== "hidden" && (masterWindow.animX + masterWindow.animW) > (parent.width - 10) && masterWindow.animY < height) ? masterWindow.animW : 0
-
-        Behavior on anchors.leftMargin {
-            enabled: masterWindow.currentActive !== "hidden"
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-        Behavior on anchors.rightMargin {
-            enabled: masterWindow.currentActive !== "hidden"
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        enabled: masterWindow.isVisible
-        onClicked: switchWidget("hidden", "")
-    }
-
-    property var widgetCache: ({})
-
-    property var componentCache: ({})
-
-    function resolveComponent(path) {
-        if (!path) return null;
-        if (componentCache[path]) return componentCache[path];
-
-        let comp = Qt.createComponent(path);
-
-        if (comp.status === Component.Ready) {
-            componentCache[path] = comp;
-            return comp;
-        } else if (comp.status === Component.Error) {
-            console.log("QML Component compilation error for path:", path, comp.errorString());
-            return null;
-        } else {
-            // Component.Loading (or Null) — not actually an error. Wait for
-            // it to resolve asynchronously, cache it once ready, and
-            // invalidate the layout cache so the next getLayout() call
-            // picks up the now-cached component instead of retrying
-            // Qt.createComponent() from scratch every time.
-            comp.statusChanged.connect(function() {
-                if (comp.status === Component.Ready) {
-                    componentCache[path] = comp;
-                    masterWindow._layoutCacheKey = "";
-                } else if (comp.status === Component.Error) {
-                    console.log("QML Component compilation error for path:", path, comp.errorString());
-                }
-            });
-            return null;
-        }
-    }
-
-    function preloadWidget(name) {
-        if (widgetCache[name]) return;
-        let t = getLayout(name);
-        if (!t || !t.comp) return;
-        
-        // Attached directly to masterWindow instead of a dummy invisible container to prevent focus scope corruption
-        let obj = t.comp.createObject(masterWindow, {
-            "notifModel": masterWindow.notifModel,
-            "liveNotifs": masterWindow.liveNotifs,
-            "visible": false
-        });
-        if (obj) widgetCache[name] = obj;
-    }
-
-    Component.onCompleted: {
-        preloadStaggerTimer.start();
-    }
-
-    Timer {
-        id: preloadStaggerTimer
-        interval: 900
-        repeat: false
-        onTriggered: {
-            preloadWidget("battery");
-            preloadWidget("network");
-            preloadWidget("volume");
-            preloadWidget("music");
-            preloadWidget("clipboard");
-            preloadWidget("monitors");
-            preloadWidget("focustime");
-            preloadWidget("guide");
-            preloadWidget("calendar");
-            preloadWidget("wallpaper");
-        }
-    }
-
-    property string currentActive: "hidden"
-
-    onCurrentActiveChanged: {
-        Quickshell.execDetached(["bash", "-c", "echo '" + currentActive + "' > " + Caching.runDir + "/current_widget"]);
-    }
-
-    property bool isVisible: false
-    property string activeArg: ""
-    property bool disableMorph: false
-
-    property int morphDuration: 160
-    property int morphDurationShift: 210
-    property int exitDuration: 160
-
-    property real animW: 1
-    property real animH: 1
-    property real animX: 0
-    property real animY: 0
-
-    property real targetW: 1
-    property real targetH: 1
-
-    property real globalUiScale: 1.0
-
-    ListModel { id: globalNotificationHistory }
-    ListModel { id: activePopupsModel }
-
-    property var liveNotifs: ({})
-    property int _popupCounter: 0
-
-    property bool isStartup: true
-    Timer {
-        id: startupTimer
-        interval: 500
-        running: true
-        onTriggered: masterWindow.isStartup = false
-    }
-
-    function removePopup(uid) {
-        for (let i = 0; i < activePopupsModel.count; i++) {
-            if (activePopupsModel.get(i).uid === uid) {
-                activePopupsModel.remove(i);
-                break;
-            }
-        }
-    }
-
-    NotificationServer {
-        id: globalNotificationServer
-        bodySupported: true
-        actionsSupported: true
-        imageSupported: true
-
-        onNotification: (n) => {
-            n.tracked = true;
-
-            let extractedActions = [];
-            if (n.actions) {
-                for (let i = 0; i < n.actions.length; i++) {
-                    extractedActions.push({
-                        "id": n.actions[i].identifier || "",
-                        "text": n.actions[i].text || n.actions[i].name || "Action"
-                    });
-                }
-            }
-
-            masterWindow._popupCounter++;
-            let currentUid = masterWindow._popupCounter;
-
-            masterWindow.liveNotifs[currentUid] = n;
-
-            let notifData = {
-                "appName":     n.appName  !== "" ? n.appName  : "System",
-                "summary":     n.summary  !== "" ? n.summary  : "No Title",
-                "body":        n.body     !== "" ? n.body     : "",
-                "iconPath":    n.appIcon  !== "" ? n.appIcon  : "",
-                "actionsJson": JSON.stringify(extractedActions),
-                "uid":         currentUid,
-                "notif":       n
-            };
-
-            globalNotificationHistory.insert(0, notifData);
-
-            if (!masterWindow.isStartup) {
-                activePopupsModel.append(notifData);
-                osdPopups.storeNotif(currentUid, n);
-            }
-        }
-    }
-
-    property var notifModel: globalNotificationHistory
-
-    Notifs.NotificationPopups {
-        id: osdPopups
-        popupModel: activePopupsModel
-        uiScale: masterWindow.globalUiScale
-        onRemoveRequested: (uid) => masterWindow.removePopup(uid)
-    }
-    onGlobalUiScaleChanged: { handleNativeScreenChange(); }
-
-    Process {
-        id: settingsReader
-        command: ["bash", "-c", "cat ~/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
-                        let parsed = JSON.parse(this.text);
-                        if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
-                            masterWindow.globalUiScale = parsed.uiScale;
-                        }
-                    }
-                } catch (e) {
-                    console.log("Error parsing settings.json in main.qml:", e);
-                }
-            }
-        }
-    }
-
-    Timer {
-        id: settingsPollTimer
-        interval: 3000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
-            settingsReader.running = false;
-            settingsReader.running = true;
-        }
-    }
-
-    property var    _layoutCache:    ({})
-    property string _layoutCacheKey: ""
-
-    function getLayout(name) {
-        let key = name + "|" + masterWindow.width + "|" + masterWindow.height + "|" + masterWindow.globalUiScale;
-        if (_layoutCacheKey === key) return _layoutCache[key];
-        let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
-        
-        if (result && result.comp && typeof result.comp === "string") {
-            result.comp = resolveComponent(result.comp);
-        }
-        
-        _layoutCache = {};
-        _layoutCache[key] = result;
-        _layoutCacheKey = key;
-        return result;
-    }
-
-    Connections {
-        target: masterWindow
-        function onWidthChanged()  { _layoutCacheKey = ""; handleNativeScreenChange(); }
-        function onHeightChanged() { _layoutCacheKey = ""; handleNativeScreenChange(); }
-    }
-
-    function handleNativeScreenChange() {
-        if (masterWindow.currentActive === "hidden") return;
-
-        let t = getLayout(masterWindow.currentActive);
-        if (!t) return;
-
-        let currentItem = widgetStack.currentItem;
-        let finalW = (currentItem && currentItem.targetMasterWidth  !== undefined) ? currentItem.targetMasterWidth  : t.w;
-        let finalH = (currentItem && currentItem.targetMasterHeight !== undefined) ? currentItem.targetMasterHeight : t.h;
-        let finalX = t.rx;
-        if (currentItem && currentItem.targetMasterWidth !== undefined && finalW !== t.w) {
-            finalX = Math.floor((masterWindow.width / 2) - (finalW / 2));
-        }
-
-        masterWindow.animX = finalX;
-        masterWindow.animY = t.ry;
-        masterWindow.animW = finalW;
-        masterWindow.animH = finalH;
-        masterWindow.targetW = finalW;
-        masterWindow.targetH = finalH;
-    }
-
-    // Timer ensures activeFocus is forced only AFTER Wayland compositor maps the visible surface
-    Timer {
-        id: focusTimer
-        interval: 50
-        onTriggered: {
-            if (masterWindow.isVisible && widgetStack.currentItem) {
-                widgetStack.forceActiveFocus();
-                widgetStack.currentItem.focus = false;
-                widgetStack.currentItem.focus = true;
-                widgetStack.currentItem.forceActiveFocus();
-            }
-        }
-    }
-
-    onIsVisibleChanged: {
-        if (isVisible) focusTimer.restart();
-        else focusTimer.stop();
-    }
-
-    Item {
-        x: masterWindow.animX
-        y: masterWindow.animY
-        width:  masterWindow.animW
-        height: masterWindow.animH
-        clip: true
-
-        Behavior on x {
-            enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-        Behavior on y {
-            enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-        Behavior on width {
-            enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-        Behavior on height {
-            enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
-        }
-
-        opacity: masterWindow.isVisible ? 1.0 : 0.0
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 160
-                easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic
-            }
-        }
-
-        MouseArea { anchors.fill: parent }
-
-        Item {
-            anchors.fill: parent
-
-            StackView {
-                id: widgetStack
-                anchors.fill: parent
-                focus: true
-
-                Keys.onEscapePressed: (event) => {
-                    switchWidget("hidden", "");
-                    event.accepted = true;
-                }
-
-                onCurrentItemChanged: {
-                    if (currentItem) currentItem.forceActiveFocus();
-                }
-
-                replaceEnter: Transition {
-                    ParallelAnimation {
-                        NumberAnimation {
-                            property: "opacity"
-                            from: 0.0; to: 1.0
-                            duration: masterWindow.morphDurationShift
-                            easing.type: Easing.OutQuint
-                        }
-                        NumberAnimation {
-                            property: "scale"
-                            from: 0.98; to: 1.0
-                            duration: masterWindow.morphDurationShift
-                            easing.type: Easing.OutCubic
-                        }
-                    }
-                }
-
-                replaceExit: Transition {
-                    ParallelAnimation {
-                        NumberAnimation {
-                            property: "opacity"
-                            from: 1.0; to: 0.0
-                            duration: masterWindow.morphDurationShift
-                            easing.type: Easing.InQuint
-                        }
-                        NumberAnimation {
-                            property: "scale"
-                            from: 1.0; to: 0.98
-                            duration: masterWindow.morphDurationShift
-                            easing.type: Easing.OutCubic
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    function switchWidget(newWidget, arg) {
-        console.log("switchWidget:", newWidget)
-        delayedClear.stop();
-
-        if (newWidget === "hidden") {
-            if (currentActive !== "hidden") {
-                masterWindow.morphDuration = masterWindow.exitDuration;
-                masterWindow.disableMorph = false;
-
-                masterWindow.animW = 1;
-                masterWindow.animH = 1;
-                masterWindow.isVisible = false;
-
-                delayedClear.start();
-            }
-        } else {
-            if (currentActive === "hidden" || !masterWindow.isVisible) {
-                masterWindow.morphDuration = 230;
-                masterWindow.disableMorph = false;
-
-                let t = getLayout(newWidget);
-                masterWindow.animX = t.rx;
-                masterWindow.animY = t.ry;
-                masterWindow.animW = t.w;
-                masterWindow.animH = t.h;
-                masterWindow.targetW = t.w;
-                masterWindow.targetH = t.h;
-            } else {
-                masterWindow.morphDuration = masterWindow.morphDurationShift;
-                masterWindow.disableMorph = false;
-            }
-
-            executeSwitch(newWidget, arg, false);
-        }
-    }
-    
-    function executeSwitch(newWidget, arg, immediate) {
-        console.log("executeSwitch:", newWidget)
-        masterWindow.currentActive = newWidget;
-        masterWindow.activeArg = arg;
-
-        let t = getLayout(newWidget);
-        if (!t || !t.comp) return;
-
-        masterWindow.animX = t.rx;
-        masterWindow.animY = t.ry;
-        masterWindow.animW = t.w;
-        masterWindow.animH = t.h;
-        masterWindow.targetW = t.w;
-        masterWindow.targetH = t.h;
-
-        let props = {};
-        props["notifModel"]   = masterWindow.notifModel;
-        props["liveNotifs"]   = masterWindow.liveNotifs;
-        props["layoutWidth"]  = t.w;
-        props["layoutHeight"] = t.h;
-        if (newWidget === "wallpaper") props["widgetArg"] = arg;
-
-        let cached = widgetCache[newWidget];
-        if (cached) {
-            if (cached.notifModel   !== undefined) cached.notifModel   = masterWindow.notifModel;
-            if (cached.liveNotifs   !== undefined) cached.liveNotifs   = masterWindow.liveNotifs;
-            if (cached.layoutWidth  !== undefined) cached.layoutWidth  = t.w;
-            if (cached.layoutHeight !== undefined) cached.layoutHeight = t.h;
-            if (newWidget === "wallpaper" && cached.widgetArg !== undefined) cached.widgetArg = arg;
-            if (arg !== "" && cached.activeMode !== undefined) cached.activeMode = arg;
-
-            cached.visible = true;
-            if (immediate) {
-                widgetStack.replace(cached, {}, StackView.Immediate);
-            } else {
-                widgetStack.replace(cached, {});
-            }
-        } else {
-            // Attach directly to masterWindow (not widgetStack) so the object
-            // survives being popped off the StackView, mirroring exactly
-            // what preloadWidget() already does for the stagger-preloaded
-            // widgets. Without this, the object created below is owned by
-            // the StackView and gets destroyed on the next replace(), which
-            // is why monitors/focustime/guide/calendar/wallpaper previously
-            // lost all internal state on every close.
-            let obj = t.comp.createObject(masterWindow, props);
-            if (obj) {
-                widgetCache[newWidget] = obj;
-                if (immediate) {
-                    widgetStack.replace(obj, {}, StackView.Immediate);
-                } else {
-                    widgetStack.replace(obj, {});
-                }
-            } else {
-                console.log("Failed to create widget instance for:", newWidget);
-                if (immediate) {
-                    widgetStack.replace(t.comp, props, StackView.Immediate);
-                } else {
-                    widgetStack.replace(t.comp, props);
-                }
-            }
-        }
-
-        let currentItem = widgetStack.currentItem;
-        if (currentItem) {
-            if (currentItem.targetMasterWidth !== undefined) {
-                let dynW = currentItem.targetMasterWidth;
-                masterWindow.animW = dynW;
-                masterWindow.targetW = dynW;
-                masterWindow.animX = Math.floor((masterWindow.width / 2) - (dynW / 2));
-            }
-            if (currentItem.targetMasterHeight !== undefined) {
-                masterWindow.animH = currentItem.targetMasterHeight;
-                masterWindow.targetH = currentItem.targetMasterHeight;
-            }
-        }
-
-        masterWindow.isVisible = true;
-        focusTimer.restart();
-    }
-
-    Timer {
-        id: delayedClear
-        interval: 200
-
-        onTriggered: {
-            if (!masterWindow.isVisible) {
-                masterWindow.currentActive = "hidden";
-                widgetStack.clear();
-                masterWindow.disableMorph = false;
-            }
-        }
-    }
 }
 </file>
 
