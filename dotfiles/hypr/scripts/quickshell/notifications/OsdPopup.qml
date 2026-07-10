@@ -16,11 +16,12 @@ PanelWindow {
 
     anchors {
         bottom: true
-        horizontalCenter: true
+        // left and right omitted = automatically horizontally centered in Wayland
     }
     
-    // Position slightly above bottom edge
-    margins.bottom: 100 * uiScale 
+    margins {
+        bottom: 100 * uiScale 
+    }
 
     exclusionMode: ExclusionMode.Ignore
     focusable: false
@@ -57,7 +58,6 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         
-        // FIXED: Opacity and animations moved inside the child Rectangle
         opacity: osdTimer.running ? 1.0 : 0.0
         visible: opacity > 0.01
         Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
