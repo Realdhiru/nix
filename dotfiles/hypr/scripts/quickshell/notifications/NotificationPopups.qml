@@ -11,9 +11,13 @@ import "../WindowRegistry.js" as Registry
 PanelWindow {
     id: popupWindow
 
+
     property var popupModel
     property real uiScale: 1.0
 
+    // Local map — live QObjects are stored here directly via storeNotif()
+    // called from Main.qml's onNotification handler. Never crosses window
+    // boundaries via a binding, which is what was breaking sourceNotif.
     property var _notifMap: ({})
 
     function storeNotif(uid, notif) {
@@ -125,7 +129,6 @@ PanelWindow {
                 width: ListView.view.width
                 height: contentCol.height + (popupWindow.layoutConfig.padding * 2)
 
-                property string fullAppName: model.appName || ""
                 property string fullSummary: model.summary || ""
                 property string fullBody: model.body || ""
                 property int typeLenSum: 0
@@ -156,21 +159,6 @@ PanelWindow {
                     function onClosed() {
                         popupWindow.removeNotif(delegateRoot.popupUid);
                     }
-                }
-
-                // Reset auto-dismiss timer on in-place IPC updates
-                property string trackedBody: model.body || ""
-                onTrackedBodyChanged: {
-                    if (autoDismissTimer.running) {
-                        autoDismissTimer.restart();
-                    }
-                }
-
-                Timer {
-                    id: autoDismissTimer
-                    interval: delegateRoot.effectiveTimeout > 0 ? delegateRoot.effectiveTimeout : 5000
-                    running: delegateRoot.effectiveTimeout > 0
-                    onTriggered: popupWindow.removeNotif(delegateRoot.popupUid)
                 }
 
                 ParallelAnimation {
@@ -219,6 +207,12 @@ PanelWindow {
                         opacity: 0.10
                     }
 
+                    Timer {
+                        interval: delegateRoot.effectiveTimeout > 0 ? delegateRoot.effectiveTimeout : 5000
+                        running: delegateRoot.effectiveTimeout > 0
+                        onTriggered: popupWindow.removeNotif(delegateRoot.popupUid)
+                    }
+
                     MouseArea {
                         anchors.fill: parent
                         hoverEnabled: true
@@ -256,7 +250,7 @@ PanelWindow {
                         spacing: 6 * popupWindow.uiScale
 
                         Text {
-                            text: delegateRoot.fullAppName
+                            text: model.appName || "System"
                             font.family: "JetBrains Mono"
                             font.weight: Font.Medium
                             font.pixelSize: 12 * popupWindow.uiScale
@@ -307,8 +301,7 @@ PanelWindow {
 
                             Text {
                                 anchors.fill: parent
-                                // Bypasses typewriter effect for rapid IPC OSD updates, uses typewriter for real notifs
-                                text: (delegateRoot.fullAppName === "System" && !delegateRoot.sourceNotif) ? delegateRoot.fullBody : delegateRoot.fullBody.substring(0, delegateRoot.typeLenBody)
+                                text: delegateRoot.fullBody.substring(0, delegateRoot.typeLenBody)
                                 font: hiddenBody.font
                                 color: _theme.subtext0
                                 wrapMode: Text.Wrap

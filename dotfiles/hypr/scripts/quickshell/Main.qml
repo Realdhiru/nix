@@ -13,6 +13,7 @@ PanelWindow {
     id: masterWindow
     color: "transparent"
 
+
     Keys.onEscapePressed: (event) => {
         switchWidget("hidden", "");
         event.accepted = true;
@@ -23,63 +24,6 @@ PanelWindow {
 
         function forceReload(): void {
             Quickshell.reload(true)
-        }
-
-        function showOSD(type: string, valStr: string): void {
-            let title = type === "volume" ? "Volume" :
-                        type === "mic" ? "Microphone" :
-                        type === "brightness" ? "Brightness" :
-                        type === "kbd" ? "Keyboard Backlight" :
-                        type === "caps" ? "Caps Lock" :
-                        type === "num" ? "Num Lock" : "System";
-
-            let numVal = parseFloat(valStr);
-            let bodyStr = (isNaN(numVal) && valStr !== "100" && valStr !== "0") ? valStr : Math.round(numVal) + "%";
-
-            // IN-PLACE UPDATE: Zero allocation, zero blinking.
-            for (let i = 0; i < activePopupsModel.count; i++) {
-                if (activePopupsModel.get(i).summary === title) {
-                    activePopupsModel.setProperty(i, "body", bodyStr);
-                    activePopupsModel.setProperty(i, "uid", Date.now()); // Updates UID to trigger timer restart
-                    return;
-                }
-            }
-
-            // If not found, spawn a new one (slides in from the right normally)
-            activePopupsModel.insert(0, {
-                "appName": "System",
-                "summary": title,
-                "body": bodyStr,
-                "iconPath": "",
-                "actionsJson": "[]",
-                "uid": Date.now(),
-                "notif": null
-            });
-        }
-
-        function pushSystemMessage(title: string, body: string, icon: string): void {
-            title = title || "";
-            body = body || "";
-            icon = icon || "";
-
-            masterWindow._popupCounter++;
-            let currentUid = masterWindow._popupCounter;
-
-            let notifData = {
-                "appName":     "System",
-                "summary":     title !== "" ? title : "System Message",
-                "body":        body,
-                "iconPath":    icon,
-                "actionsJson": "[]",
-                "uid":         currentUid,
-                "notif":       null
-            };
-
-            globalNotificationHistory.insert(0, notifData);
-
-            if (!masterWindow.isStartup) {
-                activePopupsModel.append(notifData);
-            }
         }
 
         function handleCommand(cmd: string, targetWidget: string, arg: string): void {
@@ -181,6 +125,11 @@ PanelWindow {
             console.log("QML Component compilation error for path:", path, comp.errorString());
             return null;
         } else {
+            // Component.Loading (or Null) — not actually an error. Wait for
+            // it to resolve asynchronously, cache it once ready, and
+            // invalidate the layout cache so the next getLayout() call
+            // picks up the now-cached component instead of retrying
+            // Qt.createComponent() from scratch every time.
             comp.statusChanged.connect(function() {
                 if (comp.status === Component.Ready) {
                     componentCache[path] = comp;
@@ -198,6 +147,7 @@ PanelWindow {
         let t = getLayout(name);
         if (!t || !t.comp) return;
         
+        // Attached directly to masterWindow instead of a dummy invisible container to prevent focus scope corruption
         let obj = t.comp.createObject(masterWindow, {
             "notifModel": masterWindow.notifModel,
             "liveNotifs": masterWindow.liveNotifs,
@@ -326,12 +276,6 @@ PanelWindow {
         uiScale: masterWindow.globalUiScale
         onRemoveRequested: (uid) => masterWindow.removePopup(uid)
     }
-
-    Notifs.OsdPopup {
-        id: osdPopup
-        uiScale: masterWindow.globalUiScale
-    }
-
     onGlobalUiScaleChanged: { handleNativeScreenChange(); }
 
     Process {
@@ -412,6 +356,7 @@ PanelWindow {
         masterWindow.targetH = finalH;
     }
 
+    // Timer ensures activeFocus is forced only AFTER Wayland compositor maps the visible surface
     Timer {
         id: focusTimer
         interval: 50
@@ -592,6 +537,13 @@ PanelWindow {
                 widgetStack.replace(cached, {});
             }
         } else {
+            // Attach directly to masterWindow (not widgetStack) so the object
+            // survives being popped off the StackView, mirroring exactly
+            // what preloadWidget() already does for the stagger-preloaded
+            // widgets. Without this, the object created below is owned by
+            // the StackView and gets destroyed on the next replace(), which
+            // is why monitors/focustime/guide/calendar/wallpaper previously
+            // lost all internal state on every close.
             let obj = t.comp.createObject(masterWindow, props);
             if (obj) {
                 widgetCache[newWidget] = obj;
