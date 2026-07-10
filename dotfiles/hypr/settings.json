@@ -5,5 +5,17 @@
   "wallpaperDir": "/home/realdhiru/Pictures/Wallpapers",
   "language": "",
   "kbOptions": "grp:alt_shift_toggle",
-  "workspaceCount": 8
+  "workspaceCount": 8,
+  "monitors": [
+    {
+      "name": "eDP-1",
+      "resW": 3840,
+      "resH": 2160,
+      "rate": 120,
+      "x": 0,
+      "y": 0,
+      "scale": 2,
+      "transform": 0
+    }
+  ]
 }
