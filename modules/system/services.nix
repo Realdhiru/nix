@@ -41,6 +41,14 @@
   services.tumbler.enable = true;
   programs.xfconf.enable = true;
 
+    # Printing.
+  services.printing = {
+    enable = true;
+    drivers = with pkgs; [
+      epson-escpr
+    ];
+  };
+
   # Screen recording.
   programs.gpu-screen-recorder.enable = true;
 
