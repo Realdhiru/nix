@@ -1,6 +1,11 @@
 dotfiles/secrets/*
 !dotfiles/secrets/.gitkeep
 
+# Config.qml's updateEnvBulk() writes real secrets into .env files
+# (e.g. calendar/.env holds the OpenWeather API key) — never commit these.
+.env
+**/.env
+
 
 result
 result-*
