@@ -176,7 +176,7 @@ Item {
         window.powerProfile = name;
         Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_power_profile"]);
 
-        let ppdMode = name;
+        let eppMode = (name === "performance") ? "performance" : (name === "power-saver") ? "power" : "balance_performance";
         let disableTurbo = (name === "power-saver") ? "1" : "0";
         let enableBoost = (name === "power-saver") ? "0" : "1";
         let targetRR = (name === "power-saver") ? "60" : "120";
@@ -184,10 +184,18 @@ Item {
         // NOTE: intentionally no `sudo tlp ac`/`sudo tlp bat` call here.
         // AC/BAT mode switching is owned exclusively by the udev rule in
         // power.nix. This function only manages the desktop-visible
-        // profile label, powerprofilesctl, CPU turbo/boost, and the
+        // profile label, per-core EPP, CPU turbo/boost, and the
         // internal-monitor refresh rate.
+        //
+        // power-profiles-daemon is intentionally disabled system-wide
+        // (TLP is the sole power manager — see power.nix), so
+        // `powerprofilesctl` has no daemon to talk to and was previously
+        // a silent no-op here. EPP (energy_performance_preference) is the
+        // real per-core knob TLP itself drives via
+        // CPU_ENERGY_PERF_POLICY_ON_AC/BAT, so we write it directly via
+        // set_epp.sh instead, under the NOPASSWD sudoers rule in users.nix.
         let bashCmd = `
-            powerprofilesctl set ${ppdMode} 2>/dev/null
+            sudo ~/.config/hypr/scripts/quickshell/battery/set_epp.sh ${eppMode} 2>/dev/null
             echo ${disableTurbo} | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo ${enableBoost} | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
 
             INT_MON=$(hyprctl monitors -j | jq -r '.[] | select(.name | test("eDP|LVDS|MIPI")).name' | head -n1)
@@ -241,7 +249,12 @@ Item {
             
             prof=$(cat /tmp/qs_power_profile 2>/dev/null)
             if [ -z "$prof" ]; then
-                prof=$(powerprofilesctl get 2>/dev/null || echo 'balanced')
+                epp=$(cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference 2>/dev/null || echo 'balance_performance')
+                case "$epp" in
+                    performance) prof='performance' ;;
+                    power) prof='power-saver' ;;
+                    *) prof='balanced' ;;
+                esac
             fi
 
             en=$(cat /sys/class/power_supply/BAT*/energy_now 2>/dev/null | head -n1 || cat /sys/class/power_supply/BAT*/charge_now 2>/dev/null | head -n1 || echo '0')

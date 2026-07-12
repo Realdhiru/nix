@@ -19,9 +19,11 @@ PanelWindow {
     // called from Main.qml's onNotification handler. Never crosses window
     // boundaries via a binding, which is what was breaking sourceNotif.
     property var _notifMap: ({})
+    property int _notifVersion: 0
 
     function storeNotif(uid, notif) {
         _notifMap[uid] = notif;
+        popupWindow._notifVersion++;
     }
 
     function getNotif(uid) {
@@ -135,7 +137,8 @@ PanelWindow {
                 property int typeLenBody: 0
                 property int popupUid: model.uid
 
-                property var sourceNotif: popupWindow.getNotif(model.uid)
+                property var sourceNotif: { popupWindow._notifVersion; return popupWindow.getNotif(model.uid); }
+
 
                 property var actionArray: {
                     try {
@@ -147,6 +150,7 @@ PanelWindow {
                 }
 
                 property int effectiveTimeout: {
+                    popupWindow._notifVersion;
                     var n = popupWindow.getNotif(model.uid);
                     if (!n || n.timeout === undefined) return 5000;
                     if (n.timeout === 0) return 0;
@@ -162,6 +166,7 @@ PanelWindow {
                 }
 
                 ParallelAnimation {
+                    id: typewriterAnim
                     running: true
                     NumberAnimation {
                         target: delegateRoot; property: "typeLenSum"
@@ -177,6 +182,18 @@ PanelWindow {
                             easing.type: Easing.OutCubic
                         }
                     }
+                }
+
+                // Restart the reveal whenever this delegate gets reused for
+                // an updated notification (e.g. mute/unmute, repeated
+                // volume presses) instead of freezing at the old length.
+                onFullSummaryChanged: {
+                    delegateRoot.typeLenSum = 0;
+                    typewriterAnim.restart();
+                }
+                onFullBodyChanged: {
+                    delegateRoot.typeLenBody = 0;
+                    typewriterAnim.restart();
                 }
 
                 Rectangle {

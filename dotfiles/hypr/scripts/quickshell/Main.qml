@@ -244,14 +244,37 @@ PanelWindow {
                 }
             }
 
-            masterWindow._popupCounter++;
-            let currentUid = masterWindow._popupCounter;
+            let notifAppName = n.appName !== "" ? n.appName : "System";
+            let notifSummary  = n.summary !== "" ? n.summary : "No Title";
+
+            // Collapse repeats of the SAME notification (same app + same
+            // title — e.g. holding a volume key, repeated caps-lock taps)
+            // into one in-place update instead of stacking a new popup.
+            let existingUid = -1;
+            for (let i = 0; i < activePopupsModel.count; i++) {
+                let e = activePopupsModel.get(i);
+                if (e.appName === notifAppName && e.summary === notifSummary) {
+                    existingUid = e.uid;
+                    break;
+                }
+            }
+
+            let currentUid;
+            if (existingUid !== -1) {
+                currentUid = existingUid;
+                if (masterWindow.liveNotifs[currentUid] && typeof masterWindow.liveNotifs[currentUid].close === "function") {
+                    masterWindow.liveNotifs[currentUid].close();
+                }
+            } else {
+                masterWindow._popupCounter++;
+                currentUid = masterWindow._popupCounter;
+            }
 
             masterWindow.liveNotifs[currentUid] = n;
 
             let notifData = {
-                "appName":     n.appName  !== "" ? n.appName  : "System",
-                "summary":     n.summary  !== "" ? n.summary  : "No Title",
+                "appName":     notifAppName,
+                "summary":     notifSummary,
                 "body":        n.body     !== "" ? n.body     : "",
                 "iconPath":    n.appIcon  !== "" ? n.appIcon  : "",
                 "actionsJson": JSON.stringify(extractedActions),
@@ -262,7 +285,16 @@ PanelWindow {
             globalNotificationHistory.insert(0, notifData);
 
             if (!masterWindow.isStartup) {
-                activePopupsModel.append(notifData);
+                if (existingUid !== -1) {
+                    for (let i = 0; i < activePopupsModel.count; i++) {
+                        if (activePopupsModel.get(i).uid === existingUid) {
+                            activePopupsModel.set(i, notifData);
+                            break;
+                        }
+                    }
+                } else {
+                    activePopupsModel.append(notifData);
+                }
                 osdPopups.storeNotif(currentUid, n);
             }
         }

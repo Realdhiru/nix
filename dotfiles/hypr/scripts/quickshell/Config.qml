@@ -1,4 +1,3 @@
-// ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml <==
 pragma Singleton
 import QtQuick
 import Quickshell
@@ -16,7 +15,7 @@ Item {
     readonly property string cacheDir: Caching.cacheDir
 
     readonly property string settingsJsonPath: hyprDir + "/settings.json"
-    readonly property string weatherEnvPath: qsScriptsDir + "/calendar/.env"
+    readonly property string weatherJsonPath: homeDir + "/nix/dotfiles/secrets/openweather.json"
 
     // State Tracking
     property bool dataReady: false
@@ -125,14 +124,15 @@ Item {
     }
 
     function saveWeatherConfig() {
-        let envs = {
-            "OPENWEATHER_KEY": config.weatherApiKey,
-            "OPENWEATHER_CITY_ID": config.weatherCityId,
-            "OPENWEATHER_UNIT": config.weatherUnit
+        let weatherData = {
+            "api_key": config.weatherApiKey,
+            "city_id": config.weatherCityId,
+            "unit": config.weatherUnit
         };
-
-        config.updateEnvBulk(config.weatherEnvPath, envs);
-        sh(`rm -rf "${Caching.getCacheDir('weather')}"`);
+        let safeJson = JSON.stringify(weatherData).replace(/'/g, "'\\''");
+        let cmd = `mkdir -p "$(dirname '${weatherJsonPath}')" && echo '${safeJson}' > '${weatherJsonPath}'`;
+        config.sh(cmd);
+        config.sh(`rm -rf "${Caching.getCacheDir('weather')}"`);
     }
 
     function saveAllKeybinds(bindsArray) {
@@ -336,29 +336,21 @@ Item {
     Component.onCompleted: {
         sh("mkdir -p ~/.cache && touch ~/.cache/hypr_power_monitor.conf");
         settingsReader.running = false; settingsReader.running = true;
-        envReader.running = false; envReader.running = true;
+        weatherReader.running = false; weatherReader.running = true;
     }
 
     Process {
-        id: envReader
-        command: ["bash", "-c", `cat "${config.weatherEnvPath}" 2>/dev/null || echo ''`]
+        id: weatherReader
+        command: ["bash", "-c", `cat "${config.weatherJsonPath}" 2>/dev/null || echo '{}'`]
         running: false
         stdout: StdioCollector {
             onStreamFinished: {
-                let lines = this.text ? this.text.trim().split('\n') : [];
-                for (let line of lines) {
-                    line = line.trim();
-                    let parts = line.split("=");
-                    if (parts.length >= 2) {
-                        let key = parts[0].trim();
-                        let val = parts.slice(1).join("=").replace(/^['"]|['"]$/g, '').trim();
-                        config.rawEnvs[key] = val;
-
-                        if (key === "OPENWEATHER_KEY") config.weatherApiKey = val;
-                        else if (key === "OPENWEATHER_CITY_ID") config.weatherCityId = val;
-                        else if (key === "OPENWEATHER_UNIT") config.weatherUnit = val;
-                    }
-                }
+                try {
+                    let w = JSON.parse(this.text);
+                    if (w.api_key) config.weatherApiKey = w.api_key;
+                    if (w.city_id) config.weatherCityId = w.city_id;
+                    if (w.unit) config.weatherUnit = w.unit;
+                } catch(e) {}
             }
         }
     }
