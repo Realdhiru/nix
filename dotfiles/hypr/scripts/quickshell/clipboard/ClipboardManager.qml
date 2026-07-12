@@ -247,11 +247,15 @@ Item {
         let batch = [];
 
         for (let i = 0; i < newItems.length; i++) {
-            allClips.push(newItems[i]);
             if (q === "" || newItems[i].type === "image" || newItems[i].content.toLowerCase().includes(q)) {
                 batch.push(newItems[i]);
             }
         }
+
+        // property var arrays don't emit their changed() signal on .push() —
+        // must clone and reassign instead (same pattern used everywhere else
+        // in this codebase for the same reason).
+        allClips = allClips.concat(newItems);
 
         if (batch.length > 0) clipModel.append(batch);
 

@@ -3,7 +3,7 @@
 {
   environment.systemPackages = with pkgs; [
     # CLI & Core Utilities
-    vim git curl wget tree jq yq-go bc socat python3 btop weathr
+    vim git curl wget tree jq yq-go bc socat python3 btop weathr util-linux
 
     # Development & Terminal
     vscodium

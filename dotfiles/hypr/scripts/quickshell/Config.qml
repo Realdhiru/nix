@@ -42,19 +42,33 @@ Item {
         tempObj[key] = value;
         let safeJson = JSON.stringify(tempObj).replace(/'/g, "'\\''");
 
+        // Two concurrent calls to setSetting()/updateJsonBulk() previously
+        // raced: both would `cat` the file before either finished writing,
+        // so whichever `mv` landed last silently discarded the other's
+        // change (e.g. saveAllKeybinds() right after saveAppSettings() on
+        // first boot). flock serializes the whole read-modify-write
+        // section per settings file, so the second call now waits for the
+        // first to fully finish (and therefore sees its result) instead
+        // of racing it. `util-linux` (flock) is explicit in packages.nix.
         let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" && ` +
+                  `( flock 200; ` +
                   `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
                   `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
-                  `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}'`;
+                  `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}' ) 200>'${settingsJsonPath}.lock'`;
         sh(cmd);
     }
 
     function updateJsonBulk(dataObj) {
         let safeJson = JSON.stringify(dataObj).replace(/'/g, "'\\''");
+
+        // See setSetting() above — same flock-guarded critical section,
+        // same lock file, so the two stay mutually exclusive with each
+        // other too (not just with themselves).
         let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" && ` +
+                  `( flock 200; ` +
                   `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
                   `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
-                  `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}'`;
+                  `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}' ) 200>'${settingsJsonPath}.lock'`;
         sh(cmd);
 
         for (let key in dataObj) rawSettings[key] = dataObj[key];
@@ -74,7 +88,10 @@ Item {
                       `sed -i "s|^${key}=.*|${key}='${safeVal}'|" '${filePath}'; ` +
                       `else echo "${key}='${safeVal}'" >> '${filePath}'; fi`);
         }
-        sh(cmds.join(" && "));
+        // flock-guarded per-file, same reasoning as setSetting() above —
+        // keyed on filePath so different .env files don't contend on the
+        // same lock.
+        sh(`( flock 200; ${cmds.join(" && ")} ) 200>'${filePath}.lock'`);
     }
 
     // =========================================================================

@@ -288,9 +288,16 @@ class DaemonTracker:
 
         hourly_data = [0] * 48
         try:
-            c.execute('SELECT hour, SUM(seconds) FROM focus_hourly WHERE log_date = ? GROUP BY hour', (target_date.isoformat(),))
-            for hr, secs in c.fetchall():
-                if 0 <= hr <= 23: hourly_data[hr * 2] += secs
+            # NOTE: intentionally sourced from focus_intervals ONLY.
+            # focus_hourly logs the exact same seconds at coarser (1hr)
+            # granularity, not additional time — a previous version of
+            # this code summed both into hourly_data, which double-counted
+            # every second of activity (and unevenly: the focus_hourly
+            # total landed entirely on one half of its hour, skewing the
+            # by-time-of-day chart). focus_intervals (15-min buckets,
+            # idx // 2 -> the matching 30-min slot) matches the live-tick
+            # path's own granularity (see fast_tick's `idx = hr*2 + ...`
+            # above) and is sufficient on its own.
             c.execute('SELECT interval_idx, SUM(seconds) FROM focus_intervals WHERE log_date = ? GROUP BY interval_idx', (target_date.isoformat(),))
             for idx, secs in c.fetchall():
                 if 0 <= idx < 96: hourly_data[idx // 2] += secs
