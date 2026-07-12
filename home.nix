@@ -27,6 +27,7 @@
       # Ensure dynamic state files exist before Hyprland boots to prevent parsing errors
       mkdir -p $HOME/.cache
       touch $HOME/.cache/hypr_power_monitor.conf
+      touch $HOME/.cache/current_shader.conf
     '';
   };
 
