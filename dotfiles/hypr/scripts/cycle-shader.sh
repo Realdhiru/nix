@@ -3,6 +3,7 @@ set -euo pipefail
 
 SHADER_DIR="$HOME/.config/hypr/shaders"
 STATE_FILE="$HOME/.cache/current_shader"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Use native bash globbing for safe array population
 shopt -s nullglob
@@ -17,16 +18,14 @@ fi
 # Use exact JSON extraction to prevent regex brittleness
 CURRENT_SHADER=$(hyprctl -j getoption decoration:screen_shader | jq -r '.str')
 
-# Restore from cache if Hyprland dropped the shader (e.g., after a reload)
+# Restore from cache if Hyprland dropped the shader (e.g., after a reload).
+# Shared with setPowerProfile() in BatteryPopup.qml — see restore-shader.sh.
 if [[ "$CURRENT_SHADER" == "[[EMPTY]]" || "$CURRENT_SHADER" == "null" || -z "$CURRENT_SHADER" ]]; then
-    if [[ -f "$STATE_FILE" ]]; then
-        LAST_SHADER=$(<"$STATE_FILE")
-        
-        # Validate cache exists on disk before applying to prevent compositor crashes
-        if [[ -n "$LAST_SHADER" && "$LAST_SHADER" != "[[EMPTY]]" && -f "$LAST_SHADER" ]]; then
-            hyprctl keyword decoration:screen_shader "$LAST_SHADER" >/dev/null
-            exit 0
-        fi
+    "$SCRIPT_DIR/restore-shader.sh"
+    CURRENT_SHADER=$(hyprctl -j getoption decoration:screen_shader | jq -r '.str')
+
+    if [[ "$CURRENT_SHADER" != "[[EMPTY]]" && "$CURRENT_SHADER" != "null" && -n "$CURRENT_SHADER" ]]; then
+        exit 0
     fi
     CURRENT_SHADER="[[EMPTY]]"
 fi

@@ -211,6 +211,14 @@ Item {
                 if [ "$CUR_RR" != "${targetRR}" ]; then
                     hyprctl keyword monitor "$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10" 2>/dev/null
                 fi
+
+                # hyprland.conf sources ~/.cache/hypr_power_monitor.conf, so the
+                # write above triggers Hyprland's own file-watch reload — which
+                # silently drops decoration:screen_shader (runtime-only state,
+                # never persisted to any sourced .conf). Give the async reload
+                # a moment to actually happen, then reapply the shader.
+                sleep 0.5
+                ~/.config/hypr/scripts/restore-shader.sh 2>/dev/null
             fi
         `;
 
