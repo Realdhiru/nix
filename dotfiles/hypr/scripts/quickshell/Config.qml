@@ -1,3 +1,4 @@
+// ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml <==
 pragma Singleton
 import QtQuick
 import Quickshell
@@ -15,7 +16,7 @@ Item {
     readonly property string cacheDir: Caching.cacheDir
 
     readonly property string settingsJsonPath: hyprDir + "/settings.json"
-    readonly property string weatherJsonPath: homeDir + "/nix/dotfiles/secrets/openweather.json"
+    readonly property string weatherEnvPath: qsScriptsDir + "/calendar/.env"
 
     // State Tracking
     property bool dataReady: false
@@ -80,7 +81,6 @@ Item {
     // Legacy Specific Properties (Bound to Settings.qml)
     // =========================================================================
     property real uiScale: 1.0
-    property bool openGuideAtStartup: true
     property bool topbarHelpIcon: true
     property int workspaceCount: 8
     property int initialWorkspaceCount: 8
@@ -104,7 +104,6 @@ Item {
     function saveAppSettings() {
         let configObj = {
             "uiScale": config.uiScale,
-            "openGuideAtStartup": config.openGuideAtStartup,
             "topbarHelpIcon": config.topbarHelpIcon,
             "wallpaperDir": config.wallpaperDir,
             "language": config.language,
@@ -124,15 +123,14 @@ Item {
     }
 
     function saveWeatherConfig() {
-        let weatherData = {
-            "api_key": config.weatherApiKey,
-            "city_id": config.weatherCityId,
-            "unit": config.weatherUnit
+        let envs = {
+            "OPENWEATHER_KEY": config.weatherApiKey,
+            "OPENWEATHER_CITY_ID": config.weatherCityId,
+            "OPENWEATHER_UNIT": config.weatherUnit
         };
-        let safeJson = JSON.stringify(weatherData).replace(/'/g, "'\\''");
-        let cmd = `mkdir -p "$(dirname '${weatherJsonPath}')" && echo '${safeJson}' > '${weatherJsonPath}'`;
-        config.sh(cmd);
-        config.sh(`rm -rf "${Caching.getCacheDir('weather')}"`);
+
+        config.updateEnvBulk(config.weatherEnvPath, envs);
+        sh(`rm -rf "${Caching.getCacheDir('weather')}"`);
     }
 
     function saveAllKeybinds(bindsArray) {
@@ -336,21 +334,29 @@ Item {
     Component.onCompleted: {
         sh("mkdir -p ~/.cache && touch ~/.cache/hypr_power_monitor.conf");
         settingsReader.running = false; settingsReader.running = true;
-        weatherReader.running = false; weatherReader.running = true;
+        envReader.running = false; envReader.running = true;
     }
 
     Process {
-        id: weatherReader
-        command: ["bash", "-c", `cat "${config.weatherJsonPath}" 2>/dev/null || echo '{}'`]
+        id: envReader
+        command: ["bash", "-c", `cat "${config.weatherEnvPath}" 2>/dev/null || echo ''`]
         running: false
         stdout: StdioCollector {
             onStreamFinished: {
-                try {
-                    let w = JSON.parse(this.text);
-                    if (w.api_key) config.weatherApiKey = w.api_key;
-                    if (w.city_id) config.weatherCityId = w.city_id;
-                    if (w.unit) config.weatherUnit = w.unit;
-                } catch(e) {}
+                let lines = this.text ? this.text.trim().split('\n') : [];
+                for (let line of lines) {
+                    line = line.trim();
+                    let parts = line.split("=");
+                    if (parts.length >= 2) {
+                        let key = parts[0].trim();
+                        let val = parts.slice(1).join("=").replace(/^['"]|['"]$/g, '').trim();
+                        config.rawEnvs[key] = val;
+
+                        if (key === "OPENWEATHER_KEY") config.weatherApiKey = val;
+                        else if (key === "OPENWEATHER_CITY_ID") config.weatherCityId = val;
+                        else if (key === "OPENWEATHER_UNIT") config.weatherUnit = val;
+                    }
+                }
             }
         }
     }
@@ -367,7 +373,6 @@ Item {
 
                         // Map explicitly defined properties
                         if (config.rawSettings.uiScale !== undefined) config.uiScale = config.rawSettings.uiScale;
-                        if (config.rawSettings.openGuideAtStartup !== undefined) config.openGuideAtStartup = config.rawSettings.openGuideAtStartup;
                         if (config.rawSettings.topbarHelpIcon !== undefined) config.topbarHelpIcon = config.rawSettings.topbarHelpIcon;
                         if (config.rawSettings.wallpaperDir !== undefined) config.wallpaperDir = config.rawSettings.wallpaperDir;
                         if (config.rawSettings.language !== undefined && config.rawSettings.language !== "") config.language = config.rawSettings.language;
