@@ -67,14 +67,14 @@ Item {
     }
 
     property var resList: [
-        {w: 3840, h: 2160, l: "4K",   accent: window.pink},
-        {w: 2560, h: 1440, l: "QHD",  accent: window.mauve},
-        {w: 1920, h: 1080, l: "FHD",  accent: window.blue},
-        {w: 1600, h: 900,  l: "HD+",  accent: window.teal},
-        {w: 1366, h: 768,  l: "WXGA", accent: window.yellow},
-        {w: 1280, h: 720,  l: "HD",   accent: window.peach},
-        {w: 1024, h: 768,  l: "XGA",  accent: window.green},
-        {w: 800,  h: 600,  l: "SVGA", accent: window.red}
+        {w: 3840, h: 2160, l: "4K",     accent: window.pink},
+        {w: 2880, h: 1620, l: "QHD", accent: window.mauve},
+        {w: 1920, h: 1080, l: "FHD",    accent: window.blue},
+        {w: 1600, h: 900,  l: "HD+",    accent: window.teal},
+        {w: 1366, h: 768,  l: "WXGA",   accent: window.yellow},
+        {w: 1280, h: 720,  l: "HD",     accent: window.peach},
+        {w: 1024, h: 768,  l: "XGA",    accent: window.green},
+        {w: 800,  h: 600,  l: "SVGA",   accent: window.red}
     ]
 
     property color selectedResAccent: window.mauve
@@ -348,6 +348,7 @@ Item {
                             resH: data[i].height,
                             sysScale: scl,
                             rate: Math.round(data[i].refreshRate).toString(),
+                            bitDepth: 10,
                             uiX: normalizedX,
                             uiY: normalizedY,
                             transform: tf
@@ -376,7 +377,7 @@ Item {
 
         if (monitorsModel.count === 1) {
             let m = monitorsModel.get(0);
-            let monitorStr = m.name + "," + m.resW + "x" + m.resH + "@" + m.rate + ",0x0," + m.sysScale;
+            let monitorStr = m.name + "," + m.resW + "x" + m.resH + "@" + m.rate + ",0x0," + m.sysScale + ",bitdepth,10";
             if (m.transform !== 0) {
                 monitorStr += ",transform," + m.transform;
             }
@@ -471,7 +472,7 @@ Item {
                 r.x = Math.round(r.x - finalMinX);
                 r.y = Math.round(r.y - finalMinY);
 
-                let monitorStr = r.name + "," + r.resW + "x" + r.resH + "@" + r.rate + "," + r.x + "x" + r.y + "," + r.sysScale;
+                let monitorStr = r.name + "," + r.resW + "x" + r.resH + "@" + r.rate + "," + r.x + "x" + r.y + "," + r.sysScale + ",bitdepth,10";
                 if (r.transform !== 0) {
                     monitorStr += ",transform," + r.transform;
                 }

@@ -261,9 +261,11 @@ PanelWindow {
             let currentUid;
             if (existingUid !== -1) {
                 currentUid = existingUid;
-                if (masterWindow.liveNotifs[currentUid] && typeof masterWindow.liveNotifs[currentUid].close === "function") {
-                    masterWindow.liveNotifs[currentUid].close();
-                }
+                // Do NOT call .close() on the previous liveNotifs entry here —
+                // that signals the popup's Connections{onClosed} handler to
+                // remove it from activePopupsModel, racing the update below
+                // and causing a visible blank/re-add flicker. Just overwrite
+                // the map entry; the old backend object is simply dropped.
             } else {
                 masterWindow._popupCounter++;
                 currentUid = masterWindow._popupCounter;
@@ -281,6 +283,21 @@ PanelWindow {
                 "notif":       n
             };
 
+            // Same dedup applies to the persistent history list (read by
+            // BatteryPopup's Notifications panel) — otherwise repeated OSD
+            // events (Brightness/Volume) spam it with duplicate entries
+            // even though the live popup correctly collapses.
+            let existingHistIdx = -1;
+            for (let i = 0; i < globalNotificationHistory.count; i++) {
+                let e = globalNotificationHistory.get(i);
+                if (e.appName === notifAppName && e.summary === notifSummary) {
+                    existingHistIdx = i;
+                    break;
+                }
+            }
+            if (existingHistIdx !== -1) {
+                globalNotificationHistory.remove(existingHistIdx);
+            }
             globalNotificationHistory.insert(0, notifData);
 
             if (!masterWindow.isStartup) {
