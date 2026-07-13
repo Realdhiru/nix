@@ -181,6 +181,41 @@ Variants {
             }
 
             property bool isMediaActive: barWindow.musicData.status !== "Stopped" && barWindow.musicData.title !== ""
+
+            // Raw ascii bar levels (0-100 each) from cava_topbar.conf's raw
+            // output, one value per bar. Zero baseline — the visualizer
+            // itself fades to width/opacity 0 when not playing, so there
+            // are no idle "dot" segments left sitting on screen.
+            property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0]
+
+            function _hexToRgb01(hex) {
+                let h = hex.replace("#", "");
+                return {
+                    r: parseInt(h.substring(0, 2), 16) / 255,
+                    g: parseInt(h.substring(2, 4), 16) / 255,
+                    b: parseInt(h.substring(4, 6), 16) / 255
+                };
+            }
+
+            // 3-stop gradient (mauve -> blue -> pink) across however many
+            // bars there are, computed once per bar index (not per-frame —
+            // bar color is static, only height animates).
+            function cavaBarColor(index, count) {
+                let stops = [mocha.mauve, mocha.blue, mocha.pink];
+                let t = count > 1 ? index / (count - 1) : 0;
+                let seg = t * (stops.length - 1);
+                let segIndex = Math.min(Math.floor(seg), stops.length - 2);
+                let localT = seg - segIndex;
+                let c1 = barWindow._hexToRgb01(stops[segIndex]);
+                let c2 = barWindow._hexToRgb01(stops[segIndex + 1]);
+                return Qt.rgba(
+                    c1.r + (c2.r - c1.r) * localT,
+                    c1.g + (c2.g - c1.g) * localT,
+                    c1.b + (c2.b - c1.b) * localT,
+                    1.0
+                );
+            }
+
             property bool isWifiOn: barWindow.wifiStatus.toLowerCase() === "enabled" || barWindow.wifiStatus.toLowerCase() === "on"
             property bool isBtOn: barWindow.btStatus.toLowerCase() === "enabled" || barWindow.btStatus.toLowerCase() === "on"
             property bool showEthernet: barWindow.ethStatus === "Connected" || (barWindow.isDesktop && !barWindow.isWifiOn)
@@ -335,6 +370,51 @@ Variants {
                     musicForceRefresh.running = true;
                     running = false;
                     running = true;
+                }
+            }
+
+            // Topbar audio visualizer. Bound to status === "Playing"
+            // specifically (not just "not stopped") so it only spawns
+            // while media is genuinely playing — matches the visualizer's
+            // own fade-away-when-not-playing behavior, and avoids running
+            // cava (and burning CPU on FFT of silence) during a pause.
+            // cava_topbar.conf outputs raw ascii bar levels (0-100,
+            // semicolon-separated) once per frame at 30fps directly to
+            // stdout — no intermediate FIFO or wrapper script needed.
+            // `nice -n 10` deprioritizes it relative to everything else on
+            // the system — this is a purely cosmetic background process and
+            // shouldn't be able to delay anything time-sensitive (e.g. the
+            // synthetic DBus Seeked signal music_info.sh's art-fetch fires
+            // on completion, which mprisWatcher below is waiting on).
+            Process {
+                id: cavaProcess
+                running: barWindow.musicData.status === "Playing"
+                command: ["nice", "-n", "10", "cava", "-p", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/cava_topbar.conf"]
+                stdout: SplitParser {
+                    splitMarker: "\n"
+                    onRead: (line) => {
+                        // Single pass: tokenize, parse, and clamp into one
+                        // fixed-size array instead of chaining
+                        // filter/map/slice (each allocates a new array) —
+                        // this runs on every cava frame, so keeping
+                        // per-frame allocation low matters for avoiding GC
+                        // pauses on the shared QML thread.
+                        let segs = line.split(";");
+                        let out = [];
+                        for (let i = 0; i < segs.length && out.length < 8; i++) {
+                            if (segs[i].length === 0) continue;
+                            let v = parseInt(segs[i], 10);
+                            if (isNaN(v)) { out = null; break; }
+                            out.push(v < 0 ? 0 : (v > 100 ? 100 : v));
+                        }
+                        if (out && out.length === 8) barWindow.cavaBars = out;
+                    }
+                }
+                onRunningChanged: {
+                    // Decay bars to resting (empty) state immediately when
+                    // playback stops/pauses, rather than freezing at the
+                    // last loud frame until the next play.
+                    if (!running) barWindow.cavaBars = [0, 0, 0, 0, 0, 0, 0, 0];
                 }
             }
 
@@ -715,61 +795,44 @@ Variants {
                                     }
                                 }
 
-                                Row {
+                                // Cava audio visualizer — solid bars, one
+                                // per frequency band, matching the plain
+                                // terminal-cava look (not a segmented LED
+                                // grid). Gradient across the bars kept from
+                                // before. Tied to status === "Playing"
+                                // specifically — width and opacity both
+                                // collapse to 0 when not actually playing,
+                                // so it fades away and stops taking up
+                                // space rather than sitting there flat.
+                                Item {
+                                    id: cavaVisualizer
                                     anchors.verticalCenter: parent.verticalCenter
-                                    spacing: barWindow.width < 1920 ? barWindow.s(4) : barWindow.s(8)
-                                    Item {
-                                        width: barWindow.s(24); height: barWindow.s(24);
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        Text {
-                                            anchors.centerIn: parent; text: "󰒮"; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(26);
-                                            color: prevMouse.containsMouse ? mocha.text : mocha.overlay2;
-                                            Behavior on color { ColorAnimation { duration: 150 } }
-                                            scale: prevMouse.containsMouse ? 1.1 : 1.0
-                                            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-                                        }
-                                        MouseArea {
-                                            id: prevMouse; hoverEnabled: true; anchors.fill: parent;
-                                            onClicked: (event) => {
-                                                Quickshell.execDetached(["playerctl", "previous"]);
-                                                musicForceRefresh.running = false; musicForceRefresh.running = true;
-                                            }
-                                        }
-                                    }
-                                    Item {
-                                        width: barWindow.s(28); height: barWindow.s(28);
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        Text {
-                                            anchors.centerIn: parent; text: barWindow.musicData.status === "Playing" ? "󰏤" : "󰐊"; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(30);
-                                            color: playMouse.containsMouse ? mocha.green : mocha.text;
-                                            Behavior on color { ColorAnimation { duration: 150 } }
-                                            scale: playMouse.containsMouse ? 1.15 : 1.0
-                                            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-                                        }
-                                        MouseArea {
-                                            id: playMouse; hoverEnabled: true; anchors.fill: parent;
-                                            onClicked: (event) => {
-                                                Quickshell.execDetached(["playerctl", "play-pause"]);
-                                                musicForceRefresh.running = false; musicForceRefresh.running = true;
-                                            }
-                                        }
-                                    }
-                                    Item {
-                                        width: barWindow.s(24); height: barWindow.s(24);
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        Text {
-                                            anchors.centerIn: parent; text: "󰒭"; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(26);
-                                            color: nextMouse.containsMouse ? mocha.text : mocha.overlay2;
-                                            Behavior on color { ColorAnimation { duration: 150 } }
-                                            scale: nextMouse.containsMouse ? 1.1 : 1.0
-                                            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-                                        }
-                                        MouseArea {
-                                            id: nextMouse; hoverEnabled: true; anchors.fill: parent;
-                                            onClicked: (event) => {
-                                                Quickshell.execDetached(["playerctl", "next"]);
-                                                musicForceRefresh.running = false; musicForceRefresh.running = true;
-                                            }
+                                    readonly property bool activeNow: barWindow.musicData.status === "Playing"
+                                    readonly property int barCount: 8
+                                    readonly property real barW: barWindow.s(9)
+                                    readonly property real barGap: barWindow.s(4)
+                                    readonly property real maxBarH: barWindow.s(32)
+                                    readonly property real fullWidth: barCount * barW + (barCount - 1) * barGap
+
+                                    width: activeNow ? fullWidth : 0
+                                    height: maxBarH
+                                    opacity: activeNow ? 1.0 : 0.0
+                                    visible: width > 0 || opacity > 0
+                                    clip: true
+
+                                    Behavior on width { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+                                    Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+
+                                    Repeater {
+                                        model: cavaVisualizer.barCount
+                                        delegate: Rectangle {
+                                            required property int index
+                                            width: cavaVisualizer.barW
+                                            radius: barWindow.s(2)
+                                            x: index * (cavaVisualizer.barW + cavaVisualizer.barGap)
+                                            anchors.bottom: parent.bottom
+                                            height: Math.max(barWindow.s(2), ((barWindow.cavaBars[index] || 0) / 100) * cavaVisualizer.maxBarH)
+                                            color: barWindow.cavaBarColor(index, cavaVisualizer.barCount)
                                         }
                                     }
                                 }

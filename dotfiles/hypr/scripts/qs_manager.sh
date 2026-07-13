@@ -163,10 +163,7 @@ handle_network_prep() {
 # -----------------------------------------------------------------------------
 if [[ "$ACTION" == "close" ]]; then
     "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
-    
-    # Destruct Background Audio Visualization if it was running
-    pkill -x cava 2>/dev/null
-    
+
     if [[ "$TARGET" == "network" || "$TARGET" == "all" || -z "$TARGET" ]]; then
         if [ -f "$BT_PID_FILE" ]; then
             kill "$(cat "$BT_PID_FILE")" 2>/dev/null
@@ -177,18 +174,6 @@ if [[ "$ACTION" == "close" ]]; then
 fi
 
 if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
-
-    # Provision Pipeline if Audio Visualizer triggered (UID Agnostic)
-    if [[ "$TARGET" == "music" ]]; then
-        CAVA_FIFO_PATH="/run/user/$(id -u)/quickshell/runtime/music/qml_cava.fifo"
-        mkdir -p "$(dirname "$CAVA_FIFO_PATH")"
-        if [ ! -p "$CAVA_FIFO_PATH" ]; then
-            rm -f "$CAVA_FIFO_PATH"
-            mkfifo "$CAVA_FIFO_PATH"
-        fi
-        pkill -x cava 2>/dev/null
-        cava -p "$HOME/.config/cava/config" > /dev/null 2>&1 &
-    fi
 
     if [[ "$TARGET" == "network" ]]; then
         handle_network_prep
