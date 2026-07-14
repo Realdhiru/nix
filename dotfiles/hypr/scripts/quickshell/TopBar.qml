@@ -1,4 +1,3 @@
-// dotfiles/hypr/scripts/quickshell/TopBar.qml
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
@@ -187,19 +186,12 @@ Variants {
 
             property var musicData: { "status": "Stopped", "title": "", "artUrl": "", "timeStr": "" }
 
-            property string displayTitle: ""
-            property string displayTime: ""
-            property string displayArtUrl: ""
-
-            onMusicDataChanged: {
-                if (musicData && musicData.status !== "Stopped" && musicData.title !== "") {
-                    displayTitle = musicData.title;
-                    displayTime = musicData.timeStr;
-                    displayArtUrl = musicData.artUrl;
-                }
-            }
-
-            property bool isMediaActive: barWindow.musicData.status !== "Stopped" && barWindow.musicData.title !== ""
+            readonly property bool isMediaActive: musicData.status !== "Stopped" && musicData.title !== ""
+            readonly property string displayTitle: isMediaActive ? musicData.title : ""
+            readonly property string displayTime: isMediaActive ? musicData.timeStr : ""
+            readonly property string displayArtUrl: isMediaActive ? musicData.artUrl : ""
+            readonly property bool displayArtReady: isMediaActive && musicData.artReady === "true"
+            readonly property bool hasVisibleMedia: displayTitle !== ""
 
             // Raw ascii bar levels (0-100 each) from cava_topbar.conf's raw
             // output, one value per bar. Zero baseline — the visualizer
@@ -711,12 +703,10 @@ Variants {
                         height: barWindow.barHeight
                         clip: true
 
-                        width: barWindow.isMediaActive ? innerMediaLayout.implicitWidth + barWindow.s(24) : 0
-                        Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                        width: barWindow.hasVisibleMedia ? innerMediaLayout.implicitWidth + barWindow.s(24) : 0
 
-                        visible: width > 0 || opacity > 0
-                        opacity: barWindow.isMediaActive ? 1.0 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 400 } }
+                        visible: width > 0
+                        opacity: 1.0
 
                         Item {
                             id: mediaLayoutContainer
@@ -726,12 +716,24 @@ Variants {
                             height: parent.height
                             width: innerMediaLayout.implicitWidth
 
-                            opacity: barWindow.isMediaActive ? 1.0 : 0.0
-                            transform: Translate {
-                                x: barWindow.isMediaActive ? 0 : barWindow.s(-20)
-                                Behavior on x { NumberAnimation { duration: 700; easing.type: Easing.OutQuint } }
-                            }
-                            Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
+                            // No separate Behavior/transform here anymore.
+                            // mediaBox (the outer pill) already animates its
+                            // own width+opacity in over 400ms — this inner
+                            // Item used to layer a SECOND, slower fade
+                            // (500ms opacity) and slide (700ms transform) on
+                            // top of the exact same trigger. On a normal
+                            // play->pause transition that never mattered
+                            // (the box was already visible, so neither
+                            // animation replayed), but on a fresh reload,
+                            // both start from scratch at once — the box
+                            // finishes its 400ms transition and sits there
+                            // fully sized/colored while this inner content
+                            // was still mid-fade for another 100-300ms,
+                            // which is exactly the "empty box" you were
+                            // seeing. Tracking hasVisibleMedia directly with
+                            // no extra lag keeps content in lockstep with
+                            // the box instead of trailing behind it.
+                            opacity: barWindow.hasVisibleMedia ? 1.0 : 0.0
 
                             Row {
                                 id: innerMediaLayout
@@ -741,7 +743,7 @@ Variants {
                                 MouseArea {
                                     id: mediaInfoMouse
                                     width: infoLayout.width
-                                    height: innerMediaLayout.height
+                                    height: infoLayout.implicitHeight
                                     hoverEnabled: true
                                     onClicked: (event) => {
                                         Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"])
@@ -756,23 +758,46 @@ Variants {
                                         Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
 
                                         Rectangle {
-                                            width: barWindow.s(32); height: barWindow.s(32); radius: barWindow.s(8); color: mocha.surface1
-                                            border.width: barWindow.musicData.status === "Playing" ? 1 : 0
+                                            width: barWindow.s(32); height: barWindow.s(32); radius: barWindow.s(8)
+                                            color: "transparent"
+                                            border.width: barWindow.displayArtReady && barWindow.musicData.status === "Playing" ? 1 : 0
                                             border.color: mocha.mauve
                                             clip: true
 
+                                            // Nothing renders here until real art actually
+                                            // exists. Spotify's Linux client doesn't populate
+                                            // mpris:artUrl in dbus metadata until the FIRST
+                                            // playback event fires this session — before that
+                                            // there is no URL to fetch at all, so there's
+                                            // nothing legitimate to show. Rather than filling
+                                            // that gap with a flat placeholder square (the
+                                            // "blank black box"), we show nothing and fade the
+                                            // real art in the instant it's ready (artReady flips
+                                            // true — typically right after you press play once).
                                             Image {
+                                                id: artImage
                                                 anchors.fill: parent
-                                                source: barWindow.displayArtUrl ? "file://" + barWindow.displayArtUrl : ""
+                                                source: barWindow.displayArtReady && barWindow.displayArtUrl ? "file://" + barWindow.displayArtUrl : ""
                                                 fillMode: Image.PreserveAspectCrop
                                                 asynchronous: true
                                                 cache: false
-                                                sourceSize.width: barWindow.s(32)
-                                                sourceSize.height: barWindow.s(32)
+                                                smooth: true
+                                                mipmap: true
+                                                // Supersample well above the 32px display size,
+                                                // scaled for the screen's actual pixel density —
+                                                // a flat 32x32 sourceSize gets upscaled (blurry)
+                                                // on any scaled/HiDPI output, since it was
+                                                // rendering at logical pixels, not physical ones.
+                                                sourceSize.width: barWindow.s(32) * 3 * (Screen.devicePixelRatio || 1)
+                                                sourceSize.height: barWindow.s(32) * 3 * (Screen.devicePixelRatio || 1)
+                                                opacity: status === Image.Ready ? 1 : 0
+                                                Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutQuad } }
                                             }
 
                                             Rectangle {
                                                 anchors.fill: parent
+                                                visible: artImage.opacity > 0
+                                                opacity: artImage.opacity
                                                 color: Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.2)
                                             }
                                         }

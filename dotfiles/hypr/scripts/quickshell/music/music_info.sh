@@ -49,9 +49,11 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
     displayBlur="$PLACEHOLDER"
     displayGrad="linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)"
     displayText="#cdd6f4"
+    artReady="false"
 
     if [ -f "$finalArt" ] && [ -s "$finalArt" ]; then
         displayArt="$finalArt"
+        artReady="true"
         if [ -f "$blurPath" ]; then displayBlur="$blurPath"; fi
         if [ -f "$colorPath" ]; then displayGrad=$(cat "$colorPath"); fi
         if [ -f "$textPath" ]; then displayText=$(cat "$textPath"); fi
@@ -76,19 +78,30 @@ except Exception as e:
     sys.exit(1)
 " "$rawUrl" "$tempArt"
 
-                if [ ! -s "$tempArt" ]; then
-                    cp "$PLACEHOLDER" "$tempArt"
+                if [ -s "$tempArt" ]; then
+                    # Real download succeeded — this is the only case that
+                    # gets promoted to finalArt. Previously a failed
+                    # download was copied from PLACEHOLDER and moved to
+                    # finalArt anyway, which permanently "succeeded" the
+                    # existence check on line 54 for that trackHash and
+                    # silently locked the track to the blank placeholder
+                    # for the rest of the session (most commonly hit right
+                    # after login, before DNS/network is fully up).
+                    echo "linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)" > "$colorPath"
+                    echo "#cdd6f4" > "$textPath"
+                    cp "$tempArt" "$blurPath"
+                    mv "$tempArt" "$finalArt"
+                    dbus-send --session --type=signal /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Seeked int64:0 2>/dev/null
+                else
+                    # Download failed — clean up and leave nothing cached
+                    # for this trackHash, so the next poll (or the next
+                    # PropertiesChanged/Seeked signal) retries the fetch
+                    # instead of being stuck on the placeholder forever.
+                    rm -f "$tempArt"
                 fi
-
-                echo "linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)" > "$colorPath"
-                echo "#cdd6f4" > "$textPath"
-                cp "$tempArt" "$blurPath"
-                mv "$tempArt" "$finalArt"
 
                 rm -f "$lockFile"
                 (cd "$TMP_DIR" && ls -1t | tail -n +21 | xargs -r rm -f 2>/dev/null)
-
-                dbus-send --session --type=signal /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Seeked int64:0 2>/dev/null
             ) </dev/null >/dev/null 2>&1 &
 
             ( sleep 0.1 && touch "$QS_RUN_WORKSPACES/workspaces.json" ) &
@@ -173,6 +186,7 @@ except Exception as e:
         --arg devIcon "$dev_icon" \
         --arg devName "$dev_name" \
         --arg finalArt "$finalArtUrl" \
+        --arg artReady "$artReady" \
         '{
             title: $title,
             artist: $artist,
@@ -190,7 +204,8 @@ except Exception as e:
             textColor: $txtColor,
             deviceIcon: $devIcon,
             deviceName: $devName,
-            artUrl: $finalArt
+            artUrl: $finalArt,
+            artReady: $artReady
         }'
 
 else
@@ -232,6 +247,7 @@ else
         textColor: "#cdd6f4",
         deviceIcon: "󰓃",
         deviceName: "Speaker",
-        artUrl: $placeholder
+        artUrl: $placeholder,
+        artReady: "false"
     }'
 fi
