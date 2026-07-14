@@ -221,7 +221,7 @@ get_data() {
                 \"desc\": \"${f_desc}\",
                 \"hourly\": ${hourly_json}
             },"
-            ((counter++))
+            counter=$((counter + 1))
         done
         final_json="${final_json%,}]"
 

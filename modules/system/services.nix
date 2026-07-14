@@ -95,4 +95,11 @@
       TimeoutStopSec = 10;
     };
   };
+
+  services.logind = {
+  settings.Login = {
+    HandlePowerKey = "lock";
+    HandleLidSwitch = "ignore";
+  };
+};
 }

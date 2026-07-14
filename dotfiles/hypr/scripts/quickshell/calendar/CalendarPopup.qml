@@ -689,8 +689,9 @@ Item {
                                         font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(18 * window.sf)
                                         color: isHighlighted ? window.base : (modelData.hex || window.text)
                                         
-                                        transform: Translate { y: hrMa.containsMouse ? Math.round(-3 * window.sf) : 0 }
-                                        Behavior on transform { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                                        property real hoverLift: hrMa.containsMouse ? Math.round(-3 * window.sf) : 0
+                                        Behavior on hoverLift { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                                        transform: Translate { y: hoverLift }
                                     }
                                     
                                     Text { 
@@ -884,8 +885,9 @@ Item {
                             Text { 
                                 anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(18 * window.sf)
                                 color: parent.containsMouse ? window.textAccent : window.overlay1
-                                transform: Translate { x: parent.containsMouse ? Math.round(-5 * window.sf) : wPrevMa.pulseOffset }
-                                Behavior on transform { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                property real hoverShift: parent.containsMouse ? Math.round(-5 * window.sf) : wPrevMa.pulseOffset
+                                Behavior on hoverShift { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                transform: Translate { x: hoverShift }
                             }
                         }
                         
@@ -915,8 +917,9 @@ Item {
                             Text { 
                                 anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(18 * window.sf)
                                 color: parent.containsMouse ? window.textAccent : window.overlay1
-                                transform: Translate { x: parent.containsMouse ? Math.round(5 * window.sf) : wNextMa.pulseOffset }
-                                Behavior on transform { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                property real hoverShift: parent.containsMouse ? Math.round(5 * window.sf) : wNextMa.pulseOffset
+                                Behavior on hoverShift { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                transform: Translate { x: hoverShift }
                             }
                         }
                     }
