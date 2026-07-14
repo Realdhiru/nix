@@ -91,11 +91,9 @@ Item {
                     try {
                         var monitors = JSON.parse(response);
                         monitorModel.clear();
-                        var batch = [];
                         for (var i = 0; i < monitors.length; i++) {
-                            batch.push({ "name": monitors[i].name, "selected": true });
+                            monitorModel.append({ "name": monitors[i].name, "selected": true });
                         }
-                        if (batch.length > 0) monitorModel.append(batch);
                     } catch(e) {
                         console.log("[MonitorSync] ERROR parsing JSON: " + e);
                     }
@@ -284,6 +282,25 @@ Item {
         return clean.startsWith("000_") ? clean.substring(4) : clean;
     }
 
+    // Previously "is this a video" was inferred from a "000_" filename
+    // prefix — a convention meant for sorting freshly-downloaded search
+    // results first, not an actual video marker. Any locally-added mp4/mkv
+    // wallpaper that didn't happen to start with "000_" was silently
+    // misclassified as a non-video everywhere (thumbnail path resolution,
+    // the "Video" filter, apply-time routing), which is why local video
+    // wallpapers never got a real thumbnail: the delegate looked for
+    // "thumbs/yourfile.mp4" (no .jpg suffix, and QML's Image can't decode
+    // raw video anyway) instead of the actual generated
+    // "thumbs/yourfile.mp4.jpg". This checks the real file extension
+    // instead, matching set_wallpaper.sh and wallpaper_thumbnail.sh.
+    function isVideoFile(name) {
+        if (!name) return false;
+        let m = String(name).match(/\.([a-zA-Z0-9]+)$/);
+        if (!m) return false;
+        let ext = m[1].toLowerCase();
+        return ext === "mp4" || ext === "mkv" || ext === "mov" || ext === "webm";
+    }
+
     function isDownloaded(name) {
         if (!name) return false;
         for (let i = 0; i < srcModel.count; i++) {
@@ -376,7 +393,7 @@ Item {
         let count = 0;
         for (let i = 0; i < targetModel.count; i++) {
             let fname = targetModel.get(i).fileName || "";
-            let isVid = fname.startsWith("000_");
+            let isVid = window.isVideoFile(fname);
             if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
                 count++;
             }
@@ -556,7 +573,7 @@ Item {
         if (direction === 1) {
             for (let i = start + 1; i < targetModel.count; i++) {
                 let fname = targetModel.get(i).fileName || "";
-                let isVid = fname.startsWith("000_");
+                let isVid = window.isVideoFile(fname);
                 if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
                     found = i; break;
                 }
@@ -564,7 +581,7 @@ Item {
         } else {
             for (let i = start - 1; i >= 0; i--) {
                 let fname = targetModel.get(i).fileName || "";
-                let isVid = fname.startsWith("000_");
+                let isVid = window.isVideoFile(fname);
                 if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
                     found = i; break;
                 }
@@ -584,7 +601,7 @@ Item {
             for (let i = 0; i < targetModel.count; i++) {
                 current = (current + direction + targetModel.count) % targetModel.count;
                 let fname = targetModel.get(current).fileName || "";
-                let isVid = fname.startsWith("000_");
+                let isVid = window.isVideoFile(fname);
                 if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
                     view.currentIndex = current;
                     return;
@@ -632,7 +649,7 @@ Item {
 
         for (let i = 0; i < targetModel.count; i++) {
             let fname = targetModel.get(i).fileName || "";
-            let isVid = fname.startsWith("000_");
+            let isVid = window.isVideoFile(fname);
             if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
                 if (firstValidIndex === -1) firstValidIndex = i;
                 lastValidIndex = i;
@@ -671,7 +688,7 @@ Item {
             let targetModel = window.getModelForFilter(window.currentFilter);
             if (view.currentIndex >= 0 && view.currentIndex < targetModel.count) {
                 let fname = targetModel.get(view.currentIndex).fileName;
-                if (fname) window.applyWallpaper(String(fname), String(fname).startsWith("000_"));
+                if (fname) window.applyWallpaper(String(fname), window.isVideoFile(String(fname)));
             }
         } 
     }
@@ -858,7 +875,7 @@ Item {
             readonly property bool isCurrent: ListView.isCurrentItem && !window.isScrollingBlocked
             readonly property bool isFakeSelected: window.isScrollingBlocked && index === 0
             readonly property bool isVisuallyEnlarged: isCurrent || isFakeSelected
-            readonly property bool isVideo: safeFileName.startsWith("000_")
+            readonly property bool isVideo: window.isVideoFile(safeFileName)
             readonly property bool matchesFilter: window.checkItemMatchesFilter(safeFileName, isVideo, window.cacheVersion, window.currentFilter)
             readonly property real targetWidth: isVisuallyEnlarged ? (window.itemWidth * 1.5) : (window.itemWidth * 0.5)
             readonly property real targetHeight: isVisuallyEnlarged ? (window.itemHeight + window.s(30)) : window.itemHeight

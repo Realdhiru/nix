@@ -7,7 +7,12 @@ if [ -z "$WALL" ]; then
     exit 1
 fi
 
-# Normalize extension to lowercase for safe, case-insensitive routing
+# Normalize extension to lowercase for safe, case-insensitive routing.
+# Added "mov" here — it was already treated as a video everywhere else
+# (wallpaper_thumbnail.sh, WallpaperPicker.qml's nameFilters/isVideoFile)
+# but was missing from this regex, so a .mov wallpaper would silently fall
+# into the image branch below and get handed to `awww img`, which cannot
+# decode video and would just fail.
 EXT="${WALL##*.}"
 EXT="${EXT,,}"
 BASENAME=$(basename "$WALL")
@@ -17,7 +22,7 @@ mkdir -p "$HOME/.cache"
 echo "$WALL" > "$HOME/.cache/current_wallpaper.txt"
 
 # 2. INSTANT VISUAL PATHWAY (Zero blocking delays, Strict Mutual Exclusion)
-if [[ "$EXT" =~ ^(mp4|mkv|webm)$ ]]; then
+if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then
     # Kill images before starting video
     pkill -f awww-daemon 2>/dev/null
     pkill -f mpvpaper 2>/dev/null
@@ -25,6 +30,32 @@ if [[ "$EXT" =~ ^(mp4|mkv|webm)$ ]]; then
 else
     # Kill video before starting image
     pkill -f mpvpaper 2>/dev/null
+
+    # THE ACTUAL BUG: switching TO a video kills awww-daemon (correct — it
+    # shouldn't be drawing behind mpvpaper). But switching FROM a video
+    # back to an image never restarted it, so `awww img` below was being
+    # sent to a daemon that no longer existed. Since its own output is
+    # redirected to /dev/null, that failure was completely silent — the
+    # picker would report success, matugen would still run against the
+    # image and theme the rest of the system correctly, but the actual
+    # background layer stayed whatever mpvpaper left behind (nothing, once
+    # mpvpaper's surface was killed) — a permanently blank wallpaper until
+    # something else happened to restart the daemon (e.g. a full reload).
+    #
+    # Fix: ensure the daemon is actually alive before pushing an image,
+    # starting it if needed and giving it a moment to open its IPC socket.
+    if ! pgrep -x awww-daemon > /dev/null 2>&1; then
+        awww-daemon > /dev/null 2>&1 &
+        # awww-daemon needs a brief moment to bind its IPC socket before
+        # it can accept `awww img` calls; without this, the very first
+        # apply right after a (re)start can race and silently no-op just
+        # like the original bug, just intermittently instead of always.
+        for i in $(seq 1 20); do
+            awww query > /dev/null 2>&1 && break
+            sleep 0.05
+        done
+    fi
+
     # Push the image to the persistent daemon instantly with a fast fade
     awww img "$WALL" \
         --transition-type fade \
@@ -38,7 +69,7 @@ fi
     # Check if a fast, low-res thumbnail already exists in the QS cache
     THUMB_DIR="$HOME/.cache/quickshell/wallpaper_picker/thumbs"
     CACHED_THUMB="$THUMB_DIR/$BASENAME"
-    if [[ "$EXT" =~ ^(mp4|mkv|webm)$ ]]; then
+    if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then
         CACHED_THUMB="$THUMB_DIR/$BASENAME.jpg"
     fi
 
@@ -51,7 +82,7 @@ fi
         SEED="$CACHED_THUMB"
     else
         # SLOW PATH: Generate a temporary frame from the raw file
-        if [[ "$EXT" =~ ^(mp4|mkv|webm)$ ]]; then
+        if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then
             ffmpeg -y -ss 00:00:00.100 -i "$WALL" -vframes 1 -q:v 8 -vf "scale=400:-1" "$FRAME_CACHE" > /dev/null 2>&1
             SEED="$FRAME_CACHE"
         elif [[ "$EXT" == "gif" ]]; then
