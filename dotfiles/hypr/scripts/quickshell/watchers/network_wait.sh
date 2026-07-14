@@ -4,8 +4,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
 PIPE="$QS_RUN_DIR/qs_network_wait_$$.fifo"
 mkfifo "$PIPE" 2>/dev/null
 
-# Trap ensures we delete the FIFO and specifically kill nmcli, leaving no zombie processes
-trap 'rm -f "$PIPE"; kill $MONITOR_PID 2>/dev/null; exit 0' EXIT INT TERM
+# pkill -P $$ guarantees every child of this script (nmcli monitor, and any
+# reader stage) dies when this script exits, matching kb_wait.sh/bt_wait.sh's
+# proven pattern. The previous single-PID kill left the script capable of
+# hanging forever mid-grep with no cleanup path, which is what caused
+# dozens of stuck instances to accumulate over uptime.
+trap 'rm -f "$PIPE"; pkill -P $$ 2>/dev/null; exit 0' EXIT INT TERM
 
 # Run nmcli completely isolated and capture its exact PID
 LC_ALL=C nmcli monitor 2>/dev/null > "$PIPE" &

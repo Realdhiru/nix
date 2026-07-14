@@ -418,21 +418,7 @@ Variants {
                 }
             }
 
-            Process {
-                id: kbPoller; running: true
-                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/kb_fetch.sh"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        let txt = this.text.trim();
-                        if (txt !== "" && barWindow.kbLayout !== txt) barWindow.kbLayout = txt;
-                        kbWaiter.running = false;
-                        kbWaiter.running = true;
-                        barWindow.fastPollerLoaded = true;
-                    }
-                }
-            }
-            Process { id: kbWaiter; command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/kb_wait.sh"]; onExited: { kbPoller.running = false; kbPoller.running = true; } }
-
+            
             Process {
                 id: audioPoller; running: true
                 command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/audio_fetch.sh"]
@@ -828,7 +814,7 @@ Variants {
                                         delegate: Rectangle {
                                             required property int index
                                             width: cavaVisualizer.barW
-                                            radius: barWindow.s(2)
+                                            radius: barWindow.s(0)
                                             x: index * (cavaVisualizer.barW + cavaVisualizer.barGap)
                                             anchors.bottom: parent.bottom
                                             height: Math.max(barWindow.s(2), ((barWindow.cavaBars[index] || 0) / 100) * cavaVisualizer.maxBarH)
