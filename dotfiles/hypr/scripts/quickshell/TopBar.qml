@@ -134,9 +134,28 @@ Variants {
             property bool startupCascadeFinished: false
             Timer { interval: 1000; running: true; onTriggered: barWindow.startupCascadeFinished = true }
 
-            property bool fastPollerLoaded: false
-            property bool isDataReady: fastPollerLoaded
-            Timer { interval: 600; running: true; onTriggered: barWindow.isDataReady = true }
+            // isDataReady used to be gated on a hardcoded 600ms Timer that
+            // had nothing to do with real data — it fired on a fixed clock
+            // regardless of whether any poller had actually returned
+            // anything yet, then several more artificial per-widget delays
+            // stacked on top of that for the tray/battery pill specifically
+            // (~1.5s total before they became visible). Replaced with real
+            // flags set the moment each relevant poller's stdout actually
+            // resolves (see audioPoller/networkPoller/btPoller/batteryPoller
+            // below) — on a local machine these all resolve in well under
+            // 100ms, so the pills now appear as soon as they actually can,
+            // with real data already populated, instead of waiting on an
+            // arbitrary clock.
+            property bool audioLoaded: false
+            property bool networkLoaded: false
+            property bool btLoaded: false
+            property bool batteryLoaded: false
+            property bool dataReadyFallbackTriggered: false
+            property bool isDataReady: (audioLoaded && networkLoaded && btLoaded && batteryLoaded) || dataReadyFallbackTriggered
+
+            // Safety net only, in case a poller script is ever broken/slow —
+            // guarantees the bar never hangs forever waiting on one flag.
+            Timer { interval: 800; running: true; onTriggered: barWindow.dataReadyFallbackTriggered = true }
 
             property string timeStr: ""
             property string fullDateStr: ""
@@ -424,6 +443,7 @@ Variants {
                 command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/audio_fetch.sh"]
                 stdout: StdioCollector {
                     onStreamFinished: {
+                        barWindow.audioLoaded = true;
                         let txt = this.text.trim();
                         if (txt !== "") {
                             try {
@@ -447,6 +467,7 @@ Variants {
                 command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/network_fetch.sh"]
                 stdout: StdioCollector {
                     onStreamFinished: {
+                        barWindow.networkLoaded = true;
                         let txt = this.text.trim();
                         if (txt !== "") {
                             try {
@@ -469,6 +490,7 @@ Variants {
                 command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/bt_fetch.sh"]
                 stdout: StdioCollector {
                     onStreamFinished: {
+                        barWindow.btLoaded = true;
                         let txt = this.text.trim();
                         if (txt !== "") {
                             try {
@@ -490,6 +512,7 @@ Variants {
                 command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_fetch.sh"]
                 stdout: StdioCollector {
                     onStreamFinished: {
+                        barWindow.batteryLoaded = true;
                         let txt = this.text.trim();
                         if (txt !== "") {
                             try {
@@ -713,7 +736,7 @@ Variants {
                             Row {
                                 id: innerMediaLayout
                                 anchors.verticalCenter: parent.verticalCenter
-                                spacing: barWindow.width < 1920 ? barWindow.s(8) : barWindow.s(16)
+                                spacing: barWindow.width < 1920 ? barWindow.s(6) : barWindow.s(10)
 
                                 MouseArea {
                                     id: mediaInfoMouse
@@ -754,25 +777,47 @@ Variants {
                                             }
                                         }
                                         Column {
-                                            spacing: -2
+                                            // Matches the clock widget's day/date column: spacing 0
+                                            // (not the old -2, which was actually overlapping the
+                                            // two lines), both lines the same font size (was 13/10 —
+                                            // that mismatch is what made the timestamp look small
+                                            // and orphaned under a long title), and a width that
+                                            // hugs the actual content instead of always reserving
+                                            // maxColWidth's worth of space regardless of how short
+                                            // the title is. Long titles still elide at the cap.
+                                            id: mediaInfoColumn
+                                            spacing: 0
                                             anchors.verticalCenter: parent.verticalCenter
-                                            property real maxColWidth: barWindow.width < 1920 ? barWindow.s(120) : barWindow.s(180)
-                                            width: maxColWidth
+                                            property real maxColWidth: barWindow.width < 1920 ? barWindow.s(140) : barWindow.s(200)
+                                            width: Math.min(Math.max(titleMetrics.width, timeMetrics.width), maxColWidth)
+
+                                            TextMetrics {
+                                                id: titleMetrics
+                                                font: titleText.font
+                                                text: barWindow.displayTitle
+                                            }
+                                            TextMetrics {
+                                                id: timeMetrics
+                                                font: timeText.font
+                                                text: barWindow.displayTime
+                                            }
 
                                             Text {
+                                                id: titleText
                                                 text: barWindow.displayTitle;
                                                 font.family: "JetBrains Mono";
                                                 font.weight: Font.Black;
-                                                font.pixelSize: barWindow.s(13);
+                                                font.pixelSize: barWindow.s(11);
                                                 color: mocha.text;
                                                 width: parent.width
                                                 elide: Text.ElideRight;
                                             }
                                             Text {
+                                                id: timeText
                                                 text: barWindow.displayTime;
                                                 font.family: "JetBrains Mono";
-                                                font.weight: Font.Black;
-                                                font.pixelSize: barWindow.s(10);
+                                                font.weight: Font.Bold;
+                                                font.pixelSize: barWindow.s(11);
                                                 color: mocha.subtext0;
                                                 width: parent.width
                                                 elide: Text.ElideRight;
@@ -916,7 +961,7 @@ Variants {
 
                         Timer {
                             running: barWindow.isStartupReady && barWindow.isDataReady
-                            interval: 250
+                            interval: 50
                             onTriggered: rightContent.showLayout = true
                         }
 
@@ -1061,8 +1106,10 @@ Variants {
                                     Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
                                     Behavior on color { ColorAnimation { duration: 200 } }
 
-                                    property bool initAnimTrigger: false
-                                    Timer { running: rightContent.showLayout && !sysBatPill.initAnimTrigger; interval: 200; onTriggered: sysBatPill.initAnimTrigger = true }
+                                    // Was gated on its own extra 200ms Timer stacked on top of
+                                    // rightContent's reveal — pure added latency for no reason.
+                                    // Now triggers the instant rightContent itself is shown.
+                                    property bool initAnimTrigger: rightContent.showLayout
                                     opacity: initAnimTrigger ? 1 : 0
                                     transform: Translate { y: sysBatPill.initAnimTrigger ? 0 : barWindow.s(15); Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } } }
                                     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }

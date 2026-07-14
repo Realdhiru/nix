@@ -18,9 +18,15 @@ MONITOR_PID=$!
 # Flushes the immediate startup status dump from nmcli to prevent instant-trigger loops
 timeout 0.5 cat "$PIPE" > /dev/null 2>&1
 
-# Grep blocks until it reads the first match from the FIFO, then exits.
-# Exiting triggers the trap, immediately killing nmcli and ending the script.
-grep -m 1 -iwE "connected|disconnected|enabled|disabled|activated|deactivated|available|unavailable" < "$PIPE" > /dev/null
+# Grep blocks until it reads the first match from the FIFO, OR 10 seconds
+# pass (failsafe) — matching audio_wait.sh/battery_wait.sh. Without this
+# timeout, a quiet network (no connect/disconnect events for a while) left
+# this grep blocked forever; since bash defers a trap until its current
+# foreground command returns, an external SIGTERM from Quickshell tearing
+# the process down couldn't interrupt it either, so the script (and its
+# nmcli child) became a permanent orphan — confirmed via pgrep showing 15
+# stuck instances that survived a full `pkill -f quickshell`.
+timeout 10 grep -m 1 -iwE "connected|disconnected|enabled|disabled|activated|deactivated|available|unavailable" < "$PIPE" > /dev/null
 
 # Anti-spin debounce to protect C-states
 sleep 1.5

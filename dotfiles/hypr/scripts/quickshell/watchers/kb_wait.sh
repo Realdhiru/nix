@@ -13,5 +13,7 @@ else
     sleep 10 > "$PIPE" &
 fi
 
-read -r _ < "$PIPE"
+# Failsafe timeout matching audio_wait.sh/battery_wait.sh/network_wait.sh —
+# same unbounded-read leak risk as the others if layout switches are rare.
+timeout 10 bash -c 'read -r _ < "$1"' _ "$PIPE"
 sleep 0.05
