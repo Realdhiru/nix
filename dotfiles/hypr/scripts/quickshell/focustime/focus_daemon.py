@@ -221,7 +221,7 @@ class DaemonTracker:
         self.last_sync = 0
         self.last_date = date.today()
         
-    def full_sync(self, target_date):
+    def full_sync(self, target_date, app_title):
         c = self.conn.cursor()
         
         yesterday = target_date - timedelta(days=1)
@@ -343,7 +343,7 @@ class DaemonTracker:
 
         self.cached_json = {
             "selected_date": target_date.isoformat(), "total": total_seconds, "average": average_seconds,
-            "week_range": week_range_str, "yesterday": yesterday_seconds, "current": current_app_title,
+            "week_range": week_range_str, "yesterday": yesterday_seconds, "current": app_title,
             "apps": all_apps, "week_apps": week_apps, "week": week_data, "month": month_data,
             "hourly": hourly_data, "week_heatmap": week_heatmap, "peak_usage_str": peak_str
         }
@@ -358,7 +358,7 @@ class DaemonTracker:
         
         if self.cached_json is None or target_date != self.last_date or (time.time() - self.last_sync > 60):
             self.flush()
-            self.full_sync(target_date)
+            self.full_sync(target_date, app_title)
         else:
             d = self.cached_json
             d["total"] += 1

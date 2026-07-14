@@ -91,9 +91,11 @@ Item {
                     try {
                         var monitors = JSON.parse(response);
                         monitorModel.clear();
+                        var batch = [];
                         for (var i = 0; i < monitors.length; i++) {
-                            monitorModel.append({ "name": monitors[i].name, "selected": true });
+                            batch.push({ "name": monitors[i].name, "selected": true });
                         }
+                        if (batch.length > 0) monitorModel.append(batch);
                     } catch(e) {
                         console.log("[MonitorSync] ERROR parsing JSON: " + e);
                     }

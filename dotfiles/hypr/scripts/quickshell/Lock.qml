@@ -558,9 +558,11 @@ ShellRoot {
                                         
                                         if (text !== oldText) {
                                             if (text.length > oldText.length) {
+                                                let addBatch = [];
                                                 for (let i = oldText.length; i < text.length; i++) {
-                                                    passModel.append({ "charStr": text.charAt(i), "isDot": lockSettings.hidePassword });
+                                                    addBatch.push({ "charStr": text.charAt(i), "isDot": lockSettings.hidePassword });
                                                 }
+                                                if (addBatch.length > 0) passModel.append(addBatch);
                                             } else if (text.length < oldText.length) {
                                                 let diff = oldText.length - text.length;
                                                 for (let i = 0; i < diff; i++) {

@@ -8,8 +8,8 @@
   "monitors": [
     {
       "name": "eDP-1",
-      "resW": 3840,
-      "resH": 2160,
+      "resW": 2880,
+      "resH": 1620,
       "rate": 120,
       "x": 0,
       "y": 0,
