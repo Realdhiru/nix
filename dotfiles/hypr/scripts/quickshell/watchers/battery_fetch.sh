@@ -48,6 +48,9 @@ get_battery_icon() {
 }
 
 percent=$(get_battery_percent)
+if ! [[ "$percent" =~ ^[0-9]+$ ]] || [ "$percent" -gt 100 ]; then
+    percent=100
+fi
 status=$(get_battery_status)
 icon=$(get_battery_icon "$percent" "$status")
 

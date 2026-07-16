@@ -778,16 +778,6 @@ Item {
                             MouseArea { id: nextMa; anchors.fill: parent; hoverEnabled: true; onClicked: window.setMonthOffset(window.targetMonthOffset + 1) }
                         }
 
-                        Rectangle {
-                            Layout.preferredWidth: Math.round(32 * window.sf); Layout.preferredHeight: Math.round(32 * window.sf); radius: Math.round(16 * window.sf)
-                            color: diaryMa.containsMouse ? window.surface1 : "transparent"
-                            Text { anchors.centerIn: parent; text: "+"; font.family: "Iosevka Nerd Font"; color: diaryMa.containsMouse ? window.mauve : window.text; font.pixelSize: Math.round(32 * window.sf) }
-                            MouseArea { 
-                                id: diaryMa; anchors.fill: parent; hoverEnabled: true; 
-                                onClicked: Quickshell.execDetached(["bash", window.scriptsDir + "/diary_manager.sh"]) 
-                            }
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                        }
                     }
 
                     RowLayout {

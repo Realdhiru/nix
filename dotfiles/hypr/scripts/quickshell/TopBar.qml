@@ -258,9 +258,14 @@ Variants {
                             try {
                                 let newData = JSON.parse(txt);
 
-                                while (workspacesModel.count < newData.length) {
-                                    workspacesModel.append({ "wsId": "", "wsState": "" });
-                                }
+                                var diff = newData.length - workspacesModel.count;
+if (diff > 0) {
+    var workspaceBatch = [];
+    for (var i = 0; i < diff; i++) {
+        workspaceBatch.push({ "wsId": "", "wsState": "" });
+    }
+    workspacesModel.append(workspaceBatch);
+}
 
                                 while (workspacesModel.count > newData.length) {
                                     workspacesModel.remove(workspacesModel.count - 1);
@@ -509,10 +514,13 @@ Variants {
                         if (txt !== "") {
                             try {
                                 let data = JSON.parse(txt);
-                                let newBat = data.percent.toString() + "%";
-                                if (barWindow.batPercent !== newBat) barWindow.batPercent = newBat;
-                                if (barWindow.batIcon !== data.icon) barWindow.batIcon = data.icon;
-                                if (barWindow.batStatus !== data.status) barWindow.batStatus = data.status;
+                                let pctNum = parseInt(data.percent);
+                                if (!isNaN(pctNum) && pctNum >= 0 && pctNum <= 100) {
+                                    let newBat = pctNum + "%";
+                                    if (barWindow.batPercent !== newBat) barWindow.batPercent = newBat;
+                                    if (barWindow.batIcon !== data.icon) barWindow.batIcon = data.icon;
+                                    if (barWindow.batStatus !== data.status) barWindow.batStatus = data.status;
+                                }
                             } catch(e) {}
                         }
                         batteryWaiter.running = false;

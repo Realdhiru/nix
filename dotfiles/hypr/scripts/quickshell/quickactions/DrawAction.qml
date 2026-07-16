@@ -1,4 +1,3 @@
-// ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/DrawAction.qml <==
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -60,9 +59,9 @@ Item {
     property bool showColorPicker: false
 
     // Infinite Color Picker State
-    property real pickHue: 0.74
-    property real pickSat: 0.33
-    property real pickVal: 0.97
+    property real pickHue: 0.0
+    property real pickSat: 0.0
+    property real pickVal: 1.0
     property color currentColor: Qt.hsva(pickHue, pickSat, pickVal, 1.0)
 
     // Tool Size Config State (Independent memory per tool)

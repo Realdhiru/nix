@@ -1,4 +1,3 @@
-// ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/SystemUsage.qml <==
 //@ pragma UseQApplication
 import QtQuick
 import QtQuick.Layouts

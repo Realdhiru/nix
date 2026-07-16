@@ -91,9 +91,11 @@ Item {
                     try {
                         var monitors = JSON.parse(response);
                         monitorModel.clear();
+                        var monitorBatch = [];
                         for (var i = 0; i < monitors.length; i++) {
-                            monitorModel.append({ "name": monitors[i].name, "selected": true });
+                           monitorBatch.push({ "name": monitors[i].name, "selected": true });
                         }
+                        monitorModel.append(monitorBatch);
                     } catch(e) {
                         console.log("[MonitorSync] ERROR parsing JSON: " + e);
                     }
@@ -426,7 +428,6 @@ Item {
         
         const cmd = `
             exec > ${Caching.logDir}/ddg_run.log 2>&1
-            export PATH=$PATH:/run/current-system/sw/bin
             echo 'stop' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
             for p in \$(pgrep -f ddg_search.sh); do
                 if [ "\$p" != "\$\$" ] && [ "\$p" != "\$BASHPID" ]; then

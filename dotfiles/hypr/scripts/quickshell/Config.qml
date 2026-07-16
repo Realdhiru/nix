@@ -1,4 +1,3 @@
-// ==> /home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml <==
 pragma Singleton
 import QtQuick
 import Quickshell
