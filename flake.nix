@@ -4,11 +4,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    hyprland = {
-      url = "github:hyprwm/Hyprland";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -25,7 +20,7 @@
     };
   };
 
-  outputs = inputs@{ nixpkgs, home-manager, hyprland, ... }: {
+  outputs = inputs@{ nixpkgs, home-manager, ... }: {
     nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
 
@@ -34,8 +29,6 @@
       };
 
       modules = [
-        hyprland.nixosModules.default
-
         ({ pkgs, ... }: {
           nixpkgs.overlays = [
             (final: prev: {
