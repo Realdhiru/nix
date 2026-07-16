@@ -4,6 +4,11 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
+    hyprland = {
+      url = "github:hyprwm/Hyprland";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     home-manager = {
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -20,7 +25,7 @@
     };
   };
 
-  outputs = inputs@{ nixpkgs, home-manager, ... }: {
+  outputs = inputs@{ nixpkgs, home-manager, hyprland, ... }: {
     nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
 
@@ -29,15 +34,19 @@
       };
 
       modules = [
-        # --- INJECT CUSTOM PACKAGES VIA OVERLAY ---
-        ({ config, pkgs, ... }: {
+        hyprland.nixosModules.default
+
+        ({ pkgs, ... }: {
           nixpkgs.overlays = [
             (final: prev: {
-              buuf-nestort-icon-theme = prev.callPackage ./pkgs/buuf-nestort.nix {};
+              buuf-nestort-icon-theme =
+                prev.callPackage ./pkgs/buuf-nestort.nix { };
+
+              hyprexpo-plugin =
+                prev.callPackage ./pkgs/hyprexpo-plugin.nix { };
             })
           ];
         })
-        # ------------------------------------------
 
         ./hosts/nixos/default.nix
 
