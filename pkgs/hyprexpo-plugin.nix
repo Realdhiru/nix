@@ -1,7 +1,7 @@
 { lib, stdenv, fetchFromGitHub, hyprland, aquamarine, hyprcursor, hyprlang, hyprutils, hyprgraphics
 , pkg-config, cmake
 , pixman, libdrm, pango, cairo, libinput, systemd, wayland, wayland-protocols, libxkbcommon, lua5_4
-, libglvnd, mesa, libdisplay-info, seatd, xcbutilwm, xcb-util-errors, xorg
+, libglvnd, mesa, libdisplay-info, seatd, xcbutilwm, xcb-util-errors, libxcb
 }:
 
 # Bypasses hyprlandPlugins.mkHyprlandPlugin entirely — that helper throws a
