@@ -1,7 +1,7 @@
 { lib, stdenv, fetchFromGitHub, hyprland, aquamarine, hyprcursor, hyprlang, hyprutils, hyprgraphics
 , pkg-config, cmake
 , pixman, libdrm, pango, cairo, libinput, systemd, wayland, wayland-protocols, libxkbcommon, lua5_4
-, libglvnd, mesa, libdisplay-info, seatd, xcbutilwm, xorg
+, libglvnd, mesa, libdisplay-info, seatd, xcbutilwm, xcb-util-errors, xorg
 }:
 
 # Bypasses hyprlandPlugins.mkHyprlandPlugin entirely — that helper throws a
@@ -49,7 +49,8 @@ stdenv.mkDerivation {
     libdisplay-info
     seatd
     xcbutilwm
-    xorg.libxcb
+    xcb-util-errors
+    libxcb
   ];
 
   # Matches the repo's own documented build entry point.
