@@ -1,8 +1,8 @@
 { lib, stdenv, fetchFromGitHub, hyprland, aquamarine, hyprcursor, hyprlang, hyprutils, hyprgraphics
 , pkg-config, cmake
-, pixman, libdrm, pango, cairo, libinput, systemd, wayland, wayland-protocols, libxkbcommon, lua5_4
+, pixman, libdrm, pango, cairo, libinput, systemd, wayland, wayland-protocols, libxkbcommon, lua5_5
 , libglvnd, mesa, libdisplay-info, seatd, xcbutilwm, xcbutilerrors, libxcb
-}:
+, glaze, glslang, lcms2, libGL, libgbm, libuuid, libxcursor, muparser, pciutils, re2, tomlplusplus }:
 
 # Bypasses hyprlandPlugins.mkHyprlandPlugin entirely — that helper throws a
 # "NIX_MAIN_PROGRAM overlapping in env/derivation-args" error on this
@@ -39,18 +39,29 @@ stdenv.mkDerivation {
     pango
     cairo
     libinput
-    systemd  # provides libudev
+    systemd
     wayland
     wayland-protocols
     libxkbcommon
-    lua5_4
-    libglvnd  # provides egl
-    mesa      # provides gbm
+    lua5_5
+    libglvnd
+    mesa
     libdisplay-info
     seatd
     xcbutilwm
     xcbutilerrors
     libxcb
+    glaze
+    glslang
+    lcms2
+    libGL
+    libgbm
+    libuuid
+    libxcursor
+    muparser
+    pciutils
+    re2
+    tomlplusplus
   ];
 
   # Matches the repo's own documented build entry point.
