@@ -22,13 +22,4 @@
     license = lib.licenses.bsd3;
     platforms = lib.platforms.linux;
   };
-}).overrideAttrs (old: {
-  # mkHyprlandPlugin sets NIX_MAIN_PROGRAM both inside `env` and as a
-  # plain top-level derivation attribute (inherited from the hyprland
-  # package it's built against) — current nixpkgs' stricter env-attrset
-  # handling now rejects that as a duplicate. Dropping the top-level
-  # copy leaves the one inside `env`, which is the one that actually
-  # matters, and resolves the build error without needing to patch
-  # nixpkgs or the plugin helper itself.
-  NIX_MAIN_PROGRAM = null;
-})
+}).overrideAttrs (old: removeAttrs old [ "NIX_MAIN_PROGRAM" ])
