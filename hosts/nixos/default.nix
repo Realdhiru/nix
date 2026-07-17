@@ -12,7 +12,7 @@
   ];
 
     environment.etc."hypr-plugins/hyprexpo.so".source =
-    "${pkgs.hyprexpo-plugin}/lib/libhyprexpo.so";
+    "${pkgs.hyprexpo-plugin}/lib/hyprexpo.so";
 
   boot.kernelParams = [
     "ahci.mobile_lpm_policy=3"
