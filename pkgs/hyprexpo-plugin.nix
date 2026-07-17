@@ -21,7 +21,7 @@ stdenv.mkDerivation {
     # Placeholder — the build WILL fail on first run with a message like:
     #   error: hash mismatch ... got: sha256-XXXXXXXX...
     # Copy that "got:" hash back in here and rebuild. Normal/expected.
-    hash = lib.fakeHash;
+    hash = sha256-KmwRoizMS83b6+RPWANBqIDSkBiZ0Lr/lUPBz3Q2o/o=;
   };
 
   nativeBuildInputs = [ pkg-config cmake ];
