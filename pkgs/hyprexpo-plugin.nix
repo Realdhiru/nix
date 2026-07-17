@@ -1,4 +1,5 @@
-{ lib, stdenv, fetchFromGitHub, hyprland, aquamarine, pkg-config, cmake
+{ lib, stdenv, fetchFromGitHub, hyprland, aquamarine, hyprcursor, hyprlang, hyprutils, hyprgraphics
+, pkg-config, cmake
 , pixman, libdrm, pango, cairo, libinput, systemd, wayland, libxkbcommon, lua5_4
 }:
 
@@ -28,6 +29,10 @@ stdenv.mkDerivation {
   buildInputs = [
     hyprland
     aquamarine
+    hyprcursor
+    hyprlang
+    hyprutils
+    hyprgraphics
     pixman
     libdrm
     pango
