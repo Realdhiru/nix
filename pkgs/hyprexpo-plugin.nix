@@ -1,4 +1,4 @@
-{ lib, stdenv, fetchFromGitHub, hyprland, pkg-config, cmake
+{ lib, stdenv, fetchFromGitHub, hyprland, aquamarine, pkg-config, cmake
 , pixman, libdrm, pango, cairo, libinput, systemd, wayland, libxkbcommon, lua5_4
 }:
 
@@ -27,6 +27,7 @@ stdenv.mkDerivation {
   nativeBuildInputs = [ pkg-config cmake ];
   buildInputs = [
     hyprland
+    aquamarine
     pixman
     libdrm
     pango
