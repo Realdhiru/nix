@@ -17,7 +17,7 @@ stdenv.mkDerivation {
   src = fetchFromGitHub {
     owner = "sandwichfarm";
     repo = "hyprexpo";
-    rev = "main";
+    rev = "refs/heads/main";
     # Placeholder — the build WILL fail on first run with a message like:
     #   error: hash mismatch ... got: sha256-XXXXXXXX...
     # Copy that "got:" hash back in here and rebuild. Normal/expected.
