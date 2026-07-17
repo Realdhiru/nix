@@ -11,6 +11,9 @@
     ../../modules/system/power.nix
   ];
 
+    environment.etc."hypr-plugins/hyprexpo.so".source =
+    "${pkgs.hyprexpo-plugin}/lib/libhyprexpo.so";
+
   boot.kernelParams = [
     "ahci.mobile_lpm_policy=3"
     "pcie_aspm=force"
