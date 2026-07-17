@@ -76,7 +76,7 @@ stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
     mkdir -p $out/lib
-    install -m755 hyprexpo.so $out/lib/hyprexpo.so
+    install -m755 libhyprexpo.so $out/lib/hyprexpo.so
     runHook postInstall
   '';
 
