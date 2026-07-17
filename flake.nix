@@ -34,9 +34,6 @@
             (final: prev: {
               buuf-nestort-icon-theme =
                 prev.callPackage ./pkgs/buuf-nestort.nix { };
-
-              hyprexpo-plugin =
-                prev.callPackage ./pkgs/hyprexpo-plugin.nix { };
             })
           ];
         })
