@@ -28,20 +28,20 @@
   };
 
   # ---- MangoHud: FPS/frametime/thermal overlay ----
-  programs.mangohud = {
-    enable = true;
-    settings = {
-      cpu_temp = true;
-      gpu_temp = true;
-      ram = true;
-      vram = true;
-      frame_timing = true;
-      gpu_name = true;
-      engine_version = true;
-      position = "top-left";
-      toggle_hud = "Shift_R+F12";
-    };
-  };
+  # No NixOS module for this exists (programs.mangohud is not a real
+  # option — confirmed by the actual eval error) — it's just the
+  # mangohud package plus a plain config file MangoHud reads itself.
+  environment.etc."mangohud/MangoHud.conf".text = ''
+    cpu_temp
+    gpu_temp
+    ram
+    vram
+    frame_timing
+    gpu_name
+    engine_version
+    position=top-left
+    toggle_hud=Shift_R+F12
+  '';
 
   # 32-bit graphics support — required for 32-bit Proton/Wine titles
   # (most older games). Was completely absent before; without it Steam

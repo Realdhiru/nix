@@ -41,5 +41,18 @@
     libnotify polkit_gnome hypridle hyprlock quickshell qt6Packages.qtmultimedia matugen
 
     powertop psmisc hyprsunset nodejs banner usbutils wlogout opencode repomix
+
+     mangohud
+
+    # Launchers / prefix managers
+    lutris
+    heroic
+    bottles
+    protonup-qt
+
+    gamescope
+    vkbasalt
+
+    winetricks
   ];
 }
