@@ -873,11 +873,12 @@ Item {
                             }
                             
                             Text { 
-                                anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(18 * window.sf)
-                                color: parent.containsMouse ? window.textAccent : window.overlay1
-                                property real hoverShift: parent.containsMouse ? Math.round(-5 * window.sf) : wPrevMa.pulseOffset
+                                id: prevArrowIcon
+                                anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(18 * window.sf)
+                                color: wPrevMa.containsMouse ? window.textAccent : window.overlay1
+                                property real hoverShift: wPrevMa.containsMouse ? Math.round(-5 * window.sf) : wPrevMa.pulseOffset
                                 Behavior on hoverShift { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-                                transform: Translate { x: hoverShift }
+                                transform: Translate { x: prevArrowIcon.hoverShift }
                             }
                         }
                         
@@ -905,11 +906,12 @@ Item {
                             }
                             
                             Text { 
-                                anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(18 * window.sf)
-                                color: parent.containsMouse ? window.textAccent : window.overlay1
-                                property real hoverShift: parent.containsMouse ? Math.round(5 * window.sf) : wNextMa.pulseOffset
+                                id: nextArrowIcon
+                                anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(18 * window.sf)
+                                color: wNextMa.containsMouse ? window.textAccent : window.overlay1
+                                property real hoverShift: wNextMa.containsMouse ? Math.round(5 * window.sf) : wNextMa.pulseOffset
                                 Behavior on hoverShift { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-                                transform: Translate { x: hoverShift }
+                                transform: Translate { x: nextArrowIcon.hoverShift }
                             }
                         }
                     }

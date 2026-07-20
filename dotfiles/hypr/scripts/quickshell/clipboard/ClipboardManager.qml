@@ -656,6 +656,7 @@ Item {
                         clip: true
 
                         Text {
+                            id: clipText
                             anchors.fill: parent
                             text: model.content
                             font.family: "JetBrains Mono"
@@ -668,7 +669,7 @@ Item {
                             maximumLineCount: 4 
                             
                             property real textShift: index === clipList.currentIndex ? window.s(4) : 0
-                            transform: Translate { x: textShift }
+                            transform: Translate { x: clipText.textShift }
                             Behavior on textShift { NumberAnimation { duration: 500; easing.type: Easing.OutExpo } }
                             Behavior on color { ColorAnimation { duration: 300; easing.type: Easing.OutExpo } }
                         }

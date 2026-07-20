@@ -570,9 +570,11 @@ ShellRoot {
                                                 }
                                             } else {
                                                 passModel.clear();
+                                                let rebuildBatch = [];
                                                 for (let i = 0; i < text.length; i++) {
-                                                    passModel.append({ "charStr": text.charAt(i), "isDot": lockSettings.hidePassword });
+                                                    rebuildBatch.push({ "charStr": text.charAt(i), "isDot": lockSettings.hidePassword });
                                                 }
+                                                if (rebuildBatch.length > 0) passModel.append(rebuildBatch);
                                             }
                                             oldText = text;
                                         }

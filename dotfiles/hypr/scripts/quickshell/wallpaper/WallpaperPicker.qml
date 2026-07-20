@@ -881,7 +881,7 @@ Item {
             readonly property real targetWidth: isVisuallyEnlarged ? (window.itemWidth * 1.5) : (window.itemWidth * 0.5)
             readonly property real targetHeight: isVisuallyEnlarged ? (window.itemHeight + window.s(30)) : window.itemHeight
             
-            readonly property string thumbPath: "file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName)
+            readonly property string thumbPath: "file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + safeFileName
 
             width: matchesFilter ? (targetWidth + window.spacing) : 0
             visible: width > 0.1 || opacity > 0.01
