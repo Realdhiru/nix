@@ -9,6 +9,8 @@
     ../../modules/system/fonts.nix
     ../../modules/system/memory.nix
     ../../modules/system/power.nix
+    ../../modules/system/gaming.nix
+
   ];
 
   boot.kernelParams = [
