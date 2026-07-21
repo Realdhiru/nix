@@ -101,10 +101,6 @@ fi
         sat=100
     fi
 
-    if (( $(echo "$sat < 5" | bc -l) )); then
-        matugen color hex "#808080" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity > /tmp/matugen.log 2>&1
-        "$HOME/nix/dotfiles/matugen/extract_raw_colors.sh" "$SEED"
-    else
-        matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity --source-color-index 0 > /tmp/matugen.log 2>&1
-    fi
+    # replace the sat-check + if/else block with just:
+matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-expressive --source-color-index 0 > /tmp/matugen.log 2>&1
 ) &
