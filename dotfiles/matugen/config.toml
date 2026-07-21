@@ -1,5 +1,5 @@
 [config]
-scheme = "expressive"
+scheme = "content"
 contrast = 1.0
 reload_apps = false
 fallback_color = "#808080"

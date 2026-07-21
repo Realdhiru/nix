@@ -102,5 +102,5 @@ fi
     fi
 
     # replace the sat-check + if/else block with just:
-matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-expressive --source-color-index 0 > /tmp/matugen.log 2>&1
+matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-content --source-color-index 0 > /tmp/matugen.log 2>&1
 ) &
