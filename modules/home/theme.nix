@@ -18,7 +18,7 @@
     platformTheme.name = "qtct";
     style.name = "fusion";
   };
-  home.packages = with pkgs; [ qt6Packages.qt6ct qt5ct ];
+  home.packages = with pkgs; [ qt6Packages.qt6ct libsForQt5.qt5ct ];
 
   # matugen writes the color VALUES here; qt5ct/qt6ct's own conf (static, below)
   # points at this file as its color scheme source.
