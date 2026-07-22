@@ -35,10 +35,11 @@
   };
 
   environment.systemPackages = with pkgs; [
-    psmisc
-    curl
-    file
-  ];
+  psmisc
+  curl
+  file
+  gsettings-desktop-schemas
+];
 
   programs.zsh.enable = true;
   networking.hostName = "vivobook";
