@@ -34,6 +34,8 @@
     LIBVA_DRIVER_NAME = "iHD";
   };
 
+  environment.pathsToLink = [ "/share/glib-2.0" ];
+
   environment.systemPackages = with pkgs; [
   psmisc
   curl
