@@ -34,7 +34,8 @@
     LIBVA_DRIVER_NAME = "iHD";
   };
 
-  environment.pathsToLink = [ "/share/glib-2.0" ];
+  environment.variables.GSETTINGS_SCHEMA_DIR =
+  "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}/glib-2.0/schemas";
 
   environment.systemPackages = with pkgs; [
   psmisc
