@@ -1,5 +1,5 @@
 [config]
-scheme = "content"
+scheme = "fidelity"
 contrast = 1.0
 reload_apps = false
 fallback_color = "#808080"
@@ -24,14 +24,6 @@ output_path = "/home/realdhiru/.cache/matugen/rofi-colors.rasi"
 input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/wezterm-colors.lua.template"
 output_path = "/home/realdhiru/.cache/matugen/wezterm-colors.lua"
 
-[templates.gtk]
-input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/gtk.css.template"
-output_path = "/home/realdhiru/.cache/matugen/gtk.css"
-
-[templates.qtct]
-input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/qtct.conf.template"
-output_path = "/home/realdhiru/.cache/matugen/qtct.conf"
-
-[templates.qt-style]
-input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/qt-style.qss.template"
-output_path = "/home/realdhiru/.cache/matugen/qt-style.qss"
+# [templates.neovim]
+# input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/nvim-colors.lua.template"
+# output_path = "/home/realdhiru/.cache/matugen/nvim-matugen_colors.lua"
