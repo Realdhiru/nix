@@ -27,7 +27,7 @@ in
         owner = "NMWplays";
         repo = "Liquify";
         rev = "main";
-        hash = "sha256-+/pJ2/6FhgDyMhuruBdT6aR4qoXhy6Tddfox6BGytcs=";
+        hash = "sha256-ZM826yry+ipXCT2w5AtUYd6NGFBXSNkbZ1vEUNtnekY=";
       };
     };
   };
