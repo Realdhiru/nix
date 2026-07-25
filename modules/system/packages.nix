@@ -55,5 +55,9 @@
 
     winetricks
     rpcs3
+    p7zip
+
+
   ];
+
 }
