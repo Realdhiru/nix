@@ -54,5 +54,6 @@
     vkbasalt
 
     winetricks
+    rpcs3
   ];
 }
