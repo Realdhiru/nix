@@ -48,6 +48,7 @@
     lutris
     bottles
     protonup-qt
+    bubblewrap
 
     gamescope
     vkbasalt
