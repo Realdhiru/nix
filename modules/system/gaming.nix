@@ -1,15 +1,5 @@
 { pkgs, ... }:
 
-{
-  # ---- Steam ----
-  programs.steam = {
-    enable = true;
-    remotePlay.openFirewall = true;
-    dedicatedServer.openFirewall = true;
-    localNetworkGameTransfers.openFirewall = true;
-    extraCompatPackages = with pkgs; [ proton-ge-bin ];
-  };
-
   # ---- GameMode: CPU governor/renice/IO-priority bump while a game runs ----
   # No GPU-power-state section here on purpose: gamemode's gpu.* knobs
   # (core/mem clock offsets) target discrete AMD/NVIDIA cards with exposed
