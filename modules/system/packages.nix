@@ -46,7 +46,6 @@
 
     # Launchers / prefix managers
     lutris
-    heroic
     bottles
     protonup-qt
 
