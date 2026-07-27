@@ -42,7 +42,6 @@
   environment.systemPackages = with pkgs; [
     # Launchers / prefix managers
     lutris
-    heroic
     bottles
     protonup-qt      # GUI for installing GE-Proton/Wine-GE builds into Steam/Lutris
 
