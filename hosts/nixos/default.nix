@@ -16,6 +16,8 @@
   boot.kernelParams = [
     "ahci.mobile_lpm_policy=3"
     "pcie_aspm=force"
+    "i915.force_probe=!a7a0"
+"xe.force_probe=a7a0"
   ];
 
   # systemd.tmpfiles charge threshold rule removed —
