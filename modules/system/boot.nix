@@ -12,6 +12,7 @@
     "loglevel=3"
     "ahci.mobile_lpm_policy=3"
     "pcie_aspm=force"
+    "nmi_watchdog=0"
   ];
 
   boot.kernelPackages = pkgs.linuxPackages_xanmod_latest;

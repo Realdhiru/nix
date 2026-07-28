@@ -1,7 +1,6 @@
 { config, lib, pkgs, ... }:
 {
   # --- 1. KERNEL-LEVEL POWER FIXES ---
-  boot.kernelParams = [ "nmi_watchdog=0" ];
   boot.kernel.sysctl = {
     "vm.dirty_writeback_centisecs" = 6000;
   };
@@ -75,4 +74,5 @@ services.udev.extraRules = ''
     SUBSYSTEM=="power_supply", KERNEL=="ucsi-source-psy-USBC000:001", ATTR{online}=="0", \
       RUN+="${pkgs.tlp}/bin/tlp bat"
   '';
+  
 }

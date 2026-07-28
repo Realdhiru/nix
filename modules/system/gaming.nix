@@ -40,10 +40,13 @@
   hardware.graphics.enable32Bit = true;
 
   environment.systemPackages = with pkgs; [
+    mangohud
+
     # Launchers / prefix managers
     lutris
     bottles
     protonup-qt      # GUI for installing GE-Proton/Wine-GE builds into Steam/Lutris
+    bubblewrap
 
     # Iris Xe-specific: internal-resolution render + FSR upscale, and a
     # standalone sharpening/upscale Vulkan layer for games gamescope
@@ -55,5 +58,10 @@
     # Manual Wine prefix tooling (Lutris/raw wine, not Steam/Bottles —
     # see note above on why standalone dxvk/vkd3d packages aren't here)
     winetricks
+
+    # Emulation / archive tooling used alongside Lutris library
+    rpcs3
+    p7zip
+    peazip
   ];
 }

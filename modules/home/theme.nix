@@ -20,6 +20,15 @@
   };
   home.packages = with pkgs; [ qt6Packages.qt6ct libsForQt5.qt5ct glib ];
 
+  # Global cursor theme
+  home.pointerCursor = {
+    gtk.enable = true;
+    x11.enable = true;
+    name = "Bibata-Modern-Ice";
+    package = pkgs.bibata-cursors;
+    size = 24;
+  };
+  
   # matugen writes the color VALUES here; qt5ct/qt6ct's own conf (static, below)
   # points at this file as its color scheme source.
   xdg.configFile."qt5ct/colors/matugen.conf".source =

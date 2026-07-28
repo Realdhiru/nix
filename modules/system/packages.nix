@@ -12,9 +12,7 @@
 
     # Browsers
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
-
-    # POWER OPTIMIZATION: Hardware-accelerated Brave override
-    (brave.override { commandLineArgs = "--enable-features=VaapiVideoDecodeLinuxGL --use-gl=angle"; })
+    brave
 
     # File Management
     fsearch ntfs3g xfce4-exo
@@ -45,26 +43,9 @@
     # System / Desktop Integration
     file gsettings-desktop-schemas
 
-     mangohud
-
-    # Launchers / prefix managers
-    lutris
-    bottles
-    protonup-qt
-    bubblewrap
-
-    gamescope
-    vkbasalt
-
-    winetricks
-    rpcs3
-    p7zip
-    peazip
-
     clamav
     aide
     lynis 
-
 
   ];
 

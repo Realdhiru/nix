@@ -7,15 +7,6 @@
     ./modules/home/theme.nix
   ];
 
-  # Global Cursor Configuration
-  home.pointerCursor = {
-    gtk.enable = true;
-    x11.enable = true;
-    name = "Bibata-Modern-Ice";
-    package = pkgs.bibata-cursors;
-    size = 24;
-  };
-
   # Explicitly configure the internal activation option at the user level
   home.activation = {
     enableBackup = config.lib.dag.entryAfter [ "writeBoundary" ] ''
@@ -31,10 +22,13 @@
     '';
   };
 
-  # Hardware Acceleration Flags for Brave
+# Hardware Acceleration Flags for Brave — sole source of these flags now
+  # (the package-level override in packages.nix was removed so this
+  # setting only exists in one place).
   home.file.".config/brave-flags.conf".text = ''
     --ozone-platform-hint=auto
-    --enable-features=AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder
+    --use-gl=angle
+    --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder
   '';
 
   xdg.configFile."hypr" = {
@@ -53,8 +47,10 @@
     config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/wezterm";
 
-  xdg.configFile."fastfetch/config.jsonc".source = ./dotfiles/fastfetch/config.jsonc;
-
+ xdg.configFile."fastfetch/config.jsonc".source =
+    config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/fastfetch/config.jsonc";
+      
   xdg.configFile."matugen".source =
     config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/matugen";
