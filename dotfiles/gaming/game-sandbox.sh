@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -x
 # Generic per-game bubblewrap sandbox. Set as Lutris's "Command prefix"
 # (Preferences -> System options, applies to ALL games; or per-game
 # System options to opt individual games in/out). No editing needed when
