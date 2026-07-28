@@ -52,6 +52,15 @@
     };
   };
 
+  # --- ASUS battery charge-limit (TLP's battery-care plugin doesn't
+  # support this board — natacpi/asus_wmi reports "inactive"). asusd
+  # talks to the correct ASUS WMI interface directly.
+  services.asusd = {
+    enable = true;
+    enableUserService = true;
+  };
+
+
   # --- 3. ASUS CHARGER-CONNECTED PERFORMANCE FIX ---
   # When battery is capped at 80%, ASUS firmware reports power source as
   # "Battery" even though charger is physically connected.
