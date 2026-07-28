@@ -102,4 +102,13 @@
     HandleLidSwitch = "ignore";
   };
 };
+
+# ClamAV — daemon + signature updater. clamscan/freshclam are run
+  # manually (see workflow notes); this just enables the updater so
+  # the virus database actually exists when you invoke them, and the
+  # clamd daemon so `clamdscan` (faster, reuses a warm process) works.
+  services.clamav = {
+    daemon.enable = true;
+    updater.enable = true;
+  };
 }
