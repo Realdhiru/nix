@@ -52,13 +52,7 @@
     };
   };
 
-  # --- ASUS battery charge-limit (TLP's battery-care plugin doesn't
-  # support this board — natacpi/asus_wmi reports "inactive"). asusd
-  # talks to the correct ASUS WMI interface directly.
-  services.asusd = {
-    enable = true;
-    enableUserService = true;
-  };
+  services.asusd.enable = true;
 
 
   # --- 3. ASUS CHARGER-CONNECTED PERFORMANCE FIX ---
