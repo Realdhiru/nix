@@ -17,7 +17,10 @@ precision highp float;
 #define PAPER_SEPIA 0.3
 #endif
 #ifndef PAPER_GRAIN
-#define PAPER_GRAIN 0.0
+#define PAPER_GRAIN 0.8
+#endif
+#ifndef PAPER_GAMMA
+#define PAPER_GAMMA 0.8
 #endif
 
 // ----------------------------------------------------
@@ -118,7 +121,9 @@ colorResult = min(colorResult, vec3(0.88));
 // blue light
 colorResult = mix(colorResult, colorResult * colorTemperatureToRGB(TEMPERATURE), INTENSITY);
 
-fragColor = vec4(colorResult, pixColor.a);
+// gamma adjustment
+colorResult = pow(colorResult, vec3(1.0 / PAPER_GAMMA));
 
+fragColor = vec4(colorResult, pixColor.a);
 
 }

@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
 {
   # D-Bus implementation.
@@ -102,7 +102,7 @@
     HandleLidSwitch = "ignore";
   };
 };
-
+systemd.services.clamav-daemon.wantedBy = lib.mkForce [ ];
 # ClamAV — daemon + signature updater. clamscan/freshclam are run
   # manually (see workflow notes); this just enables the updater so
   # the virus database actually exists when you invoke them, and the
