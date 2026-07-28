@@ -41,22 +41,13 @@
     libnotify polkit_gnome hypridle hyprlock quickshell qt6Packages.qtmultimedia matugen
 
     powertop psmisc hyprsunset nodejs banner usbutils wlogout opencode repomix
-
-     mangohud
-
-    # Launchers / prefix managers
-    lutris
-    bottles
-    protonup-qt
-    bubblewrap
-
-    gamescope
-    vkbasalt
-
-    winetricks
-    rpcs3
     p7zip
     peazip
+
+    clamav
+    aide
+    lynis
+
 
 
   ];

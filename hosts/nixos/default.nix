@@ -38,8 +38,6 @@
   "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}/glib-2.0/schemas";
 
   environment.systemPackages = with pkgs; [
-  psmisc
-  curl
   file
   gsettings-desktop-schemas
 ];
