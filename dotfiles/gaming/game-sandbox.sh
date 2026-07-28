@@ -8,9 +8,21 @@ set -x
 # Per-game network toggle: in Lutris, per-game -> System options ->
 # Environment variables -> add SANDBOX_ALLOW_NET=1 for games that need
 # real network (multiplayer/login). Default is network OFF.
+#
+# ARCHITECTURE NOTE: this uses a DENYLIST model, not an allowlist. An
+# earlier version hid all of $HOME and allowlisted individual paths
+# (lutris, Steam compatibilitytools.d, umu) one at a time as each one
+# broke -- Lutris/umu/Proton have too many scattered, undocumented
+# dependency paths under $HOME for that to ever be exhaustive. Instead:
+# $HOME is readable by default (everything these tools need just works),
+# and only the specific sensitive paths below are explicitly masked with
+# an empty tmpfs. This is a deliberately weaker guarantee than full
+# allowlisting -- a compromised game could still read misc dotfiles/cache
+# under $HOME that aren't on the deny list below -- but it's the
+# sustainable tradeoff: it still blocks credentials, your Nix config
+# repo, and personal documents, without an unbounded discovery loop.
 set -euo pipefail
 
-# Lutris sets these for every game process it launches.
 GAME_DIR="${GAMEDIR:-$PWD}"
 PFX_DIR="${WINEPREFIX:-$HOME/Games/prefixes/default}"
 
@@ -20,6 +32,13 @@ NET_ARGS=(--unshare-net)
 if [ "${SANDBOX_ALLOW_NET:-0}" = "1" ]; then
     NET_ARGS=()
 fi
+
+DENY_ARGS=()
+for p in "$HOME/.ssh" "$HOME/.gnupg" "$HOME/nix" "$HOME/Documents" \
+         "$HOME/Downloads" "$HOME/.mozilla" \
+         "$HOME/.config/BraveSoftware" "$HOME/.config/google-chrome"; do
+    [ -e "$p" ] && DENY_ARGS+=(--tmpfs "$p")
+done
 
 exec bwrap \
     --die-with-parent \
@@ -44,10 +63,8 @@ exec bwrap \
     --setenv WAYLAND_DISPLAY wayland-1 \
     --setenv DBUS_SESSION_BUS_ADDRESS "unix:path=$XDG_RUNTIME_DIR/bus" \
     \
-    --tmpfs "$HOME" \
-    --ro-bind "$HOME/.local/share/lutris" "$HOME/.local/share/lutris" \
-    --ro-bind "$HOME/.local/share/umu" "$HOME/.local/share/umu" \
-    --ro-bind "$HOME/.local/share/Steam/compatibilitytools.d" "$HOME/.local/share/Steam/compatibilitytools.d" \
+    --ro-bind "$HOME" "$HOME" \
+    "${DENY_ARGS[@]}" \
     --bind "$GAME_DIR" "$GAME_DIR" \
     --bind "$PFX_DIR" "$PFX_DIR" \
     \
