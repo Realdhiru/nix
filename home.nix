@@ -5,7 +5,6 @@
     ./modules/home/shell.nix
     ./modules/home/spicetify.nix
     ./modules/home/theme.nix
-    ./modules/home/gaming.nix
   ];
 
   # Global Cursor Configuration
