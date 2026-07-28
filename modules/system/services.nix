@@ -41,7 +41,7 @@
   services.tumbler.enable = true;
   programs.xfconf.enable = true;
 
-    # Printing.
+  # Printing.
   services.printing = {
     enable = true;
     drivers = with pkgs; [
@@ -97,18 +97,22 @@
   };
 
   services.logind = {
-  settings.Login = {
-    HandlePowerKey = "lock";
-    HandleLidSwitch = "ignore";
+    settings.Login = {
+      HandlePowerKey = "lock";
+      HandleLidSwitch = "ignore";
+    };
   };
-};
-systemd.services.clamav-daemon.wantedBy = lib.mkForce [ ];
-# ClamAV — daemon + signature updater. clamscan/freshclam are run
+
+  # ClamAV — daemon + signature updater. clamscan/freshclam are run
   # manually (see workflow notes); this just enables the updater so
   # the virus database actually exists when you invoke them, and the
   # clamd daemon so `clamdscan` (faster, reuses a warm process) works.
+  # Both are pulled off the boot-critical path (see below) since a
+  # signature check/daemon warm-up has no reason to gate login.
   services.clamav = {
     daemon.enable = true;
     updater.enable = true;
   };
+  systemd.services.clamav-daemon.wantedBy = lib.mkForce [ ];
+  systemd.services.clamav-freshclam.wantedBy = lib.mkForce [ ];
 }

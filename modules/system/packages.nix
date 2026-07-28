@@ -12,7 +12,7 @@
 
     # Browsers
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
-    
+
     # POWER OPTIMIZATION: Hardware-accelerated Brave override
     (brave.override { commandLineArgs = "--enable-features=VaapiVideoDecodeLinuxGL --use-gl=angle"; })
 
@@ -41,13 +41,29 @@
     libnotify polkit_gnome hypridle hyprlock quickshell qt6Packages.qtmultimedia matugen
 
     powertop psmisc hyprsunset nodejs banner usbutils wlogout opencode repomix
+
+    # System / Desktop Integration
+    file gsettings-desktop-schemas
+
+     mangohud
+
+    # Launchers / prefix managers
+    lutris
+    bottles
+    protonup-qt
+    bubblewrap
+
+    gamescope
+    vkbasalt
+
+    winetricks
+    rpcs3
     p7zip
     peazip
 
     clamav
     aide
-    lynis
-
+    lynis 
 
 
   ];

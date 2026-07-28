@@ -13,11 +13,6 @@
 
   ];
 
-  boot.kernelParams = [
-    "ahci.mobile_lpm_policy=3"
-    "pcie_aspm=force"
-  ];
-
   # systemd.tmpfiles charge threshold rule removed —
   # TLP now manages this via START/STOP_CHARGE_THRESH_BAT0
 
@@ -37,14 +32,10 @@
   environment.variables.GSETTINGS_SCHEMA_DIR =
   "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}/glib-2.0/schemas";
 
-  environment.systemPackages = with pkgs; [
-  file
-  gsettings-desktop-schemas
-];
-
   programs.zsh.enable = true;
   networking.hostName = "vivobook";
   networking.networkmanager.enable = true;
+  systemd.services.NetworkManager-wait-online.enable = false;
   time.timeZone = "Asia/Kolkata";
 
   nix.settings.experimental-features = [
