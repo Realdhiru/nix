@@ -68,11 +68,11 @@
   # above, so `powerprofilesctl` is never used anywhere in this config.)
   # Do not re-add a `tlp ac`/`tlp bat` call anywhere else; it would
   # silently race against this rule.
-  services.udev.extraRules = ''
-    SUBSYSTEM=="power_supply", ATTR{type}=="Mains", ATTR{online}=="1", \
+services.udev.extraRules = ''
+    SUBSYSTEM=="power_supply", KERNEL=="ucsi-source-psy-USBC000:001", ATTR{online}=="1", \
       RUN+="${pkgs.tlp}/bin/tlp ac"
 
-    SUBSYSTEM=="power_supply", ATTR{type}=="Mains", ATTR{online}=="0", \
+    SUBSYSTEM=="power_supply", KERNEL=="ucsi-source-psy-USBC000:001", ATTR{online}=="0", \
       RUN+="${pkgs.tlp}/bin/tlp bat"
   '';
 }
