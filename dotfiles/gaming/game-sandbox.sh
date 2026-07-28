@@ -44,7 +44,7 @@ exec bwrap \
     --setenv DBUS_SESSION_BUS_ADDRESS "unix:path=$XDG_RUNTIME_DIR/bus" \
     \
     --tmpfs "$HOME" \
-    --ro-bind "$HOME/.local/share/lutris" "$HOME/.local/share/lutris" \
+    --ro-bind "$HOME/.local/share/Steam/compatibilitytools.d" "$HOME/.local/share/Steam/compatibilitytools.d" \
     --bind "$GAME_DIR" "$GAME_DIR" \
     --bind "$PFX_DIR" "$PFX_DIR" \
     \
