@@ -22,11 +22,36 @@ get_battery_status() {
     printf 'Unknown\n'
 }
 
+# Real AC-plugged-in state, independent of the battery's own "status"
+# string. On a charge-threshold-capped battery (STOP_CHARGE_THRESH_BAT0 in
+# power.nix), the kernel reports status="Not charging" once the cap is
+# hit even though the charger is physically connected -- so anything keyed
+# off status alone goes blind to "plugged in" above that percentage. This
+# reads the actual AC adapter's online sysfs value instead.
+get_ac_online() {
+    local file val
+    for file in /sys/class/power_supply/*/online; do
+        [[ -r "$file" ]] || continue
+        read -r val < "$file"
+        printf '%s\n' "${val:-1}"
+        return
+    done
+    printf '1\n'
+}
+
+has_battery() {
+    local file
+    for file in /sys/class/power_supply/BAT*/capacity; do
+        [[ -r "$file" ]] && { printf '1\n'; return; }
+    done
+    printf '0\n'
+}
+
 get_battery_icon() {
     local percent=$1
-    local status=$2
+    local online=$2
 
-    if [[ "$status" == "Charging" || "$status" == "Full" ]]; then
+    if [[ "$online" == "1" ]]; then
         (( percent >= 90 )) && printf '󰂅\n' && return
         (( percent >= 80 )) && printf '󰂋\n' && return
         (( percent >= 60 )) && printf '󰂊\n' && return
@@ -52,10 +77,15 @@ if ! [[ "$percent" =~ ^[0-9]+$ ]] || [ "$percent" -gt 100 ]; then
     percent=100
 fi
 status=$(get_battery_status)
-icon=$(get_battery_icon "$percent" "$status")
+online=$(get_ac_online)
+has=$(has_battery)
+# Icon now keys off the real AC-online signal, not the status string.
+icon=$(get_battery_icon "$percent" "$online")
 
 jq -nc \
     --arg percent "$percent" \
     --arg status "$status" \
     --arg icon "$icon" \
-    '{percent:$percent,status:$status,icon:$icon}'
+    --arg online "$online" \
+    --arg has "$has" \
+    '{percent:$percent,status:$status,icon:$icon,online:$online,has:$has}'

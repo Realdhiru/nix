@@ -176,6 +176,7 @@ Variants {
             property string batPercent: "100%"
             property string batIcon: "󰁹"
             property string batStatus: "Unknown"
+            property bool acOnline: true
 
             property string kbLayout: "us"
 
@@ -233,8 +234,7 @@ Variants {
 
             property bool isSoundActive: !barWindow.isMuted && parseInt(barWindow.volPercent) > 0
             property int batCap: parseInt(barWindow.batPercent) || 0
-            property bool isCharging: barWindow.batStatus === "Charging" || barWindow.batStatus === "Full"
-
+            property bool isCharging: barWindow.acOnline
             property color batDynamicColor: {
                 if (isCharging) return mocha.mauve;
                 if (batCap <= 20) return mocha.mauve;
@@ -520,6 +520,7 @@ if (diff > 0) {
                                     if (barWindow.batPercent !== newBat) barWindow.batPercent = newBat;
                                     if (barWindow.batIcon !== data.icon) barWindow.batIcon = data.icon;
                                     if (barWindow.batStatus !== data.status) barWindow.batStatus = data.status;
+                                    barWindow.acOnline = (data.online === "1");
                                 }
                             } catch(e) {}
                         }

@@ -78,9 +78,13 @@ Item {
     readonly property color sapphire: _theme.sapphire
     readonly property color blue: _theme.blue
 
-    property int batCapacity: 0
-    property string batStatus: "Unknown"
-    property string powerProfile: "balanced"
+    // Single source of truth: SysData.qml (a persistent singleton that
+    // keeps polling and running profile automation even while this popup
+    // is closed). This popup no longer keeps its own copies, so it can't
+    // disagree with the topbar or silently stop automating when closed.
+    readonly property int batCapacity: SysData.batCapacity
+    readonly property string batStatus: SysData.batStatus
+    readonly property string powerProfile: SysData.powerProfile
     
     property int upHours: 0
     property int upMins: 0
@@ -110,7 +114,10 @@ Item {
     Timer { id: volSyncDelay; interval: 800; onTriggered: window.isDraggingVol = false; triggeredOnStart: true; }
     Timer { id: briSyncDelay; interval: 800; onTriggered: window.isDraggingBri = false; triggeredOnStart: true; }
 
-    readonly property bool isCharging: batStatus === "Charging"
+    // Keyed off real AC-online state (SysData.acOnline), not the status
+    // string -- a charge-threshold-capped battery reports "Not charging"
+    // once it hits the cap even while plugged in.
+    readonly property bool isCharging: SysData.acOnline
 
     readonly property color batColorStart: {
         if (isCharging) return window.green;
@@ -141,101 +148,23 @@ Item {
     onAnimCapacityChanged: batCanvas.requestPaint()
     onBatColorStartChanged: batCanvas.requestPaint()
 
+    // Drive the capacity-ring animation off SysData's single source of
+    // truth instead of a locally-polled copy.
+    Connections {
+        target: SysData
+        function onBatCapacityChanged() { window.animCapacity = SysData.batCapacity; }
+    }
+    Component.onCompleted: window.animCapacity = SysData.batCapacity;
+
     // =========================================================================
     // POWER PROFILE AUTOMATION (DYNAMIC ARCHITECTURE)
     // =========================================================================
-    property bool _sysInitialized: false
-
-    // Set whenever the user explicitly picks a profile from the UI. Cleared
-    // only on an actual charge-cycle boundary (plugging in), never on a
-    // discharge transition — so a manual choice made while on battery
-    // survives incidental AC blips (sleep/wake, a loose charger connection)
-    // instead of being silently reverted.
-    property bool _manualOverride: false
-
-    onBatStatusChanged: {
-        if (!_sysInitialized) {
-            if (batStatus !== "Unknown") _sysInitialized = true;
-            return;
-        }
-
-        if (batStatus === "Charging") {
-            window._manualOverride = false;
-            if (window.powerProfile !== "performance") window.setPowerProfile("performance", false);
-        } else if (batStatus === "Discharging") {
-            if (!window._manualOverride && window.powerProfile === "performance") {
-                window.setPowerProfile("balanced", false);
-            }
-        }
-    }
-
+    // Automation moved to SysData.qml (a persistent singleton), since it
+    // must keep running whether or not this popup is open. This is now
+    // just a thin pass-through so the profile-picker buttons below don't
+    // need to change.
     function setPowerProfile(name, isManual) {
-        if (isManual === undefined) isManual = true;
-        if (isManual) window._manualOverride = true;
-
-        let prevProfile = window.powerProfile;
-
-        window.powerProfile = name;
-        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_power_profile"]);
-
-        let eppMode = (name === "performance") ? "performance" : (name === "power-saver") ? "power" : "balance_performance";
-        let disableTurbo = (name === "power-saver") ? "1" : "0";
-        let enableBoost = (name === "power-saver") ? "0" : "1";
-        let targetRR = (name === "power-saver") ? "60" : "120";
-
-        // NOTE: intentionally no `sudo tlp ac`/`sudo tlp bat` call here.
-        // AC/BAT mode switching is owned exclusively by the udev rule in
-        // power.nix. This function only manages the desktop-visible
-        // profile label, per-core EPP, CPU turbo/boost, and the
-        // internal-monitor refresh rate.
-        //
-        // power-profiles-daemon is intentionally disabled system-wide
-        // (TLP is the sole power manager — see power.nix), so
-        // `powerprofilesctl` has no daemon to talk to and was previously
-        // a silent no-op here. EPP (energy_performance_preference) is the
-        // real per-core knob TLP itself drives via
-        // CPU_ENERGY_PERF_POLICY_ON_AC/BAT, so we write it directly via
-        // set_epp.sh instead, under the NOPASSWD sudoers rule in users.nix.
-        let bashCmd = `
-            sudo ~/.config/hypr/scripts/quickshell/battery/set_epp.sh ${eppMode} 2>/dev/null
-            echo ${disableTurbo} | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo ${enableBoost} | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
-
-            INT_MON=$(hyprctl monitors -j | jq -r '.[] | select(.name | test("eDP|LVDS|MIPI")).name' | head -n1)
-
-            if [ -n "$INT_MON" ]; then
-                RES=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n) | "\\(.width)x\\(.height)"')
-                SCALE=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).scale')
-
-                # Write to the mutable cache file instead of the read-only Nix store
-                echo "monitor=$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10" > ~/.cache/hypr_power_monitor.conf
-
-                CUR_RR=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).refreshRate' | awk '{print int($1 + 0.5)}')
-                if [ "$CUR_RR" != "${targetRR}" ]; then
-                    hyprctl keyword monitor "$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10" 2>/dev/null
-                fi
-            fi
-
-            # Compositor effect toggling — Saver mode disables the three
-            # biggest per-frame compositing costs (screen shader, blur,
-            # shadow). Shader value is backed up on the way in and restored
-            # on the way out so cycle-shader.sh's current selection survives
-            # a Saver round-trip untouched. Blur/shadow have no per-user
-            # "chosen value" to preserve — they simply return to enabled,
-            # matching appearance.conf's normal defaults.
-            if [ "${name}" = "power-saver" ] && [ "${prevProfile}" != "power-saver" ]; then
-                hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
-                hyprctl keyword decoration:screen_shader "" 2>/dev/null
-                hyprctl keyword decoration:blur:enabled 0 2>/dev/null
-                hyprctl keyword decoration:shadow:enabled 0 2>/dev/null
-            elif [ "${name}" != "power-saver" ] && [ "${prevProfile}" = "power-saver" ]; then
-                PREV_SHADER=$(cat ~/.cache/qs_pre_saver_shader.conf 2>/dev/null || echo "")
-                hyprctl keyword decoration:screen_shader "$PREV_SHADER" 2>/dev/null
-                hyprctl keyword decoration:blur:enabled 1 2>/dev/null
-                hyprctl keyword decoration:shadow:enabled 1 2>/dev/null
-            fi
-        `;
-
-        Quickshell.execDetached(["bash", "-c", bashCmd]);
+        SysData.setPowerProfile(name, isManual);
     }
 
     Process {
@@ -309,12 +238,7 @@ Item {
             onStreamFinished: {
                 let lines = this.text.trim().split("\n");
                 if (lines.length >= 6) {
-                    if (window.batCapacity !== parseInt(lines[0])) {
-                        window.batCapacity = parseInt(lines[0]);
-                        window.animCapacity = window.batCapacity;
-                    }
-                    window.batStatus = lines[1];
-                    window.powerProfile = lines[2];
+                    
 
                     let remSeconds = parseInt(lines[3]) || 0;
                     window.upHours = Math.floor(remSeconds / 3600);
