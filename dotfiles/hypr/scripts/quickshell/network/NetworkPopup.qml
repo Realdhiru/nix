@@ -366,7 +366,7 @@ Item {
     }
 
     onCurrentConnChanged: {
-        showInfoView = currentConn;
+        Qt.callLater(() => { window.showInfoView = window.currentConn; });
         if (currentConn) updateInfoNodes();
     }
 
@@ -394,7 +394,7 @@ Item {
         window.coreVisualIndices = [0, 0, 0, 0, 0];
         window.activeCoreCount = 0;
         syncCores();
-        window.showInfoView = window.currentConn;
+        Qt.callLater(() => { window.showInfoView = window.currentConn; });
         if (window.showInfoView) window.updateInfoNodes();
     }
 
@@ -664,7 +664,7 @@ Item {
 
             if (window.activeMode === "wifi") {
                 if (!wasWifiConn && isNowWifiConn) {
-                    window.showInfoView = true;
+                    Qt.callLater(() => { window.showInfoView = true; });
                 }
 
                 let dd = window.disconnectingDevices;
@@ -714,21 +714,31 @@ Item {
         onExited: window.isScanningBt = false
     }
 
-    Connections {
-        target: window
-        function onVisibleChanged() {
-            if (window.visible) {
-                if (!window.isScanningBt && window.activeMode === "bt" && window.btPower === "on") {
-                    if (btScanStarter.running) btScanStarter.running = false;
-                    btScanStarter.running = true;
-                }
-            } else {
-                if (window.isScanningBt) {
-                    if (btScanStopper.running) btScanStopper.running = false;
-                    btScanStopper.running = true;
-                }
+    // Scanning needs to (re)start on every transition that could newly
+    // satisfy "visible + on the bt tab + bt powered on" -- not just the
+    // window's visible property, which only fires once per open/close and
+    // therefore missed the far more common case of switching INTO the bt
+    // tab after the widget was already open, or turning bt on while
+    // already on that tab.
+    function _syncBtScan() {
+        if (window.visible && window.activeMode === "bt" && window.btPower === "on") {
+            if (!window.isScanningBt) {
+                if (btScanStarter.running) btScanStarter.running = false;
+                btScanStarter.running = true;
+            }
+        } else {
+            if (window.isScanningBt) {
+                if (btScanStopper.running) btScanStopper.running = false;
+                btScanStopper.running = true;
             }
         }
+    }
+
+    Connections {
+        target: window
+        function onVisibleChanged() { window._syncBtScan(); }
+        function onActiveModeChanged() { window._syncBtScan(); }
+        function onBtPowerChanged() { window._syncBtScan(); }
     }
 
 

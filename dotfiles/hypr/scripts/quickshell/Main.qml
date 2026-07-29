@@ -283,22 +283,28 @@ PanelWindow {
                 "notif":       n
             };
 
-            // Same dedup applies to the persistent history list (read by
-            // BatteryPopup's Notifications panel) — otherwise repeated OSD
-            // events (Brightness/Volume) spam it with duplicate entries
-            // even though the live popup correctly collapses.
-            let existingHistIdx = -1;
-            for (let i = 0; i < globalNotificationHistory.count; i++) {
-                let e = globalNotificationHistory.get(i);
-                if (e.appName === notifAppName && e.summary === notifSummary) {
-                    existingHistIdx = i;
-                    break;
+            // OSD-style notifications (Volume/Brightness/Microphone, from
+            // osd.sh) are intentionally never written to the persistent
+            // history list -- high-frequency, low-value entries that would
+            // bury real notifications. They still show as a live popup
+            // toast below, just never persisted.
+            let isTransientOsd = (notifAppName === "System" &&
+                (notifSummary === "Volume" || notifSummary === "Brightness" || notifSummary === "Microphone"));
+
+            if (!isTransientOsd) {
+                let existingHistIdx = -1;
+                for (let i = 0; i < globalNotificationHistory.count; i++) {
+                    let e = globalNotificationHistory.get(i);
+                    if (e.appName === notifAppName && e.summary === notifSummary) {
+                        existingHistIdx = i;
+                        break;
+                    }
                 }
+                if (existingHistIdx !== -1) {
+                    globalNotificationHistory.remove(existingHistIdx);
+                }
+                globalNotificationHistory.insert(0, notifData);
             }
-            if (existingHistIdx !== -1) {
-                globalNotificationHistory.remove(existingHistIdx);
-            }
-            globalNotificationHistory.insert(0, notifData);
 
             if (!masterWindow.isStartup) {
                 if (existingUid !== -1) {

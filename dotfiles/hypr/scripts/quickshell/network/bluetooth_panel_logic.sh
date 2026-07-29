@@ -41,6 +41,12 @@ get_audio_profile() {
 }
 
 get_status() {
+    # Idempotent (checks its own PID file) -- cheap to call every poll
+    # cycle, and this is the one place guaranteed to run continuously,
+    # so it also catches Bluetooth already being on at login, not just
+    # a manual toggle.
+    "$SCRIPT_DIR/bt_agent.sh" 2>/dev/null
+
     if ! ls -1d /sys/class/bluetooth/hci* &>/dev/null; then
         echo "{\"present\":false,\"power\":\"off\",\"connected\":[],\"devices\":[]}"
         return
