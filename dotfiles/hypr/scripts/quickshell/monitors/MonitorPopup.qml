@@ -315,6 +315,11 @@ Item {
     // -------------------------------------------------------------------------
     // NATIVE SYSTEM PROCESSES
     // -------------------------------------------------------------------------
+    StackView.onActivated: {
+        displayPoller.running = false;
+        displayPoller.running = true;
+    }
+
     Process {
         id: displayPoller
         command: ["hyprctl", "monitors", "-j"]
