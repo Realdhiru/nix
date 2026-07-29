@@ -173,6 +173,8 @@ Item {
         if (isManual === undefined) isManual = true;
         if (isManual) window._manualOverride = true;
 
+        let prevProfile = window.powerProfile;
+
         window.powerProfile = name;
         Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_power_profile"]);
 
@@ -211,6 +213,25 @@ Item {
                 if [ "$CUR_RR" != "${targetRR}" ]; then
                     hyprctl keyword monitor "$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10" 2>/dev/null
                 fi
+            fi
+
+            # Compositor effect toggling — Saver mode disables the three
+            # biggest per-frame compositing costs (screen shader, blur,
+            # shadow). Shader value is backed up on the way in and restored
+            # on the way out so cycle-shader.sh's current selection survives
+            # a Saver round-trip untouched. Blur/shadow have no per-user
+            # "chosen value" to preserve — they simply return to enabled,
+            # matching appearance.conf's normal defaults.
+            if [ "${name}" = "power-saver" ] && [ "${prevProfile}" != "power-saver" ]; then
+                hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
+                hyprctl keyword decoration:screen_shader "" 2>/dev/null
+                hyprctl keyword decoration:blur:enabled 0 2>/dev/null
+                hyprctl keyword decoration:shadow:enabled 0 2>/dev/null
+            elif [ "${name}" != "power-saver" ] && [ "${prevProfile}" = "power-saver" ]; then
+                PREV_SHADER=$(cat ~/.cache/qs_pre_saver_shader.conf 2>/dev/null || echo "")
+                hyprctl keyword decoration:screen_shader "$PREV_SHADER" 2>/dev/null
+                hyprctl keyword decoration:blur:enabled 1 2>/dev/null
+                hyprctl keyword decoration:shadow:enabled 1 2>/dev/null
             fi
         `;
 

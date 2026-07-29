@@ -17,4 +17,4 @@ MONITOR_PID=$!
 
 # Blocks until udevadm catches a change, OR 10 seconds pass (failsafe).
 # Either way, when this line finishes, the trap fires and cleans up perfectly.
-timeout 10 grep -m 1 "change" < "$PIPE" > /dev/null
+timeout 300 grep -m 1 "change" < "$PIPE" > /dev/null

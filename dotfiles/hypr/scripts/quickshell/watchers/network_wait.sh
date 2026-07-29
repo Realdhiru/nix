@@ -26,7 +26,7 @@ timeout 0.5 cat "$PIPE" > /dev/null 2>&1
 # the process down couldn't interrupt it either, so the script (and its
 # nmcli child) became a permanent orphan — confirmed via pgrep showing 15
 # stuck instances that survived a full `pkill -f quickshell`.
-timeout 10 grep -m 1 -iwE "connected|disconnected|enabled|disabled|activated|deactivated|available|unavailable" < "$PIPE" > /dev/null
+timeout 300 grep -m 1 -iwE "connected|disconnected|enabled|disabled|activated|deactivated|available|unavailable" < "$PIPE" > /dev/null
 
 # Anti-spin debounce to protect C-states
 sleep 1.5

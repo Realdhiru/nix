@@ -16,7 +16,7 @@ LC_ALL=C dbus-monitor --system "type='signal',interface='org.freedesktop.DBus.Pr
 # EXIT trap until the current foreground command returns, an external
 # SIGTERM from Quickshell tearing the process down couldn't interrupt it
 # either — same leak mechanism confirmed in network_wait.sh via pgrep.
-timeout 10 bash -c 'read -r _ < "$1"' _ "$PIPE"
+timeout 300 bash -c 'read -r _ < "$1"' _ "$PIPE"
 
 # Hard limit on execution frequency if dbus spams connection signals
 sleep 1.5
