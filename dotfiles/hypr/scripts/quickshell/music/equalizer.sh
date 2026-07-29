@@ -73,8 +73,9 @@ case $cmd in
     "get") cat "$STATE_FILE" ;;
     "set_band")
         tmp=$(cat "$STATE_FILE")
-        updated=$(echo "$tmp" | jq -c --arg val "$arg2" ".b$arg1 = \$val | .preset = \"Custom\" | .pending = true")
+        updated=$(echo "$tmp" | jq -c --arg val "$arg2" ".b$arg1 = \$val | .preset = \"Custom\" | .pending = false")
         echo "$updated" > "$STATE_FILE"
+        apply_eq
         ;;
     "apply")
         tmp=$(cat "$STATE_FILE")
