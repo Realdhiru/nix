@@ -376,16 +376,8 @@ Item {
         }
         window.ignoreNextModeFileUpdate = false;
 
-        window.pendingWifiId = ""; window.pendingWifiSsid = "";
         if (window.activeMode === "wifi") savedNetworksFetcher.running = true;
-
-        if (window.activeMode === "bt" && window.btPower === "on" && window.visible && !window.isScanningBt) {
-            if (btScanStarter.running) btScanStarter.running = false;
-            btScanStarter.running = true;
-        } else if (window.activeMode !== "bt" && window.isScanningBt) {
-            if (btScanStopper.running) btScanStopper.running = false;
-            btScanStopper.running = true;
-        }
+        window._syncBtScan();
 
         infoListModel.clear();
         window.busyTasks = ({});
