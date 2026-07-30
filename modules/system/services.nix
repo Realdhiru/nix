@@ -3,23 +3,7 @@
 {
   networking.firewall.enable = true;
 
-security.apparmor.enable = true;
-
-security.auditd.enable = true;
-security.audit.enable = true;
-security.audit.rules = [ "-a exit,always -F arch=b64 -S execve" ];
-
-services.clamav.updater.enable = true;
-
-environment.etc."aide.conf".text = ''
-  database=file:/var/lib/aide/aide.db
-  database_out=file:/var/lib/aide/aide.db.new
-  gzip_dbout=yes
-  /etc    NORMAL
-  /bin    NORMAL
-  /sbin   NORMAL
-  /usr/bin NORMAL
-'';
+  security.apparmor.enable = true;
 
   # D-Bus implementation.
   services.dbus.implementation = "broker";
@@ -122,17 +106,4 @@ environment.etc."aide.conf".text = ''
       HandleLidSwitch = "ignore";
     };
   };
-
-  # ClamAV — daemon + signature updater. clamscan/freshclam are run
-  # manually (see workflow notes); this just enables the updater so
-  # the virus database actually exists when you invoke them, and the
-  # clamd daemon so `clamdscan` (faster, reuses a warm process) works.
-  # Both are pulled off the boot-critical path (see below) since a
-  # signature check/daemon warm-up has no reason to gate login.
-  services.clamav = {
-    daemon.enable = true;
-    updater.enable = true;
-  };
-  systemd.services.clamav-daemon.wantedBy = lib.mkForce [ ];
-  systemd.services.clamav-freshclam.wantedBy = lib.mkForce [ ];
 }
