@@ -905,13 +905,16 @@ if (diff > 0) {
                         }
                     }
 
-                    Rectangle {
+                                        Rectangle {
                         id: centerBox
                         property bool isHovered: centerMouse.containsMouse
+                        property bool notifActive: NotifTicker.tickerVisible
                         color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.95) : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
                         radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.15 : 0.05)
                         height: barWindow.barHeight
-                        width: centerLayout.implicitWidth + barWindow.s(36)
+                        width: (centerBox.notifActive ? notifLayout.implicitWidth : centerLayout.implicitWidth) + barWindow.s(36)
+                        Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutExpo } }
+                        clip: true
 
                         property bool showLayout: false
                         opacity: showLayout ? 1 : 0
@@ -936,8 +939,13 @@ if (diff > 0) {
                             id: centerMouse
                             anchors.fill: parent
                             hoverEnabled: true
+                            enabled: !centerBox.notifActive || NotifTicker.tickerNotif.actionsJson === "[]"
                             onClicked: (event) => {
-                                Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle calendar"])
+                                if (centerBox.notifActive) {
+                                    NotifTicker.invokeDefault();
+                                } else {
+                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle calendar"])
+                                }
                             }
                         }
 
@@ -945,6 +953,8 @@ if (diff > 0) {
                             id: centerLayout
                             anchors.centerIn: parent
                             spacing: barWindow.s(12)
+                            opacity: centerBox.notifActive ? 0.0 : 1.0
+                            Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
                             Text {
                                 text: barWindow.timeStr
@@ -980,7 +990,104 @@ if (diff > 0) {
                                 }
                             }
                         }
+
+                        RowLayout {
+                            id: notifLayout
+                            anchors.centerIn: parent
+                            spacing: barWindow.s(10)
+                            opacity: centerBox.notifActive ? 1.0 : 0.0
+                            Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+
+                            transform: Translate {
+                                x: centerBox.notifActive ? 0 : barWindow.s(-24)
+                                Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                            }
+
+                            property var n: NotifTicker.tickerNotif
+                            property var actionArray: {
+                                try { return n && n.actionsJson ? JSON.parse(n.actionsJson) : []; }
+                                catch (e) { return []; }
+                            }
+
+                            Image {
+                                Layout.alignment: Qt.AlignVCenter
+                                visible: notifLayout.n && notifLayout.n.iconPath !== ""
+                                source: notifLayout.n && notifLayout.n.iconPath !== "" ? notifLayout.n.iconPath : ""
+                                sourceSize: Qt.size(barWindow.s(20), barWindow.s(20))
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                            }
+
+                            Text {
+                                Layout.alignment: Qt.AlignVCenter
+                                text: notifLayout.n ? notifLayout.n.appName : ""
+                                font.family: "JetBrains Mono"
+                                font.weight: Font.Medium
+                                font.pixelSize: barWindow.s(10)
+                                color: mocha.overlay1
+                            }
+                            Text {
+                                Layout.alignment: Qt.AlignVCenter
+                                text: "\u2022"
+                                font.pixelSize: barWindow.s(10)
+                                color: mocha.overlay0
+                            }
+                            Text {
+                                Layout.alignment: Qt.AlignVCenter
+                                text: notifLayout.n ? notifLayout.n.summary : ""
+                                font.family: "JetBrains Mono"
+                                font.weight: Font.Bold
+                                font.pixelSize: barWindow.s(13)
+                                color: mocha.text
+                            }
+                            Text {
+                                Layout.alignment: Qt.AlignVCenter
+                                visible: text !== ""
+                                text: notifLayout.n ? notifLayout.n.body : ""
+                                font.family: "JetBrains Mono"
+                                font.weight: Font.Medium
+                                font.pixelSize: barWindow.s(13)
+                                color: mocha.subtext0
+                            }
+
+                            RowLayout {
+                                Layout.alignment: Qt.AlignVCenter
+                                spacing: barWindow.s(6)
+                                visible: notifLayout.actionArray.length > 0
+
+                                Repeater {
+                                    model: notifLayout.actionArray
+                                    delegate: Rectangle {
+                                        height: barWindow.s(24)
+                                        width: actLabel.implicitWidth + barWindow.s(14)
+                                        radius: barWindow.s(7)
+                                        property bool isPrimary: index === 0
+                                        color: isPrimary ? (actMa.containsMouse ? mocha.blue : Qt.darker(mocha.blue, 1.2)) : (actMa.containsMouse ? mocha.surface2 : mocha.surface1)
+                                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                                        Text {
+                                            id: actLabel
+                                            anchors.centerIn: parent
+                                            text: modelData.text || "Action"
+                                            font.family: "JetBrains Mono"
+                                            font.weight: Font.Bold
+                                            font.pixelSize: barWindow.s(10)
+                                            color: isPrimary ? mocha.crust : mocha.text
+                                        }
+
+                                        MouseArea {
+                                            id: actMa
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: NotifTicker.invokeAction(modelData.id)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
+
 
                     Row {
                         id: rightContent

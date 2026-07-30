@@ -4,7 +4,6 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Services.Notifications
 import "WindowRegistry.js" as Registry
 
 PanelWindow {
@@ -76,22 +75,7 @@ PanelWindow {
     implicitWidth: masterWindow.screen.width
     implicitHeight: masterWindow.screen.height
 
-    // Previously gated on isVisible alone (true only while a widget popup
-    // is open), which meant this whole window -- and therefore anything
-    // rendered in it -- vanished the instant no widget was open. The
-    // topbar ticker below needs to render (and receive clicks) whether or
-    // not a widget is open, so the window itself now also stays mapped
-    // whenever the ticker has something to show.
-    visible: isVisible || tickerVisible
-
-    // Scaler used only for the ticker, so its geometry matches TopBar.qml's
-    // real bar height/margins exactly (barHeight = s(48), top margin =
-    // s(2), right margin = s(4)) and it reads as part of the same strip.
-    Scaler {
-        id: tickerScaler
-        currentWidth: masterWindow.screen.width
-    }
-    function ts(val) { return tickerScaler.s(val); }
+    visible: isVisible
 
     mask: Region { item: topBarHole; intersection: Intersection.Xor }
 
@@ -103,17 +87,7 @@ PanelWindow {
         height: 48
 
         anchors.leftMargin: (masterWindow.currentActive !== "hidden" && masterWindow.animX < 10 && masterWindow.animY < height) ? masterWindow.animW : 0
-
-        // Extended (additively, via Math.max so the existing widget-corner
-        // behavior is completely unchanged) to also exclude the ticker's
-        // own corner from click-passthrough while it's showing. Without
-        // this, clicks on the ticker (e.g. a pairing-confirmation button)
-        // would pass straight through to whatever's behind the topbar at
-        // that spot instead of reaching the ticker itself.
-        anchors.rightMargin: Math.max(
-            (masterWindow.currentActive !== "hidden" && (masterWindow.animX + masterWindow.animW) > (parent.width - 10) && masterWindow.animY < height) ? masterWindow.animW : 0,
-            masterWindow.tickerVisible ? masterWindow.tickerPillWidth : 0
-        )
+        anchors.rightMargin: (masterWindow.currentActive !== "hidden" && (masterWindow.animX + masterWindow.animW) > (parent.width - 10) && masterWindow.animY < height) ? masterWindow.animW : 0
 
         Behavior on anchors.leftMargin {
             enabled: masterWindow.currentActive !== "hidden"
@@ -218,10 +192,11 @@ PanelWindow {
 
     property real globalUiScale: 1.0
 
-    ListModel { id: globalNotificationHistory }
-
-    property var liveNotifs: ({})
-    property int _popupCounter: 0
+    // Notification state/model now lives in the NotifTicker singleton, so
+    // TopBar.qml's center clock box can read it directly too -- this window
+    // just forwards it to widgets that need it (battery history, etc).
+    property var notifModel: NotifTicker.notifModel
+    property var liveNotifs: NotifTicker.liveNotifs
 
     property bool isStartup: true
     Timer {
@@ -230,149 +205,6 @@ PanelWindow {
         running: true
         onTriggered: masterWindow.isStartup = false
     }
-
-    // =========================================================================
-    // TOPBAR TICKER (single-slot, in-window notification display)
-    //
-    // Lives inside this window instead of a separate PanelWindow, because
-    // two separate WlrLayer.Overlay surfaces race for stacking order with
-    // no guaranteed winner -- which is exactly why the old NotificationPopups
-    // window sometimes rendered *behind* an open widget and was unclickable.
-    // Same window as the widgets = deterministic z-order via plain QML
-    // z-ordering, not a compositor coin flip.
-    // =========================================================================
-
-    property var tickerNotif: null
-    readonly property bool tickerVisible: tickerNotif !== null
-    property int tickerPillWidth: 0
-    property bool tickerIsSticky: false
-
-    function _notifKey(appName, summary) { return appName + "\u0000" + summary; }
-
-    function _dismissTicker(uid) {
-        if (masterWindow.tickerNotif && masterWindow.tickerNotif.uid === uid) {
-            masterWindow.tickerNotif = null;
-        }
-    }
-
-    Timer {
-        id: tickerTimeoutTimer
-        onTriggered: {
-            if (masterWindow.tickerNotif) masterWindow.tickerNotif = null;
-        }
-    }
-
-    function _showTicker(notifData, timeoutMs) {
-        masterWindow.tickerNotif = notifData;
-        masterWindow.tickerIsSticky = (timeoutMs === 0);
-        tickerTimeoutTimer.stop();
-        if (timeoutMs > 0) {
-            tickerTimeoutTimer.interval = timeoutMs;
-            tickerTimeoutTimer.start();
-        }
-    }
-
-    function removePopup(uid) {
-        masterWindow._dismissTicker(uid);
-    }
-
-    NotificationServer {
-        id: globalNotificationServer
-        bodySupported: true
-        actionsSupported: true
-        imageSupported: true
-
-        onNotification: (n) => {
-            n.tracked = true;
-
-            let extractedActions = [];
-            if (n.actions) {
-                for (let i = 0; i < n.actions.length; i++) {
-                    extractedActions.push({
-                        "id": n.actions[i].identifier || "",
-                        "text": n.actions[i].text || n.actions[i].name || "Action"
-                    });
-                }
-            }
-
-            let notifAppName = n.appName !== "" ? n.appName : "System";
-            let notifSummary  = n.summary !== "" ? n.summary : "No Title";
-            let key = masterWindow._notifKey(notifAppName, notifSummary);
-
-            let isTransientOsd = (notifAppName === "System" &&
-                (notifSummary === "Volume" || notifSummary === "Brightness" || notifSummary === "Microphone"));
-
-            // Persistent history (read by BatteryPopup's Notifications
-            // panel) never gets OSD noise, and dedups repeats of anything
-            // else the same way it always did.
-            if (!isTransientOsd) {
-                let existingHistIdx = -1;
-                for (let i = 0; i < globalNotificationHistory.count; i++) {
-                    let e = globalNotificationHistory.get(i);
-                    if (e.appName === notifAppName && e.summary === notifSummary) {
-                        existingHistIdx = i;
-                        break;
-                    }
-                }
-                if (existingHistIdx !== -1) {
-                    globalNotificationHistory.remove(existingHistIdx);
-                }
-            }
-
-            let currentUid;
-            let isSameAsShowing = masterWindow.tickerNotif && masterWindow._notifKey(masterWindow.tickerNotif.appName, masterWindow.tickerNotif.summary) === key;
-
-            if (isSameAsShowing) {
-                // Same "type" (e.g. repeated Volume presses) already
-                // showing -- update the value in place, don't replay the
-                // reveal animation or touch liveNotifs' uid bookkeeping.
-                currentUid = masterWindow.tickerNotif.uid;
-            } else {
-                masterWindow._popupCounter++;
-                currentUid = masterWindow._popupCounter;
-            }
-
-            masterWindow.liveNotifs[currentUid] = n;
-
-            let notifData = {
-                "appName":     notifAppName,
-                "summary":     notifSummary,
-                "body":        n.body     !== "" ? n.body     : "",
-                "iconPath":    n.appIcon  !== "" ? n.appIcon  : "",
-                "actionsJson": JSON.stringify(extractedActions),
-                "uid":         currentUid,
-                "notif":       n
-            };
-
-            if (!isTransientOsd) {
-                globalNotificationHistory.insert(0, notifData);
-            }
-
-            if (!masterWindow.isStartup) {
-                let hasActions = extractedActions.length > 0;
-                let timeoutMs;
-                if (n.timeout === 0 || hasActions) timeoutMs = 0;
-                else if (n.timeout > 0) timeoutMs = n.timeout;
-                else timeoutMs = 3500;
-
-                // A sticky notification (has actions, e.g. a pairing
-                // confirmation) waiting on you to respond must not get
-                // silently bumped by an unrelated routine notification
-                // (e.g. a disconnect blip) -- only let it through if this
-                // new one is itself sticky, or it's the same one updating.
-                let incomingIsSticky = (timeoutMs === 0);
-                if (masterWindow.tickerIsSticky && !isSameAsShowing && !incomingIsSticky) {
-                    // dropped from the ticker, but it's still in history above
-                } else {
-                    masterWindow._showTicker(notifData, timeoutMs);
-                }
-            }
-        }
-    }
-
-    property var notifModel: globalNotificationHistory
-
-    onGlobalUiScaleChanged: { handleNativeScreenChange(); }
 
     Process {
         id: settingsReader
@@ -451,6 +283,8 @@ PanelWindow {
         masterWindow.targetW = finalW;
         masterWindow.targetH = finalH;
     }
+
+    onGlobalUiScaleChanged: { handleNativeScreenChange(); }
 
     Timer {
         id: focusTimer
@@ -557,198 +391,6 @@ PanelWindow {
             }
         }
     }
-
-        // ---- Ticker UI -- renders on top of everything above (declared last =
-    // painted last = on top, within this single window's z-stack). ----
-    MatugenColors { id: _tickerTheme }
-
-    Item {
-        id: tickerRoot
-        z: 1000
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.topMargin: masterWindow.ts(2)
-        anchors.rightMargin: masterWindow.ts(4)
-        height: masterWindow.ts(48)
-        clip: true
-
-        property var n: masterWindow.tickerNotif
-        property var actionArray: {
-            try {
-                return n && n.actionsJson ? JSON.parse(n.actionsJson) : [];
-            } catch (e) { return []; }
-        }
-        property var sourceNotif: n ? (masterWindow.liveNotifs[n.uid] || null) : null
-        property bool revealed: n !== null
-
-        // Single source of truth for width -- computed once, directly from
-        // the actual content, with one generous cap tied to screen width
-        // (not a fixed px number). Previously the outer pill's width was
-        // capped smaller than what the inner content actually needed,
-        // while the content sized itself independently -- that mismatch is
-        // what let text spill past the pill's edge / off-screen.
-        width: revealed ? Math.min(masterWindow.screen.width * 0.4, pillContent.implicitWidth + masterWindow.ts(32)) : 0
-        Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-
-        onWidthChanged: masterWindow.tickerPillWidth = width
-
-        Connections {
-            target: tickerRoot.sourceNotif || null
-            function onClosed() {
-                if (tickerRoot.n) masterWindow._dismissTicker(tickerRoot.n.uid);
-            }
-        }
-
-        Rectangle {
-            id: pillBg
-            anchors.fill: parent
-            radius: masterWindow.ts(14)
-            color: Qt.rgba(_tickerTheme.base.r, _tickerTheme.base.g, _tickerTheme.base.b, 0.9)
-            border.color: Qt.rgba(_tickerTheme.text.r, _tickerTheme.text.g, _tickerTheme.text.b, 0.08)
-            border.width: 1
-            clip: true
-
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    let liveN = tickerRoot.sourceNotif;
-                    if (liveN && liveN.actions) {
-                        for (let i = 0; i < liveN.actions.length; i++) {
-                            if (liveN.actions[i].identifier === "default") {
-                                liveN.actions[i].invoke();
-                                break;
-                            }
-                        }
-                    }
-                    if (tickerRoot.n) masterWindow._dismissTicker(tickerRoot.n.uid);
-                }
-            }
-
-            Item {
-                id: contentSlider
-                anchors.fill: parent
-                anchors.leftMargin: masterWindow.ts(16)
-                anchors.rightMargin: masterWindow.ts(16)
-                clip: true
-
-                Row {
-                    id: pillContent
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: masterWindow.ts(10)
-
-                    opacity: tickerRoot.revealed ? 1.0 : 0.0
-                    Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-
-                    // Fast slide, same direction (left-to-right, i.e.
-                    // moving rightward into place) for both entrance and
-                    // exit -- entrance slides rightward into position,
-                    // exit continues rightward while fading rather than
-                    // retreating back the way it came.
-                    transform: Translate {
-                        x: tickerRoot.revealed ? 0 : masterWindow.ts(36)
-                        Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-                    }
-
-                    // Single horizontal line: appName, summary, body all
-                    // read left to right on one baseline.
-                    Image {
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: tickerRoot.n && tickerRoot.n.iconPath !== ""
-                        source: tickerRoot.n && tickerRoot.n.iconPath !== "" ? tickerRoot.n.iconPath : ""
-                        width: masterWindow.ts(20); height: masterWindow.ts(20)
-                        fillMode: Image.PreserveAspectFit
-                        asynchronous: true
-                    }
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: tickerRoot.n ? tickerRoot.n.appName : ""
-                        font.family: "JetBrains Mono"
-                        font.weight: Font.Medium
-                        font.pixelSize: masterWindow.ts(11)
-                        color: _tickerTheme.overlay1
-                    }
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "\u2022"
-                        font.pixelSize: masterWindow.ts(11)
-                        color: _tickerTheme.overlay0
-                    }
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: tickerRoot.n ? tickerRoot.n.summary : ""
-                        font.family: "JetBrains Mono"
-                        font.weight: Font.Bold
-                        font.pixelSize: masterWindow.ts(13)
-                        color: _tickerTheme.text
-                    }
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: text !== ""
-                        text: tickerRoot.n ? tickerRoot.n.body : ""
-                        font.family: "JetBrains Mono"
-                        font.weight: Font.Medium
-                        font.pixelSize: masterWindow.ts(13)
-                        color: _tickerTheme.subtext0
-                    }
-
-                    Row {
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: masterWindow.ts(6)
-                        visible: tickerRoot.actionArray.length > 0
-                        leftPadding: masterWindow.ts(6)
-
-                        Repeater {
-                            model: tickerRoot.actionArray
-                            delegate: Rectangle {
-                                height: masterWindow.ts(26)
-                                width: actionLabel.implicitWidth + masterWindow.ts(16)
-                                radius: masterWindow.ts(8)
-                                property bool isPrimary: index === 0
-                                color: {
-                                    if (!_tickerTheme.blue) return "transparent";
-                                    if (isPrimary) return actionMa.containsMouse ? _tickerTheme.blue : Qt.darker(_tickerTheme.blue, 1.2);
-                                    return actionMa.containsMouse ? _tickerTheme.surface2 : _tickerTheme.surface1;
-                                }
-                                Behavior on color { ColorAnimation { duration: 150 } }
-
-                                Text {
-                                    id: actionLabel
-                                    anchors.centerIn: parent
-                                    text: modelData.text || "Action"
-                                    font.family: "JetBrains Mono"
-                                    font.weight: Font.Bold
-                                    font.pixelSize: masterWindow.ts(11)
-                                    color: isPrimary ? _tickerTheme.crust : _tickerTheme.text
-                                }
-
-                                MouseArea {
-                                    id: actionMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        let liveN = tickerRoot.sourceNotif;
-                                        if (liveN && liveN.actions) {
-                                            for (let i = 0; i < liveN.actions.length; i++) {
-                                                if (liveN.actions[i].identifier === modelData.id) {
-                                                    liveN.actions[i].invoke();
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        if (tickerRoot.n) masterWindow._dismissTicker(tickerRoot.n.uid);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
 
     function switchWidget(newWidget, arg) {
         console.log("switchWidget:", newWidget)
