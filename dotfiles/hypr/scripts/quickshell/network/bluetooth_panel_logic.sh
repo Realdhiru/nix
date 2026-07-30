@@ -179,12 +179,15 @@ case $cmd in
     --scan-start)
         rfkill unblock bluetooth 2>/dev/null
         timeout 0.5 bluetoothctl power on > /dev/null 2>&1
-        if [ -f "$PID_FILE" ]; then kill -9 $(cat "$PID_FILE") 2>/dev/null; rm -f "$PID_FILE"; fi
-        nohup bluetoothctl scan on > /dev/null 2>&1 < /dev/null &
+        if [ -f "$PID_FILE" ]; then kill "$(cat "$PID_FILE")" 2>/dev/null; rm -f "$PID_FILE"; fi
+        # Keeping a single bluetoothctl session open (stdin never hits EOF
+        # because of sleep infinity) keeps its D-Bus connection alive, so
+        # discovery actually persists -- same pattern as bt_agent.sh.
+        { echo "scan on"; sleep infinity; } | bluetoothctl > /dev/null 2>&1 &
         echo $! > "$PID_FILE"
         ;;
     --scan-stop)
-        if [ -f "$PID_FILE" ]; then kill -9 $(cat "$PID_FILE") 2>/dev/null; rm -f "$PID_FILE"; fi
+        if [ -f "$PID_FILE" ]; then kill "$(cat "$PID_FILE")" 2>/dev/null; rm -f "$PID_FILE"; fi
         timeout 0.5 bluetoothctl scan off > /dev/null 2>&1
         ;;
 esac
