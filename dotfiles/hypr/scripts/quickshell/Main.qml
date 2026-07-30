@@ -653,6 +653,14 @@ PanelWindow {
 
                     // Single horizontal line: appName, summary, body all
                     // read left to right on one baseline.
+                    Image {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: tickerRoot.n && tickerRoot.n.iconPath !== ""
+                        source: tickerRoot.n && tickerRoot.n.iconPath !== "" ? tickerRoot.n.iconPath : ""
+                        width: masterWindow.ts(20); height: masterWindow.ts(20)
+                        fillMode: Image.PreserveAspectFit
+                        asynchronous: true
+                    }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: tickerRoot.n ? tickerRoot.n.appName : ""

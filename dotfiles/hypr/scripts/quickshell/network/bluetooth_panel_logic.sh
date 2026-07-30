@@ -160,8 +160,8 @@ toggle_power() {
 connect_dev() {
     local mac="$1"
     timeout 2 bluetoothctl trust "$mac" > /dev/null 2>&1
-    timeout 2 bluetoothctl pair "$mac" > /dev/null 2>&1
-    timeout 5 bluetoothctl connect "$mac" > /dev/null 2>&1
+    timeout 10 bluetoothctl pair "$mac" > /dev/null 2>&1
+    timeout 8 bluetoothctl connect "$mac" > /dev/null 2>&1
 }
 
 disconnect_dev() {

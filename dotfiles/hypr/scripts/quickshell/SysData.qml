@@ -195,6 +195,12 @@ Item {
     property bool _manualOverride: false
     property bool _acInitialized: false
 
+    Quickshell.execDetached([
+            "notify-send", "-a", "System", "-u", "low",
+            isOnline ? "Charger Connected" : "Charger Disconnected", ""
+        ]);
+
+    
     function _handleAcTransition(wasOnline, isOnline) {
         if (!root._acInitialized) {
             root._acInitialized = true;
