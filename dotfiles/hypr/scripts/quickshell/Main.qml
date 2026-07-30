@@ -245,6 +245,7 @@ PanelWindow {
     property var tickerNotif: null
     readonly property bool tickerVisible: tickerNotif !== null
     property int tickerPillWidth: 0
+    property bool tickerIsSticky: false
 
     function _notifKey(appName, summary) { return appName + "\u0000" + summary; }
 
@@ -263,6 +264,7 @@ PanelWindow {
 
     function _showTicker(notifData, timeoutMs) {
         masterWindow.tickerNotif = notifData;
+        masterWindow.tickerIsSticky = (timeoutMs === 0);
         tickerTimeoutTimer.stop();
         if (timeoutMs > 0) {
             tickerTimeoutTimer.interval = timeoutMs;
@@ -347,17 +349,23 @@ PanelWindow {
             }
 
             if (!masterWindow.isStartup) {
-                // Actionable notifications (or an explicit timeout: 0, e.g.
-                // a Bluetooth pairing confirmation) never auto-dismiss --
-                // they wait for you to actually answer them. Everything
-                // else gets a normal short auto-dismiss.
                 let hasActions = extractedActions.length > 0;
                 let timeoutMs;
                 if (n.timeout === 0 || hasActions) timeoutMs = 0;
                 else if (n.timeout > 0) timeoutMs = n.timeout;
                 else timeoutMs = 3500;
 
-                masterWindow._showTicker(notifData, timeoutMs);
+                // A sticky notification (has actions, e.g. a pairing
+                // confirmation) waiting on you to respond must not get
+                // silently bumped by an unrelated routine notification
+                // (e.g. a disconnect blip) -- only let it through if this
+                // new one is itself sticky, or it's the same one updating.
+                let incomingIsSticky = (timeoutMs === 0);
+                if (masterWindow.tickerIsSticky && !isSameAsShowing && !incomingIsSticky) {
+                    // dropped from the ticker, but it's still in history above
+                } else {
+                    masterWindow._showTicker(notifData, timeoutMs);
+                }
             }
         }
     }
