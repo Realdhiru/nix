@@ -1,6 +1,26 @@
 { pkgs, lib, ... }:
 
 {
+  networking.firewall.enable = true;
+
+security.apparmor.enable = true;
+
+security.auditd.enable = true;
+security.audit.enable = true;
+security.audit.rules = [ "-a exit,always -F arch=b64 -S execve" ];
+
+services.clamav.updater.enable = true;
+
+environment.etc."aide.conf".text = ''
+  database=file:/var/lib/aide/aide.db
+  database_out=file:/var/lib/aide/aide.db.new
+  gzip_dbout=yes
+  /etc    NORMAL
+  /bin    NORMAL
+  /sbin   NORMAL
+  /usr/bin NORMAL
+'';
+
   # D-Bus implementation.
   services.dbus.implementation = "broker";
 
@@ -24,7 +44,7 @@
   # Bluetooth.
   hardware.bluetooth = {
     enable = true;
-    powerOnBoot = true;
+    powerOnBoot = false;
   };
   services.blueman.enable = true;
 

@@ -47,6 +47,8 @@
     aide
     lynis 
 
+    vulnix
+
   ];
 
 }
