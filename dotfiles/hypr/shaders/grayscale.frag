@@ -1,99 +1,103 @@
 #version 300 es
 /*
- * Grayscale
+ * Grayscale Shader
+ *
+ * Override any of the values below from a grayscale.inc file.
  */
-
-
-/*
-To override this parameters create a file named './grayscale.inc'
-We only need to match the file name and use 'inc' to incdicate that
- this is an "include" file
- Example:
-
-  ┌────────────────────────────────────────────────────────────────────────────┐
-  │ // file: ./grayscale.inc                                                   │
-  │ // integer: 0:PAL, 1:HDTV, 2:HDR                                           │
-  │ #define GRAYSCALE_LUMINOSITY_PAL 0                                         │
-  │ // integer: 0:HDTV, 1:HDR, 2:HDR                                           │
-  │ #define GRAYSCALE_LUMINOSITY_HDR 2                                         │
-  │ // integer: 0:HDTV, 1:HDR, 2:HDR                                           │
-  │ #define GRAYSCALE_LUMINOSITY_HDT 1                                         │
-  │ // integer: 0:No effect, 1:Lightness, 2:Average                            │
-  │ #define GRAYSCALE_LIGHTNESS 1                                              │
-  │ // integer: 0:No effect, 1:Lightness, 2:Average                            │
-  │ #define GRAYSCALE_AVERAGE 2                                                │
-  │                                                                            │
-  └────────────────────────────────────────────────────────────────────────────┘
- */
-
-
 
 #ifndef GRAYSCALE_LUMINOSITY_PAL
-    #define GRAYSCALE_LUMINOSITY_PAL 0 // Default fallback value
+#define GRAYSCALE_LUMINOSITY_PAL 0
 #endif
-#ifndef GRAYSCALE_LUMINOSITY_HDR
-    #define GRAYSCALE_LUMINOSITY_HDR 2 // Default fallback value
-#endif
+
 #ifndef GRAYSCALE_LUMINOSITY_HDT
-    #define GRAYSCALE_LUMINOSITY_HDT 1 // Default fallback value
+#define GRAYSCALE_LUMINOSITY_HDT 1
 #endif
+
+#ifndef GRAYSCALE_LUMINOSITY_HDR
+#define GRAYSCALE_LUMINOSITY_HDR 2
+#endif
+
 #ifndef GRAYSCALE_LIGHTNESS
-    #define GRAYSCALE_LIGHTNESS 1 // Default fallback value
+#define GRAYSCALE_LIGHTNESS 1
 #endif
+
 #ifndef GRAYSCALE_AVERAGE
-    #define GRAYSCALE_AVERAGE 2 // Default fallback value
+#define GRAYSCALE_AVERAGE 2
 #endif
+
 #ifndef GRAYSCALE_LUMINOSITY
-    #define GRAYSCALE_LUMINOSITY 0 // Default fallback value
+#define GRAYSCALE_LUMINOSITY 0
 #endif
 
 precision highp float;
+
 in vec2 v_texcoord;
 out vec4 fragColor;
+
 uniform sampler2D tex;
 
-// Enum for type of grayscale conversion
-const int LUMINOSITY =  GRAYSCALE_LUMINOSITY; // Default to LUMINOSITY
-const int LIGHTNESS = GRAYSCALE_LIGHTNESS; // Default to LIGHTNESS
-const int AVERAGE = GRAYSCALE_AVERAGE; // Default to AVERAGE
-
-/**
- * Type of grayscale conversion.
+/*
+ * Grayscale algorithm.
+ *
+ * 0 = Luminosity
+ * 1 = Lightness
+ * 2 = Average
  */
-const int Type = LUMINOSITY; // Default to LUMINOSITY
+const int TYPE = GRAYSCALE_LUMINOSITY;
 
-// Enum for selecting luma coefficients
-const int PAL = GRAYSCALE_LUMINOSITY_PAL; // Default to PAL standard
-const int HDTV = GRAYSCALE_LUMINOSITY_HDT; // Default to HDTV standard
-const int HDR = GRAYSCALE_LUMINOSITY_HDR; // Default to HDR standard
-
-/**
- * Formula used to calculate relative luminance.
- * (Only applies to type = "luminosity".)
+/*
+ * Luminosity coefficients.
+ *
+ * 0 = PAL
+ * 1 = HDTV
+ * 2 = HDR
  */
-const int LuminosityType = HDTV; // Default to HDTV standard
+const int LUMA_TYPE = GRAYSCALE_LUMINOSITY_HDT;
 
-void main() {
-    vec4 pixColor = texture(tex, v_texcoord);
+float grayscale(vec3 color)
+{
+    if (TYPE == GRAYSCALE_LUMINOSITY)
+    {
+        vec3 weights;
 
-    float gray;
-    if (Type == LUMINOSITY) {
-        // https://en.wikipedia.org/wiki/Grayscale#Luma_coding_in_video_systems
-        if (LuminosityType == PAL) {
-            gray = dot(pixColor.rgb, vec3(0.299, 0.587, 0.114));
-        } else if (LuminosityType == HDTV) {
-            gray = dot(pixColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-        } else if (LuminosityType == HDR) {
-            gray = dot(pixColor.rgb, vec3(0.2627, 0.6780, 0.0593));
+        if (LUMA_TYPE == GRAYSCALE_LUMINOSITY_PAL)
+        {
+            weights = vec3(0.2990, 0.5870, 0.1140);
         }
-    } else if (Type == LIGHTNESS) {
-        float maxPixColor = max(pixColor.r, max(pixColor.g, pixColor.b));
-        float minPixColor = min(pixColor.r, min(pixColor.g, pixColor.b));
-        gray = (maxPixColor + minPixColor) / 2.0;
-    } else if (Type == AVERAGE) {
-        gray = (pixColor.r + pixColor.g + pixColor.b) / 3.0;
-    }
-    vec3 grayscale = vec3(gray);
+        else if (LUMA_TYPE == GRAYSCALE_LUMINOSITY_HDT)
+        {
+            weights = vec3(0.2126, 0.7152, 0.0722);
+        }
+        else
+        {
+            weights = vec3(0.2627, 0.6780, 0.0593);
+        }
 
-    fragColor = vec4(grayscale, pixColor.a);
+        return dot(color, weights);
+    }
+
+    if (TYPE == GRAYSCALE_LIGHTNESS)
+    {
+        float maxValue = max(max(color.r, color.g), color.b);
+        float minValue = min(min(color.r, color.g), color.b);
+
+        return (maxValue + minValue) * 0.5;
+    }
+
+    if (TYPE == GRAYSCALE_AVERAGE)
+    {
+        return (color.r + color.g + color.b) / 3.0;
+    }
+
+    // Safety fallback.
+    return dot(color, vec3(0.2126, 0.7152, 0.0722));
+}
+
+void main()
+{
+    vec4 pixel = texture(tex, v_texcoord);
+
+    float gray = grayscale(pixel.rgb);
+
+    fragColor = vec4(vec3(gray), pixel.a);
 }

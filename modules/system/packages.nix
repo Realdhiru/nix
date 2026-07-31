@@ -48,6 +48,7 @@
     lynis 
 
     vulnix
+    nwg-displays
 
   ];
 

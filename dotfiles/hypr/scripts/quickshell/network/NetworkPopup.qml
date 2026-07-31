@@ -680,6 +680,7 @@ Item {
                     window.connectingId = "";
                 }
                 if (newlyConnected) {
+                    Quickshell.execDetached(["notify-send", "-a", "Bluetooth", "Connected", newBtConnected[i-1] ? newBtConnected[i-1].name : ""]);
                     window.playSfx("connect.wav");
                     window.busyTasks = Object.assign({}, bt);
                     if (Object.keys(window.busyTasks).length === 0 && Object.keys(window.disconnectingDevices).length === 0) busyTimeout.stop();
@@ -791,6 +792,7 @@ Item {
                         if (newBtConnected[i].mac === mac) { stillConnected = true; break; }
                     }
                     if (!stillConnected) {
+                        Quickshell.execDetached(["notify-send", "-a", "Bluetooth", "Disconnected", mac]);
                         delete dd[mac];
                         ddChanged = true;
                     }

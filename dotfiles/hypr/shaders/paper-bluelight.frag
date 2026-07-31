@@ -8,7 +8,7 @@ precision highp float;
 #define PAPER_GRAYSCALE 0.
 #endif
 #ifndef PAPER_CONTRAST
-#define PAPER_CONTRAST 0.8
+#define PAPER_CONTRAST 1.0
 #endif
 #ifndef PAPER_BRIGHTNESS
 #define PAPER_BRIGHTNESS 0.0
