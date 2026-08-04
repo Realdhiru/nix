@@ -393,7 +393,7 @@ Item {
             }];
             let safeJson = JSON.stringify(jsonMonitorsArray).replace(/'/g, "'\\''");
             let jsonCmd = "jq '.monitors = " + safeJson + "' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
-            let postReloadCmd = "awww kill ; sleep 0.2 ; awww-daemon &";
+            let postReloadCmd = "~/.config/hypr/scripts/ensure_awww.sh --restart";
 
             let cacheWriteCmd = "echo 'monitor=" + monitorStr + "' > ~/.cache/hypr_power_monitor.conf";
 
@@ -495,7 +495,7 @@ Item {
             let fullHyprCmd = "hyprctl --batch '" + batchCmds.join(" ; ") + "'";
             let safeJson = JSON.stringify(jsonMonitorsArray).replace(/'/g, "'\\''");
             let jsonCmd = "jq '.monitors = " + safeJson + "' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
-            let postReloadCmd = "awww kill ; sleep 0.2 ; awww-daemon &";
+            let postReloadCmd = "~/.config/hypr/scripts/ensure_awww.sh --restart";
             let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
 
             Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; " + fullHyprCmd + " ; " + jsonCmd + " ; " + postReloadCmd]);

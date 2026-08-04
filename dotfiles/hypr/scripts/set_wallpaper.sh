@@ -24,7 +24,8 @@ echo "$WALL" > "$HOME/.cache/current_wallpaper.txt"
 # 2. INSTANT VISUAL PATHWAY (Zero blocking delays, Strict Mutual Exclusion)
 if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then
     # Kill images before starting video
-    pkill -f awww-daemon 2>/dev/null
+    # (daemon teardown centralized in ensure_awww.sh)
+    "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop
     pkill -f mpvpaper 2>/dev/null
     mpvpaper -o "no-audio --loop-playlist --hwdec=vaapi --panscan=1.0" '*' "$WALL" > /dev/null 2>&1 &
 else
@@ -42,19 +43,10 @@ else
     # mpvpaper's surface was killed) — a permanently blank wallpaper until
     # something else happened to restart the daemon (e.g. a full reload).
     #
-    # Fix: ensure the daemon is actually alive before pushing an image,
-    # starting it if needed and giving it a moment to open its IPC socket.
-    if ! pgrep -x awww-daemon > /dev/null 2>&1; then
-        awww-daemon > /dev/null 2>&1 &
-        # awww-daemon needs a brief moment to bind its IPC socket before
-        # it can accept `awww img` calls; without this, the very first
-        # apply right after a (re)start can race and silently no-op just
-        # like the original bug, just intermittently instead of always.
-        for i in $(seq 1 20); do
-            awww query > /dev/null 2>&1 && break
-            sleep 0.05
-        done
-    fi
+    # Fix: ensure the daemon is actually alive before pushing an image.
+    # Daemon start/readiness/stale-socket recovery is centralized in
+    # ensure_awww.sh (single source of truth for the daemon lifecycle).
+    "$HOME/.config/hypr/scripts/ensure_awww.sh"
 
     # Push the image to the persistent daemon instantly with a fast fade
     awww img "$WALL" \

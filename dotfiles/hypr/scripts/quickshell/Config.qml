@@ -241,7 +241,7 @@ Item {
             let jsonArr = [{ name: m.name, resW: m.resW, resH: m.resH, rate: parseInt(m.rate), x: 0, y: 0, scale: m.sysScale, transform: m.transform }];
             config.setSetting("monitors", jsonArr);
             let cacheWriteCmd = "echo 'monitor=" + monitorStr + "' > ~/.cache/hypr_power_monitor.conf";
-            config.sh(cacheWriteCmd + " ; hyprctl keyword monitor " + monitorStr + " ; awww kill ; sleep 0.2 ; awww-daemon &");
+            config.sh(cacheWriteCmd + " ; hyprctl keyword monitor " + monitorStr + " ; ~/.config/hypr/scripts/ensure_awww.sh --restart");
             Quickshell.execDetached(["notify-send", "Display Update", "Applied: " + m.resW + "x" + m.resH + " @ " + m.rate + "Hz"]);
         } else {
             let rects = [];
@@ -293,7 +293,7 @@ Item {
             }
             config.setSetting("monitors", jsonArr);
             let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
-            config.sh(cacheWriteCmd + " ; hyprctl --batch '" + batchCmds.join(" ; ") + "' ; awww kill ; sleep 0.2 ; awww-daemon &");
+            config.sh(cacheWriteCmd + " ; hyprctl --batch '" + batchCmds.join(" ; ") + "' ; ~/.config/hypr/scripts/ensure_awww.sh --restart");
             Quickshell.execDetached(["notify-send", "Display Update", "Applied layout for: " + summaryString.trim()]);
         }
     }
