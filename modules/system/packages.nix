@@ -15,7 +15,7 @@
     brave
 
     # File Management
-    fsearch ntfs3g xfce4-exo
+    ntfs3g xfce4-exo
 
     # Launchers & Clipboard
     rofi wl-clipboard cliphist
@@ -48,7 +48,6 @@
     lynis 
 
     vulnix
-    nwg-displays
 
   ];
 
