@@ -5,29 +5,29 @@ precision highp float;
 // Paper config (values unchanged)
 // ----------------------------------------------------
 #ifndef PAPER_GRAYSCALE
-#define PAPER_GRAYSCALE 0.
+#define PAPER_GRAYSCALE 0.0
 #endif
 #ifndef PAPER_CONTRAST
-#define PAPER_CONTRAST 1.0
+#define PAPER_CONTRAST 0.96
 #endif
 #ifndef PAPER_BRIGHTNESS
 #define PAPER_BRIGHTNESS 0.0
 #endif
 #ifndef PAPER_SEPIA
-#define PAPER_SEPIA 0.3
+#define PAPER_SEPIA 0.05
 #endif
 #ifndef PAPER_GRAIN
 #define PAPER_GRAIN 0.8
 #endif
 #ifndef PAPER_GAMMA
-#define PAPER_GAMMA 0.8
+#define PAPER_GAMMA 0.89
 #endif
 
 // ----------------------------------------------------
 // Blue light config (values unchanged)
 // ----------------------------------------------------
 #ifndef BLUE_LIGHT_FILTER_TEMPERATURE
-#define BLUE_LIGHT_FILTER_TEMPERATURE 5500.
+#define BLUE_LIGHT_FILTER_TEMPERATURE 4000.
 #endif
 #ifndef BLUE_LIGHT_FILTER_INTENSITY
 #define BLUE_LIGHT_FILTER_INTENSITY 1.

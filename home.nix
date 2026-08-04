@@ -5,6 +5,8 @@
     ./modules/home/shell.nix
     ./modules/home/spicetify.nix
     ./modules/home/theme.nix
+      ./modules/home/desktop-entries.nix
+
   ];
 
   # Explicitly configure the internal activation option at the user level
