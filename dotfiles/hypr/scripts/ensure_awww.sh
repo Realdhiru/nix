@@ -5,8 +5,9 @@
 # Restart contract:
 #   (none)     idempotent: ensure a healthy daemon is running; start only if
 #              needed. Safe to call from anywhere, any number of times.
-#   --restart  stop any running daemon, then start a fresh one. Used after
-#              monitor-layout changes so layer surfaces re-initialize.
+#   --restart  stop any running daemon, then start a fresh one, re-applying
+#              the previously displayed wallpapers. Used after monitor-layout
+#              changes so layer surfaces re-initialize.
 #   --stop     stop the daemon and clean up a stale socket. Used before a
 #              video wallpaper takes over (mpvpaper).
 #
@@ -28,14 +29,23 @@ case "${1:-}" in
   --stop)    STOP=1 ;;
 esac
 
-# The daemon is a Nix-wrapped binary: its process name (comm) is the
-# truncated `.awww-daemon-wr`, NOT `awww-daemon`, so `-x` never matches.
-# Match the daemon's command-line binary path instead. Anchoring on
-# `bin/awww-daemon` also keeps pgrep/pkill from self-matching any shell
-# whose command line merely mentions "awww-daemon".
-DAEMON_MATCH="bin/awww-daemon"
+# The daemon is a Nix-wrapped binary. Its `comm` is truncated to
+# `.awww-daemon-wr` (not `awww-daemon`), so `pgrep -x` never matches, and
+# `pgrep -f` self-matches any shell whose command line merely mentions
+# "awww-daemon". Instead, match the immutable Nix wrapper suffix of the
+# process's resolved executable so we only ever act on the real daemon.
+daemon_pids() {
+  local pid exe
+  for pid in /proc/[0-9]*; do
+    [ -r "$pid/exe" ] || continue
+    exe=$(readlink "$pid/exe" 2>/dev/null) || continue
+    case "$exe" in
+      */bin/.awww-daemon-wrapped) printf '%s\n' "${pid#/proc/}" ;;
+    esac
+  done
+}
 
-is_running() { pgrep -f "$DAEMON_MATCH" >/dev/null 2>&1; }
+is_running() { [ -n "$(daemon_pids)" ]; }
 
 # Wait for a SIGTERM'd daemon to actually exit.
 wait_exited() {
@@ -47,11 +57,17 @@ wait_exited() {
 }
 
 stop_daemon() {
-  is_running || return 0
-  pkill -f "$DAEMON_MATCH" 2>/dev/null || true
+  local pids pid
+  pids=$(daemon_pids)
+  [ -z "$pids" ] && return 0
+  for pid in $pids; do
+    kill "$pid" 2>/dev/null || true
+  done
   wait_exited && return 0
   echo "ensure_awww: daemon ignored SIGTERM; sending SIGKILL" >&2
-  pkill -KILL -f "$DAEMON_MATCH" 2>/dev/null || true
+  for pid in $(daemon_pids); do
+    kill -KILL "$pid" 2>/dev/null || true
+  done
   wait_exited || {
     echo "ensure_awww: daemon still running even after SIGKILL" >&2
     return 1
@@ -64,6 +80,25 @@ remove_stale_socket() {
         "$RUNTIME_DIR"/awww-*.socket
 }
 
+# Snapshot `monitor|path` pairs for every output currently showing an image.
+# `awww query` prints `: <mon>: <w>x<h>, scale: <s>, currently displaying: image: <path>`.
+capture_wallpapers() {
+  awww query 2>/dev/null \
+    | sed -n 's/^: \([^:]*\): .*currently displaying: image: \(.*\)/\1|\2/p' \
+    || true
+}
+
+restore_wallpapers() {
+  local mon path
+  while IFS='|' read -r mon path; do
+    [ -n "$mon" ] && [ -n "$path" ] || continue
+    [ -f "$path" ] || continue
+    awww img --transition-type fade --transition-step 255 \
+      --transition-duration 0.1 --transition-fps 60 \
+      --outputs "$mon" "$path" >/dev/null 2>&1 || true
+  done <<< "$WALLPAPERS"
+}
+
 if [ "$STOP" -eq 1 ]; then
   if ! stop_daemon; then
     echo "ensure_awww: --stop failed, daemon still running" >&2
@@ -71,6 +106,13 @@ if [ "$STOP" -eq 1 ]; then
   fi
   remove_stale_socket
   exit 0
+fi
+
+# Snapshot the current wallpapers while the daemon is still healthy so they
+# can be re-applied after the restart. Only meaningful for --restart.
+WALLPAPERS=""
+if [ "$RESTART" -eq 1 ]; then
+  WALLPAPERS="$(capture_wallpapers)"
 fi
 
 # Fast path: already healthy, do nothing.
@@ -90,9 +132,14 @@ remove_stale_socket
 # Always start with the pixel format the 10-bit panel expects.
 awww-daemon --format xrgb >/dev/null 2>&1 &
 
-# Block until the daemon answers a query.
+# Block until the daemon answers a query, then re-apply any captured wallpapers.
 for _ in $(seq 1 "$WAIT_ITERATIONS"); do
-  awww query >/dev/null 2>&1 && exit 0
+  if awww query >/dev/null 2>&1; then
+    if [ "$RESTART" -eq 1 ] && [ -n "$WALLPAPERS" ]; then
+      restore_wallpapers
+    fi
+    exit 0
+  fi
   sleep "$WAIT_INTERVAL"
 done
 
