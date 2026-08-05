@@ -80,6 +80,37 @@ remove_stale_socket() {
         "$RUNTIME_DIR"/awww-*.socket
 }
 
+# The daemon's IPC socket exists for the daemon's entire lifetime and vanishes
+# when it exits, so `awww query` can never succeed without it. Checking the
+# socket first lets us skip the guaranteed-to-timeout query (~0.5 s client-side
+# connect timeout) when the daemon is known to be absent, e.g. the first
+# image->static switch after a video wallpaper has stopped the daemon.
+daemon_socket_exists() {
+  compgen -G "$RUNTIME_DIR/wayland-*-awww-daemon.sock" >/dev/null 2>&1
+}
+
+# Prune awww's derived animation-frame cache on every daemon (re)start.
+#
+# `awww img` without `--outputs` calls update_disconnected_caches(), which
+# opens the cache dir and fs::read()s EVERY file that doesn't match a known
+# connected output -- i.e. all the `*_crop_Argb` animation-frame cache files
+# -- as if they were small state files (common/src/ipc/mod.rs). With years of
+# stale gif caches this became ~1.8 GB of disk reads per wallpaper push
+# (measured: one 300 MB stale file turned a single push into 22 s; an empty
+# cache made it 0.29 s).
+#
+# These files are pure derived data (pre-resized RGB frames) and are
+# regenerated on demand the next time the gif is set, so deleting them is
+# safe. We match ONLY the `*_crop_Argb` suffix and only at the versioned
+# cache depth: state files (e.g. `eDP-1`) and everything else are untouched.
+prune_frame_cache() {
+  local cache_root
+  cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/awww"
+  [ -d "$cache_root" ] || return 0
+  find "$cache_root" -mindepth 2 -maxdepth 2 -type f -name '*_crop_Argb*' \
+    -delete 2>/dev/null || true
+}
+
 # Snapshot `monitor|path` pairs for every output currently showing an image.
 # `awww query` prints `: <mon>: <w>x<h>, scale: <s>, currently displaying: image: <path>`.
 capture_wallpapers() {
@@ -115,8 +146,10 @@ if [ "$RESTART" -eq 1 ]; then
   WALLPAPERS="$(capture_wallpapers)"
 fi
 
-# Fast path: already healthy, do nothing.
-if [ "$RESTART" -eq 0 ] && awww query >/dev/null 2>&1; then
+# Fast path: already healthy, do nothing. The socket check avoids the ~0.5 s
+# query timeout on the daemon-down path (S3); when the socket exists the query
+# still decides liveness, so behavior is unchanged.
+if [ "$RESTART" -eq 0 ] && daemon_socket_exists && awww query >/dev/null 2>&1; then
   exit 0
 fi
 
@@ -129,8 +162,16 @@ fi
 # No daemon process exists, so a leftover socket is stale -- safe to clear.
 remove_stale_socket
 
-# Always start with the pixel format the 10-bit panel expects.
-awww-daemon --format xrgb >/dev/null 2>&1 &
+# S1: drop derived animation-frame caches before a fresh daemon starts so the
+# next `awww img` does not re-read gigabytes of stale gif frames.
+prune_frame_cache
+
+# Always start with the pixel format the 10-bit panel expects. `--no-cache`
+# disables awww's built-in "restore last wallpaper per output" on startup,
+# which otherwise flashes the stale pre-video wallpaper before the newly
+# selected one is pushed (daemon/src/wallpaper.rs commit_surface_changes).
+# Our own restore path (--restart) and set_wallpaper.sh cover restoring.
+awww-daemon --no-cache --format xrgb >/dev/null 2>&1 &
 
 # Block until the daemon answers a query, then re-apply any captured wallpapers.
 for _ in $(seq 1 "$WAIT_ITERATIONS"); do
