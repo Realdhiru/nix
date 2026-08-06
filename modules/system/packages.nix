@@ -1,5 +1,22 @@
 { pkgs, inputs, ... }:
 
+let
+  # Quickshell's stock wrapper only exposes qtbase/qtdeclarative/qtwayland/
+  # qtsvg QML modules. Lock.qml needs QtMultimedia (MediaPlayer/VideoOutput)
+  # for live video wallpapers, so wrap the binary to add its QML dir and
+  # multimedia plugin path (libffmpegmediaplugin.so) to the search paths.
+  qtmultimedia = pkgs.qt6Packages.qtmultimedia;
+  quickshellWrapped = pkgs.symlinkJoin {
+    name = "quickshell-wrapped";
+    paths = [ pkgs.quickshell ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/quickshell \
+        --prefix NIXPKGS_QT6_QML_IMPORT_PATH ':' "${qtmultimedia}/lib/qt-6/qml" \
+        --prefix QT_PLUGIN_PATH ':' "${qtmultimedia}/lib/qt-6/plugins"
+    '';
+  };
+in
 {
   environment.systemPackages = with pkgs; [
     # CLI & Core Utilities
@@ -36,7 +53,7 @@
     acpi iw lm_sensors
 
     # Desktop Integration
-    libnotify polkit_gnome hypridle hyprlock quickshell qt6Packages.qtmultimedia matugen
+    libnotify polkit_gnome hypridle hyprlock quickshellWrapped qt6Packages.qtmultimedia matugen
 
     powertop psmisc hyprsunset nodejs banner usbutils wlogout opencode repomix
 

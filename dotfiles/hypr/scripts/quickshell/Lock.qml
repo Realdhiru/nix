@@ -3,6 +3,7 @@ import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtMultimedia
 import QtCore
 import Quickshell
 import Quickshell.Io
@@ -86,7 +87,14 @@ ShellRoot {
                 }
                 readonly property real sc: scaler.baseScale
 
-                property string staticWallpaperPath: "file://" + Caching.getCacheDir("wallpaper_picker") + "/current_wallpaper.png"
+                property string currentWallpaperPath: ""
+                property string currentWallpaperExt: ""
+                readonly property bool isGifWallpaper: screenRoot.currentWallpaperExt === "gif"
+                readonly property bool isVideoWallpaper: screenRoot.currentWallpaperExt === "mp4" ||
+                                                         screenRoot.currentWallpaperExt === "mkv" ||
+                                                         screenRoot.currentWallpaperExt === "mov" ||
+                                                         screenRoot.currentWallpaperExt === "webm"
+                readonly property bool isStaticWallpaper: !screenRoot.isGifWallpaper && !screenRoot.isVideoWallpaper && screenRoot.currentWallpaperPath !== ""
 
                 property string batPct: "100"
                 property string batStatus: "AC"
@@ -178,25 +186,72 @@ ShellRoot {
                     interval: 5000; running: !screenRoot.isDesktop; repeat: true; triggeredOnStart: true; 
                     onTriggered: { batPoller.running = false; batPoller.running = true; } 
                 }
-                
+
+                Process {
+                    id: wallpaperProbe
+                    running: true
+                    command: ["bash", "-c", "cat \"$HOME/.cache/current_wallpaper.txt\" 2>/dev/null | head -n1"]
+                    stdout: StdioCollector {
+                        onStreamFinished: {
+                            let raw = this.text.trim();
+                            if (raw === "") return;
+                            let lower = raw.toLowerCase();
+                            let dot = lower.lastIndexOf(".");
+                            screenRoot.currentWallpaperExt = dot !== -1 ? lower.substring(dot + 1) : "";
+                            screenRoot.currentWallpaperPath = raw.startsWith("file://") ? raw : "file://" + raw;
+                        }
+                    }
+                }
+
                 Rectangle {
                     anchors.fill: parent
                     color: root.base
                 }
 
                 Image {
-                    id: bgWallpaper
+                    id: bgImage
                     anchors.fill: parent
-                    source: screenRoot.staticWallpaperPath
+                    source: screenRoot.isStaticWallpaper ? screenRoot.currentWallpaperPath : ""
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
-                    visible: false 
-                    cache: false 
+                    cache: false
+                    visible: screenRoot.isStaticWallpaper
+                }
+
+                AnimatedImage {
+                    id: bgGif
+                    anchors.fill: parent
+                    source: screenRoot.isGifWallpaper ? screenRoot.currentWallpaperPath : ""
+                    fillMode: Image.PreserveAspectCrop
+                    playing: screenRoot.isGifWallpaper
+                    cache: false
+                    visible: screenRoot.isGifWallpaper
+                }
+
+                VideoOutput {
+                    id: bgVideo
+                    anchors.fill: parent
+                    fillMode: VideoOutput.PreserveAspectCrop
+                    visible: screenRoot.isVideoWallpaper
+                }
+
+                MediaPlayer {
+                    id: bgVideoPlayer
+                    source: screenRoot.isVideoWallpaper ? screenRoot.currentWallpaperPath : ""
+                    loops: MediaPlayer.Infinite
+                    videoOutput: bgVideo
+                    audioOutput: AudioOutput { muted: true }
+                    onSourceChanged: {
+                        if (source !== "") {
+                            play();
+                        }
+                    }
                 }
 
                 MultiEffect {
-                    source: bgWallpaper
-                    anchors.fill: bgWallpaper
+                    source: screenRoot.isGifWallpaper ? bgGif : bgImage
+                    anchors.fill: parent
+                    visible: !screenRoot.isVideoWallpaper
                     blurEnabled: true
                     blurMax: 64 * screenRoot.sc
                     blur: 1.0
@@ -422,10 +477,7 @@ ShellRoot {
                             }
 
                             RowLayout {
-                                Layout.alignment: Qt.AlignLeft
-                                spacing: 12 * screenRoot.sc
-
-                                Rectangle {
+                                    Rectangle {
                                     width: 36 * screenRoot.sc
                                     height: width
                                     radius: height / 2 
