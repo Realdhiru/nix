@@ -48,6 +48,8 @@
     lynis 
 
     vulnix
+    pcmanfm-qt
+
 
   ];
 
