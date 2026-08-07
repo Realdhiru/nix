@@ -13,10 +13,7 @@ in
     ];
 
     enabledExtensions = with spicePkgs.extensions; [
-      adblockify
       spicyLyrics
-      aiBandBlocker
-      fullAlbumDate
       sidebarCustomizer
     ];
 
