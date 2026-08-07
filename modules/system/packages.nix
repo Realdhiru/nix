@@ -32,7 +32,7 @@ in
     brave
 
     # File Management
-    ntfs3g xfce4-exo
+    ntfs3g pcmanfm-qt lxqt-archiver ffmpegthumbnailer
 
     # Launchers & Clipboard
     rofi wl-clipboard cliphist
@@ -65,8 +65,6 @@ in
     lynis 
 
     vulnix
-    pcmanfm-qt
-
 
   ];
 

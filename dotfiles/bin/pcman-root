@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# PCManFM-Qt "Open as Root" (SuCommand) on pkexec + Hyprland (Wayland).
+# pkexec strips environment variables, so the root UI would have no display.
+# Expansions below run as the USER first; the inside of pkexec gets literals.
+exec pkexec env \
+  WAYLAND_DISPLAY="${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" \
+  XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR}" \
+  dbus-run-session -- "$@"

@@ -57,6 +57,25 @@
     config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/matugen";
 
+  # PCManFM-Qt — declarative baseline (terminal, root, archiver).
+  # Seeded as a plain text file (not symlink) so the app may persist its
+  # runtime settings on top without clobbering the repo source.
+  xdg.configFile."pcmanfm-qt/default/settings.conf" = {
+    force = true;
+    text = builtins.readFile ./dotfiles/pcmanfm-qt/default/settings.conf;
+  };
+
+  # libfm-qt reads this from XDG data dirs; bundled terminals.list lacks wezterm.
+  xdg.dataFile."libfm-qt/terminals.list" = {
+    source = ./dotfiles/pcmanfm-qt/terminals.list;
+  };
+
+  # SuCommand helper for Tools > Open as Root (pkexec + Wayland).
+  home.file.".local/bin/pcman-root" = {
+    source = ./dotfiles/bin/pcman-root;
+    executable = true;
+  };
+
   services.easyeffects.enable = true;
   services.playerctld.enable = true;
 
