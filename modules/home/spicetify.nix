@@ -12,11 +12,6 @@ in
       marketplace
     ];
 
-    enabledExtensions = with spicePkgs.extensions; [
-      spicyLyrics
-      sidebarCustomizer
-    ];
-
     theme = {
       name = "Liquify";
 

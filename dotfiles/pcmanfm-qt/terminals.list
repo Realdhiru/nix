@@ -1,4 +1,0 @@
-[wezterm]
-open_arg=-e
-noclose_arg=--hold -e
-launch=start

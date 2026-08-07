@@ -57,23 +57,29 @@
     config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/matugen";
 
-  # PCManFM-Qt — declarative baseline (terminal, root, archiver).
-  # Seeded as a plain text file (not symlink) so the app may persist its
-  # runtime settings on top without clobbering the repo source.
+  # PCManFM-Qt: file-based config (app reads/writes this INI directly, no
+  # other mechanism), so the few mixed settings live inline here. SuCommand
+  # needs a helper because pkexec strips env vars — expand BEFORE it launches.
   xdg.configFile."pcmanfm-qt/default/settings.conf" = {
     force = true;
-    text = builtins.readFile ./dotfiles/pcmanfm-qt/default/settings.conf;
+    text = ''
+      [System]
+      SuCommand=${config.home.homeDirectory}/.local/bin/pcman-root %s
+      Terminal=wezterm
+      Archiver=lxqt-archiver
+    '';
   };
 
-  # libfm-qt reads this from XDG data dirs; bundled terminals.list lacks wezterm.
-  xdg.dataFile."libfm-qt/terminals.list" = {
-    source = ./dotfiles/pcmanfm-qt/terminals.list;
-  };
-
-  # SuCommand helper for Tools > Open as Root (pkexec + Wayland).
   home.file.".local/bin/pcman-root" = {
-    source = ./dotfiles/bin/pcman-root;
     executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      # pcmanfm - open as root with the display env intact under pkexec
+      exec pkexec env \
+        WAYLAND_DISPLAY="''${XDG_RUNTIME_DIR}/''${WAYLAND_DISPLAY}" \
+        XDG_RUNTIME_DIR="''${XDG_RUNTIME_DIR}" \
+        dbus-run-session -- "$@"
+    '';
   };
 
   services.easyeffects.enable = true;
