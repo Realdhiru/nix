@@ -98,6 +98,41 @@ Item {
 
     property var collapsedGroups: ({})
 
+    // Keyboard navigation for the action row only. `selectedActionIndex`
+    // tracks which capsule (Lock / Suspend / Reboot / Shutdown) is active;
+    // `keyboardActive` gates the visible highlight so mouse-only users see
+    // zero visual change. Focus flow stays untouched: Main.qml already
+    // forceActiveFocus()es this popup; no other focus changes here.
+    property int selectedActionIndex: 0
+    property bool keyboardActive: false
+
+    // Keyboard navigation confined to the action row (Lock, Suspend,
+    // Reboot, Shutdown capsules). Left/Right step between them, Enter
+    // starts the same fill-and-execute activation the mouse uses, and
+    // Up/Down are intentionally ignored. Focus is not touched here --
+    // the popup already holds focus (see Main.qml's focusTimer).
+    Keys.onPressed: (event) => {
+        if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+            window.keyboardActive = true;
+            let dir = event.key === Qt.Key_Left ? -1 : 1;
+            window.selectedActionIndex = (window.selectedActionIndex + dir + 4) % 4;
+            event.accepted = true;
+        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            window.keyboardActive = true;
+            window.activateSelectedAction();
+            event.accepted = true;
+        }
+    }
+
+    // Mirrors the mouse path: starts the selected capsule's fill animation
+    // through the same single activation entry point the MouseArea uses.
+    // Delegates' beginAction() handles drain-stop + fill-start; the fill's
+    // onFinished then covers triggering, flash and the exit timer.
+    function activateSelectedAction() {
+        let del = actionRowRepeater.itemAt(window.selectedActionIndex);
+        if (del) del.beginAction();
+    }
+
     function toggleGroup(groupName) {
         let temp = Object.assign({}, collapsedGroups);
         temp[groupName] = !temp[groupName];
@@ -1377,6 +1412,8 @@ Item {
                                 spacing: window.s(12)
                                 
                                 Repeater {
+                                    id: actionRowRepeater
+
                                     model: ListModel {
                                         ListElement { cmd: "bash ~/.config/hypr/scripts/lock.sh"; icon: ""; baseColor: "mauve"; weight: 1.0 }
                                         ListElement { cmd: "bash ~/.config/hypr/scripts/lock.sh & systemctl suspend"; icon: "ᶻ 𝗓 𝗓"; baseColor: "blue"; weight: 1.0 }
@@ -1390,24 +1427,40 @@ Item {
                                         Layout.fillHeight: true
                                         radius: window.s(14)
 
+                                        // Keyboard-selected state: same visual language as
+                                        // mouse hover, but only while keyboard navigation
+                                        // has actually been used in this popup instance.
+                                        property bool isSelected: window.keyboardActive && window.selectedActionIndex === index
+
                                         opacity: introActions
                                         transform: Translate { y: window.s(30) * (1.0 - introActions) + (index * window.s(12) * (1.0 - introActions)) }
                                         
                                         property color c1: window[baseColor] || window.surface1
                                         property color c2: Qt.lighter(c1, 1.2)
 
-                                        color: actionMa.containsMouse ? window.surface1 : window.surface0
-                                        border.color: actionMa.containsMouse ? c1 : window.surface2
-                                        border.width: actionMa.containsMouse ? 2 : 1
+                                        color: actionMa.containsMouse || actionCapsule.isSelected ? window.surface1 : window.surface0
+                                        border.color: actionMa.containsMouse || actionCapsule.isSelected ? c1 : window.surface2
+                                        border.width: actionMa.containsMouse || actionCapsule.isSelected ? 2 : 1
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                         Behavior on border.color { ColorAnimation { duration: 200 } }
                                         
-                                        scale: actionMa.pressed ? (0.98 - (0.01 * weight)) : (actionMa.containsMouse ? 1.08 : 1.0)
+                                        scale: actionMa.pressed ? (0.98 - (0.01 * weight)) : (actionMa.containsMouse || actionCapsule.isSelected ? 1.08 : 1.0)
                                         Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
 
                                         property real fillLevel: 0.0
                                         property bool triggered: false
                                         property real flashOpacity: 0.0
+
+                                        // Single activation entry point shared by mouse
+                                        // (`onPressed`) and keyboard (`window.activateSelectedAction`).
+                                        // Pressing starts the fill animation; its onFinished
+                                        // handles triggering, flash and the exit timer, exactly
+                                        // as if the mouse were held down.
+                                        function beginAction() {
+                                            if (actionCapsule.triggered) return;
+                                            drainAnim.stop();
+                                            fillAnim.start();
+                                        }
                                         
                                         Canvas {
                                             id: actionWaveCanvas
@@ -1478,7 +1531,7 @@ Item {
                                             anchors.centerIn: parent
                                             font.family: "Iosevka Nerd Font"
                                             font.pixelSize: window.s(24)
-                                            color: actionMa.containsMouse ? window.text : window.subtext0
+                                            color: actionMa.containsMouse || actionCapsule.isSelected ? window.text : window.subtext0
                                             text: icon
                                             Behavior on color { ColorAnimation { duration: 150 } }
                                         }
@@ -1504,11 +1557,8 @@ Item {
                                             hoverEnabled: true
                                             cursorShape: actionCapsule.triggered ? Qt.ArrowCursor : Qt.PointingHandCursor
                                             
-                                            onPressed: { 
-                                                if (!actionCapsule.triggered) { 
-                                                    drainAnim.stop(); 
-                                                    fillAnim.start(); 
-                                                }
+                                            onPressed: {
+                                                actionCapsule.beginAction();
                                             }
                                             onReleased: {
                                                 if (!actionCapsule.triggered && actionCapsule.fillLevel < 1.0) { 
