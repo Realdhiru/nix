@@ -18,6 +18,12 @@ from collections import defaultdict
 current_app_class = "Desktop"
 current_app_title = "Desktop"
 
+# True once the Hyprland event socket is connected and stream is open.
+# fast_tick() is skipped while False so no time is attributed to
+# "Unknown"/"Desktop" before Hyprland is reachable (boot race) or while
+# it is restarting.
+hyprland_connected = False
+
 # Guards the (class, title) pair above. Written by listen_hyprland_ipc()
 # (background thread) and read by main()'s tick loop (main thread). Without
 # this, a read can land between the two assignments and pair a new class
@@ -249,19 +255,71 @@ def is_locked():
     except subprocess.CalledProcessError:
         return False
 
-def listen_hyprland_ipc():
-    global current_app_class, current_app_title
-    hypr_sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
-    if not hypr_sig: return
+def resolve_hypr_signature():
+    """Current Hyprland instance signature, or None.
 
-    sock_path = f"{os.environ.get('XDG_RUNTIME_DIR', '/tmp')}/hypr/{hypr_sig}/.socket2.sock"
-    if not os.path.exists(sock_path):
-        sock_path = f"/tmp/hypr/{hypr_sig}/.socket2.sock"
+    HYPRLAND_INSTANCE_SIGNATURE is normally present in environments spawned
+    by Hyprland itself (exec-once etc.), but a systemd user service has no
+    such env. The signature also changes every Hyprland restart, so it must
+    be re-resolved rather than trusted from the environment. Discovery order:
+    1. env var (fast path, session-launched contexts)
+    2. `hyprctl instances -j` (authoritative, works without the env var)
+    3. first *.sock2 directory under $XDG_RUNTIME_DIR/hypr/
+    """
+    sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "")
+    if runtime_dir and sig and os.path.isdir(os.path.join(runtime_dir, "hypr", sig)):
+        return sig
+
+    try:
+        out = subprocess.check_output(['hyprctl', 'instances', '-j'], text=True)
+        data = json.loads(out)
+        if isinstance(data, list):
+            for entry in data:
+                if isinstance(entry, dict) and entry.get("instance"):
+                    os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = entry["instance"]
+                    return entry["instance"]
+        elif isinstance(data, dict) and data.get("instance"):
+            os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = data["instance"]
+            return data["instance"]
+    except Exception:
+        pass
+
+    glob_base = runtime_dir if runtime_dir else "/tmp"
+    try:
+        hypr_base = os.path.join(glob_base, "hypr")
+        if os.path.isdir(hypr_base):
+            for name in sorted(os.listdir(hypr_base)):
+                if os.path.isdir(os.path.join(hypr_base, name)):
+                    os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = name
+                    return name
+    except Exception:
+        pass
+
+    return None
+
+def listen_hyprland_ipc():
+    global current_app_class, current_app_title, hyprland_connected
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
 
     while True:
+        sig = resolve_hypr_signature()
+        sock_path = None
+        if sig:
+            candidate = os.path.join(runtime_dir, "hypr", sig, ".socket2.sock")
+            if os.path.exists(candidate):
+                sock_path = candidate
+        if not sock_path:
+            with _state_lock:
+                hyprland_connected = False
+            time.sleep(2)
+            continue
+
         try:
             client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             client.connect(sock_path)
+            with _state_lock:
+                hyprland_connected = True
             buffer = ""
             while True:
                 data = client.recv(4096).decode('utf-8')
@@ -276,8 +334,12 @@ def listen_hyprland_ipc():
                                 current_app_class, current_app_title = "Locked", "Locked"
                             else:
                                 current_app_class, current_app_title = cls, clean_title
+            client.close()
         except Exception:
-            time.sleep(2) 
+            pass
+        with _state_lock:
+            hyprland_connected = False
+        time.sleep(2) 
 
 
 class DaemonTracker:
@@ -314,6 +376,7 @@ class DaemonTracker:
         all_apps = []
         for row in c.fetchall():
             app_class, app_title, secs = row
+            if secs == 0: continue
             all_apps.append({
                 "class": app_class, "name": app_title, "icon": get_app_icon(app_class),
                 "seconds": secs, "percent": round((secs / total_seconds) * 100, 1) if total_seconds > 0 else 0
@@ -327,6 +390,7 @@ class DaemonTracker:
         week_apps = []
         for r in week_apps_rows:
             cls, title, secs = r
+            if secs == 0: continue
             week_apps.append({
                 "class": cls, "name": title, "icon": get_app_icon(cls),
                 "seconds": secs, "percent": round((secs / week_apps_total) * 100, 1) if week_apps_total > 0 else 0
@@ -525,6 +589,7 @@ def main():
     signal.signal(signal.SIGINT, exit_handler)
     signal.signal(signal.SIGTERM, exit_handler)
 
+    resolve_hypr_signature()
     with _state_lock:
         current_app_class, current_app_title = get_active_window_hyprctl()
 
@@ -546,8 +611,13 @@ def main():
                 current_app_class, current_app_title = "Locked", "Locked"
             cls_snapshot = current_app_class
             title_snapshot = current_app_title
+            connected = hyprland_connected
 
-        if cls_snapshot and cls_snapshot not in [""]:
+        # Only record time while the Hyprland event socket is actually
+        # connected. After a Hyprland restart the IPC thread re-resolves
+        # the instance signature and reconnects within ~2s; between the
+        # restart and reconnect nothing is attributed to "Unknown".
+        if connected and cls_snapshot and cls_snapshot not in [""]:
             # Only dump JSON to memory/disk every 5 seconds
             tracker.fast_tick(cls_snapshot, title_snapshot, write_to_disk=(tick_counter % 5 == 0))
             

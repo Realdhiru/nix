@@ -74,6 +74,29 @@
   services.easyeffects.enable = true;
   services.playerctld.enable = true;
 
+  # Focus time tracking daemon — single authoritative lifecycle owner.
+  # Previously launched via Hyprland `exec-once` + a shell supervisor loop
+  # (launch_daemon.sh); both removed. systemd restarts it on crash, boots,
+  # Hyprland restarts, nixos-rebuild, etc. without any other supervision.
+  systemd.user.services.focustime-daemon = {
+    Unit = {
+      Description = "Focus time tracking daemon (Hyprland active window)";
+    };
+    Service = {
+      ExecStart = "${pkgs.python3}/bin/python3 %h/.config/hypr/scripts/quickshell/focustime/focus_daemon.py";
+      Restart = "always";
+      RestartSec = 3;
+      Environment = [
+        "QS_STATE_FOCUSTIME=%h/.local/state/quickshell/focustime"
+        "QS_RUN_FOCUSTIME=%t/quickshell/focustime"
+        "PATH=/run/current-system/sw/bin"
+      ];
+    };
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
+  };
+
   home.username = "realdhiru";
   home.homeDirectory = "/home/realdhiru";
 

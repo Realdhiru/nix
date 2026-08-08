@@ -278,6 +278,14 @@ Item {
     }
 
     // --- LIVE FILE READER (For Global Today) ---
+    // When the daemon is down the state file still holds yesterday's
+    // snapshot; never render that stale data as "Today". Requests from
+    // this reader are only forwarded to updateFromData when the file's
+    // selected_date is actually today. Otherwise the DB truth for today
+    // is polled instead (throttled so a dead daemon cannot hammer
+    // python/chart rebuilds once a second).
+    property real liveStaleFallbackAt: 0
+
     Process {
         id: liveFileReader
         command: ["cat", window.stateFilePath]
@@ -287,7 +295,16 @@ Item {
                 if (raw === "") return;
                 try {
                     let data = JSON.parse(raw);
-                    window.updateFromData(data);
+                    if (data.selected_date === getIsoDate(new Date())) {
+                        window.updateFromData(data);
+                    } else if ((Date.now() - window.liveStaleFallbackAt) > 15000) {
+                        window.liveStaleFallbackAt = Date.now();
+                        let cmd = ["python3", window.scriptsDir + "/get_stats.py", getIsoDate(new Date())];
+                        cmd.push("--db-dir");
+                        cmd.push(Caching.getStateDir("focustime"));
+                        statsPoller.command = cmd;
+                        statsPoller.running = true;
+                    }
                 } catch(e) {}
             }
         }

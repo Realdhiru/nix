@@ -156,6 +156,7 @@ def main():
     all_apps = []
     for row in c.fetchall():
         app_class, app_title, secs = row
+        if secs == 0: continue
         all_apps.append({
             "class": app_class, "name": app_title, "icon": get_app_icon(app_class),
             "seconds": secs, "percent": round((secs / total_seconds) * 100, 1) if total_seconds > 0 else 0
@@ -169,6 +170,7 @@ def main():
     week_apps = []
     for r in week_apps_rows:
         cls, title, secs = r
+        if secs == 0: continue
         week_apps.append({
             "class": cls, "name": title, "icon": get_app_icon(cls),
             "seconds": secs, "percent": round((secs / week_apps_total) * 100, 1) if week_apps_total > 0 else 0
