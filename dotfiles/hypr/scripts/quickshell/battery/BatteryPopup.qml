@@ -315,6 +315,7 @@ Item {
     property real introProfiles: 0
 
     ParallelAnimation {
+        id: introAnim
         running: true
         NumberAnimation { target: window; property: "introMain"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutQuart }
         SequentialAnimation {
