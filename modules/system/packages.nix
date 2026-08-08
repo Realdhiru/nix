@@ -32,7 +32,7 @@ in
     brave
 
     # File Management
-    ntfs3g pcmanfm-qt lxqt.lxqt-archiver ffmpegthumbnailer gdk-pixbuf librsvg webp-pixbuf-loader libheif libjxl
+    ntfs3g pcmanfm-qt lxqt.lxqt-archiver ffmpegthumbnailer gdk-pixbuf librsvg webp-pixbuf-loader libheif libheif.out libjxl libjxl.out libgsf
 
     # Launchers & Clipboard
     rofi wl-clipboard cliphist

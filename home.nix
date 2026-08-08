@@ -63,7 +63,7 @@
     force = true;
     text = ''
       [System]
-      Terminal=wezterm start --always-new-process
+      Terminal=wezterm start --always-new-process --cwd .
       Archiver=lxqt-archiver
     '';
   };
