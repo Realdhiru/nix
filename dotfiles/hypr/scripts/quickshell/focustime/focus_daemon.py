@@ -47,7 +47,14 @@ STATE_FILE = os.path.join(RUN_DIR, "focustime_state.json")
 
 DESKTOP_CACHE_NAME = {}
 DESKTOP_CACHE_ICON = {}
+DESKTOP_CACHE_SOURCE = {}
 CACHE_BUILT = False
+
+# Lowercased icon file stem -> canonical name, built once from the XDG
+# icon theme directories (freedesktop icon theme spec).
+ICON_THEME_INDEX = {}
+ICON_THEME_BUILT = False
+
 SYSTEM_STATES = {"Desktop", "Locked", "Quickshell", "Unknown"}
 
 def get_xdg_search_dirs():
@@ -95,9 +102,11 @@ def build_desktop_cache():
                             base = f[:-8].lower()
                             DESKTOP_CACHE_NAME[base] = name
                             DESKTOP_CACHE_ICON[base] = icon
+                            DESKTOP_CACHE_SOURCE[base] = "desktop"
                             if wmclass:
                                 DESKTOP_CACHE_NAME[wmclass] = name
                                 DESKTOP_CACHE_ICON[wmclass] = icon
+                                DESKTOP_CACHE_SOURCE[wmclass] = "startup_wmclass"
                     except Exception:
                         pass
         except Exception:
@@ -126,10 +135,65 @@ def resolve_app_name(app_class, raw_title):
     DESKTOP_CACHE_NAME[app_class_lower] = name
     return name
 
+def get_xdg_icon_theme_dirs():
+    """All XDG icon theme base directories, per the freedesktop spec."""
+    dirs = []
+    xdg_data_home = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+    dirs.append(os.path.join(xdg_data_home, "icons"))
+    dirs.append(os.path.expanduser("~/.icons"))
+
+    xdg_data_dirs = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
+    for d in xdg_data_dirs.split(":"):
+        if d.strip():
+            dirs.append(os.path.join(d, "icons"))
+    return dirs
+
+def build_icon_theme_index():
+    """Index every themed icon file stem found under the XDG icon search
+    paths (e.g. hicolor/*/apps/<name>.svg|png, scalable/apps). Lookup of an
+    arbitrary WM_CLASS name becomes an O(1) membership test, and the index is
+    per-theme-agnostic: icons from every installed theme count."""
+    global ICON_THEME_BUILT
+    if ICON_THEME_BUILT:
+        return
+    for base in get_xdg_icon_theme_dirs():
+        if not os.path.isdir(base):
+            continue
+        try:
+            for theme in os.listdir(base):
+                theme_dir = os.path.join(base, theme)
+                if not os.path.isdir(theme_dir):
+                    continue
+                for subdir in ("apps", "scalable/apps"):
+                    apps_dir = os.path.join(theme_dir, subdir)
+                    if not os.path.isdir(apps_dir):
+                        continue
+                    for f in os.listdir(apps_dir):
+                        stem, ext = os.path.splitext(f)
+                        if ext.lower() not in (".svg", ".png", ".xpm"):
+                            continue
+                        key = stem.lower()
+                        if key not in ICON_THEME_INDEX:
+                            ICON_THEME_INDEX[key] = stem
+        except Exception:
+            pass
+    ICON_THEME_BUILT = True
+
+def theme_icon_lookup(name):
+    """Freedesktop icon theme lookup by icon name. Tries the given name and
+    a lowercase variant. Returns the canonical theme icon name, or ''."""
+    if not name:
+        return ""
+    build_icon_theme_index()
+    for variant in (name, name.lower()):
+        if variant in ICON_THEME_INDEX:
+            return ICON_THEME_INDEX[variant]
+    return ""
+
 def get_app_icon(app_class):
     if not app_class or app_class in SYSTEM_STATES:
         return ""
-        
+
     build_desktop_cache()
     app_class_lower = app_class.lower()
     base_class = re.sub(r'[-_ ]?updater$', '', app_class_lower)
@@ -138,7 +202,10 @@ def get_app_icon(app_class):
     if app_class_lower in DESKTOP_CACHE_ICON: return DESKTOP_CACHE_ICON[app_class_lower]
     if base_class in DESKTOP_CACHE_ICON: return DESKTOP_CACHE_ICON[base_class]
 
-    return ""
+    # Fall back to a generic XDG icon-theme lookup for the window's own
+    # WM_CLASS / app_id (which frequently doubles as an icon name, e.g. a
+    # GTK app without a desktop entry but with a theme icon).
+    return theme_icon_lookup(app_class)
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
