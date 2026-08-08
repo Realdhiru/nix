@@ -65,6 +65,9 @@
       [System]
       Terminal=wezterm start --always-new-process --cwd .
       Archiver=lxqt-archiver
+
+      [Thumbnail]
+      MaxThumbnailFileSize=262144
     '';
   };
 
