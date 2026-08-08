@@ -11,6 +11,11 @@ Item {
     id: window
     focus: true
 
+    property real layoutWidth
+    property real layoutHeight
+    width: layoutWidth
+    height: layoutHeight
+
     // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler

@@ -9,6 +9,10 @@ import "../"
 Item {
     id: window
 
+    property real layoutWidth
+    property real layoutHeight
+    width: layoutWidth
+    height: layoutHeight
 
     property var notifModel
     property var liveNotifs
@@ -131,6 +135,31 @@ Item {
     function activateSelectedAction() {
         let del = actionRowRepeater.itemAt(window.selectedActionIndex);
         if (del) del.beginAction();
+    }
+
+    // Called by Main.qml whenever this cached popup is shown again.
+    // exitAnim leaves all intro* properties at 0 and actions in a triggered
+    // state, so restore the entry state and reset the action capsules.
+    // The master window opacity + StackView replaceEnter transitions already
+    // provide the entry animation — replaying the timeline here would stack a
+    // third fade on top and look like a blink/refresh.
+    function showWidget() {
+        exitAnim.stop();
+        introMain = 1;
+        introTop = 1;
+        introNotifs = 1;
+        introCore = 1;
+        introSliders = 1;
+        introActions = 1;
+        introProfiles = 1;
+        for (var i = 0; i < actionRowRepeater.count; i++) {
+            let cap = actionRowRepeater.itemAt(i);
+            if (cap) {
+                cap.triggered = false;
+                cap.fillLevel = 0;
+                cap.flashOpacity = 0;
+            }
+        }
     }
 
     function toggleGroup(groupName) {
@@ -314,6 +343,8 @@ Item {
     property real introActions: 0
     property real introProfiles: 0
 
+    // Entry animation. Runs once at component birth (during preload, while
+    // invisible) and is replayed on every show via showWidget().
     ParallelAnimation {
         id: introAnim
         running: true
@@ -966,7 +997,7 @@ Item {
                             onClicked: { 
                                 exitAnim.start(); 
                                 Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/exit.sh"]); 
-                                Quickshell.execDetached(["sh", "-c", "echo 'close' > '" + Caching.getRunDir("widget_state") + "'"]); 
+                                Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
                             }
                         }
                     }
@@ -1587,7 +1618,7 @@ Item {
                                             id: exitTimer; interval: 500 
                                             onTriggered: { 
                                                 Quickshell.execDetached(["bash", "-c", cmd]); 
-                                                Quickshell.execDetached(["sh", "-c", "echo 'close' > '" + Caching.getRunDir("widget_state") + "'"]); 
+                                                Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
                                             }
                                         }
                                     }

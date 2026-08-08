@@ -465,6 +465,7 @@ PanelWindow {
             } else {
                 widgetStack.replace(cached, {});
             }
+            if (cached.showWidget) cached.showWidget();
         } else {
             let obj = t.comp.createObject(masterWindow, props);
             if (obj) {

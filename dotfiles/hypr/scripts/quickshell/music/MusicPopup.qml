@@ -12,6 +12,11 @@ Item {
     id: root
     focus: true
 
+    property real layoutWidth
+    property real layoutHeight
+    width: layoutWidth
+    height: layoutHeight
+
     property var presetList: ["Flat", "Bass", "Treble", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
 
     Keys.onPressed: (event) => {
