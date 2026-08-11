@@ -3,13 +3,24 @@ set -uo pipefail
 
 STATE_FILE="$HOME/.cache/idle_inhibit.pid"
 
-if [[ -f "$STATE_FILE" ]] && kill -0 "$(cat "$STATE_FILE")" 2>/dev/null; then
-    kill -- -"$(cat "$STATE_FILE")" 2>/dev/null
+inhibitor_active() {
+    systemd-inhibit --list 2>/dev/null | grep -q "idle-inhibit-toggle"
+}
+
+stop_inhibitor() {
+    if [[ -f "$STATE_FILE" ]]; then
+        kill -- -"$(cat "$STATE_FILE")" 2>/dev/null
+    fi
+    pkill -x systemd-inhibit 2>/dev/null
     rm -f "$STATE_FILE"
-    hyprctl notify 5 1500 "rgb(ffffff)" "Idle inhibit OFF — idle actions restored"
+}
+
+if inhibitor_active; then
+    stop_inhibitor
+    notify-send -a "System" -r 9991 -t 1200 -u low -i "appointment-missed" "Coffee mode OFF"
 else
-    rm -f "$STATE_FILE"
+    stop_inhibitor
     setsid systemd-inhibit --what=idle --who=idle-inhibit-toggle --why=manual --mode=block sleep infinity &
     echo $! > "$STATE_FILE"
-    hyprctl notify 5 1500 "rgb(70c870)" "Idle inhibit ON — screen/lock/suspend paused"
+    notify-send -a "System" -r 9991 -t 1200 -u low -i "appointment-soon" "Coffee mode ON"
 fi
