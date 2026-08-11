@@ -103,12 +103,30 @@ daemon_socket_exists() {
 # regenerated on demand the next time the gif is set, so deleting them is
 # safe. We match ONLY the `*_crop_Argb` suffix and only at the versioned
 # cache depth: state files (e.g. `eDP-1`) and everything else are untouched.
+#
+# EXCEPTION: the cache of the currently selected wallpaper (read from
+# ~/.cache/current_wallpaper.txt) is preserved. Its animation frames are
+# named after the sanitized wallpaper path (`/` -> `_`), so on the next
+# daemon start (e.g. login) the wallpaper can be pushed without re-decoding
+# every frame of a large gif. Without this, every login paid a multi-second
+# rebuild (measured: 466-frame gif, ~3-4 s) even though the cache had
+# survived from the previous session.
 prune_frame_cache() {
-  local cache_root
+  local cache_root keep_prefix f
   cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/awww"
   [ -d "$cache_root" ] || return 0
-  find "$cache_root" -mindepth 2 -maxdepth 2 -type f -name '*_crop_Argb*' \
-    -delete 2>/dev/null || true
+
+  keep_prefix=""
+  if [ -f "$HOME/.cache/current_wallpaper.txt" ]; then
+    keep_prefix="$(tr '/' '_' < "$HOME/.cache/current_wallpaper.txt")"
+  fi
+
+  while IFS= read -r -d '' f; do
+    if [ -n "$keep_prefix" ] && [[ "$f" == *"$keep_prefix"* ]]; then
+      continue
+    fi
+    rm -f -- "$f"
+  done < <(find "$cache_root" -mindepth 2 -maxdepth 2 -type f -name '*_crop_Argb*' -print0 2>/dev/null || true)
 }
 
 # Snapshot `monitor|path` pairs for every output currently showing an image.

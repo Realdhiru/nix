@@ -132,11 +132,6 @@ Item {
         
         window.targetWallName = safeFileName;
         let cleanName = window.getCleanName(safeFileName);
-        let reloadScript = Qt.resolvedUrl("matugen_reload.sh").toString();
-        
-        if (reloadScript.startsWith("file://")) {
-            reloadScript = decodeURIComponent(reloadScript.substring(7));
-        }
 
         const escapeBash = (str) => String(str).replace(/(["\\$`])/g, '\\$1');
         
@@ -151,7 +146,6 @@ Item {
                 const applyScript = `
                     export DEST_FILE="${escapeBash(destFile)}"
                     export FINAL_THUMB="${escapeBash(finalThumb)}"
-                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
                     
                     ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
                 `;
@@ -163,7 +157,6 @@ Item {
                 const downloadScript = `
                     export SAFE_NAME="${escapeBash(safeFileName)}"
                     export DEST_FILE="${escapeBash(destFile)}"
-                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
                     export MAP_FILE="${escapeBash(mapFile)}"
                     
                     URL=\$(awk -F'|' -v fname="\$SAFE_NAME" '\$1 == fname {print \$2; exit}' "\$MAP_FILE")
