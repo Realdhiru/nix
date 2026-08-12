@@ -2,7 +2,7 @@
 {
   gtk = {
     enable = true;
-    theme = { name = "adwaita-dark"; package = pkgs.gnome-themes-extra; };
+    theme = { name = "Adwaita:dark"; package = pkgs.gnome-themes-extra; };
     iconTheme = { name = "buuf-nestort"; package = pkgs.buuf-nestort-icon-theme; };
     gtk3.extraConfig.gtk-application-prefer-dark-theme = true;
     gtk4.extraConfig.gtk-application-prefer-dark-theme = true;
