@@ -17,6 +17,10 @@ in
         src = ./spicetify;
         name = "lyrics-raf-fallback.js";
       }
+      {
+        src = ./spicetify;
+        name = "liquify-config-seed.js";
+      }
     ];
 
     theme = {
