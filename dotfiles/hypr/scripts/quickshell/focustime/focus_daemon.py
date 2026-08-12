@@ -63,6 +63,29 @@ ICON_THEME_BUILT = False
 
 SYSTEM_STATES = {"Desktop", "Locked", "Quickshell", "Unknown"}
 
+# Chromium-family installed web apps report the WM_CLASS format
+# <browser>-<host>__<appid>-Default (the plain browser window itself, e.g.
+# "brave-browser", has no "__" part and is not a PWA, so it is not matched).
+CHROMIUM_PWA_RE = re.compile(r'^(?:brave|chromium|google-chrome)-(.+?)__')
+
+# Human-readable display names for the installed web-app set. Installed PWAs
+# expose no standard desktop metadata here (no .desktop entries, no web-app
+# registry in Brave's Preferences), so the host parsed from the WM_CLASS is
+# mapped; unknown hosts fall back to a generic prettified domain.
+PWA_HOST_NAMES = {
+    "chat.openai.com": "ChatGPT",
+    "www.notion.so": "Notion",
+    "claude.ai": "Claude",
+    "gemini.google.com": "Gemini",
+    "monkeytype.com": "Monkeytype",
+    "youtube.com": "YouTube",
+}
+
+# Browser window-title suffixes, e.g. "ChatGPT - Brave". Stripped before
+# splitting so the page name is taken instead of the browser name.
+BROWSER_TITLE_SUFFIX_RE = re.compile(
+    r'\s*[-—|]\s*(?:Brave|Chromium|Google Chrome|Chrome)\s*$', re.IGNORECASE)
+
 def get_xdg_search_dirs():
     search_dirs = []
     xdg_data_home = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
@@ -119,6 +142,48 @@ def build_desktop_cache():
             pass
     CACHE_BUILT = True
 
+def pwa_host_from_class(app_class):
+    """Return the site host for a Chromium-family installed web app, or None."""
+    m = CHROMIUM_PWA_RE.match(app_class)
+    return m.group(1).strip() if m else None
+
+def looks_like_host(text):
+    """True when a title is a URL-ish fallback (e.g. 'youtube.com_/' or
+    'claude.ai_/new' — Brave's default app-window title when no manifest
+    name is available)."""
+    return bool(re.match(r'^[\w.-]+\.[a-z]{2,}(?:[_/][\w./_%-]*)?$', text, re.IGNORECASE))
+
+def pretty_host(host):
+    """Generic fallback: 'www.notion.so' -> 'Notion', 'mail.google.com' -> 'Google'."""
+    h = host[4:] if host.startswith("www.") else host
+    labels = h.split(".")
+    if len(labels) >= 2:
+        h = labels[-2]
+    return h.capitalize()
+
+def resolve_pwa_name(app_class, raw_title):
+    """Resolve a Chromium-family installed web app to a clean display name.
+
+    Preference order: cleaned window title (page name) -> host map ->
+    generic domain fallback. Returns None for non-PWA classes.
+    """
+    host = pwa_host_from_class(app_class)
+    if not host:
+        return None
+
+    clean = re.sub(r'^\(\d+\)\s*|^\[\d+\]\s*', '', raw_title or "")
+    clean = re.sub(r'\s*\(\d+\)$', '', clean)
+    clean = BROWSER_TITLE_SUFFIX_RE.sub('', clean)
+    parts = re.split(r'\s+[-—|]\s+', clean)
+    name = parts[-1].strip() if len(parts) > 1 else clean.strip()
+
+    if (name and len(name) <= 25 and not looks_like_host(name)
+            and name.lower() != host and name.lower() not in
+            ("brave", "chromium", "google chrome", "chrome")):
+        return name
+
+    return PWA_HOST_NAMES.get(host) or pretty_host(host)
+
 def resolve_app_name(app_class, raw_title):
     if not app_class or app_class in SYSTEM_STATES:
         return app_class if app_class else "Unknown"
@@ -131,8 +196,14 @@ def resolve_app_name(app_class, raw_title):
     if app_class_lower in DESKTOP_CACHE_NAME: return DESKTOP_CACHE_NAME[app_class_lower]
     if base_class in DESKTOP_CACHE_NAME: return DESKTOP_CACHE_NAME[base_class]
 
+    pwa_name = resolve_pwa_name(app_class_lower, raw_title)
+    if pwa_name is not None:
+        DESKTOP_CACHE_NAME[app_class_lower] = pwa_name
+        return pwa_name
+
     clean_title = re.sub(r'^\(\d+\)\s*|^\[\d+\]\s*', '', raw_title)
     clean_title = re.sub(r'\s*\(\d+\)$', '', clean_title)
+    clean_title = BROWSER_TITLE_SUFFIX_RE.sub('', clean_title)
     parts = re.split(r'\s+[-—|]\s+', clean_title)
     name = parts[-1].strip() if len(parts) > 1 else clean_title.strip()
 
