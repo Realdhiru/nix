@@ -25,8 +25,8 @@ in
       src = pkgs.fetchFromGitHub {
         owner = "NMWplays";
         repo = "Liquify";
-        rev = "main";
-        hash = "sha256-i0sS04C1845Fmd/s5qXxV4N7kGZ69l8r7l7uurhKB/k=";
+        rev = "69dbb54495fb2217838d3bfbb6fdbae4e4d30b00";
+        hash = "sha256-+/uJFp834gK2EiJO9rWOJMcRIXtLroUzV9C1dMhggvM=";
       };
     };
   };
