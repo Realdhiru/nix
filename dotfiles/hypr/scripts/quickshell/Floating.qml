@@ -75,6 +75,21 @@ Variants {
 
             property int tabCount: Math.max(1, tabModules.length)
 
+            // Canonical shared layout arrays for the block-grid Repeater.
+            // QQuickRepeater compares model by JS array IDENTITY, not content:
+            // assigning a freshly created array (identical contents included)
+            // forces setModel -> clear() -> delegate rebuild, which crashes Qt6
+            // (QQmlDelegateModelItem::destroyObjectLater) when a rebuild lands
+            // while module Loaders are resolving/transitioning. Shared
+            // constants + content dedupe in updateSizes keep the model stable.
+            readonly property var singleBlockLayout: [{x: 0, y: 0, w: 1, h: 1}]
+            readonly property var quadBlockLayout: [
+                {x: 0,   y: 0,   w: 0.5, h: 0.5},
+                {x: 0.5, y: 0,   w: 0.5, h: 0.5},
+                {x: 0,   y: 0.5, w: 0.5, h: 0.5},
+                {x: 0.5, y: 0.5, w: 0.5, h: 0.5}
+            ]
+
             // =========================================================
             // --- IPC CONTROLS
             // =========================================================
@@ -940,12 +955,12 @@ Variants {
                                     if (status === Loader.Ready && item && item.requestedLayoutTemplate !== undefined) {
                                         let req = item.requestedLayoutTemplate;
                                         if (typeof req === "number") {
-                                            if (req === 0) return [ {x:0, y:0, w:0.5, h:0.5}, {x:0.5, y:0, w:0.5, h:0.5}, {x:0, y:0.5, w:0.5, h:0.5}, {x:0.5, y:0.5, w:0.5, h:0.5} ];
-                                            else return [ {x:0, y:0, w:1, h:1} ];
+                                            if (req === 0) return floatingWidget.quadBlockLayout;
+                                            else return floatingWidget.singleBlockLayout;
                                         }
                                         return req;
                                     }
-                                    return [ {x:0, y:0, w:1, h:1} ];
+                                    return floatingWidget.singleBlockLayout;
                                 }
 
                                 function updateSizes() {
@@ -953,7 +968,16 @@ Variants {
                                         floatingWidget.targetExpandedExtraLength = modExt;
                                         floatingWidget.expandedWidth = modWidth;
                                         floatingWidget.expandedExtraLength = modExt;
-                                        floatingWidget.currentLayoutTemplate = modLayout;
+
+                                        // Dedupe by content, not just identity: identical
+                                        // shapes produced by different modules must not
+                                        // reassign the model reference (Repeater crash —
+                                        // see singleBlockLayout comment above).
+                                        let t = modLayout;
+                                        let cur = floatingWidget.currentLayoutTemplate;
+                                        if (cur !== t && JSON.stringify(cur) !== JSON.stringify(t)) {
+                                            floatingWidget.currentLayoutTemplate = t;
+                                        }
                                     }
                                 }
 

@@ -505,10 +505,14 @@ PanelWindow {
 
     Timer {
         id: delayedClear
-        interval: 200
+        // Must outlast the replaceExit transition (morphDurationShift=210ms)
+        // and never fire while a stack transition is still running — clearing
+        // mid-transition destroys the outgoing widget while models are being
+        // written into it (Qt6 QQmlDelegateModel teardown crash family).
+        interval: 280
 
         onTriggered: {
-            if (!masterWindow.isVisible) {
+            if (!masterWindow.isVisible && !widgetStack.busy) {
                 masterWindow.currentActive = "hidden";
                 widgetStack.clear();
                 masterWindow.disableMorph = false;

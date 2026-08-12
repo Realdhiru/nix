@@ -245,6 +245,12 @@ Variants {
                 id: wsDaemon
                 command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/workspaces.sh"]
                 running: true
+                onExited: {
+                    // Restart the daemon if it ever dies — without this the
+                    // workspace bar silently freezes for the whole session.
+                    running = false;
+                    running = true;
+                }
             }
 
             Process {
