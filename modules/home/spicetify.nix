@@ -12,6 +12,13 @@ in
       marketplace
     ];
 
+    enabledExtensions = [
+      {
+        src = ./spicetify;
+        name = "lyrics-raf-fallback.js";
+      }
+    ];
+
     theme = {
       name = "Liquify";
 

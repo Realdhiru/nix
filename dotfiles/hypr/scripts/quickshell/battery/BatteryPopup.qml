@@ -945,6 +945,35 @@ Item {
                                 }
                             }
                         }
+
+                        Rectangle {
+                            width: window.s(44); height: window.s(48); radius: window.s(10)
+                            color: netBtnMa.containsMouse ? window.surface1 : window.surface0
+                            border.color: netBtnMa.containsMouse ? window.surface2 : window.surface1
+                            border.width: 1
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                            Rectangle { anchors.fill: parent; radius: window.s(10); color: window.sapphire; opacity: 0.05; Behavior on color { ColorAnimation { duration: 200 } } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                font.family: "Iosevka Nerd Font"
+                                font.pixelSize: window.s(20)
+                                color: netBtnMa.containsMouse ? window.text : window.sapphire
+                                text: "󰤨"
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+
+                            // Same open mechanism as the TopBar network button:
+                            // qs_manager.sh handles prep (wifi rescan / bt scan)
+                            // and IPC -> Main.qml switchWidget("network").
+                            MouseArea {
+                                id: netBtnMa
+                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle network"])
+                            }
+                        }
                     }
 
                     Rectangle {
