@@ -1,5 +1,13 @@
 { config, lib, pkgs, ... }:
 {
+  home.sessionVariables.GTK_THEME = "Adwaita:dark";
+
+  # GTK3 config channels (settings.ini/dconf) don't apply here; environment is
+  # the only reliable channel (proven). sessionVariables covers GUI/logins;
+  # user-environment.d covers systemd user services (e.g. the portal).
+  xdg.configFile."environment.d/gtk-theme.conf".text =
+    "GTK_THEME=Adwaita:dark\n";
+
   gtk = {
     enable = true;
     theme = { name = "Adwaita:dark"; package = pkgs.gnome-themes-extra; };

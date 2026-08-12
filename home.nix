@@ -97,14 +97,6 @@
     };
   };
 
-  # Portal file chooser dialogs triggered by browsers render on a second
-  # GdkDisplay (xdg-desktop-portal-gtk externalwindow-wayland) whose GTK
-  # settings don't pick up gsettings/ini; GTK_THEME reaches it, scoped here.
-  xdg.configFile."systemd/user/xdg-desktop-portal-gtk.service.d/theme-dark.conf".text = ''
-    [Service]
-    Environment="GTK_THEME=Adwaita:dark"
-  '';
-
   home.username = "realdhiru";
   home.homeDirectory = "/home/realdhiru";
 
