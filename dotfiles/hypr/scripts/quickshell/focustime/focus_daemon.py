@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import subprocess
 import sqlite3
 import time
@@ -63,6 +64,20 @@ ICON_THEME_BUILT = False
 
 SYSTEM_STATES = {"Desktop", "Locked", "Quickshell", "Unknown"}
 
+# Wayland infrastructure windows (xdg-desktop-portal permission/chooser
+# dialogs) are focus-grabbing helpers, not user applications.
+PORTAL_PREFIX = "xdg-desktop-portal"
+
+# Chromium-family placeholder window titles (no-content pages, bare browser
+# names) that carry no app identity and must not be shown as app names.
+PLACEHOLDER_TITLES = {"new tab", "brave", "chromium", "google chrome", "chrome"}
+
+def is_portal_class(app_class):
+    return bool(app_class) and app_class.lower().startswith(PORTAL_PREFIX)
+
+def is_system_class(app_class):
+    return bool(app_class) and (app_class in SYSTEM_STATES or is_portal_class(app_class))
+
 # Chromium-family installed web apps report the WM_CLASS format
 # <browser>-<host>__<appid>-Default (the plain browser window itself, e.g.
 # "brave-browser", has no "__" part and is not a PWA, so it is not matched).
@@ -79,6 +94,12 @@ PWA_HOST_NAMES = {
     "gemini.google.com": "Gemini",
     "monkeytype.com": "Monkeytype",
     "youtube.com": "YouTube",
+}
+
+# Non-PWA classes whose WM_CLASS prettifies ambiguously (e.g. the ChatGPT
+# desktop client reports WM_CLASS "chatgpt" with placeholder titles).
+KNOWN_CLASS_NAMES = {
+    "chatgpt": "ChatGPT",
 }
 
 # Browser window-title suffixes, e.g. "ChatGPT - Brave". Stripped before
@@ -161,6 +182,16 @@ def pretty_host(host):
         h = labels[-2]
     return h.capitalize()
 
+def prettify_class(app_class):
+    """Identity fallback when no usable title exists: 'chatgpt' -> 'ChatGPT',
+    'com.dec05eba.gpu_screen_recorder' -> 'Gpu Screen Recorder'."""
+    if app_class.lower() in KNOWN_CLASS_NAMES:
+        return KNOWN_CLASS_NAMES[app_class.lower()]
+    parts = [p for p in re.split(r'[^a-zA-Z0-9]+', app_class) if p]
+    if not parts:
+        return app_class.capitalize()
+    return ' '.join(p.capitalize() for p in parts)
+
 def resolve_pwa_name(app_class, raw_title):
     """Resolve a Chromium-family installed web app to a clean display name.
 
@@ -178,8 +209,7 @@ def resolve_pwa_name(app_class, raw_title):
     name = parts[-1].strip() if len(parts) > 1 else clean.strip()
 
     if (name and len(name) <= 25 and not looks_like_host(name)
-            and name.lower() != host and name.lower() not in
-            ("brave", "chromium", "google chrome", "chrome")):
+            and name.lower() != host and name.lower() not in PLACEHOLDER_TITLES):
         return name
 
     return PWA_HOST_NAMES.get(host) or pretty_host(host)
@@ -207,7 +237,8 @@ def resolve_app_name(app_class, raw_title):
     parts = re.split(r'\s+[-—|]\s+', clean_title)
     name = parts[-1].strip() if len(parts) > 1 else clean_title.strip()
 
-    if len(name) > 25: name = app_class.capitalize()
+    if not name or name.lower() in PLACEHOLDER_TITLES or looks_like_host(name) or len(name) > 25:
+        name = prettify_class(app_class)
 
     DESKTOP_CACHE_NAME[app_class_lower] = name
     return name
@@ -268,7 +299,7 @@ def theme_icon_lookup(name):
     return ""
 
 def get_app_icon(app_class):
-    if not app_class or app_class in SYSTEM_STATES:
+    if not app_class or is_system_class(app_class):
         return ""
 
     build_desktop_cache()
@@ -306,12 +337,19 @@ def get_active_window_hyprctl():
         if output.strip() == "{}": return "Desktop", "Desktop"
         data = json.loads(output)
         
-        app_cls = data.get('initialClass') or data.get('class') or ''
-        raw_title = data.get('initialTitle') or data.get('title') or ''
+        # Prefer the current class/title over the frozen initial* values:
+        # initialTitle is captured at window creation and never updates, so a
+        # Chromium-family window opened on "New Tab" would report "New Tab" for
+        # its entire lifetime regardless of the page it actually shows.
+        app_cls = data.get('class') or data.get('initialClass') or ''
+        raw_title = data.get('title') or data.get('initialTitle') or ''
 
         if "quickshell" in app_cls.lower() or "qs-master" in raw_title.lower() or "qs-master" in app_cls.lower():
             return "Quickshell", "Quickshell"
-            
+
+        if is_system_class(app_cls):
+            return "Desktop", "Desktop"
+
         app_cls = app_cls if app_cls else "Unknown"
         raw_title = raw_title if raw_title else app_cls
         clean_name = resolve_app_name(app_cls, raw_title)
@@ -655,8 +693,64 @@ def exit_handler(sig, frame):
     tracker.flush()
     sys.exit(0)
 
+def heal(limit_days=None):
+    """One-shot backfill. Re-resolves stored rows with the current resolution
+    rules and folds system-infrastructure rows (xdg-desktop-portal dialogs)
+    into the Desktop bucket. Seconds totals are preserved; only display
+    identity changes."""
+    build_desktop_cache()
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+
+    if limit_days:
+        c.execute("SELECT log_date, app_class, app_title, seconds FROM focus_log WHERE log_date >= date('now', ?)",
+                  (f"-{limit_days} days",))
+    else:
+        c.execute("SELECT log_date, app_class, app_title, seconds FROM focus_log")
+    rows = c.fetchall()
+
+    retitled = 0
+    folded = 0
+    for log_date, app_class, app_title, seconds in rows:
+        if is_portal_class(app_class):
+            c.execute('''INSERT INTO focus_log (log_date, app_class, seconds, app_title)
+                         VALUES (?, 'Desktop', ?, 'Desktop')
+                         ON CONFLICT(log_date, app_class) DO UPDATE SET seconds = seconds + ?''',
+                      (log_date, seconds, seconds))
+            c.execute("DELETE FROM focus_log WHERE log_date = ? AND app_class = ?", (log_date, app_class))
+            folded += 1
+            continue
+        # Conservative: only retitle rows whose stored title is provably bad
+        # (placeholder, URL-ish fallback, >25-char garbage, or a PWA row whose
+        # title equals its class). Good titles are left untouched so re-running
+        # resolution can never replace them with a worse result.
+        title = app_title or app_class
+        is_bad = (title.lower() in PLACEHOLDER_TITLES
+                  or looks_like_host(title)
+                  or len(title) > 25
+                  or (title == app_class and pwa_host_from_class(app_class) is not None))
+        if not is_bad:
+            continue
+        new_name = resolve_app_name(app_class, title)
+        if new_name != title:
+            c.execute("UPDATE focus_log SET app_title = ? WHERE log_date = ? AND app_class = ?",
+                      (new_name, log_date, app_class))
+            retitled += 1
+    conn.commit()
+    conn.close()
+    print(f"heal: {retitled} rows retitled, {folded} portal rows folded into Desktop")
+
 def main():
     global current_app_class, current_app_title
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--heal", action="store_true", help="One-shot backfill of focus_log titles")
+    parser.add_argument("--heal-days", type=int, default=None, help="Heal only the last N days")
+    args = parser.parse_args()
+
+    if args.heal:
+        heal(args.heal_days)
+        return
+
     signal.signal(signal.SIGINT, exit_handler)
     signal.signal(signal.SIGTERM, exit_handler)
 
