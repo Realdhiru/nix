@@ -11,6 +11,7 @@
   boot.kernelParams = [
     "loglevel=3"
     "nmi_watchdog=0"
+    "mem_sleep_default=deep"
   ];
 
   boot.kernelPackages = pkgs.linuxPackages_xanmod_latest;
