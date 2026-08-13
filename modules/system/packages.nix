@@ -65,8 +65,7 @@ in
     lynis 
 
     vulnix
-
-      gemini-cli
+    antigravity
 
 
   ];
