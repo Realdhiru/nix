@@ -202,6 +202,10 @@ def resolve_pwa_name(app_class, raw_title):
     if not host:
         return None
 
+    canonical = PWA_HOST_NAMES.get(host)
+    if canonical:
+        return canonical
+
     clean = re.sub(r'^\(\d+\)\s*|^\[\d+\]\s*', '', raw_title or "")
     clean = re.sub(r'\s*\(\d+\)$', '', clean)
     clean = BROWSER_TITLE_SUFFIX_RE.sub('', clean)
@@ -212,7 +216,7 @@ def resolve_pwa_name(app_class, raw_title):
             and name.lower() != host and name.lower() not in PLACEHOLDER_TITLES):
         return name
 
-    return PWA_HOST_NAMES.get(host) or pretty_host(host)
+    return pretty_host(host)
 
 def resolve_app_name(app_class, raw_title):
     if not app_class or app_class in SYSTEM_STATES:
@@ -725,10 +729,12 @@ def heal(limit_days=None):
         # title equals its class). Good titles are left untouched so re-running
         # resolution can never replace them with a worse result.
         title = app_title or app_class
+        host = pwa_host_from_class(app_class)
         is_bad = (title.lower() in PLACEHOLDER_TITLES
                   or looks_like_host(title)
                   or len(title) > 25
-                  or (title == app_class and pwa_host_from_class(app_class) is not None))
+                  or (title == app_class and host is not None)
+                  or (host in PWA_HOST_NAMES and title != PWA_HOST_NAMES[host]))
         if not is_bad:
             continue
         new_name = resolve_app_name(app_class, title)

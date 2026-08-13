@@ -208,12 +208,12 @@ PanelWindow {
 
     Process {
         id: settingsReader
-        command: ["bash", "-c", "cat ~/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
+        command: ["bash", "-c", "$HOME/.config/hypr/scripts/quickshell/watchers/settings_wait.sh && cat $HOME/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
+                    if (this.text && this.text.trim().length > 0) {
                         let parsed = JSON.parse(this.text);
                         if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
                             masterWindow.globalUiScale = parsed.uiScale;
@@ -222,19 +222,9 @@ PanelWindow {
                 } catch (e) {
                     console.log("Error parsing settings.json in main.qml:", e);
                 }
+                settingsReader.running = false;
+                settingsReader.running = true;
             }
-        }
-    }
-
-    Timer {
-        id: settingsPollTimer
-        interval: 3000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
-            settingsReader.running = false;
-            settingsReader.running = true;
         }
     }
 

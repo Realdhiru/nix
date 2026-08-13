@@ -26,7 +26,7 @@
     platformTheme.name = "qtct";
     style.name = "fusion";
   };
-  home.packages = with pkgs; [ qt6Packages.qt6ct libsForQt5.qt5ct glib ];
+  home.packages = with pkgs; [ qt6Packages.qt6ct libsForQt5.qt5ct glib inotify-tools ];
 
   # Global cursor theme
   home.pointerCursor = {

@@ -10,6 +10,7 @@ configuration {
     me-select-entry:        "";
     me-accept-entry:        "MousePrimary";
     case-sensitive:         false;
+    steal-focus:            true;
 }
 
 @theme "theme.rasi"
