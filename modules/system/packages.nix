@@ -66,6 +66,9 @@ in
 
     vulnix
 
+      gemini-cli
+
+
   ];
 
 }
