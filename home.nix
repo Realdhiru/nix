@@ -61,7 +61,7 @@
   # chains into the store — theme writes get lost). Rebuild copies repo →
   # config; the vscodium-settings-sync watcher mirrors config → repo on save.
   xdg.configFile."VSCodium/User/settings.json" = {
-    source = "${config.home.homeDirectory}/nix/dotfiles/vscodium/settings.json";
+    source = ../dotfiles/vscodium/settings.json;
     force = true;
   };
 
