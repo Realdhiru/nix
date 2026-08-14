@@ -209,23 +209,10 @@ Variants {
                 };
             }
 
-            // 3-stop gradient (mauve -> blue -> pink) across however many
-            // bars there are, computed once per bar index (not per-frame —
-            // bar color is static, only height animates).
+            // Solid accent (mauve) across all bars — no gradient (kept
+            // signature so the caller at cavaVisualizer stays unchanged).
             function cavaBarColor(index, count) {
-                let stops = [mocha.mauve, mocha.blue, mocha.pink];
-                let t = count > 1 ? index / (count - 1) : 0;
-                let seg = t * (stops.length - 1);
-                let segIndex = Math.min(Math.floor(seg), stops.length - 2);
-                let localT = seg - segIndex;
-                let c1 = barWindow._hexToRgb01(stops[segIndex]);
-                let c2 = barWindow._hexToRgb01(stops[segIndex + 1]);
-                return Qt.rgba(
-                    c1.r + (c2.r - c1.r) * localT,
-                    c1.g + (c2.g - c1.g) * localT,
-                    c1.b + (c2.b - c1.b) * localT,
-                    1.0
-                );
+                return mocha.mauve;
             }
 
             property bool isWifiOn: barWindow.wifiStatus.toLowerCase() === "enabled" || barWindow.wifiStatus.toLowerCase() === "on"
