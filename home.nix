@@ -57,12 +57,11 @@
     config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/matugen";
 
-  # VSCodium: file-level symlink only (never the whole User/ dir — it holds
-  # workspaceStorage/globalStorage/crashpads that churn). Edits to settings
-  # land directly in the nix repo and are reproducible.
+  # VSCodium: real writable file (VSCodium's save path chokes on symlink
+  # chains into the store — theme writes get lost). Rebuild copies repo →
+  # config; the vscodium-settings-sync watcher mirrors config → repo on save.
   xdg.configFile."VSCodium/User/settings.json" = {
-    source = config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/vscodium/settings.json";
+    source = "${config.home.homeDirectory}/nix/dotfiles/vscodium/settings.json";
     force = true;
   };
 
@@ -99,6 +98,25 @@
         "QS_STATE_FOCUSTIME=%h/.local/state/quickshell/focustime"
         "QS_RUN_FOCUSTIME=%t/quickshell/focustime"
         "PATH=/run/current-system/sw/bin"
+      ];
+    };
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
+  };
+
+  # VSCodium settings mirror: live config → nix repo (git). The unit is the
+  # sole trigger; no rebuild is ever run by it.
+  systemd.user.services.vscodium-settings-sync = {
+    Unit = {
+      Description = "Mirror VSCodium settings.json into the nix repo";
+    };
+    Service = {
+      ExecStart = "%h/nix/dotfiles/vscodium/sync_settings.sh";
+      Restart = "always";
+      RestartSec = 3;
+      Environment = [
+        "PATH=/etc/profiles/per-user/realdhiru/bin:/run/current-system/sw/bin"
       ];
     };
     Install = {

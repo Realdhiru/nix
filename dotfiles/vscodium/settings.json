@@ -2,10 +2,6 @@
     "terminal.integrated.initialHint": false,
     "editor.bracketPairColorization.independentColorPoolPerBracketType": true,
     "editor.fontFamily": "'JetBrainsMono Nerd Font', monospace",
-    "editor.language.colorizedBracketPairs": []
-
-
-    
+    "editor.language.colorizedBracketPairs": [],
+    "editor.background": "#00000080"
 }
-
-"editor.background": "#00000080"
