@@ -253,8 +253,8 @@ ShellRoot {
                     anchors.fill: parent
                     visible: !screenRoot.isVideoWallpaper
                     blurEnabled: true
-                    blurMax: 64 * screenRoot.sc
-                    blur: 1.0
+                    blurMax: 28 * screenRoot.sc
+                    blur: 0.45
                 }
                 
                 Rectangle {
