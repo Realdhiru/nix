@@ -714,7 +714,7 @@ if (diff > 0) {
                     Rectangle {
                         id: mediaBox
                         color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
-                        radius: barWindow.s(14); border.width: 1; border.color: Qt.alpha(mocha.blue, 0.2)
+                        radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
                         height: barWindow.barHeight
                         clip: true
 

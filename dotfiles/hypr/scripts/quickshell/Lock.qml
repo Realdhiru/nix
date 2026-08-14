@@ -824,7 +824,7 @@ ShellRoot {
                         Rectangle {
                             anchors.fill: parent
                             radius: height / 2
-                            color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.8)
+                            color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.9)
                             border.color: root.text
                             border.width: Math.max(1, 2 * screenRoot.sc)
                         }
