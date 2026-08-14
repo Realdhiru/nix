@@ -57,6 +57,15 @@
     config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/matugen";
 
+  # VSCodium: file-level symlink only (never the whole User/ dir — it holds
+  # workspaceStorage/globalStorage/crashpads that churn). Edits to settings
+  # land directly in the nix repo and are reproducible.
+  xdg.configFile."VSCodium/User/settings.json" = {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/vscodium/settings.json";
+    force = true;
+  };
+
   # PCManFM-Qt: file-based config (app reads/writes this INI directly, no
   # other mechanism), so the few mixed settings live inline here.
   xdg.configFile."pcmanfm-qt/default/settings.conf" = {
