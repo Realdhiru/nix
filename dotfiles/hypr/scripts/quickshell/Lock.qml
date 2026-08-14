@@ -33,6 +33,10 @@ ShellRoot {
     readonly property color blue: _theme.blue
     readonly property color green: _theme.green
 
+    // Warm porcelain instead of pure white — stays readable without
+    // blending into bright wallpaper regions.
+    readonly property color lockText: "#F5EFE6"
+
     QtObject {
         id: lockSettings
         property bool hidePassword: false
@@ -267,50 +271,7 @@ ShellRoot {
                 Item {
                     anchors.fill: parent
 
-                    Rectangle {
-                        width: parent.width * 0.8; height: width; radius: width / 2
-                        x: (parent.width / 2 - width / 2) + Math.cos(screenRoot.globalOrbitAngle * 2) * (200 * screenRoot.sc)
-                        y: (parent.height / 2 - height / 2) + Math.sin(screenRoot.globalOrbitAngle * 2) * (150 * screenRoot.sc)
-                        scale: 1.0 + Math.sin(screenRoot.globalOrbitAngle * 6) * 0.05
-                        opacity: screenRoot.inputActive ? 0.04 : 0.08
-                        color: root.mauve
-                        Behavior on color { ColorAnimation { duration: 1000 } }
-                        Behavior on opacity { NumberAnimation { duration: 600 } }
-                    }
-                    
-                    Rectangle {
-                        width: parent.width * 0.9; height: width; radius: width / 2
-                        x: (parent.width / 2 - width / 2) + Math.sin(screenRoot.globalOrbitAngle * 1.5) * (-200 * screenRoot.sc)
-                        y: (parent.height / 2 - height / 2) + Math.cos(screenRoot.globalOrbitAngle * 1.5) * (-150 * screenRoot.sc)
-                        scale: 1.0 + Math.cos(screenRoot.globalOrbitAngle * 5) * 0.05
-                        opacity: screenRoot.inputActive ? 0.03 : 0.06
-                        color: root.blue
-                        Behavior on color { ColorAnimation { duration: 1000 } }
-                        Behavior on opacity { NumberAnimation { duration: 600 } }
-                    }
-
-                    Item {
-                        anchors.fill: parent
-                        opacity: screenRoot.introState
-                        scale: 1.1 - (0.1 * screenRoot.introState)
-                        
-                        Repeater {
-                            model: 4
-                            Rectangle {
-                                anchors.centerIn: parent
-                                anchors.verticalCenterOffset: -40 * screenRoot.sc
-                                width: (400 * screenRoot.sc) + (index * (220 * screenRoot.sc))
-                                height: width
-                                radius: width / 2
-                                color: "transparent"
-                                border.color: lockUI.failed ? root.red : root.text
-                                border.width: Math.max(1, 1 * screenRoot.sc)
-                                opacity: lockUI.failed ? (0.1 - (index * 0.02)) : (screenRoot.inputActive ? (0.02 - (index * 0.005)) : (0.04 - (index * 0.01)))
-                                Behavior on border.color { ColorAnimation { duration: 600; easing.type: Easing.OutExpo } }
-                                Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
-                            }
-                        }
-                    }
+                    // Liquid look: no orbiting shapes, no rings — clean glass.
                 }
 
                 MouseArea {
@@ -350,7 +311,7 @@ ShellRoot {
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: 140 * screenRoot.sc
                                 font.weight: Font.Bold
-                                color: root.text
+                                color: root.lockText
                                 Behavior on color { ColorAnimation { duration: 300 } }
                             }
                             Text {
@@ -359,7 +320,7 @@ ShellRoot {
                                 font.pixelSize: 140 * screenRoot.sc
                                 font.weight: Font.Bold
                                 opacity: 0.5
-                                color: root.text
+                                color: root.lockText
                                 Behavior on color { ColorAnimation { duration: 300 } }
                             }
                             Text {
@@ -367,7 +328,7 @@ ShellRoot {
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: 140 * screenRoot.sc
                                 font.weight: Font.Bold
-                                color: root.text
+                                color: root.lockText
                                 Behavior on color { ColorAnimation { duration: 300 } }
                             }
                         }
@@ -378,7 +339,7 @@ ShellRoot {
                             font.family: "JetBrains Mono"
                             font.pixelSize: 22 * screenRoot.sc
                             font.weight: Font.Bold
-                            color: root.text
+                            color: root.lockText
                         }
 
                         Timer {
@@ -423,7 +384,7 @@ ShellRoot {
                             Rectangle {
                                 anchors.fill: parent
                                 radius: height / 2
-                                color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.5)
+                                color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.08)
                                 visible: avatarImg.status !== Image.Ready
                                 
                                 Text {
@@ -457,7 +418,7 @@ ShellRoot {
                                 anchors.fill: parent
                                 radius: height / 2
                                 color: "transparent"
-                                border.color: lockUI.failed ? root.red : (lockUI.authenticating ? root.peach : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.5))
+                                border.color: lockUI.failed ? root.red : (lockUI.authenticating ? root.peach : Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.5))
                                 border.width: Math.max(1, 3 * screenRoot.sc)
                                 Behavior on border.color { ColorAnimation { duration: 300 } }
                             }
@@ -473,7 +434,7 @@ ShellRoot {
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: 28 * screenRoot.sc
                                 font.weight: Font.Bold
-                                color: root.text
+                                color: root.lockText
                             }
 
                             RowLayout {
@@ -513,7 +474,7 @@ ShellRoot {
                                     font.letterSpacing: 2.0
                                     color: lockUI.failed
                                         ? root.red
-                                        : (lockUI.authenticating ? root.peach : root.text)
+                                        : (lockUI.authenticating ? root.peach : root.lockText)
                                     text: lockUI.statusText.toUpperCase()
                                     Behavior on color { ColorAnimation { duration: 300 } }
                                 }
@@ -527,13 +488,13 @@ ShellRoot {
                                 radius: height / 2
                                 clip: true 
                                 
-                                color: lockUI.failed ? Qt.rgba(root.red.r, root.red.g, root.red.b, 0.1) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.5)
+                                color: lockUI.failed ? Qt.rgba(root.red.r, root.red.g, root.red.b, 0.1) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.08)
                                 border.width: Math.max(1, 2 * screenRoot.sc)
                                 border.color: {
                                     if (lockUI.failed) return root.red;
                                     if (lockUI.authenticating) return root.peach;
-                                    if (inputField.text.length > 0) return root.text;
-                                    return Qt.rgba(root.text.r, root.text.g, root.text.b, 0.08);
+                                    if (inputField.text.length > 0) return root.lockText;
+                                    return Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.08);
                                 }
 
                                 Behavior on color { ColorAnimation { duration: 250; easing.type: Easing.OutExpo } }
@@ -665,7 +626,7 @@ ShellRoot {
                                                 font.family: "JetBrains Mono"
                                                 font.pixelSize: model.isDot ? (32 * screenRoot.sc) : (24 * screenRoot.sc)
                                                 font.weight: Font.Bold
-                                                color: lockUI.failed ? root.red : (lockUI.authenticating ? root.peach : root.text)
+                                                color: lockUI.failed ? root.red : (lockUI.authenticating ? root.peach : root.lockText)
                                                 verticalAlignment: Text.AlignVCenter
                                                 height: pinPill.height
                                                 
@@ -697,7 +658,7 @@ ShellRoot {
                         radius: height / 2
 
                         color: isHovered ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.4)
-                        border.color: isHovered ? root.blue : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.08)
+                        border.color: isHovered ? root.blue : Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.08)
                         border.width: Math.max(1, 1 * screenRoot.sc)
 
                         scale: isHovered ? 1.05 : 1.0
@@ -710,7 +671,7 @@ ShellRoot {
                             text: screenRoot.mediaStatus === "Playing" ? "󰏤" : "󰐊"
                             font.family: "Iosevka Nerd Font"
                             font.pixelSize: 22 * screenRoot.sc
-                            color: parent.isHovered ? root.blue : root.text
+                            color: parent.isHovered ? root.blue : root.lockText
                             Behavior on color { ColorAnimation { duration: 200 } }
                         }
 
@@ -731,7 +692,7 @@ ShellRoot {
                         radius: height / 2
                         
                         color: isHovered ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.4)
-                        border.color: isHovered ? batLayoutRow.dynamicBatColor : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.08)
+                        border.color: isHovered ? batLayoutRow.dynamicBatColor : Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.08)
                         border.width: Math.max(1, 1 * screenRoot.sc)
 
                         scale: isHovered ? 1.05 : 1.0
@@ -795,7 +756,7 @@ ShellRoot {
                         radius: height / 2 
                         anchors.centerIn: parent
                         color: "transparent"
-                        border.color: root.text
+                        border.color: root.lockText
                         border.width: Math.max(1, 1 * screenRoot.sc)
                         scale: 0.8
                         opacity: 0.0
@@ -807,7 +768,7 @@ ShellRoot {
                         radius: height / 2 
                         anchors.centerIn: parent
                         color: "transparent"
-                        border.color: root.text
+                        border.color: root.lockText
                         border.width: Math.max(1, 2 * screenRoot.sc)
                         scale: 0.8
                         opacity: 0.0
@@ -824,8 +785,8 @@ ShellRoot {
                         Rectangle {
                             anchors.fill: parent
                             radius: height / 2
-                            color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.9)
-                            border.color: root.text
+                            color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.15)
+                            border.color: root.lockText
                             border.width: Math.max(1, 2 * screenRoot.sc)
                         }
 
@@ -835,7 +796,7 @@ ShellRoot {
                             text: "󰌿"
                             font.family: "Iosevka Nerd Font"
                             font.pixelSize: 64 * screenRoot.sc 
-                            color: root.text
+                            color: root.lockText
                             opacity: 1.0
                             scale: 1.0
                             transformOrigin: Item.Center
@@ -847,7 +808,7 @@ ShellRoot {
                             text: "󰌾"
                             font.family: "Iosevka Nerd Font"
                             font.pixelSize: 64 * screenRoot.sc 
-                            color: root.text
+                            color: root.lockText
                             opacity: 0.0
                             scale: 1.6
                             transformOrigin: Item.Center
