@@ -57,13 +57,16 @@
     config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/matugen";
 
-  # VSCodium: real writable file (VSCodium's save path chokes on symlink
-  # chains into the store — theme writes get lost). Rebuild copies repo →
-  # config; the vscodium-settings-sync watcher mirrors config → repo on save.
-  xdg.configFile."VSCodium/User/settings.json" = {
-    source = ./dotfiles/vscodium/settings.json;
-    force = true;
-  };
+  # VSCodium: home-manager's xdg.configFile can only ever symlink into the
+  # read-only generation store, which VSCodium cannot write through. So on
+  # every rebuild we copy the repo file onto the real config path after the
+  # writeBoundary step (this overwrites the managed symlink). Changes flow
+  # back to the repo via the vscodium-settings-sync watcher service.
+  home.activation.vscodiumSettings = config.lib.dag.entryAfter [ "writeBoundary" ] ''
+    mkdir -p "$HOME/.config/VSCodium/User"
+    cp -f ${./dotfiles/vscodium/settings.json} "$HOME/.config/VSCodium/User/settings.json"
+    chmod 644 "$HOME/.config/VSCodium/User/settings.json"
+  '';
 
   # PCManFM-Qt: file-based config (app reads/writes this INI directly, no
   # other mechanism), so the few mixed settings live inline here.
@@ -112,7 +115,7 @@
       Description = "Mirror VSCodium settings.json into the nix repo";
     };
     Service = {
-      ExecStart = "%h/nix/dotfiles/vscodium/sync_settings.sh";
+      ExecStart = "${pkgs.bash}/bin/bash %h/nix/dotfiles/vscodium/sync_settings.sh";
       Restart = "always";
       RestartSec = 3;
       Environment = [
