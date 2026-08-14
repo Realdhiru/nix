@@ -683,7 +683,7 @@ Variants {
                 height: floatingWidget.activeEdge === "bottom" ? floatingWidget.s(12) : Math.max(floatingWidget.s(20), floatingWidget.baseSidebarH - floatingWidget.s(20))
                 radius: floatingWidget.s(6)
 
-                color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 1.0)
+                color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.78)
                 border.width: 0
 
                 opacity: (floatingWidget.isPeekVisible && !floatingWidget.isSidebarVisible) ? (peekMouse.containsMouse || peekMouse.pressed ? 1.0 : 0.6) : 0.0
@@ -842,9 +842,9 @@ Variants {
                         width: floatingWidget.s(15) + parent.width
                         height: parent.height
                         radius: floatingWidget.s(15)
-                        color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.95)
+                        color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.82)
                         border.width: 1
-                        border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08)
+                        border.color: Qt.alpha(mocha.blue, 0.22)
 
                         MouseArea {
                             id: sidebarDragArea

@@ -522,8 +522,8 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: window.s(30)
-            color: window.base
-            border.color: window.surface0
+            color: Qt.alpha(window.base, 0.78)
+            border.color: Qt.alpha(window.blue, 0.25)
             border.width: 1
             clip: true
 

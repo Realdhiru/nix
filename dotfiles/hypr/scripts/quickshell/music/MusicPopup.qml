@@ -443,7 +443,7 @@ Item {
             anchors.fill: parent
             anchors.margins: -root.s(1)
             clip: true
-            color: root.base
+            color: Qt.alpha(root.base, 0.78)
             radius: root.s(10)
 
             layer.enabled: true
