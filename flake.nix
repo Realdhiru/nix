@@ -2,11 +2,12 @@
   description = "realdhiru's NixOS configuration";
 
   inputs = {
-    # Pinned to the last known-good upstream rev (2026-07-23, kernel
-    # 7.1.4). Rev e2587ca; the following 08-13 rev (0e251e2) carried the
-    # i915 GPU-hang storm (see docs/decisions.md top entry). This pin is
-    # the diagnosed-cause exception to "no global pins".
-    nixpkgs.url = "github:NixOS/nixpkgs/e2587ca";
+    # nixos-unstable: floating, no pins. 2026-08-16 the flake was pinned to
+    # e2587ca as a TEMPORARY recovery measure for the i915 GPU-hang storm
+    # (see docs/decisions.md); the pin has been removed. Newer nixpkgs,
+    # kernels, Mesa, WezTerm are expected and welcome; rebuild()'s health
+    # gate is the safety net, not a version lock.
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     home-manager = {
       url = "github:nix-community/home-manager";
