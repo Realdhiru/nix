@@ -60,7 +60,6 @@
     winetricks
 
     # Emulation / archive tooling used alongside Lutris library
-    rpcs3
     p7zip
     peazip
   ];
