@@ -114,11 +114,7 @@ fi
         matugen color hex "#808080" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity > "/tmp/matugen.$$.log" 2>&1
         "$HOME/nix/dotfiles/matugen/extract_raw_colors.sh" "$SEED"
     else
-<<<<<<< HEAD
-        matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity --source-color-index 0 > /tmp/matugen.log 2>&1
-        "$HOME/nix/dotfiles/matugen/extract_raw_colors.sh" "$SEED"
-=======
         matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity --source-color-index 0 > "/tmp/matugen.$$.log" 2>&1
->>>>>>> e28ba91 (Update configuration)
+        "$HOME/nix/dotfiles/matugen/extract_raw_colors.sh" "$SEED"
     fi
 ) &
