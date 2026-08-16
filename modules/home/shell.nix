@@ -48,7 +48,7 @@
           fi
         fi
 
-        if ! sudo nixos-rebuild build --flake .#nixos --store-path /tmp/nixos-build-check; then
+        if ! sudo nixos-rebuild build --flake .#nixos; then
           echo "BUILD FAILED — nothing activated; still on generation $gen."
           return 1
         fi
