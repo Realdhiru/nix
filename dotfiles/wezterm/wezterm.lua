@@ -6,6 +6,10 @@ config.window_close_confirmation = "NeverPrompt"
 config.hide_tab_bar_if_only_one_tab = true
 config.adjust_window_size_when_changing_font_size = false
 
+-- Render via WebGpu (Vulkan/ANV): the iris-GL path on mesa 26.2 + i915 hangs
+-- (ecode 12:1:859ffffb) on this Alder Lake Iris Xe; the Vulkan path is clean.
+config.front_end = "WebGpu"
+
 -- Default font size (1.5x WezTerm's 12pt baseline). The `af` fetch UI may
 -- temporarily override this via ~/.cache/af_font_size (removed on exit).
 config.font_size = 18
