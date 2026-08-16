@@ -35,7 +35,7 @@
     x11.enable = true;
     name = "Bibata-Modern-Ice";
     package = pkgs.bibata-cursors;
-    size = 24;
+    size = 32;
   };
   
   # matugen writes the color VALUES here; qt5ct/qt6ct's own conf (static, below)

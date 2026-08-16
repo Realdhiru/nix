@@ -39,7 +39,7 @@ in
     rofi wl-clipboard cliphist
 
     # Screenshots & Recording
-    grim slurp grimblast wf-recorder gpu-screen-recorder gpu-screen-recorder-gtk
+    grim slurp grimblast gpu-screen-recorder gpu-screen-recorder-gtk
 
     # Media & Display
     mpv mpvpaper awww playerctl brightnessctl easyeffects cava loupe ffmpeg imagemagick zbar
@@ -66,7 +66,7 @@ in
     lynis 
 
     vulnix
-    antigravity
+    antigravity-ide
 
 
   ];
