@@ -27,7 +27,10 @@ Item {
     property bool initialFocusSet: false
     property int visibleItemCount: -1
     property int scrollAccum: 0
-    property real scrollThreshold: window.s(300)
+    property real scrollThreshold: window.s(120)
+    property int scrollVelocity: 1
+    property int scrollDirection: 0
+    property double lastWheelMs: 0
 
     property string currentFilter: "All"
     property string _lastFilter: "All"
@@ -845,19 +848,44 @@ Item {
                     wheel.accepted = true;
                     return;
                 }
-                if (scrollThrottle.running) {
-                   wheel.accepted = true;
-                   return;
-                }
                 let dx = wheel.angleDelta.x;
                 let dy = wheel.angleDelta.y;
                 let delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
-                scrollAccum += delta;
+                if (delta === 0) {
+                    wheel.accepted = true;
+                    return;
+                }
+                let now = Date.now();
+                let dt = now - window.lastWheelMs;
+                let dir = delta > 0 ? 1 : -1;
+                if (dt > 300 || dt < 0) {
+                    window.scrollVelocity = 1;
+                }
+                if (window.scrollDirection !== 0 && dir !== window.scrollDirection) {
+                    window.scrollVelocity = 1;
+                    window.scrollAccum = 0;
+                }
+                if (dt > 0 && dt <= 180 && dir === window.scrollDirection) {
+                    window.scrollVelocity = Math.min(3, window.scrollVelocity + 1);
+                }
+                window.scrollDirection = dir;
+                window.lastWheelMs = now;
 
-                if (Math.abs(scrollAccum) >= scrollThreshold) {
-                    window.stepToNextValidIndex(scrollAccum > 0 ? -1 : 1);
-                    scrollAccum = 0;
-                    scrollThrottle.start();
+                if (window.scrollVelocity === 1 && scrollThrottle.running) {
+                    wheel.accepted = true;
+                    return;
+                }
+
+                window.scrollAccum += delta;
+                if (Math.abs(window.scrollAccum) >= window.scrollThreshold) {
+                    let steps = Math.abs(delta) >= 90 ? window.scrollVelocity : 1;
+                    for (let i = 0; i < steps; i++) {
+                        window.stepToNextValidIndex(dir > 0 ? -1 : 1);
+                    }
+                    window.scrollAccum = 0;
+                    if (window.scrollVelocity === 1) {
+                        scrollThrottle.start();
+                    }
                 }
                 wheel.accepted = true;
             }        

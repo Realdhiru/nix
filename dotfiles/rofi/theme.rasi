@@ -8,7 +8,7 @@
     fg-main:             #FFFFFF;
     fg-muted:            #B0B0B0;
     
-    font:                "JetBrainsMono Nerd Font 11";
+    font:                "JetBrainsMono Nerd Font 22";
     background-color:    transparent;
     text-color:          @fg-main;
 }
@@ -21,26 +21,26 @@ window {
     y-offset:            0%;               
 
     /* --- DIMENSION CONTROLS --- */
-    width:               400px;            /* Narrowed horizontal width */
-    border:              0.2px;
+    width:               800px;            /* Narrowed horizontal width */
+    border:              0.4px;
     border-color:        @border-glass;
-    border-radius:       16px;
+    border-radius:       32px;
     background-color:    @bg-glass;
-    padding:             17px;
+    padding:             34px;
 }
 
 mainbox {
-    spacing:             12px;
+    spacing:             24px;
     children:            [ inputbar, listview ];
 }
 
 inputbar {
     spacing:             0px;              
-    padding:             10px 16px;
+    padding:             20px 32px;
     background-color:    @bg-surface;
-    border:              1px;
+    border:              2px;
     border-color:        @border-glass;
-    border-radius:       10px;
+    border-radius:       20px;
     children:            [ entry ];        /* Prompt removed to prevent icon/spacing cuts */
 }
 
@@ -53,14 +53,14 @@ listview {
     fixed-height:        false;
     dynamic:             true;
     lines:               6;                /* Shows exactly 6 applications */
-    spacing:             6px;
+    spacing:             12px;
     scrollbar:           false;
 }
 
 element {
-    padding:             10px 14px;
-    border-radius:       8px;
-    spacing:             12px;
+    padding:             20px 28px;
+    border-radius:       16px;
+    spacing:             24px;
 }
 
 element normal normal, element alternate normal {
@@ -70,13 +70,13 @@ element normal normal, element alternate normal {
 
 element selected normal {
     background-color:    @bg-selected;
-    border:              1px;
+    border:               2px;
     border-color:        rgba(255, 255, 255, 0.2);
     text-color:          @fg-main;
 }
 
 element-icon {
-    size:                24px;
+    size:                48px;
 }
 
 element-text {
