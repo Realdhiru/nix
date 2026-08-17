@@ -39,7 +39,7 @@ in
     rofi wl-clipboard cliphist
 
     # Screenshots & Recording
-    grim slurp grimblast gpu-screen-recorder gpu-screen-recorder-gtk
+    grim slurp grimblast gpu-screen-recorder-gtk
 
     # Media & Display
     mpv mpvpaper awww playerctl brightnessctl easyeffects cava loupe ffmpeg imagemagick zbar
@@ -48,7 +48,7 @@ in
     kdePackages.okular onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic
 
     # Audio & Networking
-    pwvucontrol networkmanagerapplet blueman bluetuith
+    pwvucontrol networkmanagerapplet blueman
 
     # Power & Sensors
     acpi iw lm_sensors
@@ -56,16 +56,11 @@ in
     # Desktop Integration
     libnotify polkit_gnome hypridle hyprlock quickshellWrapped qt6Packages.qtmultimedia matugen
 
-    powertop psmisc hyprsunset nodejs banner usbutils opencode repomix
+    powertop psmisc hyprsunset nodejs usbutils opencode repomix
 
     # System / Desktop Integration
     file gsettings-desktop-schemas
 
-    clamav
-    aide
-    lynis 
-
-    vulnix
     antigravity-ide
 
 

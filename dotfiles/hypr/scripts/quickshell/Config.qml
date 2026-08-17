@@ -241,7 +241,8 @@ Item {
             let jsonArr = [{ name: m.name, resW: m.resW, resH: m.resH, rate: parseInt(m.rate), x: 0, y: 0, scale: m.sysScale, transform: m.transform }];
             config.setSetting("monitors", jsonArr);
             let cacheWriteCmd = "echo 'monitor=" + monitorStr + "' > ~/.cache/hypr_power_monitor.conf";
-            config.sh(cacheWriteCmd + " ; hyprctl keyword monitor " + monitorStr + " ; ~/.config/hypr/scripts/ensure_awww.sh --restart");
+            let evalCmd = "hyprctl eval \"hl.monitor({output='" + m.name + "',mode='" + m.resW + "x" + m.resH + "@" + m.rate + "',position='0x0',scale='" + m.sysScale + "'" + (m.transform !== 0 ? ",transform=" + m.transform : "") + "})\"";
+            config.sh(cacheWriteCmd + " ; " + evalCmd + " ; ~/.config/hypr/scripts/ensure_awww.sh --restart");
             Quickshell.execDetached(["notify-send", "Display Update", "Applied: " + m.resW + "x" + m.resH + " @ " + m.rate + "Hz"]);
         } else {
             let rects = [];

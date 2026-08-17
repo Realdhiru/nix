@@ -402,8 +402,10 @@ Item {
 
             let cacheWriteCmd = "echo 'monitor=" + monitorStr + "' > ~/.cache/hypr_power_monitor.conf";
 
+            let evalCmd = "hyprctl eval \"hl.monitor({output='" + m.name + "',mode='" + m.resW + "x" + m.resH + "@" + m.rate + "',position='0x0',scale='" + m.sysScale + "',bitdepth=10" + (m.transform !== 0 ? ",transform=" + m.transform : "") + "})\"";
+
             Quickshell.execDetached(["notify-send", "Display Update", "Applied & Saved: " + m.resW + "x" + m.resH + " @ " + m.rate + "Hz"]);
-            Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; hyprctl keyword monitor " + monitorStr + " ; " + jsonCmd + " ; " + postReloadCmd]);
+            Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; " + evalCmd + " ; " + jsonCmd + " ; " + postReloadCmd]);
 
             window.debugLog("Executed single monitor apply.");
         } else {
@@ -487,7 +489,7 @@ Item {
                     monitorStr += ",transform," + r.transform;
                 }
 
-                batchCmds.push("keyword monitor " + monitorStr);
+                batchCmds.push("hl.monitor({output='" + r.name + "',mode='" + r.resW + "x" + r.resH + "@" + r.rate + "',position='" + r.x + "x" + r.y + "',scale='" + r.sysScale + "',bitdepth=10" + (r.transform !== 0 ? ",transform=" + r.transform : "") + "})");
                 confLines.push("monitor=" + monitorStr);
                 summaryString += r.name + " ";
 
@@ -497,7 +499,7 @@ Item {
                 });
             }
 
-            let fullHyprCmd = "hyprctl --batch '" + batchCmds.join(" ; ") + "'";
+            let fullHyprCmd = batchCmds.map(lua => "hyprctl eval '" + lua.replace(/'/g, "'\\''") + "'").join(" ; ");
             let safeJson = JSON.stringify(jsonMonitorsArray).replace(/'/g, "'\\''");
             let jsonCmd = "jq '.monitors = " + safeJson + "' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
             let postReloadCmd = "~/.config/hypr/scripts/ensure_awww.sh --restart";

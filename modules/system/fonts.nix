@@ -13,6 +13,6 @@
   fonts.fontconfig = {
     enable = true;
     hinting.style = "slight";
-    subpixel.rgba = "rgb";
+    subpixel.rgba = "none";
   };
 }

@@ -61,6 +61,5 @@
 
     # Emulation / archive tooling used alongside Lutris library
     p7zip
-    peazip
   ];
 }

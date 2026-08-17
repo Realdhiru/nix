@@ -34,7 +34,9 @@ else
 fi
 
 # Live-apply immediately — instant, no reload required for this to be visible.
-hyprctl keyword decoration:screen_shader "$NEXT_SHADER" >/dev/null
+# Lua engine: hyprctl keyword is rejected, use eval ([[EMPTY]] == no shader).
+if [ "$NEXT_SHADER" = "[[EMPTY]]" ]; then SHADER_LIVE=""; else SHADER_LIVE="$NEXT_SHADER"; fi
+hyprctl eval "hl.config({decoration={screen_shader='$SHADER_LIVE'}})" >/dev/null
 
 # Persist into the sourced config file so this survives every future
 # Hyprland reload automatically (from any trigger — BatteryPopup,

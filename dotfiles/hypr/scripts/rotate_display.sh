@@ -49,8 +49,25 @@ if [ "$NEW" != "0" ]; then
     sed -i "/^monitor=$MONITOR,/ s|\$|,transform,$NEW|" "$CACHE_FILE"
 fi
 
-# Apply live (explicit transform so restoring to 0 works)
-hyprctl keyword monitor "$BASE,transform,$NEW" >/dev/null 2>&1
+# Apply live (explicit transform so restoring to 0 works).
+# Lua engine: hyprctl keyword is rejected, use eval with the same fields.
+# Base spec format (cache-compatible): NAME,MODE,POS,SCALE[,bitdepth,B][,cm,C]
+# (fallback BASE = bare monitor name, all other fields at legacy defaults)
+IFS=',' read -r -a BASE_FIELDS <<< "$BASE"
+OUTPUT="${BASE_FIELDS[0]}"
+LUA_MON="hl.monitor({output='$OUTPUT',transform=$NEW"
+if [ "${#BASE_FIELDS[@]}" -ge 2 ]; then
+    LUA_MON="$LUA_MON,mode='${BASE_FIELDS[1]}',position='${BASE_FIELDS[2]}',scale='${BASE_FIELDS[3]}'"
+    i=4
+    while [ $i -lt "${#BASE_FIELDS[@]}" ]; do
+        case "${BASE_FIELDS[$i]}" in
+            bitdepth) LUA_MON="$LUA_MON,bitdepth=${BASE_FIELDS[$((i + 1))]}" ;;
+            cm)       LUA_MON="$LUA_MON,cm='${BASE_FIELDS[$((i + 1))]}'" ;;
+        esac
+        i=$((i + 2))
+    done
+fi
+hyprctl eval "$LUA_MON})" >/dev/null 2>&1
 
 # Re-commit the wallpaper layer surface to the rotated output. A 180° toggle
 # keeps logical dimensions, so a full daemon restart (ensure_awww.sh

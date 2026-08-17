@@ -69,7 +69,7 @@
           echo "Rebuild: generation $new_gen active WITH WARNINGS (see log above)."
         else
           echo "=== CRITICAL health-check failure — auto-rollback ==="
-          if sudo nixos-rebuild switch --rollback; then
+          if sudo nixos-rebuild switch --rollback --flake .#nixos; then
             local restored
             restored=$(readlink /nix/var/nix/profiles/system)
             if [ "$restored" = "$gen" ]; then
@@ -78,7 +78,7 @@
               echo "NOTE: profile is at $restored, expected $gen — inspect manually."
             fi
           else
-            echo "ROLLBACK COMMAND FAILED — manual: sudo nixos-rebuild switch --rollback"
+            echo "ROLLBACK COMMAND FAILED — manual: sudo nixos-rebuild switch --rollback --flake .#nixos"
           fi
           echo "Failed generation: $new_gen (kept — still selectable/bootable)"
           echo "Restored generation: $(readlink /nix/var/nix/profiles/system)"
