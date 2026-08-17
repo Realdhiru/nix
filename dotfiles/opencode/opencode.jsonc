@@ -1,0 +1,41 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "plan",
+  "permission": {
+    "*": "allow",
+    "edit": "allow",
+    "webfetch": "allow",
+    "external_directory": "ask",
+    "bash": {
+      "*": "allow",
+      "rm *": "ask",
+      "rmdir *": "ask",
+      "git push *": "ask",
+      "git checkout *": "ask"
+    }
+  },
+  "instructions": [
+    "https://opencode.school/api/instructions/sharp-operator-6100"
+  ],
+  "plugin": ["./ponytail/.opencode/plugins/ponytail.mjs"],
+  "provider": {
+    "orcarouter": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "OrcaRouter",
+      "options": {
+        "baseURL": "https://api.orcarouter.ai/v1"
+      },
+      "models": {
+        "deepseek/deepseek-v4-pro-free": {
+          "name": "DeepSeek V4 Pro (Free Tier)"
+        },
+        "deepseek/deepseek-v4-flash-free": {
+          "name": "DeepSeek V4 Flash (Free Tier)"
+        },
+        "orcarouter/free": {
+          "name": "OrcaRouter Free Auto-Router"
+        }
+      }
+    }
+  }
+}

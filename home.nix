@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   imports = [
@@ -56,6 +56,15 @@
   xdg.configFile."matugen".source =
     config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/matugen";
+
+  xdg.configFile."opencode/ponytail".source =
+    config.lib.file.mkOutOfStoreSymlink "${inputs.ponytail}";
+
+  xdg.configFile."opencode/opencode.jsonc" = {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/opencode/opencode.jsonc";
+    force = true;
+  };
 
   # VSCodium: home-manager's xdg.configFile can only ever symlink into the
   # read-only generation store, which VSCodium cannot write through. So on

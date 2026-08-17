@@ -4,7 +4,7 @@
 
 hl.window_rule({ match = { class = "^org\\.wezfurlong\\.wezterm$" }, opacity = "0.52" })
 hl.window_rule({ match = { class = "^codium$" }, opacity = "0.63" })
-hl.window_rule({ match = { class = "^antigravity-ide$" }, opacity = "0.53" })
+hl.window_rule({ match = { class = "^antigravity-ide$" }, opacity = "0.71" })
 hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.6" })
 
 -- Brave Apps
