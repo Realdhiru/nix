@@ -18,8 +18,12 @@
 #              Profile application is delegated wholesale to apply_profile.sh
 #              (single source of truth) - no power logic is duplicated here.
 #
-# Event source is udevadm (kernel button subsystem), not polling. A
-# reconnect loop keeps the watcher alive across udev restarts.
+# Event source is udevadm (kernel uevents for the ACPI lid device,
+# PNP0C0D). Each monitor run is bounded by `timeout 10`; the reconnect
+# loop restarts it and re-reads the ACPI lid state at every restart, so a
+# missed (or missing) uevent is caught at most 10s later. That watchdog
+# only acts on state TRANSITIONS (see sync_state), so the regular re-sync
+# is idempotent and never re-applies profiles.
 
 set -uo pipefail
 
@@ -86,23 +90,34 @@ apply_state() {
     fi
 }
 
-# Event loop: kernel button subsystem fires "change" uevents on lid toggles.
-# run_monitor is re-invoked if udevadm ever dies; it re-syncs from the
-# current lid state first, so a missed toggle during the gap is caught.
-run_monitor() {
-    local last state line
-    last=$(read_lid_state)
-    apply_state "$last"
+STATE_FILE="$HOME/.cache/qs_lid_state"
 
-    udevadm monitor --kernel --subsystem-match=button 2>/dev/null | while read -r line; do
+sync_state() {
+    local now prev
+    now=$(read_lid_state)
+    case "$now" in
+        open|closed) ;;
+        *) return ;;
+    esac
+    prev=$(cat "$STATE_FILE" 2>/dev/null || echo unknown)
+    if [ "$now" != "$prev" ]; then
+        apply_state "$now"
+        echo "$now" > "$STATE_FILE"
+    fi
+}
+
+# Event loop: kernel uevents for the ACPI lid device (PNP0C0D; it lives in
+# subsystem "platform", its input child in subsystem "input"). A subsystem
+# filter is deliberately NOT used -- there is no "button" subsystem on this
+# kernel, so `--subsystem-match=button` matched nothing and silently kept
+# the watcher deaf. `timeout 10` bounds each udevadm run, and sync_state()
+# re-reads the ACPI lid state at every restart, so a missed or absent
+# uevent is caught within 10s (only on transitions: idempotent).
+run_monitor() {
+    sync_state
+    timeout 10 udevadm monitor --kernel 2>/dev/null | while read -r line; do
         case "$line" in
-            *button*|*lid*)
-                state=$(read_lid_state)
-                if [[ "$state" != "$last" ]]; then
-                    apply_state "$state"
-                    last="$state"
-                fi
-                ;;
+            *PNP0C0D*|*lid*|*button*) sync_state ;;
         esac
     done
 }
