@@ -4,89 +4,55 @@
 # requirement: logind HandleLidSwitch stays "ignore"; suspend is manual
 # via Shift+Esc only).
 #
-# Lid close -> snapshot the active profile, display off, then power-saver
-#              (CPU EPP/turbo/RR/shader-cut via apply_profile.sh). The DPMS
-#              action is a DIRECT compositor-socket call: it is intentionally
-#              NOT idle-aware, so Coffee Mode (systemd-inhibit --what=idle,
-#              which only gates hypridle's idle detection) can never prevent
-#              or delay it.
-# Lid open  -> display on, then restore the EXACT profile that was active
-#              before close (snapshot in ~/.cache/qs_lid_prev_profile; the
-#              marker's existence arms the restore, mirroring apply_profile's
-#              qs_pre_saver_shader.conf pattern). AC -> performance / battery
-#              -> balanced fallback only when no valid snapshot exists.
-#              Profile application is delegated wholesale to apply_profile.sh
-#              (single source of truth) - no power logic is duplicated here.
+# Lid close -> lock session (existing Quickshell Lock.qml lock, same
+# mechanism hypridle uses), then display off, then power-saver via
+# apply_profile.sh. The DPMS action is a DIRECT compositor-socket call:
+# it is intentionally NOT idle-aware, so Coffee Mode
+# (systemd-inhibit --what=idle, which only gates hypridle's idle
+# detection) can never prevent or delay it.
+# Lid open  -> display on ONLY. The power profile is left untouched:
+# power-saver persists after opening (no save/restore of any profile;
+# no power-profile transition on the open path).
 #
 # Event source is udevadm (kernel uevents for the ACPI lid device,
 # PNP0C0D). Each monitor run is bounded by `timeout 10`; the reconnect
-# loop restarts it and re-reads the ACPI lid state at every restart, so a
-# missed (or missing) uevent is caught at most 10s later. That watchdog
+# loop restarts it and re-reads the ACPI lid state at every restart, so
+# a missed (or missing) uevent is caught at most 10s later. That watchdog
 # only acts on state TRANSITIONS (see sync_state), so the regular re-sync
-# is idempotent and never re-applies profiles.
+# is idempotent and never re-applies actions.
 
 set -uo pipefail
 
 LID=$(echo /proc/acpi/button/lid/LID*)
 APPLY_PROFILE="$HOME/.config/hypr/scripts/quickshell/battery/apply_profile.sh"
-PROFILE_STATE="/tmp/qs_power_profile"
-PREV_PROFILE="$HOME/.cache/qs_lid_prev_profile"
+LOCK_SH="$HOME/.config/hypr/scripts/lock.sh"
 
 read_lid_state() {
     awk '{print $2}' "$LID/state" 2>/dev/null
 }
 
-ac_online() {
-    local f v
-    for f in /sys/class/power_supply/*/online; do
-        [ -r "$f" ] || continue
-        read -r v < "$f"
-        printf '%s' "$v"
-        return
-    done
-    printf '0'
+locked() {
+    pgrep -f 'quickshell.*Lock\.qml' >/dev/null
 }
 
-save_prev_profile() {
-    local cur
-    cur=$(cat "$PROFILE_STATE" 2>/dev/null)
-    case "$cur" in
-        performance|balanced|power-saver)
-            # only the FIRST snapshot in a close-cycle survives
-            [[ -f "$PREV_PROFILE" ]] || echo "$cur" > "$PREV_PROFILE"
-            ;;
-    esac
-}
-
-restore_prev_profile() {
-    local prev
-    prev=$(cat "$PREV_PROFILE" 2>/dev/null)
-    case "$prev" in
-        performance|balanced|power-saver)
-            "$APPLY_PROFILE" "$prev"
-            ;;
-        *)
-            # no valid snapshot (first boot with lid closed, /tmp cleared,
-            # corruption) -> keep the established AC/BAT default
-            if [[ "$(ac_online)" == "1" ]]; then
-                "$APPLY_PROFILE" performance
-            else
-                "$APPLY_PROFILE" balanced
-            fi
-            ;;
-    esac
-    rm -f "$PREV_PROFILE"
+lock_session() {
+    if ! locked; then
+        "$LOCK_SH" >/dev/null 2>&1 &
+        for _ in {1..20}; do
+            locked && break
+            sleep 0.1
+        done
+    fi
 }
 
 apply_state() {
     local state="$1"
     if [[ "$state" == "closed" ]]; then
-        save_prev_profile
+        lock_session
         hyprctl eval "hl.dispatch(hl.dsp.dpms({action='off'}))"
         "$APPLY_PROFILE" power-saver
     else
         hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))"
-        restore_prev_profile
     fi
 }
 
