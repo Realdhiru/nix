@@ -74,6 +74,14 @@ services.udev.extraRules = ''
 
     SUBSYSTEM=="power_supply", KERNEL=="ucsi-source-psy-USBC000:001", ATTR{online}=="0", \
       RUN+="${pkgs.tlp}/bin/tlp bat"
+
+    # --- 4. LID SWITCH uaccess (event-driven lid watcher) ---
+    # The lid switch is an input device (SW_LID) and emits NO kernel
+    # uevent, so lid-monitor.sh reads it via evdev instead. Grant the
+    # active session ACL access ONLY to this device: matched narrowly on
+    # the PNP0C0D device path, so no other /dev/input/event* node is
+    # affected. Never widen this to the input group or all event nodes.
+    SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_PATH}=="pci-0000:00:1f.0-platform-PNP0C0D:01", ENV{ID_INPUT_SWITCH}=="1", TAG+="uaccess"
   '';
   
 }
