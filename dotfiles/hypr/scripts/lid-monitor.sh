@@ -15,11 +15,13 @@
 # no power-profile transition on the open path).
 #
 # Event source is udevadm (kernel uevents for the ACPI lid device,
-# PNP0C0D). Each monitor run is bounded by `timeout 10`; the reconnect
-# loop restarts it and re-reads the ACPI lid state at every restart, so
-# a missed (or missing) uevent is caught at most 10s later. That watchdog
-# only acts on state TRANSITIONS (see sync_state), so the regular re-sync
-# is idempotent and never re-applies actions.
+# PNP0C0D). Each udevadm run is bounded by `timeout 2`; the loop restarts
+# it immediately (0.2s backoff). sync_state() at every restart re-reads
+# the ACPI lid state: this is the ~2s polling safety net -- a uevent
+# missed in the tiny blind window between runs is caught at the next
+# restart (transitions only, idempotent). Worst-case reaction ~2.2s;
+# normal case: immediate on uevent. The 11s blind window of the old
+# timeout-10/sleep-1 cycle is gone.
 
 set -uo pipefail
 
@@ -76,12 +78,12 @@ sync_state() {
 # subsystem "platform", its input child in subsystem "input"). A subsystem
 # filter is deliberately NOT used -- there is no "button" subsystem on this
 # kernel, so `--subsystem-match=button` matched nothing and silently kept
-# the watcher deaf. `timeout 10` bounds each udevadm run, and sync_state()
+# the watcher deaf. `timeout 2` bounds each udevadm run, and sync_state()
 # re-reads the ACPI lid state at every restart, so a missed or absent
-# uevent is caught within 10s (only on transitions: idempotent).
+# uevent is caught within ~2s (only on transitions: idempotent).
 run_monitor() {
     sync_state
-    timeout 10 udevadm monitor --kernel 2>/dev/null | while read -r line; do
+    timeout 2 udevadm monitor --kernel 2>/dev/null | while read -r line; do
         case "$line" in
             *PNP0C0D*|*lid*|*button*) sync_state ;;
         esac
@@ -90,5 +92,5 @@ run_monitor() {
 
 while true; do
     run_monitor
-    sleep 1
+    sleep 0.2
 done
