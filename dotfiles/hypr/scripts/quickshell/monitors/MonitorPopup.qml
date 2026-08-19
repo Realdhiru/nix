@@ -60,7 +60,7 @@ Item {
     // STATE & MATH
     // -------------------------------------------------------------------------
     property int activeEditIndex: 0
-    property int activeFocusIndex: 0 // 0: Res, 1: Clock, 2: Frame, 3: Apply
+    property int activeFocusIndex: 0 // 0: Res, 1: Clock, 2: Frame, 3: Scale, 4: Apply
     property real uiScale: 0.10
 
     // Wayland Absolute Anchor tracking
@@ -84,6 +84,7 @@ Item {
 
     property color selectedResAccent: window.mauve
     property color selectedRateAccent: window.blue
+    property color selectedScaleAccent: window.green
 
     property int currentTransform: monitorsModel.count > 0 ? monitorsModel.get(window.activeEditIndex).transform : 0
     property bool currentIsPortrait: currentTransform === 1 || currentTransform === 3
@@ -118,7 +119,7 @@ Item {
                     window.activeEditIndex = (window.activeEditIndex + 1) % monitorsModel.count;
                 }
             } else {
-                window.activeFocusIndex = (window.activeFocusIndex + 1) % 4;
+                window.activeFocusIndex = (window.activeFocusIndex + 1) % 5;
             }
             event.accepted = true;
         } else if (event.key === Qt.Key_Backtab) {
@@ -127,7 +128,7 @@ Item {
                     window.activeEditIndex = (window.activeEditIndex - 1 + monitorsModel.count) % monitorsModel.count;
                 }
             } else {
-                window.activeFocusIndex = (window.activeFocusIndex - 1 + 4) % 4;
+                window.activeFocusIndex = (window.activeFocusIndex - 1 + 5) % 5;
             }
             event.accepted = true;
         } else if (event.key === Qt.Key_Left) {
@@ -139,7 +140,7 @@ Item {
         } else if (event.key === Qt.Key_Down) {
             handleArrowKey("Down"); event.accepted = true;
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            if (activeFocusIndex === 3) {
+            if (activeFocusIndex === 4) {
                 window.applyPressed = true;
                 window.triggerApply();
             }
@@ -189,6 +190,11 @@ Item {
             if (dir === "Left" && cIdx > 0) cIdx--;
             else if (dir === "Right" && cIdx < sliderContainer.rates.length - 1) cIdx++;
             sliderContainer.updateSelectionVisual(cIdx);
+        } else if (activeFocusIndex === 3) {
+            let cIdx = scaleSliderContainer.currentIndex;
+            if (dir === "Left" && cIdx > 0) cIdx--;
+            else if (dir === "Right" && cIdx < scaleSliderContainer.scales.length - 1) cIdx++;
+            scaleSliderContainer.updateSelectionVisual(cIdx);
         }
     }
 
@@ -891,8 +897,6 @@ Item {
                                                 anchors.centerIn: parent
                                                 spacing: window.s(2)
 
-                                                // Restored Rotation for Multi-Monitor cards
-                                                rotation: model.transform * 90
                                                 Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
 
                                                 Text {
@@ -1382,6 +1386,143 @@ Item {
                         }
                     }
 
+                    Item { Layout.preferredHeight: window.s(2) }
+
+                    // --- SCALE SLIDER SECTION ---
+                    Item {
+                        id: scaleSliderContainer
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: window.s(45)
+                        Layout.leftMargin: window.s(6)
+                        Layout.rightMargin: window.s(6)
+
+                        property var scales: [1.0, 1.25, 1.33, 1.5, 1.75, 2.0, 2.5]
+                        property var scaleLabels: ["1x", "1.25", "1.33", "1.5", "1.75", "2x", "2.5x"]
+                        property var scaleColors: [window.red, window.mauve, window.blue, window.sapphire, window.teal, window.pink, window.yellow]
+
+                        property int currentIndex: {
+                            if (monitorsModel.count === 0) return 0;
+                            let currentVal = parseFloat(monitorsModel.get(window.activeEditIndex).sysScale) || 1.0;
+                            let closestIdx = 0;
+                            let minDiff = 9999;
+                            for (let i = 0; i < scales.length; i++) {
+                                let diff = Math.abs(scales[i] - currentVal);
+                                if (diff < minDiff) {
+                                    minDiff = diff;
+                                    closestIdx = i;
+                                }
+                            }
+                            return closestIdx;
+                        }
+
+                        property real visualPct: currentIndex / (scales.length - 1)
+
+                        onCurrentIndexChanged: {
+                            if (!scaleSliderMa.pressed) visualPct = currentIndex / (scales.length - 1);
+                        }
+
+                        function updateSelectionVisual(idx) {
+                            if (monitorsModel.count === 0) return;
+                            visualPct = idx / (scales.length - 1);
+                            monitorsModel.setProperty(window.activeEditIndex, "sysScale", scales[idx]);
+                            window.selectedScaleAccent = scaleColors[idx];
+                            delayedLayoutUpdate.restart();
+                        }
+
+                        Rectangle {
+                            id: scaleTrack
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.leftMargin: window.s(15)
+                            anchors.rightMargin: window.s(15)
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.verticalCenterOffset: window.s(-10)
+                            height: window.s(12)
+                            radius: window.s(6)
+                            color: window.mantle
+                            border.color: window.crust
+                            border.width: 1
+
+                            Rectangle {
+                                id: scaleTrackFill
+                                width: Math.max(0, scaleKnob.x + scaleKnob.width / 2)
+                                height: parent.height
+                                radius: parent.radius
+                                color: window.selectedScaleAccent
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                            }
+
+                            Rectangle {
+                                id: scaleKnob
+                                width: window.s(24)
+                                height: window.s(24)
+                                radius: window.s(12)
+                                color: scaleSliderMa.containsPress ? window.selectedScaleAccent : window.text
+                                anchors.verticalCenter: parent.verticalCenter
+                                x: (scaleSliderContainer.visualPct * parent.width) - width / 2
+
+                                Behavior on x {
+                                    enabled: !scaleSliderMa.pressed
+                                    NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+                                }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+
+                                border.width: (scaleSliderMa.containsMouse || window.activeFocusIndex === 3) ? window.s(4) : 0
+                                border.color: Qt.alpha(window.selectedScaleAccent, 0.4)
+                                Behavior on border.width { NumberAnimation { duration: 150 } }
+                            }
+                        }
+
+                        Repeater {
+                            model: scaleSliderContainer.scales.length
+                            Item {
+                                x: scaleTrack.x + (index / (scaleSliderContainer.scales.length - 1)) * scaleTrack.width
+                                y: scaleTrack.y + window.s(20)
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: scaleSliderContainer.scaleLabels[index]
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: window.s(13)
+                                    font.weight: scaleSliderContainer.currentIndex === index ? Font.Bold : Font.Normal
+                                    color: scaleSliderContainer.currentIndex === index ? window.selectedScaleAccent : window.overlay0
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: scaleSliderMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+
+                            function updateSelection(mouseX, snapToGrid) {
+                                if (monitorsModel.count === 0) return;
+                                window.activeFocusIndex = 3;
+
+                                let pct = (mouseX - scaleTrack.x) / scaleTrack.width;
+                                pct = Math.max(0, Math.min(1, pct));
+                                let idx = Math.round(pct * (scaleSliderContainer.scales.length - 1));
+
+                                if (snapToGrid) {
+                                    scaleSliderContainer.visualPct = idx / (scaleSliderContainer.scales.length - 1);
+                                } else {
+                                    scaleSliderContainer.visualPct = pct;
+                                }
+
+                                monitorsModel.setProperty(window.activeEditIndex, "sysScale", scaleSliderContainer.scales[idx]);
+                                window.selectedScaleAccent = scaleSliderContainer.scaleColors[idx];
+                                delayedLayoutUpdate.restart();
+                            }
+
+                            onPressed: (mouse) => updateSelection(mouse.x, false)
+                            onPositionChanged: (mouse) => { if (pressed) updateSelection(mouse.x, false) }
+                            onReleased: (mouse) => updateSelection(mouse.x, true)
+                            onCanceled: () => scaleSliderContainer.visualPct = scaleSliderContainer.currentIndex / (scaleSliderContainer.scales.length - 1)
+                        }
+                    }
+
                     Item { Layout.preferredHeight: window.s(15) }
 
                     // ==========================================
@@ -1398,8 +1539,8 @@ Item {
                             anchors.fill: applyBtn
                             shadowEnabled: true
                             shadowColor: window.selectedRateAccent
-                            shadowBlur: window.applyHovered || window.activeFocusIndex === 3 ? 1.2 : 0.6
-                            shadowOpacity: window.applyHovered || window.activeFocusIndex === 3 ? 0.6 : 0.2
+                            shadowBlur: window.applyHovered || window.activeFocusIndex === 4 ? 1.2 : 0.6
+                            shadowOpacity: window.applyHovered || window.activeFocusIndex === 4 ? 0.6 : 0.2
                             shadowVerticalOffset: window.s(4)
                             z: -1
                             Behavior on shadowBlur { NumberAnimation { duration: 300 } }
@@ -1426,10 +1567,10 @@ Item {
                                 }
                             }
 
-                            border.color: window.activeFocusIndex === 3 ? window.crust : "transparent"
-                            border.width: window.activeFocusIndex === 3 ? window.s(2) : 0
+                            border.color: window.activeFocusIndex === 4 ? window.crust : "transparent"
+                            border.width: window.activeFocusIndex === 4 ? window.s(2) : 0
 
-                            scale: window.applyPressed ? 0.94 : (window.applyHovered || window.activeFocusIndex === 3 ? 1.04 : 1.0)
+                            scale: window.applyPressed ? 0.94 : (window.applyHovered || window.activeFocusIndex === 4 ? 1.04 : 1.0)
                             Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
 
                             Rectangle {
@@ -1474,7 +1615,7 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
 
-                            onEntered: { window.applyHovered = true; window.activeFocusIndex = 3; }
+                            onEntered: { window.applyHovered = true; window.activeFocusIndex = 4; }
                             onExited: window.applyHovered = false
                             onPressed: window.applyPressed = true
                             onReleased: window.applyPressed = false

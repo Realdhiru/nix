@@ -737,6 +737,50 @@ Item {
                     anchors.margins: Math.round(25 * window.sf)
                     spacing: Math.round(15 * window.sf)
 
+                    // Year Percentage Bar
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.bottomMargin: Math.round(10 * window.sf)
+                        spacing: Math.round(10 * window.sf)
+                        
+                        property int currentYear: window.currentTime.getFullYear()
+                        property bool isLeapYear: (currentYear % 4 === 0 && currentYear % 100 !== 0) || (currentYear % 400 === 0)
+                        property int daysInYear: isLeapYear ? 366 : 365
+                        property int dayOfYear: Math.floor((window.currentTime - new Date(currentYear, 0, 0)) / (1000 * 60 * 60 * 24))
+                        property real yearPct: dayOfYear / daysInYear
+                        
+                        Text {
+                            text: parent.currentYear.toString()
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: Math.round(11 * window.sf)
+                            color: window.subtext0
+                        }
+                        
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.round(4 * window.sf)
+                            radius: Math.round(2 * window.sf)
+                            color: window.surface0
+                            
+                            Rectangle {
+                                width: parent.width * parent.parent.yearPct
+                                height: parent.height
+                                radius: parent.radius
+                                color: window.textAccent
+                                Behavior on width { NumberAnimation { duration: 1000; easing.type: Easing.OutQuart } }
+                            }
+                        }
+                        
+                        Text {
+                            text: Math.round(parent.yearPct * 100).toString() + "%"
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: Math.round(11 * window.sf)
+                            color: window.subtext0
+                        }
+                    }
+
                     RowLayout {
                         Layout.fillWidth: true
                         
@@ -859,6 +903,99 @@ Item {
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: Math.round(20 * window.sf)
+                    
+                    Process {
+                        id: searchCityProc
+                        property string query: ""
+                        command: ["bash", "-c", window.scriptsDir + "/search_city.sh '" + query + "'"]
+                        running: false
+                        stdout: StdioCollector {
+                            onStreamFinished: {
+                                searchResultsModel.clear();
+                                try {
+                                    let json = JSON.parse(this.text);
+                                    for (let i = 0; i < json.length; i++) {
+                                        searchResultsModel.append(json[i]);
+                                    }
+                                    searchResultsList.visible = true;
+                                } catch(e) {}
+                            }
+                        }
+                    }
+
+                    // CITY SEARCH UI
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: Math.round(10 * window.sf)
+                        
+                        TextField {
+                            id: citySearchInput
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.round(36 * window.sf)
+                            placeholderText: "Search city..."
+                            font.family: "JetBrains Mono"
+                            font.pixelSize: Math.round(12 * window.sf)
+                            color: window.text
+                            placeholderTextColor: window.overlay0
+                            background: Rectangle {
+                                color: window.surface0
+                                radius: Math.round(18 * window.sf)
+                                border.color: citySearchInput.activeFocus ? window.textAccent : "transparent"
+                                border.width: 1
+                            }
+                            leftPadding: Math.round(15 * window.sf)
+                            rightPadding: Math.round(15 * window.sf)
+                            
+                            onAccepted: {
+                                if (text.length > 0) {
+                                    searchCityProc.query = text;
+                                    searchCityProc.running = false;
+                                    searchCityProc.running = true;
+                                }
+                            }
+                        }
+                        
+                        ListModel { id: searchResultsModel }
+                        
+                        ListView {
+                            id: searchResultsList
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.min(count * Math.round(40 * window.sf), Math.round(160 * window.sf))
+                            model: searchResultsModel
+                            visible: false
+                            clip: true
+                            spacing: Math.round(4 * window.sf)
+                            
+                            delegate: Rectangle {
+                                width: searchResultsList.width
+                                height: Math.round(36 * window.sf)
+                                radius: Math.round(8 * window.sf)
+                                color: itemMa.containsMouse ? window.surface1 : window.surface0
+                                
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: Math.round(15 * window.sf)
+                                    text: model.name + ", " + model.country
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: Math.round(12 * window.sf)
+                                    color: window.text
+                                }
+                                
+                                MouseArea {
+                                    id: itemMa
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        searchResultsList.visible = false;
+                                        citySearchInput.text = "";
+                                        Quickshell.execDetached(["bash", "-c", window.scriptsDir + "/set_city.sh " + model.id]);
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     RowLayout {
                         Layout.fillWidth: true

@@ -8,8 +8,8 @@ Item {
     visible: false
 
     // Native fallbacks prevent math errors if a widget forgets to pass dimensions
-    property real currentWidth: Screen.width
-    property real currentHeight: Screen.height
+    property real currentWidth: typeof masterWindow !== "undefined" ? masterWindow.width : Screen.width
+    property real currentHeight: typeof masterWindow !== "undefined" ? masterWindow.height : Screen.height
     
     // Zero-cost state binding. Inherits directly from the global RAM state.
     property real uiScale: typeof Config !== "undefined" ? Config.uiScale : 1.0

@@ -272,6 +272,11 @@ PanelWindow {
         masterWindow.animH = finalH;
         masterWindow.targetW = finalW;
         masterWindow.targetH = finalH;
+
+        if (currentItem) {
+            if (currentItem.layoutWidth !== undefined) currentItem.layoutWidth = t.w;
+            if (currentItem.layoutHeight !== undefined) currentItem.layoutHeight = t.h;
+        }
     }
 
     onGlobalUiScaleChanged: { handleNativeScreenChange(); }

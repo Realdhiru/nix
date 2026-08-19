@@ -44,20 +44,27 @@ else
     echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
 fi
 
-INT_MON=$(hyprctl monitors -j | jq -r '.[] | select(.name | test("eDP|LVDS|MIPI")).name' | head -n1)
+MONITORS_JSON=$(hyprctl monitors -j 2>/dev/null)
+INT_MON=$(echo "$MONITORS_JSON" | jq -r '.[] | select(.name | test("eDP|LVDS|MIPI")).name' | head -n1)
 
 if [ -n "$INT_MON" ]; then
-    RES=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n) | "\(.width)x\(.height)"')
-    SCALE=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).scale')
-    TRANSFORM=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).transform')
+    RES=$(echo "$MONITORS_JSON" | jq -r --arg n "$INT_MON" '.[] | select(.name==$n) | "\(.width)x\(.height)"')
+    SCALE=$(echo "$MONITORS_JSON" | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).scale')
+    TRANSFORM=$(echo "$MONITORS_JSON" | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).transform')
     TRANSFORM_STR=""
-    [ -n "$TRANSFORM" ] && [ "$TRANSFORM" != "0" ] && TRANSFORM_STR=",transform,$TRANSFORM"
+    
+    # If transform is empty or null, default to 0
+    [ -z "$TRANSFORM" ] || [ "$TRANSFORM" = "null" ] && TRANSFORM=0
+    
+    [ "$TRANSFORM" != "0" ] && TRANSFORM_STR=",transform,$TRANSFORM"
 
     echo "monitor=$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10$TRANSFORM_STR" > "$HOME/.cache/hypr_power_monitor.conf"
 
-    CUR_RR=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).refreshRate' | awk '{print int($1 + 0.5)}')
-    if [ "$CUR_RR" != "${targetRR}" ]; then
-        hyprctl eval "hl.monitor({output='$INT_MON',mode='$RES@${targetRR}',position='auto',scale='$SCALE',bitdepth=10,transform=${TRANSFORM:-0}})" 2>/dev/null
+    CUR_RR=$(echo "$MONITORS_JSON" | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).refreshRate' | awk '{print int($1 + 0.5)}')
+    
+    # Only update if we successfully parsed the current refresh rate and it differs from target
+    if [ -n "$CUR_RR" ] && [ "$CUR_RR" != "0" ] && [ "$CUR_RR" != "${targetRR}" ]; then
+        hyprctl eval "hl.monitor({output='$INT_MON',mode='$RES@${targetRR}',position='auto',scale='$SCALE',bitdepth=10,transform=$TRANSFORM})" 2>/dev/null
     fi
 fi
 

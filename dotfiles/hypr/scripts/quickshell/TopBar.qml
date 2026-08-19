@@ -687,6 +687,7 @@ if (diff > 0) {
                                     MouseArea {
                                         id: wsPillMouse
                                         hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
                                         anchors.fill: parent
                                         enabled: wsPill.isItemVisible
                                         onClicked: (event) => {
@@ -1086,29 +1087,44 @@ if (diff > 0) {
                                 }
                             }
 
-                            RowLayout {
-                                visible: notifLayout.isOsd
-                                spacing: barWindow.s(16)
-
-                                Text {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    font.family: "Iosevka Nerd Font"
-                                    font.pixelSize: barWindow.s(18)
-                                    color: mocha.text
-                                    text: {
-                                        if (!notifLayout.n) return "";
-                                        if (notifLayout.n.summary === "Volume") {
-                                            if (notifLayout.n.body === "Muted") return "󰝟";
-                                            return "󰕾";
+                                RowLayout {
+                                    visible: notifLayout.isOsd
+                                    spacing: barWindow.s(16)
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (notifLayout.n) {
+                                                if (notifLayout.n.summary === "Volume" || notifLayout.n.summary === "Microphone") {
+                                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle volume"])
+                                                } else if (notifLayout.n.summary === "Brightness") {
+                                                    // Note: We don't have a dedicated brightness popup yet, but we can open quickactions
+                                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle quickactions"])
+                                                }
+                                            }
                                         }
-                                        if (notifLayout.n.summary === "Brightness") return "󰃠";
-                                        if (notifLayout.n.summary === "Microphone") {
-                                            if (notifLayout.n.body === "Muted") return "󰍭";
-                                            return "󰍬";
-                                        }
-                                        return "";
                                     }
-                                }
+
+                                    Text {
+                                        Layout.alignment: Qt.AlignVCenter
+                                        font.family: "Iosevka Nerd Font"
+                                        font.pixelSize: barWindow.s(18)
+                                        color: mocha.text
+                                        text: {
+                                            if (!notifLayout.n) return "";
+                                            if (notifLayout.n.summary === "Volume") {
+                                                if (notifLayout.n.body === "Muted") return "󰝟";
+                                                return "󰕾";
+                                            }
+                                            if (notifLayout.n.summary === "Brightness") return "󰃠";
+                                            if (notifLayout.n.summary === "Microphone") {
+                                                if (notifLayout.n.body === "Muted") return "󰍭";
+                                                return "󰍬";
+                                            }
+                                            return "";
+                                        }
+                                    }
 
                                 Item {
                                     id: sliderContainer

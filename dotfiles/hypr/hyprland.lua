@@ -22,6 +22,10 @@ local function apply_power_monitor()
     if not line then
         return
     end
+    -- Strip the 'monitor=' prefix if it exists
+    if line:sub(1, 8) == "monitor=" then
+        line = line:sub(9)
+    end
     -- Split on commas; unknown trailing key/value pairs are ignored.
     local fields = {}
     for field in line:gmatch("[^,]+") do
