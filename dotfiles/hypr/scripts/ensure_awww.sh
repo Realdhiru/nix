@@ -35,14 +35,7 @@ esac
 # "awww-daemon". Instead, match the immutable Nix wrapper suffix of the
 # process's resolved executable so we only ever act on the real daemon.
 daemon_pids() {
-  local pid exe
-  for pid in /proc/[0-9]*; do
-    [ -r "$pid/exe" ] || continue
-    exe=$(readlink "$pid/exe" 2>/dev/null) || continue
-    case "$exe" in
-      */bin/.awww-daemon-wrapped) printf '%s\n' "${pid#/proc/}" ;;
-    esac
-  done
+  pidof .awww-daemon-wrapped || true
 }
 
 is_running() { [ -n "$(daemon_pids)" ]; }
