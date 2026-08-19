@@ -1,7 +1,7 @@
 * {
     bg-glass: rgba(0,0,0,0.45);
 
-    bg-surface: {{colors.surface_container_low.default.rgba}};
+    bg-surface: {{colors.surface_container_lowest.default.rgba}};
     bg-selected: {{colors.primary_container.default.rgba}};
     border-glass: {{colors.primary.default.rgba}};
 

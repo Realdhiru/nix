@@ -36,6 +36,27 @@ Item {
     property color lavender: "#b4befe"
     property color blue: "#89b4fa"
 
+    Process {
+        id: searchCityProc
+        property string query: ""
+        command: ["bash", "-c", window.scriptsDir + "/search_city.sh '" + query + "'"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                searchResultsModel.clear();
+                try {
+                    let json = JSON.parse(this.text);
+                    for (let i = 0; i < json.length; i++) {
+                        searchResultsModel.append(json[i]);
+                    }
+                    searchResultsList.visible = true;
+                } catch(e) {}
+            }
+        }
+    }
+
+    ListModel { id: searchResultsModel }
+
     Rectangle {
         anchors.fill: parent
         color: "#d91e1e2e" // Translucent base
@@ -74,7 +95,7 @@ Item {
                 font.family: "JetBrains Mono"
                 font.pixelSize: s(11)
                 color: window.subtext0
-                text: "Please enter your OpenWeatherMap API key and default City ID."
+                text: "Please enter your OpenWeatherMap API key and search for a default city."
                 wrapMode: Text.WordWrap
             }
 
@@ -102,10 +123,10 @@ Item {
                 }
 
                 TextField {
-                    id: cityIdInput
-                    Layout.preferredWidth: s(120)
+                    id: citySearchInput
+                    Layout.fillWidth: true
                     Layout.preferredHeight: s(36)
-                    placeholderText: "City ID (e.g. 5128581)"
+                    placeholderText: "Search city..."
                     font.family: "JetBrains Mono"
                     font.pixelSize: s(12)
                     color: window.text
@@ -113,11 +134,40 @@ Item {
                     background: Rectangle {
                         color: window.surface0
                         radius: s(18)
-                        border.color: cityIdInput.activeFocus ? window.lavender : "transparent"
+                        border.color: citySearchInput.activeFocus ? window.lavender : "transparent"
                         border.width: 1
                     }
                     leftPadding: s(15)
                     rightPadding: s(15)
+
+                    Timer {
+                        id: searchDebouncer
+                        interval: 400
+                        onTriggered: {
+                            if (citySearchInput.text.length > 2) {
+                                searchCityProc.query = citySearchInput.text;
+                                searchCityProc.running = false;
+                                searchCityProc.running = true;
+                            }
+                        }
+                    }
+
+                    onTextEdited: {
+                        if (text.length > 2) {
+                            searchDebouncer.restart();
+                        } else {
+                            searchDebouncer.stop();
+                            searchResultsList.visible = false;
+                            searchResultsModel.clear();
+                        }
+                    }
+                }
+                
+                // Hidden City ID input to store the selection
+                Text {
+                    id: cityIdInput
+                    visible: false
+                    text: ""
                 }
 
                 Rectangle {
@@ -145,6 +195,45 @@ Item {
                             if (apiKeyInput.text.length > 0 && cityIdInput.text.length > 0) {
                                 Quickshell.execDetached(["bash", window.scriptsDir + "/setup_weather.sh", apiKeyInput.text, cityIdInput.text]);
                             }
+                        }
+                    }
+                }
+            }
+
+            ListView {
+                id: searchResultsList
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(count * s(40), s(160))
+                model: searchResultsModel
+                visible: false
+                clip: true
+                spacing: s(4)
+
+                delegate: Rectangle {
+                    width: searchResultsList.width
+                    height: s(36)
+                    radius: s(8)
+                    color: itemMa.containsMouse ? window.surface1 : window.surface0
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        anchors.leftMargin: s(15)
+                        text: model.name + ", " + model.country
+                        font.family: "JetBrains Mono"
+                        font.pixelSize: s(12)
+                        color: window.text
+                    }
+
+                    MouseArea {
+                        id: itemMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            searchResultsList.visible = false;
+                            citySearchInput.text = model.name + ", " + model.country;
+                            cityIdInput.text = model.id;
                         }
                     }
                 }

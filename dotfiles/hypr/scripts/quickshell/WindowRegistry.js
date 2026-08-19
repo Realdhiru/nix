@@ -11,7 +11,7 @@ const WIDGETS = {
     "clipboard": { w: 800,  h: 700, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "clipboard/ClipboardManager.qml" },
     "monitors":  { w: 800,  h: 720, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "monitors/MonitorPopup.qml" },
     "focustime": { w: 900,  h: 700, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "focustime/FocusTimePopup.qml" },
-    "weather_setup": { w: 500,  h: 150, anchor: "center",     mx: 0, my: 0,  mr: 0, mb: 0, path: "calendar/WeatherSetupPopup.qml" },
+    "weather_setup": { w: 500,  h: 350, anchor: "center",     mx: 0, my: 0,  mr: 0, mb: 0, path: "calendar/WeatherSetupPopup.qml" },
     "calendar":      { w: 1450, h: 510, anchor: "top-center", mx: 0, my: 60, mr: 0, mb: 0, path: "calendar/CalendarPopup.qml" },
     "wallpaper": { w: -1,   h: 650, anchor: "center-fill",   mx: 0, my: 0,  mr: 0, mb: 0, path: "wallpaper/WallpaperPicker.qml" },
     "music":     { w: 700,  h: 650, anchor: "top-left",      mx: 5, my: 60, mr: 0, mb: 0, path: "music/MusicPopup.qml" }

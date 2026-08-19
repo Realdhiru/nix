@@ -14,4 +14,4 @@ jq -n --arg api "$API_KEY" --arg city "$CITY_ID" '{api_key: $api, city_id: $city
 ~/.config/hypr/scripts/quickshell/calendar/weather.sh --getdata
 
 # Close the setup popup
-hyprctl eval "hl.dsp.focus({ workspace = 'name:dummy' })"
+~/.config/hypr/scripts/qs_manager.sh close

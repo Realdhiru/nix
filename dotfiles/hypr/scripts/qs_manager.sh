@@ -32,10 +32,16 @@ if [[ "$ACTION" != "close" && "$ACTION" != "open" && "$ACTION" != "toggle" && "$
     # Send IPC command directly to Main.qml via Quickshell's native IPC handler
     "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
 
-    if [[ "$TARGET" == "move" ]]; then
-        hyprctl eval "hl.dsp.window.move({ workspace = '$ACTION' })" >/dev/null 2>&1
+    if [[ "$ACTION" =~ ^[0-9]+$ ]]; then
+        WS_ARG="$ACTION"
     else
-        hyprctl eval "hl.dsp.focus({ workspace = '$ACTION' })" >/dev/null 2>&1
+        WS_ARG="'$ACTION'"
+    fi
+
+    if [[ "$TARGET" == "move" ]]; then
+        hyprctl eval "hl.dispatch(hl.dsp.window.move({ workspace = $WS_ARG }))" >/dev/null 2>&1
+    else
+        hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = $WS_ARG }))" >/dev/null 2>&1
     fi
     exit 0
 fi
