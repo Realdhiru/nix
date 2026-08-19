@@ -17,4 +17,4 @@ jq --arg id "$CITY_ID" '.city_id = $id' "$SECRET_FILE" > "$TMP_FILE"
 mv "$TMP_FILE" "$SECRET_FILE"
 
 # Trigger a weather refresh
-~/.config/hypr/scripts/quickshell/calendar/weather.sh --json >/dev/null 2>&1 &
+~/.config/hypr/scripts/quickshell/calendar/weather.sh --getdata

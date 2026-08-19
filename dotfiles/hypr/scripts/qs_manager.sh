@@ -28,13 +28,15 @@ ACTION="${1:-}"
 TARGET="${2:-}"
 SUBTARGET="${3:-}"
 
-if [[ "$ACTION" =~ ^[0-9]+$ ]]; then
+if [[ "$ACTION" != "close" && "$ACTION" != "open" && "$ACTION" != "toggle" && "$ACTION" =~ ^[0-9a-zA-Z:-]+$ ]]; then
     # Send IPC command directly to Main.qml via Quickshell's native IPC handler
     "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
 
-    CMD="workspace $ACTION"
-    [[ "$TARGET" == "move" ]] && CMD="movetoworkspace $ACTION"
-    hyprctl --batch "dispatch $CMD" >/dev/null 2>&1
+    if [[ "$TARGET" == "move" ]]; then
+        hyprctl eval "hl.dsp.window.move({ workspace = '$ACTION' })" >/dev/null 2>&1
+    else
+        hyprctl eval "hl.dsp.focus({ workspace = '$ACTION' })" >/dev/null 2>&1
+    fi
     exit 0
 fi
 
@@ -174,6 +176,12 @@ if [[ "$ACTION" == "close" ]]; then
 fi
 
 if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
+
+    if [[ "$TARGET" == "calendar" ]]; then
+        if [ ! -s "$HOME/nix/dotfiles/secrets/openweather.json" ]; then
+            TARGET="weather_setup"
+        fi
+    fi
 
     if [[ "$TARGET" == "network" ]]; then
         handle_network_prep

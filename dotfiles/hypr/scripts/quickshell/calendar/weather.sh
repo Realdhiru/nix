@@ -120,6 +120,7 @@ get_data() {
     c_code=$(echo "$raw_weather" | jq -r '.weather[0].icon')
     c_icon=$(get_icon "$c_code" | cut -d'|' -f1)
     c_hex=$(get_hex "$c_code")
+    c_tz=$(echo "$raw_weather" | jq -r '.timezone')
 
     current_date=$(date +%Y-%m-%d)
     tomorrow_date=$(date -d "tomorrow" +%Y-%m-%d)
@@ -225,7 +226,7 @@ get_data() {
         done
         final_json="${final_json%,}]"
 
-        echo "{ \"current_temp\": \"${c_temp}\", \"current_icon\": \"${c_icon}\", \"current_hex\": \"${c_hex}\", \"forecast\": ${final_json} }" > "${json_file}"
+        echo "{ \"timezone\": \"${c_tz}\", \"current_temp\": \"${c_temp}\", \"current_icon\": \"${c_icon}\", \"current_hex\": \"${c_hex}\", \"forecast\": ${final_json} }" > "${json_file}"
     fi
 }
 

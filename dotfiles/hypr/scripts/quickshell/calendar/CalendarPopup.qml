@@ -184,7 +184,14 @@ Item {
     // -------------------------------------------------------------------------
     // STATE & TIME (WITH SECOND PULSE)
     // -------------------------------------------------------------------------
-    property var currentTime: new Date()
+    property real remoteTimezoneSec: window.weatherData && window.weatherData.timezone ? parseInt(window.weatherData.timezone) : -(new Date().getTimezoneOffset() * 60)
+
+    property var currentTime: {
+        let now = new Date();
+        let localOffsetSec = -(now.getTimezoneOffset() * 60);
+        let diffSec = remoteTimezoneSec - localOffsetSec;
+        return new Date(now.getTime() + (diffSec * 1000));
+    }
     property real currentEpoch: currentTime.getTime() / 1000
     
     property real secondPulse: 1.0
@@ -196,7 +203,10 @@ Item {
     Timer {
         interval: 1000; running: true; repeat: true
         onTriggered: {
-            window.currentTime = new Date();
+            let now = new Date();
+            let localOffsetSec = -(now.getTimezoneOffset() * 60);
+            let diffSec = remoteTimezoneSec - localOffsetSec;
+            window.currentTime = new Date(now.getTime() + (diffSec * 1000));
             window.secondPulse = 1.06; 
             pulseReset.start();        
             
@@ -923,6 +933,17 @@ Item {
                         }
                     }
 
+                    Process {
+                        id: setCityProc
+                        property string cityId: ""
+                        command: ["bash", "-c", window.scriptsDir + "/set_city.sh " + cityId]
+                        running: false
+                        onExited: {
+                            weatherPoller.running = false;
+                            weatherPoller.running = true;
+                        }
+                    }
+
                     // CITY SEARCH UI
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -946,8 +967,31 @@ Item {
                             leftPadding: Math.round(15 * window.sf)
                             rightPadding: Math.round(15 * window.sf)
                             
+                            Timer {
+                                id: searchDebouncer
+                                interval: 400
+                                onTriggered: {
+                                    if (citySearchInput.text.length > 2) {
+                                        searchCityProc.query = citySearchInput.text;
+                                        searchCityProc.running = false;
+                                        searchCityProc.running = true;
+                                    }
+                                }
+                            }
+
+                            onTextEdited: {
+                                if (text.length > 2) {
+                                    searchDebouncer.restart();
+                                } else {
+                                    searchDebouncer.stop();
+                                    searchResultsList.visible = false;
+                                    searchResultsModel.clear();
+                                }
+                            }
+                            
                             onAccepted: {
-                                if (text.length > 0) {
+                                if (text.length > 2) {
+                                    searchDebouncer.stop();
                                     searchCityProc.query = text;
                                     searchCityProc.running = false;
                                     searchCityProc.running = true;
@@ -990,7 +1034,8 @@ Item {
                                     onClicked: {
                                         searchResultsList.visible = false;
                                         citySearchInput.text = "";
-                                        Quickshell.execDetached(["bash", "-c", window.scriptsDir + "/set_city.sh " + model.id]);
+                                        setCityProc.cityId = model.id;
+                                        setCityProc.running = true;
                                     }
                                 }
                             }

@@ -564,6 +564,11 @@ if (diff > 0) {
 
                         width: workspacesModel.count > 0 ? wsLayout.implicitWidth + barWindow.s(20) : 0
 
+                        MouseArea {
+                            anchors.fill: parent
+                            acceptedButtons: Qt.NoButton
+                        }
+
                         function toKanji(num) {
                             let n = parseInt(num);
                             if (isNaN(n) || n <= 0) return num;
@@ -1092,14 +1097,12 @@ if (diff > 0) {
                                     spacing: barWindow.s(16)
                                     
                                     MouseArea {
+                                        id: osdMouse
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             if (notifLayout.n) {
-                                                if (notifLayout.n.summary === "Volume" || notifLayout.n.summary === "Microphone") {
-                                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle volume"])
-                                                } else if (notifLayout.n.summary === "Brightness") {
-                                                    // Note: We don't have a dedicated brightness popup yet, but we can open quickactions
+                                                if (notifLayout.n.summary === "Brightness") {
                                                     Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle quickactions"])
                                                 }
                                             }

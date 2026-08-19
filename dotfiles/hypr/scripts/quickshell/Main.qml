@@ -158,11 +158,11 @@ PanelWindow {
         onTriggered: {
             preloadWidget("battery");
             preloadWidget("network");
-            preloadWidget("volume");
             preloadWidget("music");
             preloadWidget("clipboard");
             preloadWidget("monitors");
             preloadWidget("focustime");
+            preloadWidget("weather_setup");
             preloadWidget("calendar");
             preloadWidget("wallpaper");
         }
