@@ -28,18 +28,14 @@ brightness_step() {
         step=$(( max / 400 ))
     elif (( pct < 10 )); then
         step=$(( max / 250 ))
-    elif (( pct < 20 )); then
-        step=$(( max / 180 ))
-    elif (( pct < 35 )); then
-        step=$(( max / 120 ))
+    elif (( pct < 25 )); then
+        step=$(( max / 40 ))   # ~2.5%
     elif (( pct < 50 )); then
-        step=$(( max / 80 ))
-    elif (( pct < 70 )); then
-        step=$(( max / 60 ))
-    elif (( pct < 85 )); then
-        step=$(( max / 40 ))
+        step=$(( max / 20 ))   # ~5%
+    elif (( pct < 75 )); then
+        step=$(( max / 15 ))   # ~6.6%
     else
-        step=$(( max / 30 ))
+        step=$(( max / 10 ))   # ~10%
     fi
 
     # Never allow 0-step on low-resolution backlights.

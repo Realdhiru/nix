@@ -1002,80 +1002,169 @@ if (diff > 0) {
                                 catch (e) { return []; }
                             }
 
-                            Image {
-                                Layout.alignment: Qt.AlignVCenter
-                                visible: notifLayout.n && notifLayout.n.iconPath !== ""
-                                source: notifLayout.n && notifLayout.n.iconPath !== "" ? notifLayout.n.iconPath : ""
-                                sourceSize: Qt.size(barWindow.s(20), barWindow.s(20))
-                                fillMode: Image.PreserveAspectFit
-                                asynchronous: true
-                            }
+                            property bool isOsd: n && n.appName === "System" && (n.summary === "Volume" || n.summary === "Brightness" || n.summary === "Microphone")
 
-                            Text {
-                                Layout.alignment: Qt.AlignVCenter
-                                text: notifLayout.n ? notifLayout.n.appName : ""
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Medium
-                                font.pixelSize: barWindow.s(10)
-                                color: mocha.overlay1
-                            }
-                            Text {
-                                Layout.alignment: Qt.AlignVCenter
-                                text: "\u2022"
-                                font.pixelSize: barWindow.s(10)
-                                color: mocha.overlay0
-                            }
-                            Text {
-                                Layout.alignment: Qt.AlignVCenter
-                                text: notifLayout.n ? notifLayout.n.summary : ""
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Bold
-                                font.pixelSize: barWindow.s(13)
-                                color: mocha.text
-                            }
-                            Text {
-                                Layout.alignment: Qt.AlignVCenter
-                                visible: text !== ""
-                                text: notifLayout.n ? notifLayout.n.body : ""
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Medium
-                                font.pixelSize: barWindow.s(13)
-                                color: mocha.subtext0
+                            RowLayout {
+                                visible: !notifLayout.isOsd
+                                spacing: barWindow.s(10)
+
+                                Image {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    visible: notifLayout.n && notifLayout.n.iconPath !== ""
+                                    source: notifLayout.n && notifLayout.n.iconPath !== "" ? notifLayout.n.iconPath : ""
+                                    sourceSize: Qt.size(barWindow.s(20), barWindow.s(20))
+                                    fillMode: Image.PreserveAspectFit
+                                    asynchronous: true
+                                }
+
+                                Text {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: notifLayout.n ? notifLayout.n.appName : ""
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Medium
+                                    font.pixelSize: barWindow.s(10)
+                                    color: mocha.overlay1
+                                }
+                                Text {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: "\u2022"
+                                    font.pixelSize: barWindow.s(10)
+                                    color: mocha.overlay0
+                                }
+                                Text {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: notifLayout.n ? notifLayout.n.summary : ""
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Bold
+                                    font.pixelSize: barWindow.s(13)
+                                    color: mocha.text
+                                }
+                                Text {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    visible: text !== ""
+                                    text: notifLayout.n ? notifLayout.n.body : ""
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Medium
+                                    font.pixelSize: barWindow.s(13)
+                                    color: mocha.subtext0
+                                }
+
+                                RowLayout {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    spacing: barWindow.s(6)
+                                    visible: notifLayout.actionArray.length > 0
+
+                                    Repeater {
+                                        model: notifLayout.actionArray
+                                        delegate: Rectangle {
+                                            height: barWindow.s(24)
+                                            width: actLabel.implicitWidth + barWindow.s(14)
+                                            radius: barWindow.s(7)
+                                            property bool isPrimary: index === 0
+                                            color: isPrimary ? (actMa.containsMouse ? mocha.blue : Qt.darker(mocha.blue, 1.2)) : (actMa.containsMouse ? mocha.surface2 : mocha.surface1)
+                                            Behavior on color { ColorAnimation { duration: 150 } }
+
+                                            Text {
+                                                id: actLabel
+                                                anchors.centerIn: parent
+                                                text: modelData.text || "Action"
+                                                font.family: "JetBrains Mono"
+                                                font.weight: Font.Bold
+                                                font.pixelSize: barWindow.s(10)
+                                                color: isPrimary ? mocha.crust : mocha.text
+                                            }
+
+                                            MouseArea {
+                                                id: actMa
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: NotifTicker.invokeAction(modelData.id)
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             RowLayout {
-                                Layout.alignment: Qt.AlignVCenter
-                                spacing: barWindow.s(6)
-                                visible: notifLayout.actionArray.length > 0
+                                visible: notifLayout.isOsd
+                                spacing: barWindow.s(16)
 
-                                Repeater {
-                                    model: notifLayout.actionArray
-                                    delegate: Rectangle {
-                                        height: barWindow.s(24)
-                                        width: actLabel.implicitWidth + barWindow.s(14)
-                                        radius: barWindow.s(7)
-                                        property bool isPrimary: index === 0
-                                        color: isPrimary ? (actMa.containsMouse ? mocha.blue : Qt.darker(mocha.blue, 1.2)) : (actMa.containsMouse ? mocha.surface2 : mocha.surface1)
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-
-                                        Text {
-                                            id: actLabel
-                                            anchors.centerIn: parent
-                                            text: modelData.text || "Action"
-                                            font.family: "JetBrains Mono"
-                                            font.weight: Font.Bold
-                                            font.pixelSize: barWindow.s(10)
-                                            color: isPrimary ? mocha.crust : mocha.text
+                                Text {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    font.family: "Iosevka Nerd Font"
+                                    font.pixelSize: barWindow.s(18)
+                                    color: mocha.text
+                                    text: {
+                                        if (!notifLayout.n) return "";
+                                        if (notifLayout.n.summary === "Volume") {
+                                            if (notifLayout.n.body === "Muted") return "󰝟";
+                                            return "󰕾";
                                         }
+                                        if (notifLayout.n.summary === "Brightness") return "󰃠";
+                                        if (notifLayout.n.summary === "Microphone") {
+                                            if (notifLayout.n.body === "Muted") return "󰍭";
+                                            return "󰍬";
+                                        }
+                                        return "";
+                                    }
+                                }
 
-                                        MouseArea {
-                                            id: actMa
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: NotifTicker.invokeAction(modelData.id)
+                                Item {
+                                    id: sliderContainer
+                                    Layout.alignment: Qt.AlignVCenter
+                                    Layout.preferredWidth: barWindow.s(200)
+                                    Layout.preferredHeight: barWindow.s(16)
+                                    
+                                    property real pct: {
+                                        if (!notifLayout.n) return 0;
+                                        if (notifLayout.n.body === "Muted") return 0;
+                                        let v = parseInt(notifLayout.n.body);
+                                        return isNaN(v) ? 0 : Math.max(0, Math.min(100, v)) / 100.0;
+                                    }
+                                    
+                                    // Track background
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: height / 2
+                                        color: mocha.surface0
+                                    }
+                                    
+                                    // Fill and Thumb container (for shared animation)
+                                    Item {
+                                        anchors.fill: parent
+                                        
+                                        property real fillW: Math.max(parent.height, sliderContainer.pct * parent.width)
+                                        Behavior on fillW { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
+                                        
+                                        Rectangle {
+                                            width: parent.fillW
+                                            height: parent.height
+                                            radius: height / 2
+                                            color: mocha.text
+                                        }
+                                        
+                                        Rectangle {
+                                            width: parent.height + barWindow.s(4)
+                                            height: parent.height + barWindow.s(4)
+                                            radius: width / 2
+                                            color: mocha.text
+                                            border.color: mocha.surface2
+                                            border.width: barWindow.s(1)
+                                            
+                                            x: Math.max(0, Math.min(sliderContainer.width - width, parent.fillW - width / 2))
+                                            anchors.verticalCenter: parent.verticalCenter
                                         }
                                     }
+                                }
+
+                                Text {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: notifLayout.n ? notifLayout.n.body : ""
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Bold
+                                    font.pixelSize: barWindow.s(14)
+                                    color: mocha.text
                                 }
                             }
                         }

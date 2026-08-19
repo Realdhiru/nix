@@ -40,7 +40,7 @@ hl.bind(mainMod .. " + CTRL + SHIFT + V", hl.dsp.exec_cmd("/home/realdhiru/nix/d
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/reload.sh"))
 
 -- Disable/Enable Quickshell
-hl.bind(mainMod .. " + ALT + Control_R", hl.dsp.exec_cmd('bash -c "if pidof quickshell >/dev/null || pidof .quickshell-wra >/dev/null; then killall -9 quickshell .quickshell-wra; else quickshell -p /home/realdhiru/.config/hypr/scripts/quickshell/Shell.qml & fi"'))
+hl.bind(mainMod .. " + ALT + ALT_R", hl.dsp.exec_cmd('bash -c "if pidof quickshell >/dev/null || pidof .quickshell-wra >/dev/null; then killall -9 quickshell .quickshell-wra; else quickshell -p /home/realdhiru/.config/hypr/scripts/quickshell/Shell.qml & fi"'))
 
 -- ======================================================
 -- Applications

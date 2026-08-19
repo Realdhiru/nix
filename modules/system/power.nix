@@ -55,7 +55,24 @@
   systemd.services.asusd.restartIfChanged = false;
   systemd.services.asus-shutdown.restartIfChanged = false;
 
-  # --- 3. ASUS CHARGER-CONNECTED PERFORMANCE FIX ---
+  # --- 4. LID SWITCH uaccess (event-driven lid watcher) ---
+  # The lid switch is an input device (SW_LID) and emits NO kernel
+  # uevent, so lid-monitor.sh reads it via evdev instead. Grant the
+  # active session ACL access ONLY to this device: matched narrowly on
+  # the PNP0C0D device path, so no other /dev/input/event* node is
+  # affected. Never widen this to the input group or all event nodes.
+  # This MUST be in a 70-* rules file so it is evaluated before systemd's
+  # 71-seat.rules (which adds the seat tag) and 73-seat-late.rules (which
+  # runs the uaccess builtin).
+  services.udev.packages = [
+    (pkgs.writeTextFile {
+      name = "lid-uaccess-rule";
+      destination = "/etc/udev/rules.d/70-lid-uaccess.rules";
+      text = ''
+        SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_PATH}=="pci-0000:00:1f.0-platform-PNP0C0D:01", ENV{ID_INPUT_SWITCH}=="1", TAG+="uaccess"
+      '';
+    })
+  ];
   # When battery is capped at 80%, ASUS firmware reports power source as
   # "Battery" even though charger is physically connected.
   # These rules force TLP into AC/performance mode natively.
@@ -74,14 +91,6 @@ services.udev.extraRules = ''
 
     SUBSYSTEM=="power_supply", KERNEL=="ucsi-source-psy-USBC000:001", ATTR{online}=="0", \
       RUN+="${pkgs.tlp}/bin/tlp bat"
-
-    # --- 4. LID SWITCH uaccess (event-driven lid watcher) ---
-    # The lid switch is an input device (SW_LID) and emits NO kernel
-    # uevent, so lid-monitor.sh reads it via evdev instead. Grant the
-    # active session ACL access ONLY to this device: matched narrowly on
-    # the PNP0C0D device path, so no other /dev/input/event* node is
-    # affected. Never widen this to the input group or all event nodes.
-    SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_PATH}=="pci-0000:00:1f.0-platform-PNP0C0D:01", ENV{ID_INPUT_SWITCH}=="1", TAG+="uaccess"
   '';
   
 }
