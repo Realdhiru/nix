@@ -22,21 +22,10 @@ locked() {
     pgrep -f 'quickshell.*Lock\.qml' >/dev/null
 }
 
-wait_for_lock_surface() {
-    if locked; then
-        return 0
+lock_session() {
+    if ! locked; then
+        "$LOCK_SH" >/dev/null 2>&1 &
     fi
-    
-    "$LOCK_SH" >/dev/null 2>&1 &
-    
-    # Synchronize with Hyprland IPC to fix the display wake bug.
-    # Hyprland natively turns on monitors when a new session lock surface maps.
-    # We must wait for the lock screen to successfully map BEFORE issuing dpms off.
-    # We listen for the 'openlayer>>quickshell' event on the socket2 IPC stream.
-    timeout 1.5 socat -u UNIX-CONNECT:"$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock" - | grep -m1 "openlayer>>quickshell" >/dev/null || true
-    
-    # Extra settlement time for Hyprland's internal compositor state
-    sleep 0.2
 }
 
 save_current_profile() {
@@ -83,15 +72,30 @@ apply_lid_open_state() {
 
 case "${1:-}" in
     close)
-        wait_for_lock_surface
-        hyprctl eval "hl.dispatch(hl.dsp.dpms({action='off'}))"
-        
+        # 1. Snapshot the current power state
         save_current_profile
+        
+        # 2. Lock using Hyprlock (Quickshell Lock.qml)
+        lock_session
+        
+        # 3. Apply ALL temporary low-power changes
         apply_lid_closed_state
+        
+        # 4. Allow changes, DRM/monitor hotplug events, and Lock surface to settle
+        sleep 1
+        
+        # 5. ONLY NOW issue DPMS OFF (absolute last action)
+        hyprctl eval "hl.dispatch(hl.dsp.dpms({action='off'}))"
         ;;
     open)
-        hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))"
+        # 1. Restore exact previous power state
         apply_lid_open_state
+        
+        # 2. Allow power changes to settle before restoring display
+        sleep 0.2
+        
+        # 3. Restore display availability
+        hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))"
         ;;
     *)
         echo "Usage: $0 {close|open}"
