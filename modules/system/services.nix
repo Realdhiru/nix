@@ -46,6 +46,9 @@
   # Screen recording.
   programs.gpu-screen-recorder.enable = true;
 
+  # KDE Connect (enables daemon + opens required firewall ports 1714-1764)
+  programs.kdeconnect.enable = true;
+
   # Power management.
   services.upower.enable = true;
 
