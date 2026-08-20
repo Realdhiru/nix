@@ -76,11 +76,14 @@ MANIFEST="$THUMB_DIR/.manifest"
 # ZOMBIE WATCHDOG
 # -----------------------------------------------------------------------------
 
-# Safely catch wrapped NixOS binaries without regex misses
-if ! pgrep -f "Shell.qml" >/dev/null; then
-    "$QS_BIN" -p "$SHELL_QML_PATH" >/dev/null 2>&1 &
-    disown
-fi
+# Safely catch wrapped NixOS binaries without regex misses, with a lock to prevent race conditions
+(
+    flock -n 200 || exit 0
+    if ! pgrep -f "Shell.qml" >/dev/null; then
+        "$QS_BIN" -p "$SHELL_QML_PATH" >/dev/null 2>&1 &
+        disown
+    fi
+) 200>"/tmp/qs_watchdog.lock"
 
 # -----------------------------------------------------------------------------
 # HELPERS

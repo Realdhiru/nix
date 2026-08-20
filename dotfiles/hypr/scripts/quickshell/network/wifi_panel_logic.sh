@@ -55,9 +55,12 @@ if [[ -n "$CURRENT_RAW" ]]; then
     fi
 
     # Native Bash JSON generation
-    ssid_esc="${ssid//\"/\\\"}"
-    sec_esc="${security//\"/\\\"}"
-    icon_esc="${icon//\"/\\\"}"
+    ssid_esc="${ssid//\\/\\\\}"
+    ssid_esc="${ssid_esc//\"/\\\"}"
+    sec_esc="${security//\\/\\\\}"
+    sec_esc="${sec_esc//\"/\\\"}"
+    icon_esc="${icon//\\/\\\\}"
+    icon_esc="${icon_esc//\"/\\\"}"
     CONNECTED_JSON="{\"id\":\"$ssid_esc\",\"ssid\":\"$ssid_esc\",\"icon\":\"$icon_esc\",\"signal\":\"$signal\",\"security\":\"$sec_esc\",\"ip\":\"$IP\",\"freq\":\"$FREQ\"}"
 else
     ssid=""
@@ -70,7 +73,9 @@ NETWORKS_JSON=$(LC_ALL=C nmcli -t -f active,ssid,signal,security device wifi lis
     $2 != "" && $2 != conn && !seen[$2]++ {
         ssid=$2; signal=$3; security=$4;
         
-        # Escape quotes inside strings
+        # Escape quotes and backslashes inside strings
+        gsub(/\\/, "\\\\", ssid);
+        gsub(/\\/, "\\\\", security);
         gsub(/"/, "\\\"", ssid);
         gsub(/"/, "\\\"", security);
         

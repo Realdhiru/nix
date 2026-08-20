@@ -208,6 +208,7 @@ Item {
 
     property string pendingWifiSsid: ""
     property string pendingWifiId: ""
+    property bool isInteractingWithCard: false
     property var savedWifiNetworks: []
 
     Process {
@@ -1737,8 +1738,8 @@ Item {
 
                                 property bool isInteractable: !isInfoNode || isActionable
                                 property bool locksList: isInteractable && (floatMa.containsMouse || floatMa.pressed)
-                                onLocksListChanged: { if (locksList) window.hoveredCardCount++; else window.hoveredCardCount--; }
-                                Component.onDestruction: { if (locksList) window.hoveredCardCount--; }
+                                onLocksListChanged: { if (floatCard.locksList) window.hoveredCardCount++; else window.hoveredCardCount--; }
+                                Component.onDestruction: { if (floatCard.locksList) window.hoveredCardCount--; }
 
                                 property real bumpScale: 1.0
                                 SequentialAnimation on bumpScale {
@@ -1788,7 +1789,7 @@ Item {
                                     }
                                 }
 
-                                color: locksList ? "#2affffff" : "#0effffff"
+                                color: floatCard.locksList ? "#2affffff" : "#0effffff"
                                 Behavior on color { ColorAnimation { duration: 200 } }
 
                                 Rectangle {
@@ -1805,25 +1806,25 @@ Item {
                                     color: "transparent"
                                     border.width: 1
                                     border.color: floatCard.isFailed ? window.red : window.surface2
-                                    visible: !isHighlighted && !locksList
+                                    visible: !floatCard.isHighlighted && !floatCard.locksList
                                     Behavior on border.color { ColorAnimation { duration: 300 } }
                                 }
 
                                 Rectangle {
                                     anchors.fill: parent
                                     radius: window.s(14)
-                                    opacity: locksList || isHighlighted ? 1.0 : 0.0
+                                    opacity: floatCard.locksList || floatCard.isHighlighted ? 1.0 : 0.0
                                     color: "transparent"
-                                    border.width: isHighlighted && !locksList ? 1 : window.s(2)
+                                    border.width: floatCard.isHighlighted && !floatCard.locksList ? 1 : window.s(2)
                                     border.color: floatCard.isFailed ? window.red : "transparent"
                                     Behavior on opacity { NumberAnimation { duration: 250 } }
 
                                     Rectangle {
                                         anchors.fill: parent
-                                        anchors.margins: isHighlighted && !locksList ? 1 : window.s(2)
+                                        anchors.margins: floatCard.isHighlighted && !floatCard.locksList ? 1 : window.s(2)
                                         radius: window.s(12)
                                         color: window.base
-                                        opacity: locksList ? 0.9 : 1.0
+                                        opacity: floatCard.locksList ? 0.9 : 1.0
                                     }
 
                                     gradient: Gradient {
@@ -2049,6 +2050,7 @@ Item {
                                     cursorShape: (floatCard.triggered || floatCard.isMyBusy || floatCard.renderFill === 1.0 || !floatCard.isInteractable) ? Qt.ArrowCursor : Qt.PointingHandCursor
 
                                     onPressed: {
+                                        window.isInteractingWithCard = true;
                                         if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel === 0.0) {
                                             if (window.pendingWifiId !== "") {
                                                 window.pendingWifiId = ""; window.pendingWifiSsid = "";
@@ -2058,6 +2060,14 @@ Item {
                                         }
                                     }
                                     onReleased: {
+                                        window.isInteractingWithCard = false;
+                                        if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel < 1.0) {
+                                            fillAnim.stop()
+                                            drainAnim.start()
+                                        }
+                                    }
+                                    onCanceled: {
+                                        window.isInteractingWithCard = false;
                                         if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel < 1.0) {
                                             fillAnim.stop()
                                             drainAnim.start()
