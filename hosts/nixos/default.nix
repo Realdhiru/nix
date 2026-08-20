@@ -27,6 +27,7 @@
 
   environment.sessionVariables = {
     LIBVA_DRIVER_NAME = "iHD";
+    NIXOS_OZONE_WL = "1";
   };
 
   environment.variables.GSETTINGS_SCHEMA_DIR =

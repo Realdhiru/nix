@@ -24,11 +24,11 @@
     '';
   };
 
-# Hardware Acceleration Flags for Brave — sole source of these flags now
+  # Hardware Acceleration Flags for Brave — sole source of these flags now
   # (the package-level override in packages.nix was removed so this
   # setting only exists in one place).
   home.file.".config/brave-flags.conf".text = ''
-    --ozone-platform-hint=auto
+    --ozone-platform-hint=wayland
     --use-gl=angle
     --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder
   '';
@@ -91,7 +91,10 @@
     '';
   };
 
-  services.easyeffects.enable = true;
+  # Single service-managed EasyEffects instance.
+  services.easyeffects = {
+    enable = true;
+  };
   services.playerctld.enable = true;
 
   # Focus time tracking daemon — single authoritative lifecycle owner.

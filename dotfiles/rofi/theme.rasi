@@ -8,7 +8,7 @@
     fg-main:             #FFFFFF;
     fg-muted:            #B0B0B0;
     
-    font:                "JetBrainsMono Nerd Font 22";
+    font:                "JetBrainsMono Nerd Font 14";
     background-color:    transparent;
     text-color:          @fg-main;
 }
@@ -21,26 +21,26 @@ window {
     y-offset:            0%;               
 
     /* --- DIMENSION CONTROLS --- */
-    width:               800px;            /* Narrowed horizontal width */
+    width:               500px;            /* Narrowed horizontal width */
     border:              0.4px;
     border-color:        @border-glass;
-    border-radius:       32px;
+    border-radius:       16px;
     background-color:    @bg-glass;
-    padding:             34px;
+    padding:             20px;
 }
 
 mainbox {
-    spacing:             24px;
+    spacing:             16px;
     children:            [ inputbar, listview ];
 }
 
 inputbar {
     spacing:             0px;              
-    padding:             20px 32px;
+    padding:             12px 20px;
     background-color:    @bg-surface;
     border:              2px;
     border-color:        @border-glass;
-    border-radius:       20px;
+    border-radius:       12px;
     children:            [ entry ];        /* Prompt removed to prevent icon/spacing cuts */
 }
 
@@ -53,14 +53,14 @@ listview {
     fixed-height:        false;
     dynamic:             true;
     lines:               6;                /* Shows exactly 6 applications */
-    spacing:             12px;
+    spacing:             8px;
     scrollbar:           false;
 }
 
 element {
-    padding:             20px 28px;
-    border-radius:       16px;
-    spacing:             24px;
+    padding:             12px 16px;
+    border-radius:       12px;
+    spacing:             16px;
 }
 
 element normal normal, element alternate normal {
@@ -76,7 +76,7 @@ element selected normal {
 }
 
 element-icon {
-    size:                48px;
+    size:                32px;
 }
 
 element-text {
