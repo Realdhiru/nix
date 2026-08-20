@@ -19,6 +19,12 @@ hl.bind("SHIFT + F1", hl.dsp.window.fullscreen({ action = "toggle", mode = "full
 hl.bind("SHIFT + F2", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/lock.sh"))
 hl.bind(mainMod .. " + CTRL + U", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/idle_inhibit.sh"))
 
+-- Fault-isolated Lid Switch Events
+pcall(function()
+    hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/lid-monitor.sh close"), { locked = true })
+    hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/lid-monitor.sh open"), { locked = true })
+end)
+
 -- ======================================================
 -- Quickshell
 -- ======================================================

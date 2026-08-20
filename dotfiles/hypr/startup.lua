@@ -19,6 +19,4 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("quickshell -p /home/realdhiru/.config/hypr/scripts/quickshell/Shell.qml")
     hl.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/equalizer.sh --init")
     hl.exec_cmd("hyprctl setcursor Bibata-Modern-Ice 32")
-
-    hl.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/lid-monitor.sh")
 end)

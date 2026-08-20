@@ -22,5 +22,5 @@ else
     stop_inhibitor
     setsid systemd-inhibit --what=idle --who=idle-inhibit-toggle --why=manual --mode=block sleep infinity &
     echo $! > "$STATE_FILE"
-    notify-send -a "System" -r 9991 -t 1200 -u low -i "appointment-soon" "Coffee mode ON"
+    notify-send -a "System" -r 9991 -t 0 -u low -i "appointment-soon" "Coffee mode ON"
 fi

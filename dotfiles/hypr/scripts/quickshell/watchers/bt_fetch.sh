@@ -7,14 +7,14 @@ get_bt_status() {
 
 get_bt_connected_device() {
     if [ "$(get_bt_status)" = "on" ]; then
-        local device=$(LC_ALL=C timeout 0.5 bluetoothctl devices Connected 2>/dev/null | head -n1 | cut -d' ' -f3-)
+        local device=$(LC_ALL=C timeout 0.5 bluetoothctl devices Connected 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g' | head -n1 | cut -d' ' -f3-)
         if [ -n "$device" ]; then echo "$device"; else echo "Disconnected"; fi
     else echo "Off"; fi
 }
 
 get_bt_icon() {
     if [ "$(get_bt_status)" = "on" ]; then
-        if LC_ALL=C timeout 0.5 bluetoothctl devices Connected 2>/dev/null | grep -q "^Device"; then echo "󰂱"; else echo "󰂯"; fi
+        if LC_ALL=C timeout 0.5 bluetoothctl devices Connected 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g' | grep -q "^Device"; then echo "󰂱"; else echo "󰂯"; fi
     else echo "󰂲"; fi
 }
 

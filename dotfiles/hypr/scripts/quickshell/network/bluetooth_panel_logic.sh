@@ -64,9 +64,9 @@ get_status() {
     devices_json="[]"
 
     if [ "$power" == "on" ]; then
-        paired_macs=$(timeout 1 bluetoothctl devices Paired 2>/dev/null)
-        mapfile -t devices < <(timeout 1 bluetoothctl devices 2>/dev/null)
-        mapfile -t connected_info_lines < <(timeout 1 bluetoothctl devices Connected 2>/dev/null)
+        paired_macs=$(timeout 1 bluetoothctl devices Paired 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g')
+        mapfile -t devices < <(timeout 1 bluetoothctl devices 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g')
+        mapfile -t connected_info_lines < <(timeout 1 bluetoothctl devices Connected 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g')
         
         cached_cards=$(timeout 0.5 pactl list cards 2>/dev/null)
         
@@ -87,7 +87,7 @@ get_status() {
             if [ -f "$CACHE_FILE" ]; then
                 source "$CACHE_FILE"
             else
-                info=$(timeout 0.5 bluetoothctl info "$mac" 2>/dev/null)
+                info=$(timeout 0.5 bluetoothctl info "$mac" 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g')
                 icon_type=$(echo "$info" | awk -F': ' '/Icon:/ {print $2}')
                 icon=$(get_icon "$icon_type" "$name")
                 profile=$(get_audio_profile "$mac" "$cached_cards")
@@ -101,7 +101,7 @@ get_status() {
                 CACHE_PROFILE="${profile//\"/\\\"}"
             fi
             
-            bat=$(timeout 0.5 bluetoothctl info "$mac" 2>/dev/null | awk -F'[(|)]' '/Battery Percentage:/ {print $2}')
+            bat=$(timeout 0.5 bluetoothctl info "$mac" 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g' | awk -F'[(|)]' '/Battery Percentage:/ {print $2}')
             [ -z "$bat" ] && bat="0"
 
             connected_list_objs+=("{\"id\":\"$mac\",\"name\":\"$CACHE_NAME\",\"mac\":\"$mac\",\"icon\":\"$CACHE_ICON\",\"battery\":\"$bat\",\"profile\":\"$CACHE_PROFILE\"}")
