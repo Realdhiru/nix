@@ -70,8 +70,8 @@ apply_lid_closed_state() {
     sudo "$SET_EPP" power 2>/dev/null || true
     
     # 2. Disable Turbo Boost
-    echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo >/dev/null 2>&1 || \
-    echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost >/dev/null 2>&1 || true
+    echo 1 | sudo /run/current-system/sw/bin/tee /sys/devices/system/cpu/intel_pstate/no_turbo >/dev/null 2>&1 || \
+    echo 0 | sudo /run/current-system/sw/bin/tee /sys/devices/system/cpu/cpufreq/boost >/dev/null 2>&1 || true
 }
 
 apply_lid_open_state() {

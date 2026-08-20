@@ -39,9 +39,9 @@ if [ "$name" = "power-saver" ]; then disableTurbo=1; fi
 
 sudo "$HOME/.config/hypr/scripts/quickshell/battery/set_epp.sh" "$eppMode" 2>/dev/null
 if [ "$disableTurbo" = "1" ]; then
-    echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
+    echo 1 | sudo /run/current-system/sw/bin/tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 0 | sudo /run/current-system/sw/bin/tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
 else
-    echo 0 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
+    echo 0 | sudo /run/current-system/sw/bin/tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo 1 | sudo /run/current-system/sw/bin/tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
 fi
 
 MONITORS_JSON=$(hyprctl monitors -j 2>/dev/null)
