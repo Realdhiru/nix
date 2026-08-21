@@ -32,8 +32,9 @@ case "${1:-}" in
             # Enforce the lid-closed state (CPU throttle + DPMS off) immediately.
             "$LID_MONITOR" close
         else
-            # Lid is open, restore normal display availability
-            hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))"
+            # Lid is open. Force full state restoration (Display ON + Power Profile)
+            # This patches the libinput missed-event edge case.
+            "$LID_MONITOR" open
         fi
         ;;
         

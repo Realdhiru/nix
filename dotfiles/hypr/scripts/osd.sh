@@ -57,12 +57,14 @@ brightness_osd() {
 
 case "$1" in
     vol-up)
+        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
         wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+
         pct=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{print int($2*100)}')
         send "audio-volume-high" "Volume" "${pct}%"
         ;;
 
     vol-down)
+        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
         wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
         pct=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{print int($2*100)}')
         send "audio-volume-low" "Volume" "${pct}%"
