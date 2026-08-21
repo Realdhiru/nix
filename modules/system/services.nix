@@ -50,7 +50,14 @@
   programs.kdeconnect.enable = true;
 
   # Power management.
-  services.upower.enable = true;
+  services.upower = {
+    enable = true;
+    usePercentageForPolicy = true;
+    percentageLow = 15;
+    percentageCritical = 8;
+    percentageAction = 4;
+    criticalPowerAction = "Hibernate";
+  };
 
   # Removable drives.
   services.udisks2.enable = true;
