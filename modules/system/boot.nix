@@ -8,9 +8,9 @@
 
   boot.plymouth.enable = false;
 
+  boot.consoleLogLevel = 3;
   boot.resumeDevice = "/dev/disk/by-uuid/d0a20f82-2287-41fd-b017-617b84e4d4b6";
   boot.kernelParams = [
-    "loglevel=3"
     "nmi_watchdog=0"
     "mem_sleep_default=deep"
     "resume_offset=39880704"
