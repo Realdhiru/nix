@@ -277,7 +277,43 @@ Item {
     function getCleanName(name) {
         if (!name) return "";
         let clean = String(name);
-        return clean.startsWith("000_") ? clean.substring(4) : clean;
+        if (clean.startsWith("000_")) {
+            clean = clean.substring(4);
+        }
+        let hashRegex = /^[a-f0-9]{32}_/;
+        if (hashRegex.test(clean)) {
+            clean = clean.substring(33);
+        }
+        return clean;
+    }
+
+    function sortListModel(model) {
+        if (!model || model.count === 0) return;
+        let arr = [];
+        for (let i = 0; i < model.count; i++) {
+            let fn = model.get(i).fileName;
+            let fu = model.get(i).fileUrl;
+            if (fn !== undefined) {
+                arr.push({ "fileName": fn, "fileUrl": String(fu) });
+            }
+        }
+        arr.sort(function(a, b) {
+            let aIsVid = window.isVideoFile(a.fileName);
+            let bIsVid = window.isVideoFile(b.fileName);
+            let aIsGif = a.fileName.toLowerCase().endsWith(".gif");
+            let bIsGif = b.fileName.toLowerCase().endsWith(".gif");
+            
+            let aType = aIsVid ? 0 : (aIsGif ? 1 : 2);
+            let bType = bIsVid ? 0 : (bIsGif ? 1 : 2);
+
+            if (aType !== bType) return aType - bType;
+            
+            let aName = window.getCleanName(a.fileName).toLowerCase();
+            let bName = window.getCleanName(b.fileName).toLowerCase();
+            return aName.localeCompare(bName);
+        });
+        model.clear();
+        model.append(arr);
     }
 
     // Previously "is this a video" was inferred from a "000_" filename
@@ -737,9 +773,19 @@ Item {
             window._localSyncedCount = folderCount;
         }
 
+        let isReady = localFolderModel.status === FolderListModel.Ready;
+        if (isReady && window._localSyncedCount > 0) {
+            window.isModelChanging = true;
+            window.sortListModel(localProxyModel);
+            window.isModelChanging = false;
+        }
+
         if (window.currentFilter !== "Search") window.updateVisibleCount();
+        
         if (!window.initialFocusSet && window.currentFilter !== "Search" && localProxyModel.count > 0) {
             window.tryFocus();
+        } else if (window.initialFocusSet && isReady && window.currentFilter !== "Search") {
+            window.tryFocus(); // Refocus after sorting
         }
     }
 
@@ -762,6 +808,13 @@ Item {
             }
         }
         if (batch.length > 0) searchProxyModel.append(batch);
+
+        let isReady = searchFolderModel.status === FolderListModel.Ready;
+        if (isReady && searchProxyModel.count > 0) {
+            window.isModelChanging = true;
+            window.sortListModel(searchProxyModel);
+            window.isModelChanging = false;
+        }
 
         if (window.currentFilter === "Search") window.updateVisibleCount();
         if (window.currentFilter === "Search" && window.hasSearched) {
