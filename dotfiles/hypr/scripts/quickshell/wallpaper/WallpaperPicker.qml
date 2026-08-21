@@ -444,6 +444,7 @@ Item {
 
     readonly property string homeDir: "file://" + Quickshell.env("HOME")
     readonly property string searchDir: "file://" + Caching.getCacheDir("wallpaper_picker") + "/search_thumbs"
+    readonly property string flatSrcDir: "file://" + Caching.getCacheDir("wallpaper_picker") + "/flat"
     readonly property string srcDir: {
         const dir = Quickshell.env("WALLPAPER_DIR")
         return (dir && dir !== "") ? dir : Quickshell.env("HOME") + "/Pictures/Wallpapers"
@@ -699,7 +700,7 @@ Item {
 
     FolderListModel {
         id: localFolderModel
-        folder: "file://" + window.srcDir
+        folder: window.flatSrcDir
         nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
         showDirs: false
         sortField: FolderListModel.Name

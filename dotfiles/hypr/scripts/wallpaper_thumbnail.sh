@@ -8,18 +8,24 @@ SRC="$HOME/Pictures/Wallpapers"
 CACHE_DIR="$HOME/.cache/quickshell/wallpaper_picker"
 THUMB="$CACHE_DIR/thumbs"
 COLOR_DIR="$CACHE_DIR/colors_markers"
+FLAT_DIR="$CACHE_DIR/flat"
 
 # Ensure target directories exist before processing
-mkdir -p "$THUMB" "$COLOR_DIR"
+mkdir -p "$THUMB" "$COLOR_DIR" "$FLAT_DIR"
 
 # Export the variables so they are accessible by the xargs subshells
-export THUMB COLOR_DIR
+export THUMB COLOR_DIR FLAT_DIR
 
 # Define the processing logic as an exported function.
 process_wallpaper() {
     local file="$1"
-    local name
-    name=$(basename "$file")
+    local raw_name
+    raw_name=$(basename "$file")
+    local hash
+    hash=$(md5sum <<< "$file" | cut -d' ' -f1)
+    local name="${hash}_${raw_name}"
+
+    ln -sf "$file" "$FLAT_DIR/$name"
 
     local target="$THUMB/$name"
     local ext="${file##*.}"
@@ -66,4 +72,4 @@ CORES=$(nproc)
 THREADS=$(( CORES > 2 ? CORES - 1 : 1 ))
 
 # Execute the pipeline. Using -print0 and -0 safely handles filenames with spaces/newlines.
-find "$SRC" -maxdepth 1 -type f -print0 | xargs -0 -P "$THREADS" -I {} bash -c 'process_wallpaper "$@"' _ {}
+find "$SRC" -type f -print0 | xargs -0 -P "$THREADS" -I {} bash -c 'process_wallpaper "$@"' _ {}

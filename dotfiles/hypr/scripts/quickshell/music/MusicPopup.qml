@@ -88,14 +88,12 @@ Item {
     property real lastEqUpdate: 0
 
     Component.onCompleted: {
-        var temp = Object.assign({}, root.eqData);
-        temp.b1 = -2; temp.b2 = -1; temp.b3 = 1; temp.b4 = 3; temp.b5 = 5;
-        temp.b6 = 5; temp.b7 = 4; temp.b8 = 2; temp.b9 = 1; temp.b10 = 0;
-        temp.preset = "Vocal";
-        temp.pending = false;
-        root.eqData = temp;
-
         root.execCmd("$HOME/.config/hypr/scripts/quickshell/music/equalizer.sh --init");
+    }
+
+    StackView.onActivated: {
+        eqProc.running = false;
+        eqProc.running = true;
     }
 
     property real catppuccinFlowOffset: 0

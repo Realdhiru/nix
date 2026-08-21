@@ -28,6 +28,33 @@ case "$value" in
         ;;
 esac
 
+if [ "$value" = "performance" ]; then
+    governor="performance"
+else
+    governor="powersave"
+fi
+
+if [ -w /sys/firmware/acpi/platform_profile ]; then
+    case "$value" in
+        performance) echo "performance" > /sys/firmware/acpi/platform_profile ;;
+        power) echo "quiet" > /sys/firmware/acpi/platform_profile ;;
+        *) echo "balanced" > /sys/firmware/acpi/platform_profile ;;
+    esac
+fi
+
+gov_any=0
+for f in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do
+    [ -e "$f" ] || continue
+    if [ -w "$f" ]; then
+        echo "$governor" > "$f"
+        gov_any=1
+    fi
+done
+
+if [ "$gov_any" -eq 0 ]; then
+    echo "set_epp.sh: no writable scaling_governor files found" >&2
+    exit 1
+fi
 wrote_any=0
 for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/energy_performance_preference; do
     if [ -w "$f" ]; then
