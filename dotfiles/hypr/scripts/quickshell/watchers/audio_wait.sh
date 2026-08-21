@@ -11,12 +11,21 @@ mkfifo "$PIPE" 2>/dev/null
 # FIFO's write end open after MONITOR_PID itself was gone.
 trap 'rm -f "$PIPE"; pkill -P $$ 2>/dev/null; exit 0' EXIT INT TERM
 
-# Run pactl isolated and capture its exact PID to prevent PipeWire connection exhaustion
-LC_ALL=C pactl subscribe 2>/dev/null > "$PIPE" &
+# Run pw-mon isolated and capture its exact PID
+LC_ALL=C pw-mon 2>/dev/null > "$PIPE" &
 MONITOR_PID=$!
 
-# FIXED: Case-insensitive broad event tracking with a 10-second fail-safe timeout
-if ! timeout 300 grep -m 1 -iE "sink|server|change|remove|new" < "$PIPE" > /dev/null; then
+# Flush the immediate startup dump from pw-mon to prevent instant-trigger loops
+timeout 0.5 cat "$PIPE" > /dev/null 2>&1
+
+# Case-insensitive broad event tracking with a failsafe timeout.
+# Background + wait so SIGTERM from Quickshell/reload.sh interrupts us
+# immediately (a foreground `timeout 300 grep` defers the trap and leaves
+# an orphan for up to 300s). On timeout (no event in 300s) the throttle
+# sleep below still applies.
+timeout 300 grep -m 1 -iE "changed|added|removed" < "$PIPE" > /dev/null &
+BLOCK_PID=$!
+if ! wait "$BLOCK_PID"; then
     # Fallback delay prevents QuickShell from rapid-fire thwacking your CPU if pactl hangs
     sleep 2.0
 fi

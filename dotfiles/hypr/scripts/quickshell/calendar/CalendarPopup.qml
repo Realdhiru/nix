@@ -178,7 +178,7 @@ Item {
 
     property real globalOrbitAngle: 0
     NumberAnimation on globalOrbitAngle {
-        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: true
+        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: window.visible
     }
 
     // -------------------------------------------------------------------------
@@ -537,21 +537,21 @@ Item {
 
                 property real pitchBreath: 0
                 SequentialAnimation on pitchBreath {
-                    loops: Animation.Infinite; running: true
+                    loops: Animation.Infinite; running: window.visible
                     NumberAnimation { to: 3.5; duration: 4200; easing.type: Easing.InOutSine }
                     NumberAnimation { to: -3.5; duration: 4200; easing.type: Easing.InOutSine }
                 }
 
                 property real yawBreath: 0
                 SequentialAnimation on yawBreath {
-                    loops: Animation.Infinite; running: true
+                    loops: Animation.Infinite; running: window.visible
                     NumberAnimation { to: 2.5; duration: 5100; easing.type: Easing.InOutSine }
                     NumberAnimation { to: -2.5; duration: 5100; easing.type: Easing.InOutSine }
                 }
 
                 property real rollBreath: 0
                 SequentialAnimation on rollBreath {
-                    loops: Animation.Infinite; running: true
+                    loops: Animation.Infinite; running: window.visible
                     NumberAnimation { to: 1.5; duration: 5800; easing.type: Easing.InOutSine }
                     NumberAnimation { to: -1.5; duration: 5800; easing.type: Easing.InOutSine }
                 }
@@ -1053,7 +1053,7 @@ Item {
                             
                             property real pulseOffset: 0
                             SequentialAnimation on pulseOffset {
-                                loops: Animation.Infinite; running: true
+                                loops: Animation.Infinite; running: window.visible
                                 NumberAnimation { to: Math.round(-3 * window.sf); duration: 1000; easing.type: Easing.InOutSine }
                                 NumberAnimation { to: 0; duration: 1000; easing.type: Easing.InOutSine }
                             }
@@ -1086,7 +1086,7 @@ Item {
                             
                             property real pulseOffset: 0
                             SequentialAnimation on pulseOffset {
-                                loops: Animation.Infinite; running: true
+                                loops: Animation.Infinite; running: window.visible
                                 NumberAnimation { to: Math.round(3 * window.sf); duration: 1000; easing.type: Easing.InOutSine }
                                 NumberAnimation { to: 0; duration: 1000; easing.type: Easing.InOutSine }
                             }

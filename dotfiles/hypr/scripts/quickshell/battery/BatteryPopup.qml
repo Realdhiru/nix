@@ -332,7 +332,7 @@ Item {
 
     property real globalOrbitAngle: 0
     NumberAnimation on globalOrbitAngle {
-        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: true
+        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: window.visible
     }
 
     property real introMain: 0
@@ -919,7 +919,7 @@ Item {
                             opacity: uptimePulse
                             property real uptimePulse: 1.0
                             SequentialAnimation on uptimePulse {
-                                loops: Animation.Infinite; running: true
+                                loops: Animation.Infinite; running: window.visible
                                 NumberAnimation { to: 0.2; duration: 800; easing.type: Easing.InOutSine }
                                 NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
                             }
@@ -1049,7 +1049,7 @@ Item {
                             z: 0 
                             Behavior on color { ColorAnimation { duration: 400 } }
                             SequentialAnimation on scale {
-                                loops: Animation.Infinite; running: true
+                                loops: Animation.Infinite; running: window.visible
                                 NumberAnimation { to: heroMa.containsMouse ? 1.15 : 1.08; duration: heroMa.containsMouse ? 800 : 2000; easing.type: Easing.InOutSine }
                                 NumberAnimation { to: 1.0; duration: heroMa.containsMouse ? 800 : 2000; easing.type: Easing.InOutSine }
                             }
@@ -1105,7 +1105,7 @@ Item {
                                 
                                 property real textPulse: 0.0
                                 SequentialAnimation on textPulse {
-                                    loops: Animation.Infinite; running: true
+                                    loops: Animation.Infinite; running: window.visible
                                     NumberAnimation { from: 0.0; to: 1.0; duration: 1200; easing.type: Easing.InOutSine }
                                     NumberAnimation { from: 1.0; to: 0.0; duration: 1200; easing.type: Easing.InOutSine }
                                 }
