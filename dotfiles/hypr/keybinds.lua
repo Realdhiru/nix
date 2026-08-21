@@ -13,7 +13,7 @@ hl.define_submap("locked", function()
     end)
 end)
 
-hl.bind("SHIFT + escape", hl.dsp.exec_cmd("systemctl suspend"))
+hl.bind("SHIFT + escape", hl.dsp.exec_cmd("bash ~/.config/hypr/scripts/suspend.sh suspend"))
 hl.bind("CTRL + escape", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/rotate_display.sh"))
 hl.bind("SHIFT + F1", hl.dsp.window.fullscreen({ action = "toggle", mode = "fullscreen" })) -- 1 for semi fullscreen
 hl.bind("SHIFT + F2", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/lock.sh"))
