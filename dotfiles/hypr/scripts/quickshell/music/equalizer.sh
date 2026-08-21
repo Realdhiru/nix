@@ -10,6 +10,31 @@ PRESET_FILE="$PRESET_DIR/${PRESET_NAME}.json"
 
 mkdir -p "$PRESET_DIR"
 
+# Load the written preset into the SINGLE service-managed EasyEffects.
+# EE 8.x: launching `easyeffects -l <preset>` while an instance is already
+# running spawns a secondary that hands the load off to the primary over
+# its local socket and exits — no duplicate instances. `pgrep -x
+# easyeffects` cannot be used for liveness here: the Nix wrapper renames
+# the comm to `.easyeffects-wr`, so `systemctl --user is-active` is the
+# only reliable probe.
+load_preset() {
+    if ! systemctl --user is-active --quiet easyeffects; then
+        systemctl --user start easyeffects >/dev/null 2>&1
+        for _ in $(seq 1 20); do
+            systemctl --user is-active --quiet easyeffects && break
+            sleep 0.25
+        done
+    fi
+    # The systemd service might be active but the local socket isn't ready yet.
+    # We must loop and retry the load command until it succeeds.
+    for _ in $(seq 1 20); do
+        easyeffects -l "$PRESET_NAME" >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            break
+        fi
+        sleep 0.5
+    done &
+}
 apply_eq() {
     vals=$(cat "$STATE_FILE")
     python3 -c "
@@ -19,8 +44,6 @@ try:
     slider_map = { 0:0, 1:3, 2:6, 3:9, 4:12, 5:15, 6:18, 7:21, 8:24, 9:27 }
     freqs = [32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000, 22000, 24000, 24000]
     gains = [float(data['b1']), float(data['b2']), float(data['b3']), float(data['b4']), float(data['b5']), float(data['b6']), float(data['b7']), float(data['b8']), float(data['b9']), float(data['b10'])]
-    max_gain = max(gains)
-    input_gain = -max_gain if max_gain > 0 else 0.0
     bands = {}
     for i in range(32):
         freq = freqs[i] if i < len(freqs) else 20000.0
@@ -30,7 +53,7 @@ try:
                 gain = gains[s_idx]
                 break
         bands[f\"band{i}\"] = { \"frequency\": freq, \"gain\": gain, \"mode\": \"Bell\", \"mute\": False, \"q\": 1.0, \"solo\": False, \"width\": 1.0, \"slope\": \"x1\" }
-    preset = { \"output\": { \"blocklist\": [], \"plugins_order\": [ \"equalizer\" ], \"equalizer\": { \"bypass\": False, \"input-gain\": input_gain, \"output-gain\": 0.0, \"left\": bands, \"right\": bands, \"mode\": \"IIR\", \"num-bands\": 32, \"split-channels\": False } } }
+    preset = { \"output\": { \"blocklist\": [], \"plugins_order\": [ \"equalizer\" ], \"equalizer\": { \"bypass\": False, \"input-gain\": 0.0, \"output-gain\": 0.0, \"left\": bands, \"right\": bands, \"mode\": \"IIR\", \"num-bands\": 32, \"split-channels\": False } } }
     print(json.dumps(preset, indent=4))
 except:
     sys.exit(1)
