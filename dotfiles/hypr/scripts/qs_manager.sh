@@ -185,10 +185,18 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
     if [[ "$TARGET" == "wallpaper" ]]; then
         handle_wallpaper_prep
         CURRENT_SRC=""
-        if pgrep -a "mpvpaper" > /dev/null; then
-            CURRENT_SRC=$(pgrep -a mpvpaper | grep -o "$SRC_DIR/[^' ]*" | head -n1)
-        elif command -v awww >/dev/null; then
-            CURRENT_SRC=$(awww query 2>/dev/null | grep -o "$SRC_DIR/[^ ]*" | head -n1)
+        # Authoritative source: state file written by set_wallpaper.sh on every
+        # apply. Missing/empty file falls through to the process-query fallback.
+        STATE_FILE="$HOME/.cache/current_wallpaper.txt"
+        if [ -s "$STATE_FILE" ]; then
+            read -r CURRENT_SRC < "$STATE_FILE" 2>/dev/null || CURRENT_SRC=""
+        fi
+        if [ -z "$CURRENT_SRC" ]; then
+            if pgrep -a "mpvpaper" > /dev/null; then
+                CURRENT_SRC=$(pgrep -a mpvpaper | grep -o "$SRC_DIR/[^' ]*" | head -n1)
+            elif command -v awww >/dev/null; then
+                CURRENT_SRC=$(awww query 2>/dev/null | grep -o "$SRC_DIR/[^ ]*" | head -n1)
+            fi
         fi
 
         TARGET_THUMB=""

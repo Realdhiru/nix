@@ -93,11 +93,32 @@ fi
         sat=100
     fi
 
+    # Color pipeline critical section. Workers fork per apply and all write
+    # the SAME shared artifacts (qs_colors.json + every matugen template
+    # output), so overlapping workers previously raced: the slow tail of an
+    # earlier worker (fallback matugen color + extract) could land last and
+    # clobber the final wallpaper's palette. flock serializes the section
+    # and staleness is re-checked UNDER the lock, so only the worker whose
+    # wallpaper is still current ever writes — colors always converge to
+    # the last applied wallpaper. Per-PID logs survive races.
+    mkdir -p "$HOME/.cache/matugen"
+    exec 9>"$HOME/.cache/matugen/color_worker.lock"
+    flock 9
+
+    stored=$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null)
+    if [ "$stored" != "$WALL" ]; then
+        exit 0
+    fi
+
     if (( $(echo "$sat < 5" | bc -l) )); then
-        matugen color hex "#808080" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity > /tmp/matugen.log 2>&1
+        matugen color hex "#808080" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity > "/tmp/matugen.$$.log" 2>&1
         "$HOME/nix/dotfiles/matugen/extract_raw_colors.sh" "$SEED"
     else
+<<<<<<< HEAD
         matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity --source-color-index 0 > /tmp/matugen.log 2>&1
         "$HOME/nix/dotfiles/matugen/extract_raw_colors.sh" "$SEED"
+=======
+        matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-fidelity --source-color-index 0 > "/tmp/matugen.$$.log" 2>&1
+>>>>>>> e28ba91 (Update configuration)
     fi
 ) &

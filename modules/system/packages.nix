@@ -23,6 +23,7 @@ in
     vim git curl wget tree jq yq-go bc socat python3 btop weathr util-linux
 
     # Development & Terminal
+    tmux
     vscodium
     wezterm
     fastfetch
