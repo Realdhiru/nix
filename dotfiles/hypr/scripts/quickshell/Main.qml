@@ -170,9 +170,9 @@ PanelWindow {
 
     property string currentActive: "hidden"
 
-    onCurrentActiveChanged: {
-        Quickshell.execDetached(["bash", "-c", "echo '" + currentActive + "' > " + Caching.runDir + "/current_widget"]);
-    }
+    // NOTE: the old `echo > runDir/current_widget` hook is gone — its only
+    // reader (TopBar's widgetPoller) was dead code, so this was a bash spawn
+    // on every widget switch feeding nothing.
 
     property bool isVisible: false
     property string activeArg: ""

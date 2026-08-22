@@ -416,7 +416,7 @@ Item {
                     NumberAnimation on rotation {
                         from: 0; to: 360; duration: 5000
                         loops: Animation.Infinite
-                        running: true
+                        running: root.visible
                     }
 
                     gradient: Gradient {

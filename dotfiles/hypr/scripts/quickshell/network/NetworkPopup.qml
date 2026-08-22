@@ -124,7 +124,9 @@ Item {
         }
     }
 
-    Timer { interval: 100; running: true; repeat: true; onTriggered: modeReader.running = true }
+    // 10x/sec mode-file re-read — only meaningful while the popup is open
+    // (cached-popup leak fix; was running forever after close).
+    Timer { interval: 100; running: window.visible; repeat: true; onTriggered: modeReader.running = true }
 
     Component.onCompleted: {
         window.powerAnimAllowed = false;
@@ -867,7 +869,9 @@ Item {
 
     Timer {
         interval: (Object.keys(window.busyTasks).length > 0 || Object.keys(window.disconnectingDevices).length > 0) ? 1000 : 3000
-        running: true; repeat: true
+        // Cached-popup leak fix: this drives eth/wifi/bt fetch spawns; a
+        // bare running:true kept polling forever after close.
+        running: window.visible; repeat: true
         onTriggered: {
             if (!ethPoller.running) ethPoller.running = true;
             if (!wifiPoller.running) wifiPoller.running = true;
@@ -892,6 +896,7 @@ Item {
                 width: window.s(6); height: window.s(6); radius: window.s(3); color: dotCol
                 SequentialAnimation on y {
                     loops: Animation.Infinite
+                    running: window.visible
                     PauseAnimation { duration: index * 100 }
                     NumberAnimation { from: 0; to: window.s(-6); duration: 250; easing.type: Easing.OutSine }
                     NumberAnimation { from: window.s(-6); to: 0; duration: 250; easing.type: Easing.InSine }

@@ -310,9 +310,12 @@ Item {
         }
     }
 
-    Timer { 
+    Timer {
         interval: 1000
-        running: window.isTodaySelected 
+        // Cached-popup leak fix: isTodaySelected stays true while this
+        // widget sits in Main.qml's widgetCache, so a bare isTodaySelected
+        // gate kept spawning the stats fetcher every second after close.
+        running: window.visible && window.isTodaySelected
         repeat: true
         onTriggered: window.requestDataUpdate()
     }

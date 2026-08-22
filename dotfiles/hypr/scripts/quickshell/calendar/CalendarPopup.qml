@@ -201,7 +201,7 @@ Item {
     }
 
     Timer {
-        interval: 1000; running: true; repeat: true
+        interval: 1000; running: window.visible; repeat: true
         onTriggered: {
             let now = new Date();
             let localOffsetSec = -(now.getTimezoneOffset() * 60);
@@ -340,8 +340,8 @@ Item {
     }
 
     Timer {
-        interval: 150000 
-        running: true; repeat: true
+        interval: 150000
+        running: window.visible; repeat: true
         onTriggered: weatherPoller.running = true
     }
 
@@ -498,6 +498,7 @@ Item {
                 property real drift: 0
                 SequentialAnimation on drift {
                     loops: Animation.Infinite
+                    running: window.visible
                     NumberAnimation { to: Math.round(-20 * window.sf); duration: 6000; easing.type: Easing.InOutSine }
                     NumberAnimation { to: 0; duration: 6000; easing.type: Easing.InOutSine }
                 }
@@ -523,6 +524,7 @@ Item {
                 property real levitation: 0
                 SequentialAnimation on levitation {
                     loops: Animation.Infinite
+                    running: window.visible
                     NumberAnimation { to: Math.round(-15 * window.sf); duration: 4000; easing.type: Easing.InOutSine }
                     NumberAnimation { to: 0; duration: 4000; easing.type: Easing.InOutSine }
                 }
@@ -530,7 +532,7 @@ Item {
                 property real orbitBreath: 1.0
                 SequentialAnimation on orbitBreath {
                     loops: Animation.Infinite
-                    running: true
+                    running: window.visible
                     NumberAnimation { to: 1.035; duration: 3500; easing.type: Easing.InOutSine }
                     NumberAnimation { to: 1.0; duration: 3500; easing.type: Easing.InOutSine }
                 }

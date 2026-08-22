@@ -322,8 +322,12 @@ Item {
         }
     }
 
+    // Popup-local telemetry refresh (cap/profile/time-remaining/vol/bri).
+    // Gated to visibility: this popup stays cached in Main.qml's
+    // widgetCache after close, so a bare running:true kept spawning bash
+    // every 1.5s forever while hidden.
     Timer {
-        interval: 1500; running: true; repeat: true; triggeredOnStart: true;
+        interval: 1500; running: window.visible; repeat: true; triggeredOnStart: true;
         onTriggered: {
             sysPoller.running = false;
             sysPoller.running = true;
@@ -1068,8 +1072,8 @@ Item {
                             
                             SequentialAnimation on scale {
                                 loops: Animation.Infinite
-                                running: true
-                                NumberAnimation { 
+                                running: window.visible
+                                NumberAnimation {
                                     to: heroMa.containsMouse ? 1.05 : (centralCore.isDangerState ? 1.04 : 1.01)
                                     duration: heroMa.containsMouse ? 1200 : (centralCore.isDangerState ? 600 : 2500)
                                     easing.type: Easing.InOutSine 

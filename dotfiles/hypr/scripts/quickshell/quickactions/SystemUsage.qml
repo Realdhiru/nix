@@ -73,8 +73,17 @@ Item {
         from: 0; to: Math.PI * 2; duration: 1800; loops: Animation.Infinite; running: root.widgetVisible
     }
 
-    Component.onCompleted: SysData.subscribe()
-    Component.onDestruction: SysData.unsubscribe()
+    // Telemetry subscription follows ACTUAL visibility, not component
+    // lifecycle: this widget lives in Main.qml's widgetCache after its first
+    // open, so Component.onDestruction never fires while cached — the old
+    // completed/destruction pair left SysData's 2s poll running forever
+    // once this popup had been opened and "closed". visible flips false
+    // when StackView detaches a cached page, true when it's pushed back.
+    onVisibleChanged: {
+        if (visible) SysData.subscribe();
+        else SysData.unsubscribe();
+    }
+    Component.onCompleted: if (visible) SysData.subscribe()
 
     // --- ANIMATED DATA STATE BINDINGS ---
     // Smooths out raw SysData to drive both the visual wave and the dynamic text counters in constant 800ms time
@@ -117,7 +126,9 @@ Item {
     Timer {
         id: diskTimer
         interval: 60000
-        running: true; repeat: true; triggeredOnStart: true
+        // du -sh over nine home dirs is expensive — only run while this
+        // cached widget is actually on screen (see onVisibleChanged above).
+        running: root.visible; repeat: true; triggeredOnStart: true
         onTriggered: { diskProc.running = false; diskProc.running = true; }
     }
 

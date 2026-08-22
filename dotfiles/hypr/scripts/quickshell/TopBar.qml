@@ -68,31 +68,6 @@ Variants {
 
             property int workspaceCount: 69
 
-            property string activeWidget: ""
-
-            Timer {
-                interval: 2000
-                running: true
-                repeat: true
-                onTriggered: {
-                    widgetPoller.running = false; widgetPoller.running = true;
-                    recPoller.running = false; recPoller.running = true;
-                    updatePoller.running = false; updatePoller.running = true;
-                    musicForceRefresh.running = false; musicForceRefresh.running = true;
-                }
-            }
-
-            Process {
-                id: widgetPoller
-                command: ["bash", "-c", "cat '" + Caching.runDir + "/current_widget' 2>/dev/null || echo ''"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        let txt = this.text.trim();
-                        if (barWindow.activeWidget !== txt) barWindow.activeWidget = txt;
-                    }
-                }
-            }
-
             Process {
                 id: recPoller
                 command: ["bash", "-c", "if [ -s '" + Caching.getCacheDir('recording') + "/rec_pid' ] && kill -0 $(cat '" + Caching.getCacheDir('recording') + "/rec_pid') 2>/dev/null; then echo '1'; else echo '0'; fi"]
@@ -103,8 +78,24 @@ Variants {
                 }
             }
 
+            // recPoller's only driver was the deleted 2s master timer; this
+            // dedicated timer preserves its exact prior cadence (recording
+            // indicator behavior intentionally left unchanged).
+            Timer {
+                interval: 2000
+                running: true
+                repeat: true
+                triggeredOnStart: true
+                onTriggered: { recPoller.running = false; recPoller.running = true; }
+            }
+
+            // Update pill: event-driven. update_wait.sh blocks on inotify
+            // (same pattern as wsWatcher/settings_wait.sh); when the updater
+            // creates/removes update_pending, updateReader re-reads and
+            // re-arms the watcher. No periodic polling.
             Process {
-                id: updatePoller
+                id: updateReader
+                running: true
                 command: ["bash", "-c", "if [ -f '" + Caching.getCacheDir('updater') + "/update_pending' ]; then echo '1'; else echo '0'; fi"]
                 stdout: StdioCollector {
                     onStreamFinished: {
@@ -113,8 +104,19 @@ Variants {
                 }
             }
 
+            Process {
+                id: updateWatcher
+                running: true
+                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/update_wait.sh"]
+                onExited: {
+                    updateReader.running = false;
+                    updateReader.running = true;
+                    running = false;
+                    running = true;
+                }
+            }
+
             property bool isDesktop: false
-            property string ethStatus: "Ethernet"
 
             Process {
                 id: chassisDetector
@@ -133,24 +135,19 @@ Variants {
             property bool startupCascadeFinished: false
             Timer { interval: 1000; running: true; onTriggered: barWindow.startupCascadeFinished = true }
 
-            // isDataReady used to be gated on a hardcoded 600ms Timer that
-            // had nothing to do with real data — it fired on a fixed clock
-            // regardless of whether any poller had actually returned
-            // anything yet, then several more artificial per-widget delays
-            // stacked on top of that for the tray/battery pill specifically
-            // (~1.5s total before they became visible). Replaced with real
-            // flags set the moment each relevant poller's stdout actually
-            // resolves (see audioPoller/networkPoller/btPoller/batteryPoller
-            // below) — on a local machine these all resolve in well under
-            // 100ms, so the pills now appear as soon as they actually can,
-            // with real data already populated, instead of waiting on an
-            // arbitrary clock.
-            property bool audioLoaded: false
-            property bool networkLoaded: false
-            property bool btLoaded: false
+            // isDataReady gates the startup reveal on real data arriving.
+            // The audio/network/bt poller chains were deleted (their state
+            // was never rendered); battery now comes from the SysData
+            // singleton's event watcher, so the only live flag left is
+            // batteryLoaded — set on SysData's first battery event.
             property bool batteryLoaded: false
             property bool dataReadyFallbackTriggered: false
-            property bool isDataReady: (audioLoaded && networkLoaded && btLoaded && batteryLoaded) || dataReadyFallbackTriggered
+            property bool isDataReady: batteryLoaded || dataReadyFallbackTriggered
+
+            Connections {
+                target: SysData
+                function onBatCapacityChanged(cap) { barWindow.batteryLoaded = true; }
+            }
 
             // Safety net only, in case a poller script is ever broken/slow —
             // guarantees the bar never hangs forever waiting on one flag.
@@ -161,24 +158,32 @@ Variants {
             property int typeInIndex: 0
             property string dateStr: fullDateStr.substring(0, typeInIndex)
 
-            property string wifiStatus: "Off"
-            property string wifiIcon: "󰤮"
-            property string wifiSsid: ""
-
-            property string btStatus: "Off"
-            property string btIcon: "󰂲"
-            property string btDevice: ""
-
-            property string volPercent: "0%"
-            property string volIcon: "󰕾"
-            property bool isMuted: false
-
-            property string batPercent: "100%"
-            property string batIcon: "󰁹"
-            property string batStatus: "Unknown"
-            property bool acOnline: true
-
-            property string kbLayout: "us"
+            readonly property string batPercent: SysData.batCapacity + "%"
+            // Battery/AC: single authoritative source = SysData singleton's
+            // always-on udevadm event watcher. TopBar no longer runs its own
+            // duplicate batteryPoller/batteryWaiter pair.
+            property bool acOnline: SysData.acOnline
+            property string batIcon: _batIcon(SysData.batCapacity, SysData.acOnline)
+            function _batIcon(percent, online) {
+                if (online) {
+                    if (percent >= 90) return "󰂅";
+                    if (percent >= 80) return "󰂋";
+                    if (percent >= 60) return "󰂊";
+                    if (percent >= 40) return "󰢞";
+                    if (percent >= 20) return "󰂆";
+                    return "󰢜";
+                }
+                if (percent >= 90) return "󰁹";
+                if (percent >= 80) return "󰂂";
+                if (percent >= 70) return "󰂁";
+                if (percent >= 60) return "󰂀";
+                if (percent >= 50) return "󰁿";
+                if (percent >= 40) return "󰁾";
+                if (percent >= 30) return "󰁽";
+                if (percent >= 20) return "󰁼";
+                if (percent >= 10) return "󰁻";
+                return "󰁺";
+            }
 
             ListModel {
                 id: workspacesModel
@@ -215,11 +220,6 @@ Variants {
                 return mocha.mauve;
             }
 
-            property bool isWifiOn: barWindow.wifiStatus.toLowerCase() === "enabled" || barWindow.wifiStatus.toLowerCase() === "on"
-            property bool isBtOn: barWindow.btStatus.toLowerCase() === "enabled" || barWindow.btStatus.toLowerCase() === "on"
-            property bool showEthernet: barWindow.ethStatus === "Connected" || (barWindow.isDesktop && !barWindow.isWifiOn)
-
-            property bool isSoundActive: !barWindow.isMuted && parseInt(barWindow.volPercent) > 0
             property int batCap: parseInt(barWindow.batPercent) || 0
             property bool isCharging: barWindow.acOnline
             property color batDynamicColor: {
@@ -363,10 +363,29 @@ if (diff > 0) {
                     let newData = Object.assign({}, barWindow.musicData);
                     newData.timeStr = newPosStr + " / " + parts[1];
                     newData.positionStr = newPosStr;
-                    newData.position = posSecs; 
+                    newData.position = posSecs;
                     if (lenSecs > 0) newData.percent = (posSecs / lenSecs) * 100;
 
                     barWindow.musicData = newData;
+                }
+            }
+
+            // Position drift correction ONLY. MPRIS emits no continuous
+            // position stream, so the 1s interpolation above accumulates a
+            // small offset over long playback — this re-syncs against
+            // playerctl periodically. Track/status/metadata changes are NOT
+            // its job; those come from mprisWatcher's DBus signals.
+            // The old 2-second unconditional musicForceRefresh loop is gone:
+            // DBus PropertiesChanged/Seeked signals cover track, play/pause,
+            // metadata and art (music_info.sh fires a synthetic Seeked when
+            // an art download completes), so polling was pure duplication.
+            Timer {
+                interval: 45000
+                running: barWindow.isMediaActive && barWindow.musicData.status === "Playing"
+                repeat: true
+                onTriggered: {
+                    musicForceRefresh.running = false;
+                    musicForceRefresh.running = true;
                 }
             }
 
@@ -427,105 +446,21 @@ if (diff > 0) {
                 }
             }
 
-            
-            Process {
-                id: audioPoller; running: true
-                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/audio_fetch.sh"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        barWindow.audioLoaded = true;
-                        let txt = this.text.trim();
-                        if (txt !== "") {
-                            try {
-                                let data = JSON.parse(txt);
-                                let newVol = data.volume.toString() + "%";
-                                if (barWindow.volPercent !== newVol) barWindow.volPercent = newVol;
-                                if (barWindow.volIcon !== data.icon) barWindow.volIcon = data.icon;
-                                let newMuted = (data.is_muted === "true");
-                                if (barWindow.isMuted !== newMuted) barWindow.isMuted = newMuted;
-                            } catch(e) {}
-                        }
-                        audioWaiter.running = false;
-                        audioWaiter.running = true;
-                    }
-                }
-            }
-            Process { id: audioWaiter; command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/audio_wait.sh"]; onExited: { audioPoller.running = false; audioPoller.running = true; } }
+            // NOTE: the old audioPoller/networkPoller/btPoller fetch-wait
+            // chains (pw-mon / nmcli monitor / dbus-monitor) were removed:
+            // their state properties had no UI consumers. Live volume and
+            // brightness feedback is the osd.sh → notification → NotifTicker
+            // OSD path; network/bluetooth popups own their own fetchers.
 
-            Process {
-                id: networkPoller; running: true
-                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/network_fetch.sh"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        barWindow.networkLoaded = true;
-                        let txt = this.text.trim();
-                        if (txt !== "") {
-                            try {
-                                let data = JSON.parse(txt);
-                                if (barWindow.wifiStatus !== data.status) barWindow.wifiStatus = data.status;
-                                if (barWindow.wifiIcon !== data.icon) barWindow.wifiIcon = data.icon;
-                                if (barWindow.wifiSsid !== data.ssid) barWindow.wifiSsid = data.ssid;
-                                if (barWindow.ethStatus !== data.eth_status) barWindow.ethStatus = data.eth_status;
-                            } catch(e) {}
-                        }
-                        networkWaiter.running = false;
-                        networkWaiter.running = true;
-                    }
-                }
-            }
-            Process { id: networkWaiter; command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/network_wait.sh"]; onExited: { networkPoller.running = false; networkPoller.running = true; } }
-
-            Process {
-                id: btPoller; running: true
-                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/bt_fetch.sh"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        barWindow.btLoaded = true;
-                        let txt = this.text.trim();
-                        if (txt !== "") {
-                            try {
-                                let data = JSON.parse(txt);
-                                if (barWindow.btStatus !== data.status) barWindow.btStatus = data.status;
-                                if (barWindow.btIcon !== data.icon) barWindow.btIcon = data.icon;
-                                if (barWindow.btDevice !== data.connected) barWindow.btDevice = data.connected;
-                            } catch(e) {}
-                        }
-                        btWaiter.running = false;
-                        btWaiter.running = true;
-                    }
-                }
-            }
-            Process { id: btWaiter; command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/bt_wait.sh"]; onExited: { btPoller.running = false; btPoller.running = true; } }
-
-            Process {
-                id: batteryPoller; running: true
-                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_fetch.sh"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        barWindow.batteryLoaded = true;
-                        let txt = this.text.trim();
-                        if (txt !== "") {
-                            try {
-                                let data = JSON.parse(txt);
-                                let pctNum = parseInt(data.percent);
-                                if (!isNaN(pctNum) && pctNum >= 0 && pctNum <= 100) {
-                                    let newBat = pctNum + "%";
-                                    if (barWindow.batPercent !== newBat) barWindow.batPercent = newBat;
-                                    if (barWindow.batIcon !== data.icon) barWindow.batIcon = data.icon;
-                                    if (barWindow.batStatus !== data.status) barWindow.batStatus = data.status;
-                                    barWindow.acOnline = (data.online === "1");
-                                }
-                            } catch(e) {}
-                        }
-                        batteryWaiter.running = false;
-                        batteryWaiter.running = true;
-                    }
-                }
-            }
-            Process { id: batteryWaiter; command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_wait.sh"]; onExited: { batteryPoller.running = false; batteryPoller.running = true; } }
-
+            // Clock shows HH:mm only, so it fires once per minute instead of
+            // once per second — re-armed just past each minute boundary.
+            // (Presentation clock; this is the one legitimate timer here.)
             Timer {
-                interval: 1000; running: true; repeat: true; triggeredOnStart: true
+                id: clockTimer
+                interval: 0
+                running: true
+                repeat: true
+                triggeredOnStart: true
                 onTriggered: {
                     let d = new Date();
                     barWindow.timeStr = Qt.formatDateTime(d, "HH:mm");
@@ -533,6 +468,8 @@ if (diff > 0) {
                     if (barWindow.typeInIndex >= barWindow.fullDateStr.length) {
                         barWindow.typeInIndex = barWindow.fullDateStr.length;
                     }
+                    interval = 60000 - (d.getSeconds() * 1000 + d.getMilliseconds()) + 50;
+                    restart();
                 }
             }
 
