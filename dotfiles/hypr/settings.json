@@ -13,8 +13,8 @@
       "rate": 120,
       "x": 0,
       "y": 0,
-      "scale": 2,
-      "transform": 2
+      "scale": 1.75,
+      "transform": 0
     }
   ],
   "openGuideAtStartup": true

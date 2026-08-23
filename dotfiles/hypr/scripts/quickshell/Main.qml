@@ -324,7 +324,18 @@ PanelWindow {
         }
         Behavior on height {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
+        }
+
+        scale: masterWindow.isVisible ? 1.0 : 0.0
+        transformOrigin: Item.Center
+
+        Behavior on scale {
+            enabled: !masterWindow.disableMorph
+            NumberAnimation {
+                duration: masterWindow.isVisible ? 230 : 230
+                easing.type: masterWindow.isVisible ? Easing.OutExpo : Easing.InExpo
+            }
         }
 
         opacity: masterWindow.isVisible ? 1.0 : 0.0
@@ -397,11 +408,8 @@ PanelWindow {
 
         if (newWidget === "hidden") {
             if (currentActive !== "hidden") {
-                masterWindow.morphDuration = masterWindow.exitDuration;
+                masterWindow.morphDuration = 230;
                 masterWindow.disableMorph = false;
-
-                masterWindow.animW = 1;
-                masterWindow.animH = 1;
                 masterWindow.isVisible = false;
 
                 delayedClear.start();
