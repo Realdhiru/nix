@@ -140,11 +140,13 @@ PanelWindow {
         if (!t || !t.comp) return;
 
         let obj = t.comp.createObject(masterWindow, {
-            "notifModel": masterWindow.notifModel,
-            "liveNotifs": masterWindow.liveNotifs,
             "visible": false
         });
-        if (obj) widgetCache[name] = obj;
+        if (obj) {
+            if (obj.notifModel !== undefined) obj.notifModel = masterWindow.notifModel;
+            if (obj.liveNotifs !== undefined) obj.liveNotifs = masterWindow.liveNotifs;
+            widgetCache[name] = obj;
+        }
     }
 
     Component.onCompleted: {
@@ -310,25 +312,25 @@ PanelWindow {
 
         Behavior on x {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
         Behavior on y {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
         Behavior on width {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
         Behavior on height {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
 
         opacity: masterWindow.isVisible ? 1.0 : 0.0
         Behavior on opacity {
             NumberAnimation {
-                duration: masterWindow.isVisible ? 160 : 230
+                duration: 160
                 easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic
             }
         }
@@ -395,7 +397,7 @@ PanelWindow {
 
         if (newWidget === "hidden") {
             if (currentActive !== "hidden") {
-                masterWindow.morphDuration = 230;
+                masterWindow.morphDuration = masterWindow.exitDuration;
                 masterWindow.disableMorph = false;
 
                 masterWindow.animW = 1;
@@ -421,7 +423,7 @@ PanelWindow {
                 masterWindow.disableMorph = false;
             }
 
-            Qt.callLater(() => executeSwitch(newWidget, arg, false));
+            executeSwitch(newWidget, arg, false);
         }
     }
 
@@ -441,10 +443,6 @@ PanelWindow {
         masterWindow.targetH = t.h;
 
         let props = {};
-        props["notifModel"]   = masterWindow.notifModel;
-        props["liveNotifs"]   = masterWindow.liveNotifs;
-        props["layoutWidth"]  = t.w;
-        props["layoutHeight"] = t.h;
         if (newWidget === "wallpaper") props["widgetArg"] = arg;
 
         let cached = widgetCache[newWidget];
@@ -466,6 +464,10 @@ PanelWindow {
         } else {
             let obj = t.comp.createObject(masterWindow, props);
             if (obj) {
+                if (obj.notifModel   !== undefined) obj.notifModel   = masterWindow.notifModel;
+                if (obj.liveNotifs   !== undefined) obj.liveNotifs   = masterWindow.liveNotifs;
+                if (obj.layoutWidth  !== undefined) obj.layoutWidth  = t.w;
+                if (obj.layoutHeight !== undefined) obj.layoutHeight = t.h;
                 widgetCache[newWidget] = obj;
                 if (immediate) {
                     widgetStack.replace(obj, {}, StackView.Immediate);
