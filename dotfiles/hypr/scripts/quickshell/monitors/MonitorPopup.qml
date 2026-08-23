@@ -1396,8 +1396,8 @@ Item {
                         Layout.leftMargin: window.s(6)
                         Layout.rightMargin: window.s(6)
 
-                        property var scales: [1.0, 1.25, 1.33, 1.5, 1.75, 2.0, 2.5]
-                        property var scaleLabels: ["1x", "1.25", "1.33", "1.5", "1.75", "2x", "2.5x"]
+                        property var scales: [1.0, 1.25, 1.33, 1.5, 1.8, 2.0, 2.5]
+                        property var scaleLabels: ["1x", "1.25", "1.33", "1.5", "1.8", "2x", "2.5x"]
                         property var scaleColors: [window.red, window.mauve, window.blue, window.sapphire, window.teal, window.pink, window.yellow]
 
                         property int currentIndex: {
