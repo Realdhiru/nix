@@ -18,7 +18,6 @@ Item {
     // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler
-        currentWidth: Screen.width
     }
 
     // Helper function scoped to the root Item

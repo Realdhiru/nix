@@ -148,6 +148,8 @@ PanelWindow {
     }
 
     Component.onCompleted: {
+        Config.masterWidth = masterWindow.width;
+        Config.masterHeight = masterWindow.height;
         preloadStaggerTimer.start();
     }
 
@@ -234,7 +236,7 @@ PanelWindow {
     function getLayout(name) {
         let key = name + "|" + masterWindow.width + "|" + masterWindow.height + "|" + masterWindow.globalUiScale;
         if (_layoutCacheKey === key) return _layoutCache[key];
-        let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
+        let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale / Screen.devicePixelRatio);
 
         if (result && result.comp && typeof result.comp === "string") {
             result.comp = resolveComponent(result.comp);
@@ -248,8 +250,8 @@ PanelWindow {
 
     Connections {
         target: masterWindow
-        function onWidthChanged()  { _layoutCacheKey = ""; handleNativeScreenChange(); }
-        function onHeightChanged() { _layoutCacheKey = ""; handleNativeScreenChange(); }
+        function onWidthChanged()  { _layoutCacheKey = ""; Config.masterWidth = masterWindow.width; handleNativeScreenChange(); }
+        function onHeightChanged() { _layoutCacheKey = ""; Config.masterHeight = masterWindow.height; handleNativeScreenChange(); }
     }
 
     function handleNativeScreenChange() {

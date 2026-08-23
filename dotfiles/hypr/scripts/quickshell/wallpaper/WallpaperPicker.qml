@@ -13,7 +13,6 @@ Item {
 
     Scaler {
         id: scaler
-        currentWidth: Screen.width
     }
     
     function s(val) { 
@@ -180,7 +179,7 @@ Item {
             return;
         }
 
-        const originalFile = window.srcDir + "/" + cleanName;
+        const originalFile = window.flatSrcDir.replace("file://", "") + "/" + safeFileName;
         const escOriginal = escapeBash(originalFile);
 
         const fullScript = `

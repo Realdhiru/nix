@@ -165,6 +165,11 @@ Item {
     // =========================================================================
     property alias monitorsModel: _monitorsModel
     ListModel { id: _monitorsModel }
+
+    // Unified Master Window Size (to fix widget clipping/scaling mismatch)
+    property real masterWidth: Screen.width
+    property real masterHeight: Screen.height
+
     property int monActiveEditIndex: 0
     property real monUiScale: 0.10
     property int monOriginalOriginX: 0
