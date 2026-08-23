@@ -6,6 +6,8 @@ config.window_close_confirmation = "NeverPrompt"
 config.hide_tab_bar_if_only_one_tab = true
 config.adjust_window_size_when_changing_font_size = false
 
+config.window_background_opacity = 0.5
+
 -- Render via WebGpu (Vulkan/ANV): the iris-GL path on mesa 26.2 + i915 hangs
 -- (ecode 12:1:859ffffb) on this Alder Lake Iris Xe; the Vulkan path is clean.
 config.front_end = "WebGpu"
