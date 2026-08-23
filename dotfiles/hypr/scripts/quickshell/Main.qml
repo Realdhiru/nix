@@ -426,12 +426,25 @@ PanelWindow {
                 masterWindow.animH = t.h;
                 masterWindow.targetW = t.w;
                 masterWindow.targetH = t.h;
+
+                masterWindow._pendingWidget = newWidget;
+                masterWindow._pendingArg = arg;
+
+                if (!widgetCache[newWidget] && t && t.comp) {
+                    let obj = t.comp.createObject(masterWindow, { "visible": false });
+                    if (obj) {
+                        if (obj.notifModel !== undefined) obj.notifModel = masterWindow.notifModel;
+                        if (obj.liveNotifs !== undefined) obj.liveNotifs = masterWindow.liveNotifs;
+                        widgetCache[newWidget] = obj;
+                    }
+                }
+
+                teleportTimer.restart();
             } else {
                 masterWindow.morphDuration = masterWindow.morphDurationShift;
                 masterWindow.disableMorph = false;
+                executeSwitch(newWidget, arg, false);
             }
-
-            executeSwitch(newWidget, arg, false);
         }
     }
 
@@ -524,6 +537,17 @@ PanelWindow {
                 widgetStack.clear();
                 masterWindow.disableMorph = false;
             }
+        }
+    }
+
+    property string _pendingWidget: ""
+    property string _pendingArg: ""
+    Timer {
+        id: teleportTimer
+        interval: 32
+        onTriggered: {
+            masterWindow.disableMorph = false;
+            executeSwitch(masterWindow._pendingWidget, masterWindow._pendingArg, false);
         }
     }
 }
