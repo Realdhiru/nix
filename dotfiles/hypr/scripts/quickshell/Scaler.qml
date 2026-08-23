@@ -12,7 +12,7 @@ Item {
     property real currentHeight: typeof masterWindow !== "undefined" ? masterWindow.height : (typeof Config !== "undefined" ? Config.masterHeight : Screen.height)
     
     // Divide by devicePixelRatio to offset Wayland's compositor-level scaling on High-DPI screens
-    property real uiScale: (typeof Config !== "undefined" ? Config.uiScale : 1.0) / Screen.devicePixelRatio
+    property real uiScale: (typeof Config !== "undefined" ? Config.uiScale : 1.0) / Math.max(1.0, Screen.devicePixelRatio * 0.75)
 
     property real baseScale: LayoutMath.getScale(currentWidth, currentHeight, uiScale)
     

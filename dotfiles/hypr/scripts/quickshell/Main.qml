@@ -236,7 +236,7 @@ PanelWindow {
     function getLayout(name) {
         let key = name + "|" + masterWindow.width + "|" + masterWindow.height + "|" + masterWindow.globalUiScale;
         if (_layoutCacheKey === key) return _layoutCache[key];
-        let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale / Screen.devicePixelRatio);
+        let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale / Math.max(1.0, Screen.devicePixelRatio * 0.75));
 
         if (result && result.comp && typeof result.comp === "string") {
             result.comp = resolveComponent(result.comp);
