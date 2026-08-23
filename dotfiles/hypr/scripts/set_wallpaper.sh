@@ -27,7 +27,19 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
     # (daemon teardown centralized in ensure_awww.sh)
     "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop
     pkill -f mpvpaper 2>/dev/null
-    mpvpaper -o "no-audio --loop-playlist --hwdec=vaapi --panscan=1.0" '*' "$WALL" > /dev/null 2>&1 &
+    
+    WALL_TARGET="$WALL"
+    if [[ "$EXT" == "gif" ]]; then
+        GIF_CACHE_DIR="$HOME/.cache/converted_gifs"
+        mkdir -p "$GIF_CACHE_DIR"
+        WALL_TARGET="$GIF_CACHE_DIR/$BASENAME.mp4"
+        if [ ! -f "$WALL_TARGET" ]; then
+            # Convert GIF to MP4 on first run to enable hardware video decoding (VPU)
+            ffmpeg -hide_banner -loglevel error -y -i "$WALL" -c:v libx264 -preset veryfast -pix_fmt yuv420p -an "$WALL_TARGET"
+        fi
+    fi
+
+    mpvpaper -o "no-audio --loop-playlist --hwdec=vaapi --panscan=1.0" '*' "$WALL_TARGET" > /dev/null 2>&1 &
 else
     # Kill video before starting image
     pkill -f mpvpaper 2>/dev/null
@@ -85,22 +97,10 @@ fi
         fi
     fi
 
-    # High-speed localized color analysis (Now safely operating on a max 400px image, not 4K)
-    sat=$(magick "$SEED[0]" -resize 16x16 -colorspace HSL -channel s -separate +channel -format "%[fx:mean*100]" info: 2>/dev/null)
-
-    # Failsafe: If magick fails (bad image/format), default to 100 to prevent 'bc' syntax errors
-    if [ -z "$sat" ]; then
-        sat=100
-    fi
-
     # Color pipeline critical section. Workers fork per apply and all write
     # the SAME shared artifacts (qs_colors.json + every matugen template
     # output), so overlapping workers previously raced: the slow tail of an
-    # earlier worker (fallback matugen color + extract) could land last and
-    # clobber the final wallpaper's palette. flock serializes the section
-    # and staleness is re-checked UNDER the lock, so only the worker whose
-    # wallpaper is still current ever writes — colors always converge to
-    # the last applied wallpaper. Per-PID logs survive races.
+    # earlier worker could land last and clobber the final wallpaper's palette.
     mkdir -p "$HOME/.cache/matugen"
     exec 9>"$HOME/.cache/matugen/color_worker.lock"
     flock 9
@@ -110,9 +110,6 @@ fi
         exit 0
     fi
 
-    if (( $(echo "$sat < 5" | bc -l) )); then
-        matugen color hex "#808080" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-expressive > "/tmp/matugen.$$.log" 2>&1
-    else
-        matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-expressive --source-color-index 0 > "/tmp/matugen.$$.log" 2>&1
-    fi
+    # Run matugen directly on the thumbnail using defaults (fastest, most accurate)
+    matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" > "/tmp/matugen.$$.log" 2>&1
 ) &
