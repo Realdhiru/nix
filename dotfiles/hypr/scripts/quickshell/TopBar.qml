@@ -492,7 +492,7 @@ if (diff > 0) {
 
                     Rectangle {
                         id: workspacesBox
-                        color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.7)
+                        color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
                         radius: barWindow.s(14)
                         border.width: 1
                         border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
@@ -621,7 +621,7 @@ if (diff > 0) {
                                         font.pixelSize: barWindow.s(14)
                                         font.weight: stateLabel === "active" ? Font.Black : (stateLabel === "occupied" ? Font.Bold : Font.Medium)
 
-                                        color: index === workspacesModel.activeIndex ? mocha.text : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
+                                        color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
 
                                         Behavior on color { ColorAnimation { duration: 250 } }
                                     }
@@ -643,7 +643,7 @@ if (diff > 0) {
 
                     Rectangle {
                         id: mediaBox
-                        color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.7)
+                        color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
                         radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
                         height: barWindow.barHeight
                         clip: true
@@ -1309,7 +1309,7 @@ if (diff > 0) {
                             id: recButton
                             property bool isHovered: recMouse.containsMouse
 
-                            color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.95) : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
+                            color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.95) : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.35)
                             radius: barWindow.s(14)
                             border.width: 1
                             border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.15 : 0.05)

@@ -1,6 +1,4 @@
 [config]
-scheme = "expressive"
-contrast = 1.0
 reload_apps = false
 fallback_color = "#808080"
 

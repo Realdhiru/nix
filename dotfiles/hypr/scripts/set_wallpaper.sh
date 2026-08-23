@@ -61,11 +61,17 @@ else
     "$HOME/.config/hypr/scripts/ensure_awww.sh"
 
     # Push the image to the persistent daemon instantly with a fast fade
-    awww img "$WALL" \
+    if ! awww img "$WALL" \
         --transition-type fade \
         --transition-step 255 \
         --transition-duration 0.1 \
-        --transition-fps 60 > /dev/null 2>&1
+        --transition-fps 60 > /dev/null 2>&1; then
+        
+        # FALLBACK: If awww fails (e.g., unsupported format, fake extension, or crashes), fallback to mpvpaper
+        "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop
+        pkill -f mpvpaper 2>/dev/null
+        mpvpaper -o "no-audio --loop-playlist --hwdec=auto --panscan=1.0" '*' "$WALL" > /dev/null 2>&1 &
+    fi
 fi
 
 # 3. ISOLATED WORKER THREAD (Forks immediately)
@@ -97,6 +103,13 @@ fi
         fi
     fi
 
+    # Calculate saturation and lightness to intelligently theme grayscale images
+    eval $(magick "$SEED[0]" -resize 16x16 -colorspace HSL -format "sat=%[fx:mean.g*100]; lum=%[fx:mean.b*100]" info: 2>/dev/null)
+    if [ -z "$sat" ] || [ -z "$lum" ]; then
+        sat=100
+        lum=50
+    fi
+
     # Color pipeline critical section. Workers fork per apply and all write
     # the SAME shared artifacts (qs_colors.json + every matugen template
     # output), so overlapping workers previously raced: the slow tail of an
@@ -110,6 +123,23 @@ fi
         exit 0
     fi
 
-    # Run matugen directly on the thumbnail using defaults (fastest, most accurate)
-    matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" > "/tmp/matugen.$$.log" 2>&1
+    # Smart Color Generation Algorithm
+    if (( $(echo "$sat < 15" | bc -l) )); then
+        # 1. Image is very desaturated (Grayscale / B&W)
+        if (( $(echo "$lum < 40" | bc -l) || $(echo "$lum > 70" | bc -l) )); then
+            # Pure B&W (very dark or very light): Force White primary accents in Dark Mode
+            matugen color hex "#FFFFFF" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-monochrome -m dark > "/tmp/matugen.$$.log" 2>&1
+        else
+            # Medium-Grey: Extract its exact faint tint so it gets subtle colors instead of flat grey
+            avg_color=$(magick "$SEED[0]" -resize 1x1 -format "%[hex:u]" info:)
+            matugen color hex "#$avg_color" --config "$HOME/nix/dotfiles/matugen/config.toml" > "/tmp/matugen.$$.log" 2>&1
+        fi
+    else
+        # 2. Normal colored wallpaper
+        if ! matugen image "$SEED" --config "$HOME/nix/dotfiles/matugen/config.toml" --source-color-index 0 > "/tmp/matugen.$$.log" 2>&1; then
+            # Failsafe: if matugen panics (e.g. multiple ambiguous colors without preference), force average color
+            avg_color=$(magick "$SEED[0]" -resize 1x1 -format "%[hex:u]" info:)
+            matugen color hex "#$avg_color" --config "$HOME/nix/dotfiles/matugen/config.toml" > "/tmp/matugen.$$.log" 2>&1
+        fi
+    fi
 ) &
