@@ -4,17 +4,16 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Services.Notifications
 import "WindowRegistry.js" as Registry
+
+import "notifications" as Notifs
 
 PanelWindow {
     id: masterWindow
     color: "transparent"
 
-
-    Keys.onEscapePressed: (event) => {
-        switchWidget("hidden", "");
-        event.accepted = true;
-    }
+    Caching { id: paths }
 
     IpcHandler {
         target: "main"
@@ -30,7 +29,6 @@ PanelWindow {
 
             let isClosing = (masterWindow.currentActive !== "hidden" && !masterWindow.isVisible);
             let effectivelyActive = isClosing ? "hidden" : masterWindow.currentActive;
-            console.log("IPC", cmd, targetWidget, effectivelyActive);
 
             if (cmd === "close") {
                 switchWidget("hidden", "");
@@ -108,41 +106,18 @@ PanelWindow {
     // =========================================================
     // --- DAEMON: PRELOADING SYSTEM
     // =========================================================
-    property var widgetCache: ({})
-
-    property var componentCache: ({})
-
-    function resolveComponent(path) {
-        if (!path) return null;
-        if (componentCache[path]) return componentCache[path];
-
-        let comp = Qt.createComponent(path);
-
-        if (comp.status === Component.Ready) {
-            componentCache[path] = comp;
-            return comp;
-        } else if (comp.status === Component.Error) {
-            console.log("QML Component compilation error for path:", path, comp.errorString());
-            return null;
-        } else {
-            comp.statusChanged.connect(function() {
-                if (comp.status === Component.Ready) {
-                    componentCache[path] = comp;
-                    masterWindow._layoutCacheKey = "";
-                } else if (comp.status === Component.Error) {
-                    console.log("QML Component compilation error for path:", path, comp.errorString());
-                }
-            });
-            return null;
-        }
+    Item {
+        id: preloaderContainer
+        visible: false
     }
+
+    property var widgetCache: ({})
 
     function preloadWidget(name) {
         if (widgetCache[name]) return;
         let t = getLayout(name);
         if (!t || !t.comp) return;
-
-        let obj = t.comp.createObject(masterWindow, {
+        let obj = t.comp.createObject(preloaderContainer, {
             "notifModel": masterWindow.notifModel,
             "liveNotifs": masterWindow.liveNotifs,
             "visible": false
@@ -151,41 +126,34 @@ PanelWindow {
     }
 
     Component.onCompleted: {
-        Config.masterWidth = masterWindow.width;
-        Config.masterHeight = masterWindow.height;
+        Qt.callLater(() => preloadWidget("settings"));
         preloadStaggerTimer.start();
     }
 
-    property var preloadList: ["battery", "network", "music", "clipboard", "monitors", "focustime", "weather_setup", "calendar"]
-    property int preloadIndex: 0
-    
     Timer {
         id: preloadStaggerTimer
         interval: 900
-        repeat: true
+        repeat: false
         onTriggered: {
-            if (preloadIndex < preloadList.length) {
-                preloadWidget(preloadList[preloadIndex]);
-                preloadIndex++;
-                interval = 50; // stagger remaining widgets by 50ms
-            } else {
-                stop();
-            }
+            preloadWidget("search");
+            preloadWidget("help");
         }
     }
 
+    // =========================================================
+
     property string currentActive: "hidden"
 
-    // NOTE: the old `echo > runDir/current_widget` hook is gone — its only
-    // reader (TopBar's widgetPoller) was dead code, so this was a bash spawn
-    // on every widget switch feeding nothing.
+    onCurrentActiveChanged: {
+        Quickshell.execDetached(["bash", "-c", "echo '" + currentActive + "' > " + paths.runDir + "/current_widget"]);
+    }
 
     property bool isVisible: false
     property string activeArg: ""
     property bool disableMorph: false
 
-    property int morphDuration: 160
-    property int morphDurationShift: 210
+    property int morphDuration: 230
+    property int morphDurationSwitch: 210
     property int exitDuration: 160
 
     property real animW: 1
@@ -198,28 +166,96 @@ PanelWindow {
 
     property real globalUiScale: 1.0
 
-    // Notification state/model now lives in the NotifTicker singleton, so
-    // TopBar.qml's center clock box can read it directly too -- this window
-    // just forwards it to widgets that need it (battery history, etc).
-    property var notifModel: NotifTicker.notifModel
-    property var liveNotifs: NotifTicker.liveNotifs
+    // =========================================================
+    // --- DAEMON: NOTIFICATION HANDLING
+    // =========================================================
+    ListModel { id: globalNotificationHistory }
+    ListModel { id: activePopupsModel }
 
+    property var liveNotifs: ({})
+    property int _popupCounter: 0
+
+    // --- NEW: Startup Grace Period Flag & Timer ---
     property bool isStartup: true
     Timer {
-        id: startupTimer
         interval: 500
         running: true
         onTriggered: masterWindow.isStartup = false
     }
 
+    function removePopup(uid) {
+        for (let i = 0; i < activePopupsModel.count; i++) {
+            if (activePopupsModel.get(i).uid === uid) {
+                activePopupsModel.remove(i);
+                break;
+            }
+        }
+    } 
+
+    NotificationServer {
+        id: globalNotificationServer
+        bodySupported: true
+        actionsSupported: true
+        imageSupported: true
+
+        onNotification: (n) => {
+            n.tracked = true;
+
+            let extractedActions = [];
+            if (n.actions) {
+                for (let i = 0; i < n.actions.length; i++) {
+                    extractedActions.push({
+                        "id": n.actions[i].identifier || "",
+                        "text": n.actions[i].text || n.actions[i].name || "Action"
+                    });
+                }
+            }
+
+            masterWindow._popupCounter++;
+            let currentUid = masterWindow._popupCounter;
+
+            // Always store the live object so the history center can interact with it
+            masterWindow.liveNotifs[currentUid] = n;
+
+            let notifData = {
+                "appName":     n.appName  !== "" ? n.appName  : "System",
+                "summary":     n.summary  !== "" ? n.summary  : "No Title",
+                "body":        n.body     !== "" ? n.body     : "",
+                "iconPath":    n.appIcon  !== "" ? n.appIcon  : "",
+                "actionsJson": JSON.stringify(extractedActions),
+                "uid":         currentUid,
+                "notif":       n
+            };
+
+            // Always silently add to the history list
+            globalNotificationHistory.insert(0, notifData);
+
+            // --- CHANGED: Only trigger the visual popup if we are past the startup phase ---
+            if (!masterWindow.isStartup) {
+                activePopupsModel.append(notifData);
+                osdPopups.storeNotif(currentUid, n);
+            }
+        }
+    }
+
+    property var notifModel: globalNotificationHistory
+
+    Notifs.NotificationPopups {
+        id: osdPopups
+        popupModel: activePopupsModel
+        uiScale: masterWindow.globalUiScale
+        onRemoveRequested: (uid) => masterWindow.removePopup(uid)
+    }
+    onGlobalUiScaleChanged: { handleNativeScreenChange(); }
+
     Process {
         id: settingsReader
-        command: ["bash", "-c", "$HOME/.config/hypr/scripts/quickshell/watchers/settings_wait.sh && cat $HOME/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
+        command: ["bash", "-c", "cat ~/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    if (this.text && this.text.trim().length > 0) {
+                    if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
                         let parsed = JSON.parse(this.text);
                         if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
                             masterWindow.globalUiScale = parsed.uiScale;
@@ -228,12 +264,27 @@ PanelWindow {
                 } catch (e) {
                     console.log("Error parsing settings.json in main.qml:", e);
                 }
-                settingsReader.running = false;
-                settingsReader.running = true;
             }
         }
     }
 
+    Process {
+        id: settingsWatcher
+        command: ["bash", "-c", "while [ ! -f ~/.config/hypr/settings.json ]; do sleep 1; done; inotifywait -qq -e modify,close_write ~/.config/hypr/settings.json"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                settingsReader.running = false;
+                settingsReader.running = true;
+                settingsWatcher.running = false;
+                settingsWatcher.running = true;
+            }
+        }
+    }
+
+    // =========================================================
+    // --- LAYOUT CACHE
+    // =========================================================
     property var    _layoutCache:    ({})
     property string _layoutCacheKey: ""
 
@@ -241,11 +292,6 @@ PanelWindow {
         let key = name + "|" + masterWindow.width + "|" + masterWindow.height + "|" + masterWindow.globalUiScale;
         if (_layoutCacheKey === key) return _layoutCache[key];
         let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
-
-        if (result && result.comp && typeof result.comp === "string") {
-            result.comp = resolveComponent(result.comp);
-        }
-
         _layoutCache = {};
         _layoutCache[key] = result;
         _layoutCacheKey = key;
@@ -254,8 +300,8 @@ PanelWindow {
 
     Connections {
         target: masterWindow
-        function onWidthChanged()  { _layoutCacheKey = ""; Config.masterWidth = masterWindow.width; handleNativeScreenChange(); }
-        function onHeightChanged() { _layoutCacheKey = ""; Config.masterHeight = masterWindow.height; handleNativeScreenChange(); }
+        function onWidthChanged()  { _layoutCacheKey = ""; handleNativeScreenChange(); }
+        function onHeightChanged() { _layoutCacheKey = ""; handleNativeScreenChange(); }
     }
 
     function handleNativeScreenChange() {
@@ -278,33 +324,15 @@ PanelWindow {
         masterWindow.animH = finalH;
         masterWindow.targetW = finalW;
         masterWindow.targetH = finalH;
-
-        if (currentItem) {
-            if (currentItem.layoutWidth !== undefined) currentItem.layoutWidth = t.w;
-            if (currentItem.layoutHeight !== undefined) currentItem.layoutHeight = t.h;
-        }
-    }
-
-    onGlobalUiScaleChanged: { handleNativeScreenChange(); }
-
-    Timer {
-        id: focusTimer
-        interval: 50
-        onTriggered: {
-            if (masterWindow.isVisible && widgetStack.currentItem) {
-                widgetStack.forceActiveFocus();
-                widgetStack.currentItem.focus = false;
-                widgetStack.currentItem.focus = true;
-                widgetStack.currentItem.forceActiveFocus();
-            }
-        }
     }
 
     onIsVisibleChanged: {
-        if (isVisible) focusTimer.restart();
-        else focusTimer.stop();
+        if (isVisible) widgetStack.forceActiveFocus();
     }
 
+    // =========================================================
+    // --- ANIMATED BOUNDING BOX
+    // =========================================================
     Item {
         x: masterWindow.animX
         y: masterWindow.animY
@@ -329,21 +357,10 @@ PanelWindow {
             NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
         }
 
-        scale: masterWindow.isVisible ? 1.0 : 0.0
-        transformOrigin: Item.Center
-        
-        Behavior on scale {
-            enabled: !masterWindow.disableMorph
-            NumberAnimation {
-                duration: masterWindow.isVisible ? 230 : masterWindow.exitDuration
-                easing.type: masterWindow.isVisible ? Easing.OutExpo : Easing.InExpo
-            }
-        }
-
         opacity: masterWindow.isVisible ? 1.0 : 0.0
         Behavior on opacity {
             NumberAnimation {
-                duration: 160
+                duration: masterWindow.isVisible ? 160 : 230
                 easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic
             }
         }
@@ -358,7 +375,7 @@ PanelWindow {
                 anchors.fill: parent
                 focus: true
 
-                Keys.onEscapePressed: (event) => {
+                Keys.onEscapePressed: {
                     switchWidget("hidden", "");
                     event.accepted = true;
                 }
@@ -372,13 +389,13 @@ PanelWindow {
                         NumberAnimation {
                             property: "opacity"
                             from: 0.0; to: 1.0
-                            duration: masterWindow.morphDurationShift
+                            duration: masterWindow.morphDurationSwitch
                             easing.type: Easing.OutQuint
                         }
                         NumberAnimation {
                             property: "scale"
                             from: 0.98; to: 1.0
-                            duration: masterWindow.morphDurationShift
+                            duration: masterWindow.morphDurationSwitch
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -389,13 +406,13 @@ PanelWindow {
                         NumberAnimation {
                             property: "opacity"
                             from: 1.0; to: 0.0
-                            duration: masterWindow.morphDurationShift
+                            duration: masterWindow.morphDurationSwitch
                             easing.type: Easing.InQuint
                         }
                         NumberAnimation {
                             property: "scale"
                             from: 1.0; to: 0.98
-                            duration: masterWindow.morphDurationShift
+                            duration: masterWindow.morphDurationSwitch
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -404,55 +421,49 @@ PanelWindow {
         }
     }
 
+    // =========================================================
+    // --- WIDGET SWITCHING
+    // =========================================================
     function switchWidget(newWidget, arg) {
-        console.log("switchWidget:", newWidget)
         delayedClear.stop();
 
         if (newWidget === "hidden") {
             if (currentActive !== "hidden") {
-                masterWindow.morphDuration = masterWindow.exitDuration;
+                masterWindow.morphDuration = 230;
                 masterWindow.disableMorph = false;
+
+                masterWindow.animW = 1;
+                masterWindow.animH = 1;
                 masterWindow.isVisible = false;
+
                 delayedClear.start();
             }
         } else {
             if (currentActive === "hidden" || !masterWindow.isVisible) {
                 masterWindow.morphDuration = 230;
-                
+                masterWindow.disableMorph = false;
+
                 let t = getLayout(newWidget);
-                masterWindow.disableMorph = true;
                 masterWindow.animX = t.rx;
                 masterWindow.animY = t.ry;
                 masterWindow.animW = t.w;
                 masterWindow.animH = t.h;
                 masterWindow.targetW = t.w;
                 masterWindow.targetH = t.h;
-                
-                masterWindow._pendingWidget = newWidget;
-                masterWindow._pendingArg = arg;
-                
-                if (!widgetCache[newWidget] && t && t.comp) {
-                    let obj = t.comp.createObject(masterWindow, { "visible": false });
-                    if (obj) widgetCache[newWidget] = obj;
-                }
-                
-                teleportTimer.restart();
             } else {
-                masterWindow.morphDuration = masterWindow.morphDurationShift;
+                masterWindow.morphDuration = masterWindow.morphDurationSwitch;
                 masterWindow.disableMorph = false;
-                executeSwitch(newWidget, arg, false);
             }
+
+            Qt.callLater(() => executeSwitch(newWidget, arg, false));
         }
     }
 
     function executeSwitch(newWidget, arg, immediate) {
-        console.log("executeSwitch:", newWidget)
         masterWindow.currentActive = newWidget;
         masterWindow.activeArg = arg;
 
         let t = getLayout(newWidget);
-        if (!t || !t.comp) return;
-
         masterWindow.animX = t.rx;
         masterWindow.animY = t.ry;
         masterWindow.animW = t.w;
@@ -482,23 +493,11 @@ PanelWindow {
             } else {
                 widgetStack.replace(cached, {});
             }
-            if (cached.showWidget) cached.showWidget();
         } else {
-            let obj = t.comp.createObject(masterWindow, props);
-            if (obj) {
-                widgetCache[newWidget] = obj;
-                if (immediate) {
-                    widgetStack.replace(obj, {}, StackView.Immediate);
-                } else {
-                    widgetStack.replace(obj, {});
-                }
+            if (immediate) {
+                widgetStack.replace(t.comp, props, StackView.Immediate);
             } else {
-                console.log("Failed to create widget instance for:", newWidget);
-                if (immediate) {
-                    widgetStack.replace(t.comp, props, StackView.Immediate);
-                } else {
-                    widgetStack.replace(t.comp, props);
-                }
+                widgetStack.replace(t.comp, props);
             }
         }
 
@@ -517,30 +516,15 @@ PanelWindow {
         }
 
         masterWindow.isVisible = true;
-        focusTimer.restart();
     }
 
     Timer {
         id: delayedClear
-        interval: 280
-
+        interval: 200
         onTriggered: {
-            if (!masterWindow.isVisible && !widgetStack.busy) {
-                masterWindow.currentActive = "hidden";
-                widgetStack.clear();
-                masterWindow.disableMorph = false;
-            }
-        }
-    }
-
-    property string _pendingWidget: ""
-    property string _pendingArg: ""
-    Timer {
-        id: teleportTimer
-        interval: 32
-        onTriggered: {
+            masterWindow.currentActive = "hidden";
+            widgetStack.clear();
             masterWindow.disableMorph = false;
-            executeSwitch(masterWindow._pendingWidget, masterWindow._pendingArg, false);
         }
     }
 }
