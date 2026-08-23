@@ -19,6 +19,7 @@ Item {
     // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler
+        currentWidth: Screen.width
     }
     
     function s(val) { 

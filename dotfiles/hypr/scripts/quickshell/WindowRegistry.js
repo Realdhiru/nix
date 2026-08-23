@@ -29,7 +29,13 @@ function getScale(mw, mh, userScale) {
     let rh = mh / REF_H;
     let r = Math.min(rw, rh);
     
-    let baseScale = r;
+    let baseScale = 1.0;
+    
+    if (r <= 1.0) {
+        baseScale = Math.max(MIN_SCALE, Math.pow(r, 0.85));
+    } else {
+        baseScale = Math.pow(r, 0.5);
+    }
     
     return baseScale * (userScale !== undefined ? userScale : 1.0);
 }

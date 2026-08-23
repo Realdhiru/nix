@@ -22,8 +22,8 @@ mkdir -p "$HOME/.cache"
 echo "$WALL" > "$HOME/.cache/current_wallpaper.txt"
 
 # 2. INSTANT VISUAL PATHWAY (Zero blocking delays, Strict Mutual Exclusion)
-if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then
-    # Kill images before starting video
+if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
+    # Kill images before starting video/gif
     # (daemon teardown centralized in ensure_awww.sh)
     "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop
     pkill -f mpvpaper 2>/dev/null

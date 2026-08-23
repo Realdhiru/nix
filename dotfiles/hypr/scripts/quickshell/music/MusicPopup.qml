@@ -39,6 +39,7 @@ Item {
 
     Scaler {
         id: scaler
+        currentWidth: Screen.width
     }
 
     function s(val) {

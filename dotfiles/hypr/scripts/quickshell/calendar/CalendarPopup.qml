@@ -18,6 +18,7 @@ Item {
     // --- Responsive Scaling Logic ---
     Scaler {
         id: scaler
+        currentWidth: Screen.width
     }
     
     readonly property real sf: scaler.baseScale
