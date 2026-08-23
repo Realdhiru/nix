@@ -329,6 +329,17 @@ PanelWindow {
             NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
         }
 
+        scale: masterWindow.isVisible ? 1.0 : 0.0
+        transformOrigin: Item.Center
+        
+        Behavior on scale {
+            enabled: !masterWindow.disableMorph
+            NumberAnimation {
+                duration: masterWindow.isVisible ? 230 : masterWindow.exitDuration
+                easing.type: masterWindow.isVisible ? Easing.OutExpo : Easing.InExpo
+            }
+        }
+
         opacity: masterWindow.isVisible ? 1.0 : 0.0
         Behavior on opacity {
             NumberAnimation {
@@ -401,13 +412,7 @@ PanelWindow {
             if (currentActive !== "hidden") {
                 masterWindow.morphDuration = masterWindow.exitDuration;
                 masterWindow.disableMorph = false;
-
-                masterWindow.animX = masterWindow.animX + masterWindow.animW / 2;
-                masterWindow.animY = masterWindow.animY + masterWindow.animH / 2;
-                masterWindow.animW = 0;
-                masterWindow.animH = 0;
                 masterWindow.isVisible = false;
-
                 delayedClear.start();
             }
         } else {
@@ -416,10 +421,12 @@ PanelWindow {
                 
                 let t = getLayout(newWidget);
                 masterWindow.disableMorph = true;
-                masterWindow.animX = t.rx + t.w / 2;
-                masterWindow.animY = t.ry + t.h / 2;
-                masterWindow.animW = 0;
-                masterWindow.animH = 0;
+                masterWindow.animX = t.rx;
+                masterWindow.animY = t.ry;
+                masterWindow.animW = t.w;
+                masterWindow.animH = t.h;
+                masterWindow.targetW = t.w;
+                masterWindow.targetH = t.h;
                 
                 masterWindow._pendingWidget = newWidget;
                 masterWindow._pendingArg = arg;
