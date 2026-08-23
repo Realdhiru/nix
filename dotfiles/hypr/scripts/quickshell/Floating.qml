@@ -256,19 +256,19 @@ Variants {
             property real expandedWidth: baseExpandedWidth
             property real expandedExtraLength: baseExpandedExtraLength
 
-            Behavior on expandedWidth { enabled: !floatingWidget.disableAnim; NumberAnimation { duration: 450; easing.type: Easing.OutQuart } }
-            Behavior on expandedExtraLength { enabled: !floatingWidget.disableAnim; NumberAnimation { duration: 450; easing.type: Easing.OutQuart } }
+            Behavior on expandedWidth { enabled: !floatingWidget.disableAnim; NumberAnimation { duration: 450; easing.type: floatingWidget.isExpanded ? Easing.OutQuart : Easing.InQuart } }
+            Behavior on expandedExtraLength { enabled: !floatingWidget.disableAnim; NumberAnimation { duration: 450; easing.type: floatingWidget.isExpanded ? Easing.OutQuart : Easing.InQuart } }
 
             property real expandProgress: isExpanded ? 1.0 : 0.0
             Behavior on expandProgress {
                 enabled: !floatingWidget.disableAnim
-                NumberAnimation { duration: 450; easing.type: Easing.OutQuart }
+                NumberAnimation { duration: 450; easing.type: floatingWidget.isExpanded ? Easing.OutQuart : Easing.InQuart }
             }
 
             property real visibleProgress: isSidebarVisible ? 1.0 : 0.0
             Behavior on visibleProgress {
                 enabled: !floatingWidget.disableAnim
-                NumberAnimation { duration: 300; easing.type: Easing.OutExpo }
+                NumberAnimation { duration: 300; easing.type: floatingWidget.isSidebarVisible ? Easing.OutExpo : Easing.InExpo }
             }
 
             property real currentExtraWidth: (expandedWidth + expandedPadding) * expandProgress
@@ -812,8 +812,8 @@ Variants {
                     return floatingWidget.sidebarTargetY;
                 }
 
-                Behavior on x { enabled: !floatingWidget.disableAnim; NumberAnimation { duration: 350; easing.type: Easing.OutExpo } }
-                Behavior on y { enabled: !floatingWidget.disableAnim; NumberAnimation { duration: 350; easing.type: Easing.OutExpo } }
+                Behavior on x { enabled: !floatingWidget.disableAnim; NumberAnimation { duration: 350; easing.type: floatingWidget.isSidebarVisible ? Easing.OutExpo : Easing.InExpo } }
+                Behavior on y { enabled: !floatingWidget.disableAnim; NumberAnimation { duration: 350; easing.type: floatingWidget.isSidebarVisible ? Easing.OutExpo : Easing.InExpo } }
 
                 Item {
                     id: morphOrigin

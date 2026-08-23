@@ -93,6 +93,7 @@ hl.layer_rule({ match = { namespace = "^rofi$" }, animation = "slide left" })
 -- Quickshell (Glassmorphism)
 hl.layer_rule({ match = { namespace = "quickshell" }, blur = true })
 hl.layer_rule({ match = { namespace = "quickshell" }, ignore_alpha = 0.0 })
+hl.layer_rule({ match = { namespace = "quickshell" }, animation = "none" })
 
 -- hl.layer_rule({ match = { namespace = "quickshell-notifications" }, blur = true })
 -- hl.layer_rule({ match = { namespace = "quickshell-notifications" }, ignore_alpha = 0 })

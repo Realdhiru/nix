@@ -105,6 +105,9 @@ PanelWindow {
         onClicked: switchWidget("hidden", "")
     }
 
+    // =========================================================
+    // --- DAEMON: PRELOADING SYSTEM
+    // =========================================================
     property var widgetCache: ({})
 
     property var componentCache: ({})
@@ -153,20 +156,21 @@ PanelWindow {
         preloadStaggerTimer.start();
     }
 
+    property var preloadList: ["battery", "network", "music", "clipboard", "monitors", "focustime", "weather_setup", "calendar"]
+    property int preloadIndex: 0
+    
     Timer {
         id: preloadStaggerTimer
         interval: 900
-        repeat: false
+        repeat: true
         onTriggered: {
-            preloadWidget("battery");
-            preloadWidget("network");
-            preloadWidget("music");
-            preloadWidget("clipboard");
-            preloadWidget("monitors");
-            preloadWidget("focustime");
-            preloadWidget("weather_setup");
-            preloadWidget("calendar");
-            preloadWidget("wallpaper");
+            if (preloadIndex < preloadList.length) {
+                preloadWidget(preloadList[preloadIndex]);
+                preloadIndex++;
+                interval = 50; // stagger remaining widgets by 50ms
+            } else {
+                stop();
+            }
         }
     }
 
@@ -310,19 +314,19 @@ PanelWindow {
 
         Behavior on x {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
         }
         Behavior on y {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
         }
         Behavior on width {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
         }
         Behavior on height {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
         }
 
         opacity: masterWindow.isVisible ? 1.0 : 0.0
@@ -398,8 +402,10 @@ PanelWindow {
                 masterWindow.morphDuration = masterWindow.exitDuration;
                 masterWindow.disableMorph = false;
 
-                masterWindow.animW = 1;
-                masterWindow.animH = 1;
+                masterWindow.animX = masterWindow.animX + masterWindow.animW / 2;
+                masterWindow.animY = masterWindow.animY + masterWindow.animH / 2;
+                masterWindow.animW = 0;
+                masterWindow.animH = 0;
                 masterWindow.isVisible = false;
 
                 delayedClear.start();
@@ -407,21 +413,28 @@ PanelWindow {
         } else {
             if (currentActive === "hidden" || !masterWindow.isVisible) {
                 masterWindow.morphDuration = 230;
-                masterWindow.disableMorph = false;
-
+                
                 let t = getLayout(newWidget);
-                masterWindow.animX = t.rx;
-                masterWindow.animY = t.ry;
-                masterWindow.animW = t.w;
-                masterWindow.animH = t.h;
-                masterWindow.targetW = t.w;
-                masterWindow.targetH = t.h;
+                masterWindow.disableMorph = true;
+                masterWindow.animX = t.rx + t.w / 2;
+                masterWindow.animY = t.ry + t.h / 2;
+                masterWindow.animW = 0;
+                masterWindow.animH = 0;
+                
+                masterWindow._pendingWidget = newWidget;
+                masterWindow._pendingArg = arg;
+                
+                if (!widgetCache[newWidget] && t && t.comp) {
+                    let obj = t.comp.createObject(masterWindow, { "visible": false });
+                    if (obj) widgetCache[newWidget] = obj;
+                }
+                
+                teleportTimer.restart();
             } else {
                 masterWindow.morphDuration = masterWindow.morphDurationShift;
                 masterWindow.disableMorph = false;
+                executeSwitch(newWidget, arg, false);
             }
-
-            executeSwitch(newWidget, arg, false);
         }
     }
 
@@ -502,10 +515,6 @@ PanelWindow {
 
     Timer {
         id: delayedClear
-        // Must outlast the replaceExit transition (morphDurationShift=210ms)
-        // and never fire while a stack transition is still running — clearing
-        // mid-transition destroys the outgoing widget while models are being
-        // written into it (Qt6 QQmlDelegateModel teardown crash family).
         interval: 280
 
         onTriggered: {
@@ -514,6 +523,17 @@ PanelWindow {
                 widgetStack.clear();
                 masterWindow.disableMorph = false;
             }
+        }
+    }
+
+    property string _pendingWidget: ""
+    property string _pendingArg: ""
+    Timer {
+        id: teleportTimer
+        interval: 32
+        onTriggered: {
+            masterWindow.disableMorph = false;
+            executeSwitch(masterWindow._pendingWidget, masterWindow._pendingArg, false);
         }
     }
 }
