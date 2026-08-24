@@ -62,6 +62,7 @@ in
     file gsettings-desktop-schemas
 
     antigravity-ide
+    chatgpt
 
 
   ];
