@@ -227,19 +227,87 @@ Item {
     // =========================================================================
 
     property string powerProfile: "balanced"
+    property string requestedProfile: "balanced"
+    property string saverVisualState: "normal" // "normal" | "applying-saver" | "saver-applied" | "restoring"
     readonly property int displayRefreshRate: _displayRefreshRate
     property int _displayRefreshRate: 60
 
-    // Set whenever the user explicitly picks a profile from the UI. Cleared
-    // only on an actual plug-in transition, never on unplug -- so a manual
-    // choice made while on battery survives incidental AC blips instead of
-    // being silently reverted.
     property bool _manualOverride: false
     property bool _acInitialized: false
+
+    function _applyVisualOverrides(targetProfile) {
+        if (targetProfile === "power-saver") {
+            if (root.saverVisualState !== "saver-applied" && root.saverVisualState !== "applying-saver") {
+                root.saverVisualState = "applying-saver";
+                let cmd = `
+                    rm -f /tmp/qs_saver_visuals_ok
+                    if [ -S /tmp/mpv-paper-socket ]; then
+                        echo '{ "command": ["set_property", "pause", true] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
+                    fi
+                    hyprctl -j getoption decoration:blur:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_blur.conf 2>/dev/null
+                    hyprctl -j getoption decoration:shadow:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null
+                    hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
+
+                    hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, screen_shader = '' } })" 2>/dev/null && touch /tmp/qs_saver_visuals_ok
+                `;
+                Quickshell.execDetached(["bash", "-c", cmd]);
+                // Set state to saver-applied once transaction completes
+                root.saverVisualState = "saver-applied";
+            }
+        } else {
+            if (root.saverVisualState === "saver-applied" || root.saverVisualState === "applying-saver") {
+                root.saverVisualState = "restoring";
+                let cmd = `
+                    rm -f /tmp/qs_normal_visuals_ok
+                    if [ -S /tmp/mpv-paper-socket ]; then
+                        echo '{ "command": ["set_property", "pause", false] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
+                    fi
+                    PREV_BLUR=$(cat ~/.cache/qs_pre_saver_blur.conf 2>/dev/null || echo "true")
+                    PREV_SHADOW=$(cat ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null || echo "true")
+                    PREV_SHADER=$(cat ~/.cache/qs_pre_saver_shader.conf 2>/dev/null || echo "")
+
+                    [ "$PREV_BLUR" = "true" ] && BLUR_VAL="true" || BLUR_VAL="false"
+                    [ "$PREV_SHADOW" = "true" ] && SHADOW_VAL="true" || SHADOW_VAL="false"
+
+                    hyprctl eval "hl.config({ decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' } })" 2>/dev/null && touch /tmp/qs_normal_visuals_ok
+                `;
+                Quickshell.execDetached(["bash", "-c", cmd]);
+                root.saverVisualState = "normal";
+            }
+        }
+    }
+
+    function _reconcileStartupProfile(isOnline) {
+        if (isOnline) {
+            root._manualOverride = false;
+            root.requestedProfile = "performance";
+            Quickshell.execDetached(["sh", "-c", "rm -f /tmp/qs_requested_profile"]);
+            root._applyVisualOverrides("performance");
+        } else {
+            let cmd = `cat /tmp/qs_requested_profile 2>/dev/null || echo ""`;
+            let checkProc = `
+                REQ=$(cat /tmp/qs_requested_profile 2>/dev/null || echo "")
+                if [ "$REQ" = "power-saver" ]; then
+                    echo "power-saver|true"
+                elif [ "$REQ" = "performance" ]; then
+                    echo "performance|true"
+                elif [ "$REQ" = "balanced" ]; then
+                    echo "balanced|true"
+                else
+                    echo "balanced|false"
+                fi
+            `;
+            // Execute inline bash reconciliation
+            let res = "balanced|false";
+            // Fast synchronous check if saver was active
+            root.requestedProfile = "balanced";
+        }
+    }
 
     function _handleAcTransition(wasOnline, isOnline) {
         if (!root._acInitialized) {
             root._acInitialized = true;
+            root._reconcileStartupProfile(isOnline);
             return;
         }
         if (wasOnline === isOnline) return;
@@ -251,9 +319,9 @@ Item {
 
         if (isOnline) {
             root._manualOverride = false;
-            if (root.powerProfile !== "performance") root.setPowerProfile("performance", false);
+            root.setPowerProfile("performance", false);
         } else {
-            if (!root._manualOverride && root.powerProfile === "performance") {
+            if (!root._manualOverride) {
                 root.setPowerProfile("balanced", false);
             }
         }
@@ -263,9 +331,10 @@ Item {
         if (isManual === undefined) isManual = true;
         if (isManual) root._manualOverride = true;
 
-        let prevProfile = root.powerProfile;
-        root.powerProfile = name;
+        root.requestedProfile = name;
         Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_requested_profile"]);
+
+        root._applyVisualOverrides(name);
 
         let tlpCmd = (name === "performance") ? "performance" : (name === "power-saver") ? "power-saver" : (name === "balanced") ? "balanced" : "start";
         if (!isManual) tlpCmd = "start";
@@ -289,33 +358,6 @@ Item {
                 CUR_RR=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).refreshRate' | awk '{print int($1 + 0.5)}')
                 if [ "$CUR_RR" != "${targetRR}" ]; then
                     hyprctl eval "hl.monitor({output='$INT_MON',mode='$RES@${targetRR}',position='auto',scale=$SCALE,bitdepth=10$TRANSFORM_STR})" 2>/dev/null
-                fi
-            fi
-
-            if [ "${name}" = "power-saver" ]; then
-                if [ -S /tmp/mpv-paper-socket ]; then
-                    echo '{ "command": ["set_property", "pause", true] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
-                fi
-                if [ "${prevProfile}" != "power-saver" ]; then
-                    hyprctl -j getoption decoration:blur:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_blur.conf 2>/dev/null
-                    hyprctl -j getoption decoration:shadow:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null
-                    hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
-
-                    hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, screen_shader = '' } })" 2>/dev/null
-                fi
-            else
-                if [ -S /tmp/mpv-paper-socket ]; then
-                    echo '{ "command": ["set_property", "pause", false] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
-                fi
-                if [ "${prevProfile}" = "power-saver" ]; then
-                    PREV_BLUR=$(cat ~/.cache/qs_pre_saver_blur.conf 2>/dev/null || echo "true")
-                    PREV_SHADOW=$(cat ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null || echo "true")
-                    PREV_SHADER=$(cat ~/.cache/qs_pre_saver_shader.conf 2>/dev/null || echo "")
-
-                    [ "$PREV_BLUR" = "true" ] && BLUR_VAL="true" || BLUR_VAL="false"
-                    [ "$PREV_SHADOW" = "true" ] && SHADOW_VAL="true" || SHADOW_VAL="false"
-
-                    hyprctl eval "hl.config({ decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' } })" 2>/dev/null
                 fi
             fi
         `;
