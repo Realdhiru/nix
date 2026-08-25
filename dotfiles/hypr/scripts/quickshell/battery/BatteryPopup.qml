@@ -193,8 +193,9 @@ Item {
 
     readonly property color profileStart: {
         if (powerProfile === "performance") return window.red;
+        if (powerProfile === "balanced") return window.blue;
         if (powerProfile === "power-saver") return window.green;
-        return window.blue;
+        return window.surface2;
     }
     readonly property color profileEnd: Qt.lighter(profileStart, 1.15)
 
@@ -1678,8 +1679,11 @@ Item {
                                     x: {
                                         if (window.powerProfile === "performance") return window.s(1);
                                         if (window.powerProfile === "balanced") return width + window.s(1);
-                                        return (width * 2) + window.s(1);
+                                        if (window.powerProfile === "power-saver") return (width * 2) + window.s(1);
+                                        return width + window.s(1);
                                     }
+                                    opacity: window.powerProfile === "transitioning" ? 0.4 : 1.0
+                                    Behavior on opacity { NumberAnimation { duration: 200 } }
                                     
                                     Behavior on x { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
                                     
