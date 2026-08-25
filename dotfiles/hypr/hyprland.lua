@@ -77,3 +77,8 @@ apply_shader()
 
 -- 2. Universal fallback for ALL external monitors
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1, bitdepth = 10 })
+hl.config({
+    xwayland = {
+        force_zero_scaling = true
+    }
+})

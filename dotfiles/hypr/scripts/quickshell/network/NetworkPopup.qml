@@ -238,7 +238,7 @@ Item {
             if (code !== 0) {
                 window.failedId = targetId;
                 failClearTimer.restart();
-                window.playSfx("error.wav");
+                window.playSfx("disconnect.wav");
 
                 if (window.activeMode === "wifi" && targetSsid !== "") {
                     Quickshell.execDetached(["bash", "-c", "nmcli connection delete '" + targetSsid + "' 2>/dev/null"]);

@@ -6,7 +6,7 @@
     ./modules/home/spicetify.nix
     ./modules/home/theme.nix
       ./modules/home/desktop-entries.nix
-
+      ./modules/home/vscodium.nix
   ];
 
   # Explicitly configure the internal activation option at the user level
@@ -45,13 +45,13 @@
     force = true;
   };
 
-  xdg.configFile."wezterm".source =
+  xdg.configFile."wezterm/wezterm.lua".source =
     config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/wezterm";
+      "${config.home.homeDirectory}/nix/dotfiles/wezterm.lua";
 
- xdg.configFile."fastfetch/config.jsonc".source =
+  xdg.configFile."fastfetch/config.jsonc".source =
     config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/fastfetch/config.jsonc";
+      "${config.home.homeDirectory}/nix/dotfiles/fastfetch.jsonc";
       
   xdg.configFile."matugen".source =
     config.lib.file.mkOutOfStoreSymlink
@@ -66,16 +66,7 @@
     force = true;
   };
 
-  # VSCodium: home-manager's xdg.configFile can only ever symlink into the
-  # read-only generation store, which VSCodium cannot write through. So on
-  # every rebuild we copy the repo file onto the real config path after the
-  # writeBoundary step (this overwrites the managed symlink). Changes flow
-  # back to the repo via the vscodium-settings-sync watcher service.
-  home.activation.vscodiumSettings = config.lib.dag.entryAfter [ "writeBoundary" ] ''
-    mkdir -p "$HOME/.config/VSCodium/User"
-    cp -f ${./dotfiles/vscodium/settings.json} "$HOME/.config/VSCodium/User/settings.json"
-    chmod 644 "$HOME/.config/VSCodium/User/settings.json"
-  '';
+  # VSCodium: settings + sync live in modules/home/vscodium.nix.
 
   # PCManFM-Qt: file-based config (app reads/writes this INI directly, no
   # other mechanism), so the few mixed settings live inline here.
@@ -113,25 +104,6 @@
         "QS_STATE_FOCUSTIME=%h/.local/state/quickshell/focustime"
         "QS_RUN_FOCUSTIME=%t/quickshell/focustime"
         "PATH=/run/current-system/sw/bin"
-      ];
-    };
-    Install = {
-      WantedBy = [ "default.target" ];
-    };
-  };
-
-  # VSCodium settings mirror: live config → nix repo (git). The unit is the
-  # sole trigger; no rebuild is ever run by it.
-  systemd.user.services.vscodium-settings-sync = {
-    Unit = {
-      Description = "Mirror VSCodium settings.json into the nix repo";
-    };
-    Service = {
-      ExecStart = "${pkgs.bash}/bin/bash %h/nix/dotfiles/vscodium/sync_settings.sh";
-      Restart = "always";
-      RestartSec = 3;
-      Environment = [
-        "PATH=/etc/profiles/per-user/realdhiru/bin:/run/current-system/sw/bin"
       ];
     };
     Install = {

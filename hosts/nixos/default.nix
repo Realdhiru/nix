@@ -10,7 +10,7 @@
     ../../modules/system/memory.nix
     ../../modules/system/power.nix
     ../../modules/system/gaming.nix
-    ../../modules/system/workarounds/asus-brightness-rebind.nix
+    ../../modules/system/asus-brightness-rebind.nix
   ];
 
   # systemd.tmpfiles charge threshold rule removed —
