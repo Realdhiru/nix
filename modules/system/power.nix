@@ -32,7 +32,7 @@
 
       PLATFORM_PROFILE_ON_AC  = "performance";
       PLATFORM_PROFILE_ON_BAT = "balanced";
-      PLATFORM_PROFILE_ON_SAV = "low-power";
+      PLATFORM_PROFILE_ON_SAV = "quiet";
 
       RUNTIME_PM_ON_AC  = "on";
       RUNTIME_PM_ON_BAT = "auto";

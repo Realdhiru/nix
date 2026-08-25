@@ -297,20 +297,25 @@ Item {
                     echo '{ "command": ["set_property", "pause", true] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
                 fi
                 if [ "${prevProfile}" != "power-saver" ]; then
+                    hyprctl -j getoption decoration:blur:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_blur.conf 2>/dev/null
+                    hyprctl -j getoption decoration:shadow:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null
                     hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
-                    hyprctl keyword decoration:screen_shader "" 2>/dev/null
-                    hyprctl keyword decoration:blur:enabled 0 2>/dev/null
-                    hyprctl keyword decoration:shadow:enabled 0 2>/dev/null
+
+                    hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, screen_shader = '' } })" 2>/dev/null
                 fi
             else
                 if [ -S /tmp/mpv-paper-socket ]; then
                     echo '{ "command": ["set_property", "pause", false] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
                 fi
                 if [ "${prevProfile}" = "power-saver" ]; then
+                    PREV_BLUR=$(cat ~/.cache/qs_pre_saver_blur.conf 2>/dev/null || echo "true")
+                    PREV_SHADOW=$(cat ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null || echo "true")
                     PREV_SHADER=$(cat ~/.cache/qs_pre_saver_shader.conf 2>/dev/null || echo "")
-                    hyprctl keyword decoration:screen_shader "$PREV_SHADER" 2>/dev/null
-                    hyprctl keyword decoration:blur:enabled 1 2>/dev/null
-                    hyprctl keyword decoration:shadow:enabled 1 2>/dev/null
+
+                    [ "$PREV_BLUR" = "true" ] && BLUR_VAL="true" || BLUR_VAL="false"
+                    [ "$PREV_SHADOW" = "true" ] && SHADOW_VAL="true" || SHADOW_VAL="false"
+
+                    hyprctl eval "hl.config({ decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' } })" 2>/dev/null
                 fi
             fi
         `;

@@ -26,7 +26,9 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
     # Kill images before starting video/gif
     # (daemon teardown centralized in ensure_awww.sh)
     "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop
-    pkill -f mpvpaper 2>/dev/null
+    pkill -x mpvpaper 2>/dev/null || true
+    while pgrep -x mpvpaper >/dev/null 2>&1; do sleep 0.05; done
+    rm -f /tmp/mpv-paper-socket
     
     WALL_TARGET="$WALL"
     if [[ "$EXT" == "gif" ]]; then
@@ -40,9 +42,25 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
     fi
 
     mpvpaper -o "no-audio --loop-playlist --hwdec=vaapi --panscan=1.0 --input-ipc-server=/tmp/mpv-paper-socket" '*' "$WALL_TARGET" > /dev/null 2>&1 &
+
+    # Inherit Power-Saver paused state if currently active
+    CURRENT_PROF=$(cat /tmp/qs_requested_profile 2>/dev/null || echo "")
+    if [ "$CURRENT_PROF" = "power-saver" ]; then
+        (
+            for i in {1..10}; do
+                if [ -S /tmp/mpv-paper-socket ]; then
+                    echo '{ "command": ["set_property", "pause", true] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
+                    break
+                fi
+                sleep 0.05
+            done
+        ) &
+    fi
 else
     # Kill video before starting image
-    pkill -f mpvpaper 2>/dev/null
+    pkill -x mpvpaper 2>/dev/null || true
+    while pgrep -x mpvpaper >/dev/null 2>&1; do sleep 0.05; done
+    rm -f /tmp/mpv-paper-socket
 
     # THE ACTUAL BUG: switching TO a video kills awww-daemon (correct — it
     # shouldn't be drawing behind mpvpaper). But switching FROM a video
