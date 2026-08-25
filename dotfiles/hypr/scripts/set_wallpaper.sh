@@ -26,8 +26,8 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
     # Kill images before starting video/gif
     # (daemon teardown centralized in ensure_awww.sh)
     "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop
-    pkill -x .mpvpaper-wrapp 2>/dev/null || pkill -x mpvpaper 2>/dev/null || true
-    while pgrep -x .mpvpaper-wrapp >/dev/null 2>&1 || pgrep -x mpvpaper >/dev/null 2>&1; do sleep 0.05; done
+    pkill -x mpvpaper 2>/dev/null || true
+    while pgrep -x mpvpaper >/dev/null 2>&1; do sleep 0.05; done
     rm -f /tmp/mpv-paper-socket
     
     WALL_TARGET="$WALL"
@@ -58,8 +58,8 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
     fi
 else
     # Kill video before starting image
-    pkill -x .mpvpaper-wrapp 2>/dev/null || pkill -x mpvpaper 2>/dev/null || true
-    while pgrep -x .mpvpaper-wrapp >/dev/null 2>&1 || pgrep -x mpvpaper >/dev/null 2>&1; do sleep 0.05; done
+    pkill -x mpvpaper 2>/dev/null || true
+    while pgrep -x mpvpaper >/dev/null 2>&1; do sleep 0.05; done
     rm -f /tmp/mpv-paper-socket
 
     # THE ACTUAL BUG: switching TO a video kills awww-daemon (correct — it
