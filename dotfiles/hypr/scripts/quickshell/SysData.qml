@@ -282,13 +282,13 @@ Item {
                 SCALE=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).scale')
                 TRANSFORM=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).transform')
                 TRANSFORM_STR=""
-                [ -n "$TRANSFORM" ] && [ "$TRANSFORM" != "0" ] && TRANSFORM_STR=",transform,$TRANSFORM"
+                [ -n "$TRANSFORM" ] && [ "$TRANSFORM" != "0" ] && TRANSFORM_STR=",transform=$TRANSFORM"
 
-                echo "monitor=$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10$TRANSFORM_STR" > ~/.cache/hypr_power_monitor.conf
+                echo "monitor=$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10" > ~/.cache/hypr_power_monitor.conf
 
                 CUR_RR=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).refreshRate' | awk '{print int($1 + 0.5)}')
                 if [ "$CUR_RR" != "${targetRR}" ]; then
-                    hyprctl keyword monitor "$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10$TRANSFORM_STR" 2>/dev/null
+                    hyprctl eval "hl.monitor({output='$INT_MON',mode='$RES@${targetRR}',position='auto',scale=$SCALE,bitdepth=10$TRANSFORM_STR})" 2>/dev/null
                 fi
             fi
 
