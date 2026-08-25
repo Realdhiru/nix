@@ -748,7 +748,7 @@ Item {
                                             font.family: "JetBrains Mono"
                                             font.pixelSize: window.s(12)
                                             color: window.subtext0
-                                            text: window.currentSimW + "x" + window.currentSimH + " @ " + (monitorsModel.count > 0 ? monitorsModel.get(0).rate : "60") + "Hz"
+                                            text: window.currentSimW + "x" + window.currentSimH + " @ " + SysData.displayRefreshRate + "Hz"
                                         }
                                     }
                                 }

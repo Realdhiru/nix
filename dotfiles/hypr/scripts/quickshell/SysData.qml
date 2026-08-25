@@ -201,6 +201,9 @@ Item {
                 let fx = d.effects || "unknown";
                 let mismatch = d.epp_mismatch || "1";
 
+                let parsedRr = parseInt(rr);
+                if (!isNaN(parsedRr)) root._displayRefreshRate = parsedRr;
+
                 // MINIMAL POWER-POLICY ACTIVE PROFILE CONVERGENCE:
                 if (prof === "performance" && epp === "performance" && boost === "enabled" && rr === "120" && mismatch === "0") {
                     root.powerProfile = "performance";
@@ -224,6 +227,8 @@ Item {
     // =========================================================================
 
     property string powerProfile: "balanced"
+    readonly property int displayRefreshRate: _displayRefreshRate
+    property int _displayRefreshRate: 60
 
     // Set whenever the user explicitly picks a profile from the UI. Cleared
     // only on an actual plug-in transition, never on unplug -- so a manual
