@@ -39,7 +39,7 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
         fi
     fi
 
-    mpvpaper -o "no-audio --loop-playlist --hwdec=vaapi --panscan=1.0" '*' "$WALL_TARGET" > /dev/null 2>&1 &
+    mpvpaper -o "no-audio --loop-playlist --hwdec=vaapi --panscan=1.0 --input-ipc-server=/tmp/mpv-paper-socket" '*' "$WALL_TARGET" > /dev/null 2>&1 &
 else
     # Kill video before starting image
     pkill -f mpvpaper 2>/dev/null

@@ -34,14 +34,6 @@
       users = [ "realdhiru" ];
       commands = [
         {
-          command = "/run/current-system/sw/bin/tee /sys/devices/system/cpu/intel_pstate/no_turbo";
-          options = [ "NOPASSWD" ];
-        }
-        {
-          command = "/run/current-system/sw/bin/tee /sys/devices/system/cpu/cpufreq/boost";
-          options = [ "NOPASSWD" ];
-        }
-        {
           command = "/run/current-system/sw/bin/modprobe -r snd_hda_intel snd_soc_avs";
           options = [ "NOPASSWD" ];
         }
@@ -50,7 +42,19 @@
           options = [ "NOPASSWD" ];
         }
         {
-          command = "/home/realdhiru/.config/hypr/scripts/quickshell/battery/set_epp.sh";
+          command = "/run/current-system/sw/bin/tlp performance";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/tlp balanced";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/tlp power-saver";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/tlp start";
           options = [ "NOPASSWD" ];
         }
       ];

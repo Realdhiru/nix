@@ -10,6 +10,7 @@ Item {
     readonly property string scriptPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/sys_fetcher.sh"
     readonly property string batteryFetchPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_fetch.sh"
     readonly property string batteryWaitPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_wait.sh"
+    readonly property string powerStateWatcherPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/power_state_watcher.sh"
 
     // --- Centralized Properties (CPU/RAM/temp/net -- subscribe-gated, unchanged) ---
     property bool onBattery: false
@@ -178,6 +179,42 @@ Item {
         batteryWaiter.running = true;
     }
 
+    // Process driving root.powerProfile from COMPOSITE ACTIVE HARDWARE + DESKTOP STATE
+    Process {
+        id: powerWatcherProc
+        running: true
+        command: ["bash", "-c", root.powerStateWatcherPath]
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: (data) => {
+                let line = data ? data.trim() : "";
+                if (!line) return;
+                let d;
+                try { d = JSON.parse(line); } catch (e) { return; }
+
+                let prof = d.profile || "unknown";
+                let epp = d.epp || "unknown";
+                let boost = d.boost || "unknown";
+                let hwpDyn = d.hwp_dyn_boost || "unknown";
+                let rr = d.refresh_rate || "unknown";
+                let wall = d.wallpaper || "unknown";
+                let fx = d.effects || "unknown";
+                let mismatch = d.epp_mismatch || "1";
+
+                // MINIMAL POWER-POLICY ACTIVE PROFILE CONVERGENCE:
+                if (prof === "performance" && epp === "performance" && boost === "enabled" && rr === "120" && mismatch === "0") {
+                    root.powerProfile = "performance";
+                } else if ((prof === "quiet" || prof === "low-power") && epp === "power" && boost === "disabled" && rr === "60" && mismatch === "0") {
+                    root.powerProfile = "power-saver";
+                } else if (prof === "balanced" && epp === "balance_performance" && boost === "enabled" && rr === "60" && mismatch === "0") {
+                    root.powerProfile = "balanced";
+                } else {
+                    root.powerProfile = "transitioning";
+                }
+            }
+        }
+    }
+
     // =========================================================================
     // POWER PROFILE STATE + AUTOMATION
     // Lives here (a persistent singleton) instead of inside BatteryPopup.qml,
@@ -222,24 +259,17 @@ Item {
         if (isManual) root._manualOverride = true;
 
         let prevProfile = root.powerProfile;
-
         root.powerProfile = name;
-        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_power_profile"]);
+        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_requested_profile"]);
 
-        let eppMode = (name === "performance") ? "performance" : (name === "power-saver") ? "power" : "balance_performance";
-        let disableTurbo = (name === "power-saver") ? "1" : "0";
-        let enableBoost = (name === "power-saver") ? "0" : "1";
-        let targetRR = (name === "power-saver") ? "60" : "120";
+        let tlpCmd = (name === "performance") ? "performance" : (name === "power-saver") ? "power-saver" : (name === "balanced") ? "balanced" : "start";
+        if (!isManual) tlpCmd = "start";
 
-        // NOTE: intentionally no `sudo tlp ac`/`sudo tlp bat` call here.
-        // AC/BAT mode switching is owned exclusively by the udev rule in
-        // power.nix. This function only manages the desktop-visible
-        // profile label, per-core EPP, CPU turbo/boost, and the
-        // internal-monitor refresh rate.
+        Quickshell.execDetached(["sudo", "tlp", tlpCmd]);
+
+        let targetRR = (name === "performance") ? "120" : "60";
+
         let bashCmd = `
-            sudo ~/.config/hypr/scripts/quickshell/battery/set_epp.sh ${eppMode} 2>/dev/null
-            echo ${disableTurbo} | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || echo ${enableBoost} | sudo tee /sys/devices/system/cpu/cpufreq/boost 2>/dev/null
-
             INT_MON=$(hyprctl monitors -j | jq -r '.[] | select(.name | test("eDP|LVDS|MIPI")).name' | head -n1)
 
             if [ -n "$INT_MON" ]; then
@@ -257,16 +287,26 @@ Item {
                 fi
             fi
 
-            if [ "${name}" = "power-saver" ] && [ "${prevProfile}" != "power-saver" ]; then
-                hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
-                hyprctl keyword decoration:screen_shader "" 2>/dev/null
-                hyprctl keyword decoration:blur:enabled 0 2>/dev/null
-                hyprctl keyword decoration:shadow:enabled 0 2>/dev/null
-            elif [ "${name}" != "power-saver" ] && [ "${prevProfile}" = "power-saver" ]; then
-                PREV_SHADER=$(cat ~/.cache/qs_pre_saver_shader.conf 2>/dev/null || echo "")
-                hyprctl keyword decoration:screen_shader "$PREV_SHADER" 2>/dev/null
-                hyprctl keyword decoration:blur:enabled 1 2>/dev/null
-                hyprctl keyword decoration:shadow:enabled 1 2>/dev/null
+            if [ "${name}" = "power-saver" ]; then
+                if [ -S /tmp/mpv-paper-socket ]; then
+                    echo '{ "command": ["set_property", "pause", true] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
+                fi
+                if [ "${prevProfile}" != "power-saver" ]; then
+                    hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
+                    hyprctl keyword decoration:screen_shader "" 2>/dev/null
+                    hyprctl keyword decoration:blur:enabled 0 2>/dev/null
+                    hyprctl keyword decoration:shadow:enabled 0 2>/dev/null
+                fi
+            else
+                if [ -S /tmp/mpv-paper-socket ]; then
+                    echo '{ "command": ["set_property", "pause", false] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
+                fi
+                if [ "${prevProfile}" = "power-saver" ]; then
+                    PREV_SHADER=$(cat ~/.cache/qs_pre_saver_shader.conf 2>/dev/null || echo "")
+                    hyprctl keyword decoration:screen_shader "$PREV_SHADER" 2>/dev/null
+                    hyprctl keyword decoration:blur:enabled 1 2>/dev/null
+                    hyprctl keyword decoration:shadow:enabled 1 2>/dev/null
+                fi
             fi
         `;
 

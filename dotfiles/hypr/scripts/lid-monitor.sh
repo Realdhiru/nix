@@ -51,23 +51,13 @@ restore_profile() {
 }
 
 apply_lid_closed_state() {
-    # Apply aggressive hardware energy-savings directly without altering the
-    # logical Quickshell UI profile (no visual/shader changes). Uses strictly
-    # the existing whitelisted sudoers rules.
-    
-    # 1. EPP=power
-    sudo "$SET_EPP" power 2>/dev/null || true
-    
-    # 2. Disable Turbo Boost
-    echo 1 | sudo /run/current-system/sw/bin/tee /sys/devices/system/cpu/intel_pstate/no_turbo >/dev/null 2>&1 || \
-    echo 0 | sudo /run/current-system/sw/bin/tee /sys/devices/system/cpu/cpufreq/boost >/dev/null 2>&1 || true
+    # Apply low-power profile natively via TLP
+    sudo /run/current-system/sw/bin/tlp power-saver 2>/dev/null || true
 }
 
 apply_lid_open_state() {
-    # Restore the exact previous Quickshell UI power profile.
-    # This automatically writes the correct EPP and Turbo values for that
-    # specific profile, completely reversing the temporary lid-closed state.
-    restore_profile
+    # Restore automatic AC/BAT profile via TLP
+    sudo /run/current-system/sw/bin/tlp start 2>/dev/null || true
 }
 
 case "${1:-}" in

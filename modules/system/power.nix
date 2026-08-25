@@ -13,18 +13,26 @@
   services.tlp = {
     enable = true;
     settings = {
-      # CPU & Performance Management (Restored to TLP)
+      # CPU & Performance Management (TLP as Sole Hardware Authority)
       CPU_SCALING_GOVERNOR_ON_AC  = "performance";
       CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
+      CPU_SCALING_GOVERNOR_ON_SAV = "powersave";
 
       CPU_ENERGY_PERF_POLICY_ON_AC  = "performance";
-      CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_power";
+      CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_performance";
+      CPU_ENERGY_PERF_POLICY_ON_SAV = "power";
 
       CPU_BOOST_ON_AC  = 1;
       CPU_BOOST_ON_BAT = 1;
+      CPU_BOOST_ON_SAV = 0;
+
+      CPU_HWP_DYN_BOOST_ON_AC  = 1;
+      CPU_HWP_DYN_BOOST_ON_BAT = 1;
+      CPU_HWP_DYN_BOOST_ON_SAV = 0;
 
       PLATFORM_PROFILE_ON_AC  = "performance";
-      PLATFORM_PROFILE_ON_BAT = "low-power";
+      PLATFORM_PROFILE_ON_BAT = "balanced";
+      PLATFORM_PROFILE_ON_SAV = "low-power";
 
       RUNTIME_PM_ON_AC  = "on";
       RUNTIME_PM_ON_BAT = "auto";
@@ -54,6 +62,39 @@
   services.asusd.enable = true;
   systemd.services.asusd.restartIfChanged = false;
   systemd.services.asus-shutdown.restartIfChanged = false;
+
+  # Disable asusd platform-profile switching & EPP linking so TLP is sole authority
+  environment.etc."asusd/asusd.ron".text = ''
+    (
+        charge_control_end_threshold: 80,
+        base_charge_control_end_threshold: 80,
+        disable_nvidia_powerd_on_battery: true,
+        ac_command: "",
+        bat_command: "",
+        platform_profile_linked_epp: false,
+        platform_profile_on_battery: Quiet,
+        change_platform_profile_on_battery: false,
+        platform_profile_on_ac: Performance,
+        change_platform_profile_on_ac: false,
+        profile_quiet_epp: Power,
+        profile_balanced_epp: BalancePerformance,
+        profile_custom_epp: Performance,
+        profile_performance_epp: Performance,
+        ac_profile_tunings: {
+            Performance: (
+                enabled: false,
+                group: {},
+            ),
+        },
+        dc_profile_tunings: {
+            Quiet: (
+                enabled: false,
+                group: {},
+            ),
+        },
+        armoury_settings: {},
+    )
+  '';
 
   # --- 4. LID SWITCH uaccess (event-driven lid watcher) ---
   # The lid switch is an input device (SW_LID) and emits NO kernel
