@@ -11,5 +11,5 @@ rm -f /tmp/mpv-paper-socket "$HOME/.cache/mpvpaper.pid"
 rm -f "$HOME/.cache/current_wallpaper.txt"
 touch "$HOME/.cache/current_wallpaper.txt"
 
-# 3. Reset Matugen colors to clean default theme
-matugen color hex "#1e1e2e" --config "$HOME/nix/dotfiles/matugen/config.toml" -m dark >/dev/null 2>&1 || true
+# 3. Reset Matugen colors to clean pure neutral dark grey default theme (zero green/blue tint)
+matugen color hex "#444444" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-monochrome -m dark >/dev/null 2>&1 || true

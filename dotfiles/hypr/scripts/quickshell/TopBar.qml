@@ -214,10 +214,18 @@ Variants {
                 };
             }
 
-            // Solid accent (mauve) across all bars — no gradient (kept
-            // signature so the caller at cavaVisualizer stays unchanged).
-            function cavaBarColor(index, count) {
-                return mocha.mauve;
+            function cavaBarColor(barIndex, barCount, segIndex, segCount) {
+                let primary = mocha.mauve;
+                let horizFactor = (barCount <= 1) ? 1.0 : (0.60 + 0.40 * (barIndex / (barCount - 1)));
+                let vertFactor = (segCount <= 1) ? 1.0 : (0.45 + 0.55 * (segIndex / (segCount - 1)));
+                let brightness = horizFactor * vertFactor;
+
+                return Qt.rgba(
+                    primary.r * brightness,
+                    primary.g * brightness,
+                    primary.b * brightness,
+                    0.75 + 0.25 * vertFactor
+                );
             }
 
             property int batCap: parseInt(barWindow.batPercent) || 0
@@ -535,7 +543,7 @@ if (diff > 0) {
                             y: (workspacesBox.height - barWindow.s(32)) / 2
                             height: barWindow.s(32)
                             radius: barWindow.s(10)
-                            color: mocha.mauve
+                            color: Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.78)
                             z: 0
 
                             property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsRepeater.count)
@@ -798,45 +806,62 @@ if (diff > 0) {
 
                                 // Cava audio visualizer — solid bars, one
                                 // per frequency band, matching the plain
-                                // terminal-cava look (not a segmented LED
-                                // grid). Gradient across the bars kept from
-                                // before. Tied to status === "Playing"
-                                // specifically — width and opacity both
-                                // collapse to 0 when not actually playing,
-                                // so it fades away and stops taking up
-                                // space rather than sitting there flat.
                                 Item {
-                                    id: cavaVisualizer
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    readonly property bool activeNow: barWindow.musicData.status === "Playing"
-                                    readonly property int barCount: 8
-                                    readonly property real barW: barWindow.s(9)
-                                    readonly property real barGap: barWindow.s(4)
-                                    readonly property real maxBarH: barWindow.s(32)
-                                    readonly property real fullWidth: barCount * barW + (barCount - 1) * barGap
+                                     id: cavaVisualizer
+                                     anchors.verticalCenter: parent.verticalCenter
+                                     readonly property bool activeNow: barWindow.musicData.status === "Playing"
+                                     readonly property int barCount: 8
+                                     readonly property int segCount: 10
+                                     readonly property real barW: barWindow.s(8)
+                                     readonly property real barGap: barWindow.s(3)
+                                     readonly property real segH: barWindow.s(2)
+                                     readonly property real segGap: barWindow.s(1)
+                                     readonly property real maxBarH: segCount * (segH + segGap) - segGap
+                                     readonly property real fullWidth: barCount * barW + (barCount - 1) * barGap
 
-                                    width: activeNow ? fullWidth : 0
-                                    height: maxBarH
-                                    opacity: activeNow ? 1.0 : 0.0
-                                    visible: width > 0 || opacity > 0
-                                    clip: true
+                                     width: activeNow ? fullWidth : 0
+                                     height: maxBarH
+                                     opacity: activeNow ? 1.0 : 0.0
+                                     visible: width > 0 || opacity > 0
+                                     clip: true
 
-                                    Behavior on width { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
-                                    Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+                                     Behavior on width { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+                                     Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
 
-                                    Repeater {
-                                        model: cavaVisualizer.barCount
-                                        delegate: Rectangle {
-                                            required property int index
-                                            width: cavaVisualizer.barW
-                                            radius: barWindow.s(0)
-                                            x: index * (cavaVisualizer.barW + cavaVisualizer.barGap)
-                                            anchors.bottom: parent.bottom
-                                            height: Math.max(barWindow.s(2), ((barWindow.cavaBars[index] || 0) / 100) * cavaVisualizer.maxBarH)
-                                            color: barWindow.cavaBarColor(index, cavaVisualizer.barCount)
-                                        }
-                                    }
-                                }
+                                     Repeater {
+                                         model: cavaVisualizer.barCount
+                                         delegate: Item {
+                                             id: barCol
+                                             required property int index
+                                             width: cavaVisualizer.barW
+                                             height: cavaVisualizer.maxBarH
+                                             x: index * (cavaVisualizer.barW + cavaVisualizer.barGap)
+                                             anchors.bottom: parent.bottom
+
+                                             property int rawVal: barWindow.cavaBars[index] || 0
+                                             property int activeSegs: Math.round((rawVal / 100) * cavaVisualizer.segCount)
+
+                                             Repeater {
+                                                 model: cavaVisualizer.segCount
+                                                 delegate: Rectangle {
+                                                     id: segRect
+                                                     required property int index
+                                                     width: cavaVisualizer.barW
+                                                     height: cavaVisualizer.segH
+                                                     radius: barWindow.s(0.5)
+                                                     anchors.bottom: parent.bottom
+                                                     anchors.bottomMargin: index * (cavaVisualizer.segH + cavaVisualizer.segGap)
+
+                                                     property bool isLit: index < barCol.activeSegs
+                                                     visible: isLit || index === 0
+                                                     opacity: isLit ? 1.0 : 0.12
+
+                                                     color: barWindow.cavaBarColor(barCol.index, cavaVisualizer.barCount, index, cavaVisualizer.segCount)
+                                                 }
+                                             }
+                                         }
+                                     }
+                                 }
                             }
                         }
                     }
@@ -1269,7 +1294,7 @@ if (diff > 0) {
                                         anchors.fill: parent
                                         radius: barWindow.s(10)
                                         opacity: 1.0
-                                        color: mocha.mauve
+                                        color: Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.78)
                                     }
 
                                     property real targetWidth: barWindow.isDesktop ? barWindow.s(34) : batLayoutRow.implicitWidth + barWindow.s(24)
@@ -1292,8 +1317,8 @@ if (diff > 0) {
                                         id: batLayoutRow
                                         anchors.centerIn: parent
                                         spacing: barWindow.s(8)
-                                        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: mocha.base; Behavior on color { ColorAnimation { duration: 300 } } }
-                                        Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.base; Behavior on color { ColorAnimation { duration: 300 } } }
+                                        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: mocha.crust; Behavior on color { ColorAnimation { duration: 300 } } }
+                                        Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.crust; Behavior on color { ColorAnimation { duration: 300 } } }
                                     }
                                     MouseArea {
                                         id: batMouse; hoverEnabled: true; anchors.fill: parent;

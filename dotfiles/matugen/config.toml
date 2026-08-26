@@ -21,3 +21,7 @@ output_path = "/home/realdhiru/.cache/matugen/qtct.conf"
 [templates.qt-style]
 input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/qt-style.qss.template"
 output_path = "/home/realdhiru/.cache/matugen/qt-style.qss"
+
+[templates.cava]
+input_path = "/home/realdhiru/nix/dotfiles/matugen/templates/cava.template"
+output_path = "/home/realdhiru/.config/cava/themes/matugen"

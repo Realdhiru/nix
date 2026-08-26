@@ -1,0 +1,9 @@
+[color]
+gradient = 1
+gradient_count = 6
+gradient_color_1 = '{{colors.surface_container.default.hex}}'
+gradient_color_2 = '{{colors.surface_container_high.default.hex}}'
+gradient_color_3 = '{{colors.surface_container_highest.default.hex}}'
+gradient_color_4 = '{{colors.on_surface_variant.default.hex}}'
+gradient_color_5 = '{{colors.primary.default.hex}}'
+gradient_color_6 = '{{colors.primary.default.hex}}'

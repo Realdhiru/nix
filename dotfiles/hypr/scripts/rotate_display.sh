@@ -49,6 +49,15 @@ if [ "$NEW" != "0" ]; then
     sed -i "/^monitor=$MONITOR,/ s|\$|,transform,$NEW|" "$CACHE_FILE"
 fi
 
+# Also persist in central state file ~/.config/hypr/settings.json
+SETTINGS_FILE="$HOME/.config/hypr/settings.json"
+if [ -f "$SETTINGS_FILE" ] && command -v jq >/dev/null 2>&1; then
+    jq --arg mon "$MONITOR" --argjson trans "$NEW" \
+       '(.monitors[] | select(.name == $mon).transform) = $trans' \
+       "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" \
+       && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+fi
+
 # Apply live (explicit transform so restoring to 0 works).
 # Lua engine: hyprctl keyword is rejected, use eval with the same fields.
 # Base spec format (cache-compatible): NAME,MODE,POS,SCALE[,bitdepth,B][,cm,C]
