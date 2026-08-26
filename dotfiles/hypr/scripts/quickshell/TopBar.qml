@@ -624,10 +624,13 @@ if (diff > 0) {
 
                                     Text {
                                         anchors.centerIn: parent
+                                        anchors.verticalCenterOffset: barWindow.s(-1)
                                         text: wsPill.isItemVisible ? workspacesBox.toKanji(wsName) : ""
-                                        font.family: "JetBrains Mono"
+                                        font.family: "Noto Sans CJK JP, JetBrains Mono"
                                         font.pixelSize: barWindow.s(14)
                                         font.weight: stateLabel === "active" ? Font.Black : (stateLabel === "occupied" ? Font.Bold : Font.Medium)
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
 
                                         color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
 
@@ -656,7 +659,7 @@ if (diff > 0) {
                         height: barWindow.barHeight
                         clip: true
 
-                        width: barWindow.hasVisibleMedia ? innerMediaLayout.implicitWidth + barWindow.s(24) : 0
+                        width: barWindow.hasVisibleMedia ? infoLayout.implicitWidth + barWindow.s(24) : 0
 
                         visible: width > 0
                         opacity: 1.0
@@ -667,201 +670,157 @@ if (diff > 0) {
                             anchors.left: parent.left
                             anchors.leftMargin: barWindow.s(12)
                             height: parent.height
-                            width: innerMediaLayout.implicitWidth
-
-                            // No separate Behavior/transform here anymore.
-                            // mediaBox (the outer pill) already animates its
-                            // own width+opacity in over 400ms — this inner
-                            // Item used to layer a SECOND, slower fade
-                            // (500ms opacity) and slide (700ms transform) on
-                            // top of the exact same trigger. On a normal
-                            // play->pause transition that never mattered
-                            // (the box was already visible, so neither
-                            // animation replayed), but on a fresh reload,
-                            // both start from scratch at once — the box
-                            // finishes its 400ms transition and sits there
-                            // fully sized/colored while this inner content
-                            // was still mid-fade for another 100-300ms,
-                            // which is exactly the "empty box" you were
-                            // seeing. Tracking hasVisibleMedia directly with
-                            // no extra lag keeps content in lockstep with
-                            // the box instead of trailing behind it.
+                            width: infoLayout.implicitWidth
                             opacity: barWindow.hasVisibleMedia ? 1.0 : 0.0
 
-                            Row {
-                                id: innerMediaLayout
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: barWindow.width < 1920 ? barWindow.s(6) : barWindow.s(10)
+                            MouseArea {
+                                id: mediaInfoMouse
+                                width: infoLayout.implicitWidth
+                                height: parent.height
+                                hoverEnabled: true
+                                onClicked: (event) => {
+                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"])
+                                }
 
-                                MouseArea {
-                                    id: mediaInfoMouse
-                                    width: infoLayout.width
-                                    height: infoLayout.implicitHeight
-                                    hoverEnabled: true
-                                    onClicked: (event) => {
-                                        Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"])
-                                    }
+                                Row {
+                                    id: infoLayout
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: barWindow.s(10)
 
-                                    Row {
-                                        id: infoLayout
+                                    scale: mediaInfoMouse.containsMouse ? 1.02 : 1.0
+                                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
+
+                                    Rectangle {
+                                        width: barWindow.s(32); height: barWindow.s(32); radius: barWindow.s(8)
+                                        color: mocha.base
+                                        border.width: barWindow.displayArtReady && barWindow.musicData.status === "Playing" ? 1 : 0
+                                        border.color: mocha.mauve
+                                        clip: true
                                         anchors.verticalCenter: parent.verticalCenter
-                                        spacing: barWindow.s(10)
 
-                                        scale: mediaInfoMouse.containsMouse ? 1.02 : 1.0
-                                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
-
-                                        Rectangle {
-                                            width: barWindow.s(32); height: barWindow.s(32); radius: barWindow.s(8)
-                                            color: "transparent"
-                                            border.width: barWindow.displayArtReady && barWindow.musicData.status === "Playing" ? 1 : 0
-                                            border.color: mocha.mauve
-                                            clip: true
-
-                                            // Nothing renders here until real art actually
-                                            // exists. Spotify's Linux client doesn't populate
-                                            // mpris:artUrl in dbus metadata until the FIRST
-                                            // playback event fires this session — before that
-                                            // there is no URL to fetch at all, so there's
-                                            // nothing legitimate to show. Rather than filling
-                                            // that gap with a flat placeholder square (the
-                                            // "blank black box"), we show nothing and fade the
-                                            // real art in the instant it's ready (artReady flips
-                                            // true — typically right after you press play once).
-                                            Image {
-                                                id: artImage
-                                                anchors.fill: parent
-                                                source: barWindow.displayArtReady && barWindow.displayArtUrl ? "file://" + barWindow.displayArtUrl : ""
-                                                fillMode: Image.PreserveAspectCrop
-                                                asynchronous: true
-                                                cache: false
-                                                smooth: true
-                                                mipmap: true
-                                                // Supersample well above the 32px display size,
-                                                // scaled for the screen's actual pixel density —
-                                                // a flat 32x32 sourceSize gets upscaled (blurry)
-                                                // on any scaled/HiDPI output, since it was
-                                                // rendering at logical pixels, not physical ones.
-                                                sourceSize.width: barWindow.s(32) * 3 * (Screen.devicePixelRatio || 1)
-                                                sourceSize.height: barWindow.s(32) * 3 * (Screen.devicePixelRatio || 1)
-                                                opacity: status === Image.Ready ? 1 : 0
-                                                Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutQuad } }
-                                            }
-
-                                            Rectangle {
-                                                anchors.fill: parent
-                                                visible: artImage.opacity > 0
-                                                opacity: artImage.opacity
-                                                color: Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.2)
-                                            }
+                                        Image {
+                                            id: artImage
+                                            anchors.fill: parent
+                                            source: barWindow.displayArtReady && barWindow.displayArtUrl ? "file://" + barWindow.displayArtUrl : ""
+                                            fillMode: Image.PreserveAspectCrop
+                                            asynchronous: true
+                                            cache: false
+                                            smooth: true
+                                            mipmap: true
+                                            sourceSize.width: barWindow.s(32) * 3 * (Screen.devicePixelRatio || 1)
+                                            sourceSize.height: barWindow.s(32) * 3 * (Screen.devicePixelRatio || 1)
+                                            opacity: status === Image.Ready ? 1 : 0
+                                            Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutQuad } }
                                         }
-                                        Column {
-                                            // Matches the clock widget's day/date column: spacing 0
-                                            // (not the old -2, which was actually overlapping the
-                                            // two lines), both lines the same font size (was 13/10 —
-                                            // that mismatch is what made the timestamp look small
-                                            // and orphaned under a long title), and a width that
-                                            // hugs the actual content instead of always reserving
-                                            // maxColWidth's worth of space regardless of how short
-                                            // the title is. Long titles still elide at the cap.
-                                            id: mediaInfoColumn
-                                            spacing: 0
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            property real maxColWidth: barWindow.width < 1920 ? barWindow.s(140) : barWindow.s(200)
-                                            width: Math.min(Math.max(titleMetrics.width, timeMetrics.width), maxColWidth)
+                                    }
+                                    Column {
+                                        id: mediaInfoColumn
+                                        spacing: barWindow.s(2)
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        property real maxColWidth: barWindow.width < 1920 ? barWindow.s(140) : barWindow.s(200)
+                                        width: Math.min(Math.max(titleMetrics.width, timeMetrics.width), maxColWidth)
 
-                                            TextMetrics {
-                                                id: titleMetrics
-                                                font: titleText.font
-                                                text: barWindow.displayTitle
-                                            }
-                                            TextMetrics {
-                                                id: timeMetrics
-                                                font: timeText.font
-                                                text: barWindow.displayTime
-                                            }
+                                        TextMetrics {
+                                            id: titleMetrics
+                                            font: titleText.font
+                                            text: barWindow.displayTitle
+                                        }
+                                        TextMetrics {
+                                            id: timeMetrics
+                                            font: timeText.font
+                                            text: barWindow.displayTime
+                                        }
 
-                                            Text {
-                                                id: titleText
-                                                text: barWindow.displayTitle;
-                                                font.family: "JetBrains Mono";
-                                                font.weight: Font.Black;
-                                                font.pixelSize: barWindow.s(11);
-                                                color: mocha.text;
-                                                width: parent.width
-                                                elide: Text.ElideRight;
-                                            }
-                                            Text {
-                                                id: timeText
-                                                text: barWindow.displayTime;
-                                                font.family: "JetBrains Mono";
-                                                font.weight: Font.Bold;
-                                                font.pixelSize: barWindow.s(11);
-                                                color: mocha.subtext0;
-                                                width: parent.width
-                                                elide: Text.ElideRight;
-                                            }
+                                        Text {
+                                            id: titleText
+                                            text: barWindow.displayTitle
+                                            font.family: "JetBrains Mono"
+                                            font.weight: Font.Black
+                                            font.pixelSize: barWindow.s(11)
+                                            color: mocha.text
+                                            width: parent.width
+                                            elide: Text.ElideRight
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+                                        Text {
+                                            id: timeText
+                                            text: barWindow.displayTime
+                                            font.family: "JetBrains Mono"
+                                            font.weight: Font.Bold
+                                            font.pixelSize: barWindow.s(10.5)
+                                            color: mocha.subtext0
+                                            width: parent.width
+                                            elide: Text.ElideRight
+                                            verticalAlignment: Text.AlignVCenter
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
 
-                                // Cava audio visualizer — solid bars, one
-                                // per frequency band, matching the plain
-                                Item {
-                                     id: cavaVisualizer
-                                     anchors.verticalCenter: parent.verticalCenter
-                                     readonly property bool activeNow: barWindow.musicData.status === "Playing"
-                                     readonly property int barCount: 8
-                                     readonly property int segCount: 10
-                                     readonly property real barW: barWindow.s(8)
-                                     readonly property real barGap: barWindow.s(3)
-                                     readonly property real segH: barWindow.s(2)
-                                     readonly property real segGap: barWindow.s(1)
-                                     readonly property real maxBarH: segCount * (segH + segGap) - segGap
-                                     readonly property real fullWidth: barCount * barW + (barCount - 1) * barGap
+                    Rectangle {
+                        id: cavaBox
+                        color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
+                        radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+                        height: barWindow.barHeight
+                        clip: true
 
-                                     width: activeNow ? fullWidth : 0
-                                     height: maxBarH
-                                     opacity: activeNow ? 1.0 : 0.0
-                                     visible: width > 0 || opacity > 0
-                                     clip: true
+                        readonly property bool activeNow: barWindow.musicData.status === "Playing"
+                        width: activeNow ? cavaVisualizer.fullWidth + barWindow.s(24) : 0
+                        Behavior on width { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
 
-                                     Behavior on width { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
-                                     Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+                        visible: width > 0
+                        opacity: activeNow ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
 
-                                     Repeater {
-                                         model: cavaVisualizer.barCount
-                                         delegate: Item {
-                                             id: barCol
-                                             required property int index
-                                             width: cavaVisualizer.barW
-                                             height: cavaVisualizer.maxBarH
-                                             x: index * (cavaVisualizer.barW + cavaVisualizer.barGap)
-                                             anchors.bottom: parent.bottom
+                        Item {
+                            id: cavaVisualizer
+                            anchors.centerIn: parent
+                            readonly property int barCount: 8
+                            readonly property int segCount: 10
+                            readonly property real barW: barWindow.s(8)
+                            readonly property real barGap: barWindow.s(3)
+                            readonly property real segH: barWindow.s(2)
+                            readonly property real segGap: barWindow.s(1)
+                            readonly property real maxBarH: segCount * (segH + segGap) - segGap
+                            readonly property real fullWidth: barCount * barW + (barCount - 1) * barGap
 
-                                             property int rawVal: barWindow.cavaBars[index] || 0
-                                             property int activeSegs: Math.round((rawVal / 100) * cavaVisualizer.segCount)
+                            width: fullWidth
+                            height: maxBarH
 
-                                             Repeater {
-                                                 model: cavaVisualizer.segCount
-                                                 delegate: Rectangle {
-                                                     id: segRect
-                                                     required property int index
-                                                     width: cavaVisualizer.barW
-                                                     height: cavaVisualizer.segH
-                                                     radius: barWindow.s(0.5)
-                                                     anchors.bottom: parent.bottom
-                                                     anchors.bottomMargin: index * (cavaVisualizer.segH + cavaVisualizer.segGap)
+                            Repeater {
+                                model: cavaVisualizer.barCount
+                                delegate: Item {
+                                    id: barCol
+                                    required property int index
+                                    width: cavaVisualizer.barW
+                                    height: cavaVisualizer.maxBarH
+                                    x: index * (cavaVisualizer.barW + cavaVisualizer.barGap)
+                                    anchors.bottom: parent.bottom
 
-                                                     property bool isLit: index < barCol.activeSegs
-                                                     visible: isLit || index === 0
-                                                     opacity: isLit ? 1.0 : 0.12
+                                    property int rawVal: barWindow.cavaBars[index] || 0
+                                    property int activeSegs: Math.round((rawVal / 100) * cavaVisualizer.segCount)
 
-                                                     color: barWindow.cavaBarColor(barCol.index, cavaVisualizer.barCount, index, cavaVisualizer.segCount)
-                                                 }
-                                             }
-                                         }
-                                     }
-                                 }
+                                    Repeater {
+                                        model: cavaVisualizer.segCount
+                                        delegate: Rectangle {
+                                            id: segRect
+                                            required property int index
+                                            width: cavaVisualizer.barW
+                                            height: cavaVisualizer.segH
+                                            radius: barWindow.s(0.5)
+                                            anchors.bottom: parent.bottom
+                                            anchors.bottomMargin: index * (cavaVisualizer.segH + cavaVisualizer.segGap)
+
+                                            property bool isLit: index < barCol.activeSegs
+                                            visible: isLit || index === 0
+                                            opacity: isLit ? 1.0 : 0.12
+
+                                            color: barWindow.cavaBarColor(barCol.index, cavaVisualizer.barCount, index, cavaVisualizer.segCount)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
