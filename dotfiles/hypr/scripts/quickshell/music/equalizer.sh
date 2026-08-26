@@ -3,7 +3,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
 qs_ensure_cache "music"
 
-STATE_FILE="$QS_RUN_MUSIC/eq_state.json"
+STATE_FILE="${QS_STATE_MUSIC:-$QS_RUN_MUSIC}/eq_state.json"
 PRESET_DIR="$HOME/.config/easyeffects/output"
 PRESET_NAME="live_eq"
 PRESET_FILE="$PRESET_DIR/${PRESET_NAME}.json"
@@ -73,10 +73,10 @@ arg1=$2
 arg2=$3
 
 case $cmd in
-    # In equalizer.sh, replace the --init case with:
 "--init")
-    # Write Vocal preset to disk immediately
-    save_preset -2 -1 1 3 5 5 4 2 1 0 "Vocal"
+    if [ ! -f "$STATE_FILE" ]; then
+        save_preset 0 0 0 0 0 0 0 0 0 0 "Flat"
+    fi
 
     # Extended daemon sync — waits for EasyEffects then applies twice
     # with a longer gap to survive EasyEffects' own preset-load delay

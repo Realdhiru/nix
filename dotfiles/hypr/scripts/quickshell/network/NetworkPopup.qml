@@ -124,9 +124,16 @@ Item {
         }
     }
 
-    // 10x/sec mode-file re-read — only meaningful while the popup is open
-    // (cached-popup leak fix; was running forever after close).
-    Timer { interval: 100; running: window.visible; repeat: true; onTriggered: modeReader.running = true }
+    // Read mode file reactively when popup opens, and poll lightly (1s) while visible
+    // to catch any external mode changes (e.g. from qs_manager.sh) without CPU/process churn.
+    Timer { interval: 1000; running: window.visible; repeat: true; onTriggered: modeReader.running = true }
+
+    Connections {
+        target: window
+        function onVisibleChanged() {
+            if (window.visible) modeReader.running = true;
+        }
+    }
 
     Component.onCompleted: {
         window.powerAnimAllowed = false;
@@ -703,7 +710,7 @@ Item {
                     window.connectingId = "";
                 }
                 if (newlyConnected) {
-                    Quickshell.execDetached(["notify-send", "-a", "Bluetooth", "Connected", newBtConnected[i-1] ? newBtConnected[i-1].name : ""]);
+                    Quickshell.execDetached(["notify-send", "-a", "Wi-Fi", "Connected", newConnected ? (newConnected.ssid || newConnected.name) : ""]);
                     window.playSfx("connect.wav");
                     window.busyTasks = Object.assign({}, bt);
                     if (Object.keys(window.busyTasks).length === 0 && Object.keys(window.disconnectingDevices).length === 0) busyTimeout.stop();
@@ -1001,7 +1008,7 @@ Item {
                 Timer {
                     id: lightningTimer
                     interval: 45
-                    running: nodeLinesCanvas.opacity > 0.01 && window.currentPower
+                    running: window.visible && nodeLinesCanvas.opacity > 0.01 && window.currentPower && (window.showInfoView || window.isValidatingMode)
                     repeat: true
                     onTriggered: nodeLinesCanvas.requestPaint()
                 }

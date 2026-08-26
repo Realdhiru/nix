@@ -21,14 +21,58 @@ BASENAME=$(basename "$WALL")
 mkdir -p "$HOME/.cache"
 echo "$WALL" > "$HOME/.cache/current_wallpaper.txt"
 
+# Serialize wallpaper switches to prevent overlapping process race conditions
+LOCKFILE="$HOME/.cache/set_wallpaper.lock"
+exec 8>"$LOCKFILE"
+flock 8
+
+# If a newer wallpaper change arrived while waiting for lock, abort stale request
+if [ "$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null)" != "$WALL" ]; then
+    flock -u 8 2>/dev/null || true
+    exec 8>&- 2>/dev/null || true
+    exit 0
+fi
+
+# Reliable teardown helper for mpvpaper (handles NixOS .mpvpaper-wrapp comm name)
+stop_mpvpaper() {
+    pkill -15 -x .mpvpaper-wrapp 2>/dev/null || true
+    pkill -15 -x mpvpaper 2>/dev/null || true
+    pkill -15 -f mpvpaper 2>/dev/null || true
+
+    for i in {1..10}; do
+        if ! pgrep -x .mpvpaper-wrapp >/dev/null 2>&1 && \
+           ! pgrep -x mpvpaper >/dev/null 2>&1 && \
+           ! pgrep -f mpvpaper >/dev/null 2>&1; then
+            break
+        fi
+        sleep 0.05
+    done
+
+    if pgrep -x .mpvpaper-wrapp >/dev/null 2>&1 || \
+       pgrep -x mpvpaper >/dev/null 2>&1 || \
+       pgrep -f mpvpaper >/dev/null 2>&1; then
+        pkill -9 -x .mpvpaper-wrapp 2>/dev/null || true
+        pkill -9 -x mpvpaper 2>/dev/null || true
+        pkill -9 -f mpvpaper 2>/dev/null || true
+        for i in {1..10}; do
+            if ! pgrep -x .mpvpaper-wrapp >/dev/null 2>&1 && \
+               ! pgrep -x mpvpaper >/dev/null 2>&1 && \
+               ! pgrep -f mpvpaper >/dev/null 2>&1; then
+                break
+            fi
+            sleep 0.05
+        done
+    fi
+
+    rm -f /tmp/mpv-paper-socket "$HOME/.cache/mpvpaper.pid"
+}
+
 # 2. INSTANT VISUAL PATHWAY (Zero blocking delays, Strict Mutual Exclusion)
 if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
     # Kill images before starting video/gif
     # (daemon teardown centralized in ensure_awww.sh)
-    "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop
-    pkill -x mpvpaper 2>/dev/null || true
-    while pgrep -x mpvpaper >/dev/null 2>&1; do sleep 0.05; done
-    rm -f /tmp/mpv-paper-socket
+    "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop 8>&-
+    stop_mpvpaper
     
     WALL_TARGET="$WALL"
     if [[ "$EXT" == "gif" ]]; then
@@ -37,11 +81,11 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
         WALL_TARGET="$GIF_CACHE_DIR/$BASENAME.mp4"
         if [ ! -f "$WALL_TARGET" ]; then
             # Convert GIF to MP4 on first run to enable hardware video decoding (VPU)
-            ffmpeg -hide_banner -loglevel error -y -i "$WALL" -c:v libx264 -preset veryfast -pix_fmt yuv420p -an "$WALL_TARGET"
+            ffmpeg -hide_banner -loglevel error -y -i "$WALL" -c:v libx264 -preset veryfast -pix_fmt yuv420p -an "$WALL_TARGET" 8>&-
         fi
     fi
 
-    mpvpaper -o "no-audio --loop-playlist --hwdec=vaapi --panscan=1.0 --input-ipc-server=/tmp/mpv-paper-socket" '*' "$WALL_TARGET" > /dev/null 2>&1 &
+    mpvpaper -o "no-audio --loop-playlist --hwdec=vaapi --panscan=1.0 --input-ipc-server=/tmp/mpv-paper-socket" '*' "$WALL_TARGET" 8>&- > /dev/null 2>&1 &
 
     # Inherit Power-Saver paused state if currently active
     CURRENT_PROF=$(cat /tmp/qs_requested_profile 2>/dev/null || echo "")
@@ -54,13 +98,11 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
                 fi
                 sleep 0.05
             done
-        ) &
+        ) 8>&- &
     fi
 else
     # Kill video before starting image
-    pkill -x mpvpaper 2>/dev/null || true
-    while pgrep -x mpvpaper >/dev/null 2>&1; do sleep 0.05; done
-    rm -f /tmp/mpv-paper-socket
+    stop_mpvpaper
 
     # THE ACTUAL BUG: switching TO a video kills awww-daemon (correct — it
     # shouldn't be drawing behind mpvpaper). But switching FROM a video
@@ -76,7 +118,7 @@ else
     # Fix: ensure the daemon is actually alive before pushing an image.
     # Daemon start/readiness/stale-socket recovery is centralized in
     # ensure_awww.sh (single source of truth for the daemon lifecycle).
-    "$HOME/.config/hypr/scripts/ensure_awww.sh"
+    "$HOME/.config/hypr/scripts/ensure_awww.sh" 8>&-
 
     # Push the image to the persistent daemon instantly with a fast fade
     if ! awww img "$WALL" \
@@ -86,11 +128,15 @@ else
         --transition-fps 60 > /dev/null 2>&1; then
         
         # FALLBACK: If awww fails (e.g., unsupported format, fake extension, or crashes), fallback to mpvpaper
-        "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop
-        pkill -f mpvpaper 2>/dev/null
-        mpvpaper -o "no-audio --loop-playlist --hwdec=auto --panscan=1.0" '*' "$WALL" > /dev/null 2>&1 &
+        "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop 8>&-
+        stop_mpvpaper
+        mpvpaper -o "no-audio --loop-playlist --hwdec=auto --panscan=1.0" '*' "$WALL" 8>&- > /dev/null 2>&1 &
     fi
 fi
+
+# Release lock now that wallpaper daemon is started
+flock -u 8 2>/dev/null || true
+exec 8>&- 2>/dev/null || true
 
 # 3. ISOLATED WORKER THREAD (Forks immediately)
 (

@@ -155,20 +155,21 @@ PanelWindow {
         preloadStaggerTimer.start();
     }
 
+    property var _preloadQueue: ["battery", "network", "music", "clipboard", "monitors", "focustime", "weather_setup", "calendar", "wallpaper"]
+    property int _preloadIndex: 0
+
     Timer {
         id: preloadStaggerTimer
-        interval: 900
-        repeat: false
+        interval: 150
+        repeat: true
+        running: false
         onTriggered: {
-            preloadWidget("battery");
-            preloadWidget("network");
-            preloadWidget("music");
-            preloadWidget("clipboard");
-            preloadWidget("monitors");
-            preloadWidget("focustime");
-            preloadWidget("weather_setup");
-            preloadWidget("calendar");
-            preloadWidget("wallpaper");
+            if (_preloadIndex < _preloadQueue.length) {
+                preloadWidget(_preloadQueue[_preloadIndex]);
+                _preloadIndex++;
+            } else {
+                preloadStaggerTimer.stop();
+            }
         }
     }
 
@@ -420,12 +421,17 @@ PanelWindow {
                 masterWindow.disableMorph = false;
 
                 let t = getLayout(newWidget);
-                masterWindow.animX = t.rx;
+                let cachedWidget = widgetCache[newWidget];
+                let initW = (cachedWidget && cachedWidget.targetMasterWidth !== undefined) ? cachedWidget.targetMasterWidth : t.w;
+                let initH = (cachedWidget && cachedWidget.targetMasterHeight !== undefined) ? cachedWidget.targetMasterHeight : t.h;
+                let initX = (cachedWidget && cachedWidget.targetMasterWidth !== undefined) ? Math.floor((masterWindow.width / 2) - (initW / 2)) : t.rx;
+
+                masterWindow.animX = initX;
                 masterWindow.animY = t.ry;
-                masterWindow.animW = t.w;
-                masterWindow.animH = t.h;
-                masterWindow.targetW = t.w;
-                masterWindow.targetH = t.h;
+                masterWindow.animW = initW;
+                masterWindow.animH = initH;
+                masterWindow.targetW = initW;
+                masterWindow.targetH = initH;
 
                 masterWindow._pendingWidget = newWidget;
                 masterWindow._pendingArg = arg;
