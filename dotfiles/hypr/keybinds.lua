@@ -36,7 +36,7 @@ hl.bind(mainMod .. " + ALT + F", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/s
 hl.bind(mainMod .. " + CTRL + M", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle monitors"))
 hl.bind(mainMod .. " + U", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle battery"))
 hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle wallpaper"))
-hl.bind(mainMod .. " + CTRL + SHIFT + W", hl.dsp.exec_cmd("bash -c '~/.config/hypr/scripts/ensure_awww.sh --stop; pkill -f mpvpaper'"))
+hl.bind(mainMod .. " + CTRL + SHIFT + W", hl.dsp.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/kill_wallpaper.sh"))
 hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle clipboard"))
 hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle music"))
 hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle calendar"))

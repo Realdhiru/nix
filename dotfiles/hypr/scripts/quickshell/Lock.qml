@@ -198,7 +198,11 @@ ShellRoot {
                     stdout: StdioCollector {
                         onStreamFinished: {
                             let raw = this.text.trim();
-                            if (raw === "") return;
+                            if (raw === "") {
+                                screenRoot.currentWallpaperExt = "";
+                                screenRoot.currentWallpaperPath = "";
+                                return;
+                            }
                             let lower = raw.toLowerCase();
                             let dot = lower.lastIndexOf(".");
                             screenRoot.currentWallpaperExt = dot !== -1 ? lower.substring(dot + 1) : "";
