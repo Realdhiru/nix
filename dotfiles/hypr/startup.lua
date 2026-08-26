@@ -21,5 +21,6 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("hyprctl setcursor Bibata-Modern-Ice 32")
     
     -- Background Services
+    hl.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/osd_watcher.sh")
     hl.exec_cmd("kdeconnect-indicator")
 end)

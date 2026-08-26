@@ -1079,12 +1079,12 @@ if (diff > 0) {
                                         text: {
                                             if (!notifLayout.n) return "";
                                             if (notifLayout.n.summary === "Volume") {
-                                                if (notifLayout.n.body === "Muted") return "󰝟";
+                                                if (notifLayout.n.body.indexOf("Muted") !== -1 || notifLayout.n.body === "Muted") return "󰝟";
                                                 return "󰕾";
                                             }
                                             if (notifLayout.n.summary === "Brightness") return "󰃠";
                                             if (notifLayout.n.summary === "Microphone") {
-                                                if (notifLayout.n.body === "Muted") return "󰍭";
+                                                if (notifLayout.n.body.indexOf("Muted") !== -1 || notifLayout.n.body === "Muted") return "󰍭";
                                                 return "󰍬";
                                             }
                                             return "";
@@ -1097,9 +1097,10 @@ if (diff > 0) {
                                     Layout.preferredWidth: barWindow.s(200)
                                     Layout.preferredHeight: barWindow.s(16)
                                     
+                                    property bool isMuted: notifLayout.n && (notifLayout.n.body.indexOf("Muted") !== -1 || notifLayout.n.body === "Muted")
+
                                     property real pct: {
                                         if (!notifLayout.n) return 0;
-                                        if (notifLayout.n.body === "Muted") return 0;
                                         let v = parseInt(notifLayout.n.body);
                                         return isNaN(v) ? 0 : Math.max(0, Math.min(100, v)) / 100.0;
                                     }
@@ -1122,14 +1123,14 @@ if (diff > 0) {
                                             width: parent.fillW
                                             height: parent.height
                                             radius: height / 2
-                                            color: mocha.text
+                                            color: sliderContainer.isMuted ? mocha.subtext1 : mocha.text
                                         }
                                         
                                         Rectangle {
                                             width: parent.height + barWindow.s(4)
                                             height: parent.height + barWindow.s(4)
                                             radius: width / 2
-                                            color: mocha.text
+                                            color: sliderContainer.isMuted ? mocha.subtext1 : mocha.text
                                             border.color: mocha.surface2
                                             border.width: barWindow.s(1)
                                             

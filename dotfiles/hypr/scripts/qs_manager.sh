@@ -80,6 +80,8 @@ MANIFEST="$THUMB_DIR/.manifest"
 (
     flock -n 200 || exit 0
     if ! pgrep -f "Shell.qml" >/dev/null; then
+        pkill -9 quickshell 2>/dev/null || true
+        pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
         "$QS_BIN" -p "$SHELL_QML_PATH" >/dev/null 2>&1 &
         disown
     fi

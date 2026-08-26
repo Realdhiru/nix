@@ -229,7 +229,7 @@ Item {
         property string targetId: ""
         property string targetSsid: ""
 
-        onExited: {
+        onExited: (exitCode, exitStatus) => {
             let code = exitCode;
             let bt = window.busyTasks;
             delete bt[targetId];
@@ -261,7 +261,7 @@ Item {
     Process {
         id: disconnectProcess
         property string targetMode: ""
-        onExited: {
+        onExited: (exitCode, exitStatus) => {
             if (targetMode === "eth") ethPoller.running = true;
             else if (targetMode === "wifi") wifiPoller.running = true;
             else btPoller.running = true;
@@ -271,7 +271,7 @@ Item {
     Process {
         id: powerToggleProcess
         property string targetMode: ""
-        onExited: {
+        onExited: (exitCode, exitStatus) => {
             if (targetMode === "eth") ethPoller.running = true;
             else if (targetMode === "wifi") wifiPoller.running = true;
             else btPoller.running = true;
@@ -386,7 +386,8 @@ Item {
         if (window.activeMode === "wifi") savedNetworksFetcher.running = true;
         window._syncBtScan();
 
-        infoListModel.clear();
+        window.infoList = [];
+        window.refreshOrbitModel();
         window.busyTasks = ({});
         window.disconnectingDevices = ({});
         window.currentCores = [null, null, null, null, null];
@@ -397,9 +398,22 @@ Item {
         if (window.showInfoView) window.updateInfoNodes();
     }
 
-    ListModel { id: wifiListModel }
-    ListModel { id: btListModel }
-    ListModel { id: infoListModel }
+    property var infoList: []
+
+    function refreshOrbitModel() {
+        if (window.isListLocked) return;
+        let dataArray = [];
+        if (window.currentConn && window.showInfoView) {
+            dataArray = window.nextInfoList !== null ? window.nextInfoList : window.infoList;
+        } else if (window.activeMode === "wifi") {
+            dataArray = window.nextWifiList !== null ? window.nextWifiList : window.wifiList;
+        } else if (window.activeMode === "bt") {
+            dataArray = window.nextBtList !== null ? window.nextBtList : window.btList;
+        }
+        window.syncModel(orbitListModel, dataArray);
+    }
+
+    ListModel { id: orbitListModel }
 
     function syncModel(listModel, dataArray) {
         for (let i = listModel.count - 1; i >= 0; i--) {
@@ -446,9 +460,10 @@ Item {
 
     onIsListLockedChanged: {
         if (!isListLocked) {
-            if (nextWifiList !== null) { window.syncModel(wifiListModel, nextWifiList); window.wifiList = nextWifiList; nextWifiList = null; }
-            if (nextBtList !== null) { window.syncModel(btListModel, nextBtList); window.btList = nextBtList; nextBtList = null; }
-            if (nextInfoList !== null) { window.syncModel(infoListModel, nextInfoList); nextInfoList = null; }
+            if (nextWifiList !== null) { window.wifiList = nextWifiList; nextWifiList = null; }
+            if (nextBtList !== null) { window.btList = nextBtList; nextBtList = null; }
+            if (nextInfoList !== null) { window.infoList = nextInfoList; nextInfoList = null; }
+            window.refreshOrbitModel();
         }
     }
 
@@ -558,8 +573,9 @@ Item {
             }
         }
 
+        window.infoList = nodes;
         if (window.isListLocked && window.activeMode !== "eth") window.nextInfoList = nodes;
-        else { window.syncModel(infoListModel, nodes); window.nextInfoList = null; }
+        else { window.nextInfoList = null; window.refreshOrbitModel(); }
     }
 
     function processEthJson(textData, isCache = false) {
@@ -658,7 +674,7 @@ Item {
 
             if (JSON.stringify(window.wifiList) !== JSON.stringify(newNetworks)) {
                 if (window.isListLocked) window.nextWifiList = newNetworks;
-                else { window.syncModel(wifiListModel, newNetworks); window.wifiList = newNetworks; window.nextWifiList = null; }
+                else { window.wifiList = newNetworks; window.nextWifiList = null; window.refreshOrbitModel(); }
             }
 
             if (window.activeMode === "wifi") {
@@ -783,7 +799,7 @@ Item {
 
             if (JSON.stringify(window.btList) !== JSON.stringify(newDevices)) {
                 if (window.isListLocked) window.nextBtList = newDevices;
-                else { window.syncModel(btListModel, newDevices); window.btList = newDevices; window.nextBtList = null; }
+                else { window.btList = newDevices; window.nextBtList = null; window.refreshOrbitModel(); }
             }
 
             if (window.activeMode === "bt") {
@@ -1593,7 +1609,7 @@ Item {
 
                     Repeater {
                         id: orbitRepeater
-                        model: (window.currentConn && window.showInfoView) ? infoListModel : (window.activeMode === "wifi" ? wifiListModel : (window.activeMode === "bt" ? btListModel : null))
+                        model: orbitListModel
 
                         delegate: Item {
                             id: floatCardDelegateContainer
