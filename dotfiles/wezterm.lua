@@ -14,7 +14,7 @@ config.front_end = "WebGpu"
 
 -- Default font size (1.5x WezTerm's 12pt baseline). The `af` fetch UI may
 -- temporarily override this via ~/.cache/af_font_size (removed on exit).
-config.font_size = 13
+config.font_size = 9
 
 -- 1. Use WezTerm's native home_dir (os.getenv("HOME") crashes during background reloads)
 local matugen_path = wezterm.home_dir .. "/.cache/matugen/wezterm-colors.lua"

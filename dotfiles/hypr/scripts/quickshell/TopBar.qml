@@ -825,12 +825,12 @@ if (diff > 0) {
                         }
                     }
 
-                                        Rectangle {
-                        id: centerBox
-                        property bool isHovered: centerMouse.containsMouse
-                        property bool notifActive: NotifTicker.tickerVisible
-                        color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.95) : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
-                        radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.15 : 0.05)
+                        Rectangle {
+                            id: centerBox
+                            property bool isHovered: centerMouse.containsMouse
+                            property bool notifActive: NotifTicker.tickerVisible
+                            color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6) : Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
+                            radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.12 : 0.05)
                         height: barWindow.barHeight
                         width: (centerBox.notifActive ? notifLayout.implicitWidth : centerLayout.implicitWidth) + barWindow.s(36)
                         Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutExpo } }
@@ -1134,9 +1134,9 @@ if (diff > 0) {
                         Rectangle {
                             height: barWindow.barHeight
                             radius: barWindow.s(14)
-                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08)
+                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
                             border.width: 1
-                            color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.7)
+                            color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
 
                             property real targetWidth: trayRepeater.count > 0 ? trayLayout.width + barWindow.s(24) : 0
                             width: targetWidth
@@ -1229,9 +1229,9 @@ if (diff > 0) {
                         Rectangle {
                             height: barWindow.barHeight
                             radius: barWindow.s(14)
-                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08)
+                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
                             border.width: 1
-                            color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.7)
+                            color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
                             clip: true
 
                             width: sysLayout.implicitWidth + barWindow.s(20)
@@ -1294,10 +1294,10 @@ if (diff > 0) {
                             id: recButton
                             property bool isHovered: recMouse.containsMouse
 
-                            color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.95) : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.35)
+                            color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6) : Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
                             radius: barWindow.s(14)
                             border.width: 1
-                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.15 : 0.05)
+                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.12 : 0.05)
 
                             property real targetWidth: barWindow.isRecording ? barWindow.barHeight : 0
                             width: targetWidth

@@ -11,6 +11,8 @@ Item {
     id: window
     focus: true
 
+    onVisibleChanged: { if (visible) window.showInfoView = false; }
+
     property real layoutWidth
     property real layoutHeight
     width: layoutWidth
@@ -214,6 +216,7 @@ Item {
     Timer { id: btPendingReset; interval: 8000; onTriggered: { window.btPowerPending = false; window.expectedBtPower = ""; } }
 
     property bool showInfoView: false
+    onShowInfoViewChanged: refreshOrbitModel()
 
     property string pendingWifiSsid: ""
     property string pendingWifiId: ""
@@ -380,7 +383,6 @@ Item {
     }
 
     onCurrentConnChanged: {
-        Qt.callLater(() => { window.showInfoView = window.currentConn; });
         if (currentConn) updateInfoNodes();
     }
 
@@ -390,7 +392,17 @@ Item {
         }
         window.ignoreNextModeFileUpdate = false;
 
-        if (window.activeMode === "wifi") savedNetworksFetcher.running = true;
+        if (window.activeMode === "wifi") {
+            savedNetworksFetcher.running = true;
+            if (wifiPoller.running) wifiPoller.running = false;
+            wifiPoller.running = true;
+        } else if (window.activeMode === "bt") {
+            if (btPoller.running) btPoller.running = false;
+            btPoller.running = true;
+        } else if (window.activeMode === "eth") {
+            if (ethPoller.running) ethPoller.running = false;
+            ethPoller.running = true;
+        }
         window._syncBtScan();
 
         window.infoList = [];
@@ -401,7 +413,6 @@ Item {
         window.coreVisualIndices = [0, 0, 0, 0, 0];
         window.activeCoreCount = 0;
         syncCores();
-        Qt.callLater(() => { window.showInfoView = window.currentConn; });
         if (window.showInfoView) window.updateInfoNodes();
     }
 
