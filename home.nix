@@ -113,6 +113,7 @@
 
   home.username = "realdhiru";
   home.homeDirectory = "/home/realdhiru";
+  home.sessionPath = [ "$HOME/.local/bin" ];
 
   home.stateVersion = "26.11";
 

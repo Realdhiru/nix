@@ -73,8 +73,10 @@ in
 
       if [ "$CURRENT_VERSION" != "$SPOTIFY_STORE_PATH" ] || [ ! -f "$CLIENT_DIR/spotify" ]; then
         echo "Syncing Spotify base files from $SPOTIFY_STORE_PATH..."
+        shopt -s dotglob
         cp -rfL "$SPOTIFY_STORE_PATH/"* "$CLIENT_DIR/"
         chmod -R u+w "$CLIENT_DIR"
+        sed -i "s|\"$SPOTIFY_STORE_PATH/.spotify-wrapped\"|\"$CLIENT_DIR/.spotify-wrapped\"|g" "$CLIENT_DIR/spotify"
         echo "$SPOTIFY_STORE_PATH" > "$VERSION_FILE"
 
         # Apply initial spicetify configuration if needed
@@ -103,6 +105,14 @@ in
       #!/usr/bin/env bash
       "$HOME/.local/bin/spotify-sync"
       exec "$HOME/.local/share/spotify-client/spotify" "$@"
+    '';
+  };
+
+  home.file.".local/bin/spotify" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      exec "$HOME/.local/bin/spotify-wrapper" "$@"
     '';
   };
 
