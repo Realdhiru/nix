@@ -529,6 +529,11 @@ PanelWindow {
         focusTimer.restart();
     }
 
+    Item {
+        id: blankContainer
+        visible: false
+    }
+
     Timer {
         id: delayedClear
         // Must outlast the replaceExit transition (morphDurationShift=210ms)
@@ -540,7 +545,7 @@ PanelWindow {
         onTriggered: {
             if (!masterWindow.isVisible && !widgetStack.busy) {
                 masterWindow.currentActive = "hidden";
-                widgetStack.clear();
+                widgetStack.replace(blankContainer, {}, StackView.Immediate);
                 masterWindow.disableMorph = false;
             }
         }

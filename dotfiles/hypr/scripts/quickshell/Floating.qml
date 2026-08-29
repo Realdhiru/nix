@@ -412,6 +412,11 @@ Variants {
             // =========================================================
             property bool isSidebarVisible: false
             property bool isPeekVisible: false
+            property bool isAutoDismissed: false
+            onIsPeekVisibleChanged: {
+                if (isPeekVisible) peekAutoDismissTimer.restart();
+                else peekAutoDismissTimer.stop();
+            }
             property bool disableAnim: false
 
             property string activeEdge: "left"
@@ -541,6 +546,17 @@ Variants {
             }
 
             Timer {
+                id: peekAutoDismissTimer
+                interval: 3000
+                onTriggered: {
+                    if (floatingWidget.isPeekVisible && !floatingWidget.isSidebarVisible && !(typeof peekMouse !== "undefined" && peekMouse.pressed)) {
+                        floatingWidget.isAutoDismissed = true;
+                        floatingWidget.isPeekVisible = false;
+                    }
+                }
+            }
+
+            Timer {
                 id: hideTimer
                 interval: floatingWidget.useGraceTimer ? 3000 : 800 
                 onTriggered: {
@@ -586,6 +602,7 @@ Variants {
                     hoverEnabled: true
                     onEntered: {
                         peekHideTimer.stop();
+                        if (floatingWidget.isAutoDismissed) return;
                         if (floatingWidget.isSidebarVisible || floatingWidget.pendingMode === "sidebar") {
                             floatingWidget.showSidebar("left", mouseY + y);
                         } else if (floatingWidget.isPeekVisible) {
@@ -597,6 +614,7 @@ Variants {
                         }
                     }
                     onPositionChanged: mouse => {
+                        if (floatingWidget.isAutoDismissed) return;
                         if (floatingWidget.isSidebarVisible || floatingWidget.pendingMode === "sidebar") {
                             floatingWidget.showSidebar("left", mouse.y + y);
                         } else if (floatingWidget.isPeekVisible) {
@@ -606,6 +624,7 @@ Variants {
                         }
                     }
                     onExited: {
+                        floatingWidget.isAutoDismissed = false;
                         peekShowTimer.stop();
                         peekHideTimer.restart();
                     }
@@ -617,6 +636,7 @@ Variants {
                     hoverEnabled: true
                     onEntered: {
                         peekHideTimer.stop();
+                        if (floatingWidget.isAutoDismissed) return;
                         if (floatingWidget.isSidebarVisible || floatingWidget.pendingMode === "sidebar") {
                             floatingWidget.showSidebar("right", mouseY + y);
                         } else if (floatingWidget.isPeekVisible) {
@@ -628,6 +648,7 @@ Variants {
                         }
                     }
                     onPositionChanged: mouse => {
+                        if (floatingWidget.isAutoDismissed) return;
                         if (floatingWidget.isSidebarVisible || floatingWidget.pendingMode === "sidebar") {
                             floatingWidget.showSidebar("right", mouse.y + y);
                         } else if (floatingWidget.isPeekVisible) {
@@ -637,6 +658,7 @@ Variants {
                         }
                     }
                     onExited: {
+                        floatingWidget.isAutoDismissed = false;
                         peekShowTimer.stop();
                         peekHideTimer.restart();
                     }
@@ -648,6 +670,7 @@ Variants {
                     hoverEnabled: true
                     onEntered: {
                         peekHideTimer.stop();
+                        if (floatingWidget.isAutoDismissed) return;
                         if (floatingWidget.isSidebarVisible || floatingWidget.pendingMode === "sidebar") {
                             floatingWidget.showSidebar("bottom", mouseX + x);
                         } else if (floatingWidget.isPeekVisible) {
@@ -659,6 +682,7 @@ Variants {
                         }
                     }
                     onPositionChanged: mouse => {
+                        if (floatingWidget.isAutoDismissed) return;
                         if (floatingWidget.isSidebarVisible || floatingWidget.pendingMode === "sidebar") {
                             floatingWidget.showSidebar("bottom", mouse.x + x);
                         } else if (floatingWidget.isPeekVisible) {
@@ -668,6 +692,7 @@ Variants {
                         }
                     }
                     onExited: {
+                        floatingWidget.isAutoDismissed = false;
                         peekShowTimer.stop();
                         peekHideTimer.restart();
                     }
@@ -747,7 +772,7 @@ Variants {
                     property real currentDragDelta: 0
 
                     onEntered: { floatingWidget.isPeekVisible = true; peekHideTimer.stop(); }
-                    onExited: { if (!pressed) peekHideTimer.restart(); }
+                    onExited: { floatingWidget.isAutoDismissed = false; if (!pressed) peekHideTimer.restart(); }
 
                     onPressed: mouse => {
                         let gp = mapToItem(mainHitArea, mouse.x, mouse.y);

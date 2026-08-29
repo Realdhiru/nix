@@ -406,6 +406,7 @@ Item {
         window._syncBtScan();
 
         window.infoList = [];
+        orbitListModel.clear();
         window.refreshOrbitModel();
         window.busyTasks = ({});
         window.disconnectingDevices = ({});

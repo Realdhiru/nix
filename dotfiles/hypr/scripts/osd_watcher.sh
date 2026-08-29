@@ -86,9 +86,12 @@ notify_osd() {
     # Record baseline state silently
     check_audio
 
-    # Listen to pipewire monitoring events
-    pw-mon 2>/dev/null | grep --line-buffered -E "param: Props|changed|id:" | while read -r _; do
-        check_audio
+    # Listen to pipewire monitoring events (auto-reconnect on resume/reset)
+    while true; do
+        pw-mon 2>/dev/null | grep --line-buffered -E "param: Props|changed|id:" | while read -r _; do
+            check_audio
+        done
+        sleep 1
     done
 ) &
 
@@ -117,8 +120,11 @@ notify_osd() {
 
     backlight_dir=$(ls -d /sys/class/backlight/* 2>/dev/null | head -n 1)
     if [ -n "$backlight_dir" ] && command -v inotifywait >/dev/null 2>&1; then
-        inotifywait -q -m -e modify "$backlight_dir/brightness" 2>/dev/null | while read -r _; do
-            check_bright
+        while true; do
+            inotifywait -q -m -e modify "$backlight_dir/brightness" 2>/dev/null | while read -r _; do
+                check_bright
+            done
+            sleep 1
         done
     else
         while true; do
