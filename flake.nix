@@ -19,11 +19,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    spicetify-nix = {
-      url = "github:Gerg-L/spicetify-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     anifetch = {
       url = "github:Notenlish/anifetch";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -72,9 +67,7 @@
             inherit inputs;
           };
 
-          home-manager.sharedModules = [
-            inputs.spicetify-nix.homeManagerModules.spicetify
-          ];
+          home-manager.sharedModules = [ ];
 
           home-manager.users.realdhiru = import ./home.nix;
         }
