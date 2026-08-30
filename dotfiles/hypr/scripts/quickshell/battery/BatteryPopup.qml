@@ -4,6 +4,7 @@ import QtQuick.Window
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Pipewire
 import "../"
 
 Item {
@@ -287,7 +288,7 @@ Item {
                 rem=0
             fi
 
-            vol=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100), ($3=="[MUTED]"?"off":"on")}' || echo '0 on')
+            vol="0 on"
             bri=$(brightnessctl -m 2>/dev/null | awk -F, '{print substr($4, 1, length($4)-1)}' || echo '0')
 
             echo "$cap"
@@ -303,22 +304,33 @@ Item {
             onStreamFinished: {
                 let lines = this.text.trim().split("\n");
                 if (lines.length >= 6) {
-                    
-
                     let remSeconds = parseInt(lines[3]) || 0;
                     window.upHours = Math.floor(remSeconds / 3600);
                     window.upMins = Math.floor((remSeconds % 3600) / 60);
 
-                    if (!window.isDraggingVol) {
-                        let volParts = (lines[4] || "0 on").trim().split(" ");
-                        window.sysVolume = parseInt(volParts[0]) || 0;
-                        window.sysMuted = (volParts[1] === "off");
+                    if (!window.isDraggingVol && Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
+                        window.sysVolume = Math.round(Pipewire.defaultAudioSink.audio.volume * 100);
+                        window.sysMuted = Pipewire.defaultAudioSink.audio.muted;
                     }
 
                     if (!window.isDraggingBri) {
                         window.sysBrightness = parseInt(lines[5]) || 0;
                     }
                 }
+            }
+        }
+    }
+
+    Connections {
+        target: Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null
+        function onVolumeChanged() {
+            if (!window.isDraggingVol && Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
+                window.sysVolume = Math.round(Pipewire.defaultAudioSink.audio.volume * 100);
+            }
+        }
+        function onMutedChanged() {
+            if (!window.isDraggingVol && Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
+                window.sysMuted = Pipewire.defaultAudioSink.audio.muted;
             }
         }
     }

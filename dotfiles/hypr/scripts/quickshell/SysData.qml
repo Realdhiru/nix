@@ -175,47 +175,29 @@ Item {
         }
     }
 
-    Component.onCompleted: {
-        batteryWaiter.running = true;
-    }
-
-    // Process driving root.powerProfile from COMPOSITE ACTIVE HARDWARE + DESKTOP STATE
+    // Event-driven direct sysfs reader for ACPI platform_profile (replaces power_state_watcher.sh & subshell leaks)
     Process {
-        id: powerWatcherProc
+        id: platformProfileProc
         running: true
-        command: ["bash", "-c", root.powerStateWatcherPath]
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: (data) => {
-                let line = data ? data.trim() : "";
-                if (!line) return;
-                let d;
-                try { d = JSON.parse(line); } catch (e) { return; }
-
-                let prof = d.profile || "unknown";
-                let epp = d.epp || "unknown";
-                let boost = d.boost || "unknown";
-                let hwpDyn = d.hwp_dyn_boost || "unknown";
-                let rr = d.refresh_rate || "unknown";
-                let wall = d.wallpaper || "unknown";
-                let fx = d.effects || "unknown";
-                let mismatch = d.epp_mismatch || "1";
-
-                let parsedRr = parseInt(rr);
-                if (!isNaN(parsedRr)) root._displayRefreshRate = parsedRr;
-
-                // MINIMAL POWER-POLICY ACTIVE PROFILE CONVERGENCE:
-                if (prof === "performance" && epp === "performance" && boost === "enabled" && rr === "120" && mismatch === "0") {
+        command: ["cat", "/sys/firmware/acpi/platform_profile"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let prof = this.text ? this.text.trim() : "";
+                if (prof === "performance") {
                     root.powerProfile = "performance";
-                } else if ((prof === "quiet" || prof === "low-power") && epp === "power" && boost === "disabled" && rr === "60" && mismatch === "0") {
+                } else if (prof === "quiet" || prof === "low-power") {
                     root.powerProfile = "power-saver";
-                } else if (prof === "balanced" && epp === "balance_performance" && boost === "enabled" && rr === "60" && mismatch === "0") {
+                } else if (prof === "balanced") {
                     root.powerProfile = "balanced";
                 } else {
                     root.powerProfile = "transitioning";
                 }
             }
         }
+    }
+
+    Component.onCompleted: {
+        batteryWaiter.running = true;
     }
 
     // =========================================================================

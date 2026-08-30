@@ -4,6 +4,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import Quickshell.Services.SystemTray
 
 Variants {
@@ -70,6 +71,7 @@ Variants {
 
             Process {
                 id: recPoller
+                running: true
                 command: ["bash", "-c", "if [ -s '" + Caching.getCacheDir('recording') + "/rec_pid' ] && kill -0 $(cat '" + Caching.getCacheDir('recording') + "/rec_pid') 2>/dev/null; then echo '1'; else echo '0'; fi"]
                 stdout: StdioCollector {
                     onStreamFinished: {
@@ -78,21 +80,6 @@ Variants {
                 }
             }
 
-            // recPoller's only driver was the deleted 2s master timer; this
-            // dedicated timer preserves its exact prior cadence (recording
-            // indicator behavior intentionally left unchanged).
-            Timer {
-                interval: 2000
-                running: true
-                repeat: true
-                triggeredOnStart: true
-                onTriggered: { recPoller.running = false; recPoller.running = true; }
-            }
-
-            // Update pill: event-driven. update_wait.sh blocks on inotify
-            // (same pattern as wsWatcher/settings_wait.sh); when the updater
-            // creates/removes update_pending, updateReader re-reads and
-            // re-arms the watcher. No periodic polling.
             Process {
                 id: updateReader
                 running: true
@@ -101,18 +88,6 @@ Variants {
                     onStreamFinished: {
                         barWindow.updateAvailable = (this.text.trim() === "1");
                     }
-                }
-            }
-
-            Process {
-                id: updateWatcher
-                running: true
-                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/update_wait.sh"]
-                onExited: {
-                    updateReader.running = false;
-                    updateReader.running = true;
-                    running = false;
-                    running = true;
                 }
             }
 
@@ -236,75 +211,55 @@ Variants {
                 return mocha.text;
             }
 
-            Process {
-                id: wsDaemon
-                command: ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/workspaces.sh"]
-                running: true
-                onExited: {
-                    // Restart the daemon if it ever dies — without this the
-                    // workspace bar silently freezes for the whole session.
-                    running = false;
-                    running = true;
+            function updateNativeWorkspaces() {
+                let focusedId = (Hyprland.focusedWorkspace && Hyprland.focusedWorkspace.id) ? Hyprland.focusedWorkspace.id : 1;
+                let occupiedMap = {};
+                if (Hyprland.workspaces) {
+                    let values = Hyprland.workspaces.values;
+                    for (let i = 0; i < values.length; i++) {
+                        let ws = values[i];
+                        if (ws && ws.id) occupiedMap[ws.id] = true;
+                    }
+                }
+
+                let newActive = -1;
+                let totalWs = 6;
+
+                if (workspacesModel.count !== totalWs) {
+                    workspacesModel.clear();
+                    for (let i = 1; i <= totalWs; i++) {
+                        let st = (i === focusedId) ? "active" : (occupiedMap[i] ? "occupied" : "empty");
+                        workspacesModel.append({ "wsId": i.toString(), "wsState": st });
+                        if (i === focusedId) newActive = i - 1;
+                    }
+                } else {
+                    for (let i = 1; i <= totalWs; i++) {
+                        let st = (i === focusedId) ? "active" : (occupiedMap[i] ? "occupied" : "empty");
+                        let idx = i - 1;
+                        if (workspacesModel.get(idx).wsState !== st) {
+                            workspacesModel.setProperty(idx, "wsState", st);
+                        }
+                        if (i === focusedId) newActive = idx;
+                    }
+                }
+
+                if (newActive !== -1 && workspacesModel.activeIndex !== newActive) {
+                    workspacesModel.activeIndex = newActive;
                 }
             }
 
-            Process {
-                id: wsReader
-                running: true
-                command: ["cat", Caching.getRunDir("workspaces") + "/workspaces.json"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        let txt = this.text.trim();
-                        if (txt !== "") {
-                            try {
-                                let newData = JSON.parse(txt);
-
-                                var diff = newData.length - workspacesModel.count;
-if (diff > 0) {
-    var workspaceBatch = [];
-    for (var i = 0; i < diff; i++) {
-        workspaceBatch.push({ "wsId": "", "wsState": "" });
-    }
-    workspacesModel.append(workspaceBatch);
-}
-
-                                while (workspacesModel.count > newData.length) {
-                                    workspacesModel.remove(workspacesModel.count - 1);
-                                }
-
-                                let newActive = -1;
-
-                                for (let i = 0; i < newData.length; i++) {
-                                    if (newData[i].state === "active") newActive = i;
-
-                                    if (workspacesModel.get(i).wsState !== newData[i].state) {
-                                        workspacesModel.setProperty(i, "wsState", newData[i].state);
-                                    }
-                                    if (workspacesModel.get(i).wsId !== newData[i].id.toString()) {
-                                        workspacesModel.setProperty(i, "wsId", newData[i].id.toString());
-                                    }
-                                }
-
-                                if (newActive !== -1 && workspacesModel.activeIndex !== newActive) {
-                                    workspacesModel.activeIndex = newActive;
-                                }
-
-                            } catch(e) {}
-                        }
+            Connections {
+                target: Hyprland
+                function onFocusedWorkspaceChanged() { barWindow.updateNativeWorkspaces(); }
+                function onRawEvent(name, data) {
+                    if (name === "workspace" || name === "createworkspace" || name === "destroyworkspace" || name === "focusedmon" || name === "moveworkspace") {
+                        barWindow.updateNativeWorkspaces();
                     }
                 }
             }
 
-            Process {
-                id: wsWatcher
-                running: true
-                command: ["bash", "-c", "while [ ! -f '" + Caching.getRunDir('workspaces') + "/workspaces.json' ]; do sleep 1; done; inotifywait -qq -e modify,close_write,move_self '" + Caching.getRunDir('workspaces') + "/workspaces.json'; sleep 0.05"]
-                onExited: {
-                    wsReader.running = false;
-                    wsReader.running = true;
-                    running = false;
-                    running = true;
-                }
+            Component.onCompleted: {
+                barWindow.updateNativeWorkspaces();
             }
 
             Process {

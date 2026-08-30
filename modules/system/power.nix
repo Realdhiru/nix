@@ -36,9 +36,11 @@
 
       RUNTIME_PM_ON_AC  = "on";
       RUNTIME_PM_ON_BAT = "auto";
+      RUNTIME_PM_ON_SAV = "auto";
 
       PCIE_ASPM_ON_AC  = "default";
       PCIE_ASPM_ON_BAT = "powersupersave";
+      PCIE_ASPM_ON_SAV = "powersupersave";
 
       # FIX: Prevent USB Bluetooth interface from dropping
       USB_AUTOSUSPEND = 1;
@@ -49,6 +51,7 @@
       # Wi-Fi Power Save
       WIFI_PWR_ON_AC  = "off";
       WIFI_PWR_ON_BAT = "on";
+      WIFI_PWR_ON_SAV = "on";
 
       SOUND_POWER_SAVE_ON_AC      = 1;
       SOUND_POWER_SAVE_ON_BAT     = 1;
