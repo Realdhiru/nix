@@ -32,6 +32,17 @@
    - Updated `updateNativeWorkspaces()` in `TopBar.qml` to track workspaces > 6 dynamically without arbitrary upper caps.
    - Updated TopBar music widget geometry (`mediaInfoColumn`) to derive width dynamically from `timeText.implicitWidth`, preventing timeline truncation (`01:24 / 06:45`) without giant empty gaps on short titles (`命盤`).
 
+5. **QuickShell TopBar Workspace Icons Fix**:
+   - Fixed empty inactive workspace icons staying visible by checking open window count (`ws.toplevels.count > 0` / `ws.lastIpcObject.windows > 0`) before marking `occupiedMap[ws.id] = true`.
+   - Fixed unreliable workspace icon refresh by extending Hyprland `onRawEvent` listeners in `TopBar.qml` to include window lifecycle events (`openwindow`, `closewindow`, `movewindow`, `movewindowv2`, `moveworkspacev2`).
+   - Updated `workspacesModel` to perform in-place item updates/diffing instead of `.clear()`, eliminating repeater delegate re-instantiation glitches and preserving smooth active highlight animations.
+
+6. **Declarative Desktop Portal & Camera Integration**:
+   - Added `xdg.portal` declarative configuration with `xdg-desktop-portal-hyprland` and `xdg-desktop-portal-gtk` in `modules/system/services.nix`.
+   - Defined `systemd.user.targets.hyprland-session` bound to `graphical-session.target` in `modules/system/services.nix`.
+   - Started `hyprland-session.target` on Hyprland startup via `hl.on("hyprland.start", ...)` in `startup.lua`.
+   - Resolved camera & WebRTC D-Bus portal access in browsers (Zen, Brave, Chrome, Firefox) and restored 100% green health check.
+
 ## 2026-08-20 — System fixes & bloat cleanup
 
 ### Fixed

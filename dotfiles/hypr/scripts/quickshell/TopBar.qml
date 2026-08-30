@@ -222,8 +222,13 @@ Variants {
                     for (let i = 0; i < values.length; i++) {
                         let ws = values[i];
                         if (ws && ws.id) {
-                            occupiedMap[ws.id] = true;
-                            if (ws.id > maxWs) maxWs = ws.id;
+                            let isOcc = (ws.toplevels && ws.toplevels.count !== undefined && ws.toplevels.count > 0)
+                                     || (ws.lastIpcObject && ws.lastIpcObject.windows !== undefined && ws.lastIpcObject.windows > 0)
+                                     || (ws.windows !== undefined && ws.windows > 0);
+                            if (isOcc) {
+                                occupiedMap[ws.id] = true;
+                                if (ws.id > maxWs) maxWs = ws.id;
+                            }
                         }
                     }
                 }
@@ -231,22 +236,21 @@ Variants {
                 let newActive = -1;
                 let totalWs = maxWs;
 
-                if (workspacesModel.count !== totalWs) {
-                    workspacesModel.clear();
-                    for (let i = 1; i <= totalWs; i++) {
-                        let st = (i === focusedId) ? "active" : (occupiedMap[i] ? "occupied" : "empty");
-                        workspacesModel.append({ "wsId": i.toString(), "wsState": st });
-                        if (i === focusedId) newActive = i - 1;
+                while (workspacesModel.count < totalWs) {
+                    let nextId = (workspacesModel.count + 1).toString();
+                    workspacesModel.append({ "wsId": nextId, "wsState": "empty" });
+                }
+                while (workspacesModel.count > totalWs) {
+                    workspacesModel.remove(workspacesModel.count - 1);
+                }
+
+                for (let i = 1; i <= totalWs; i++) {
+                    let st = (i === focusedId) ? "active" : (occupiedMap[i] ? "occupied" : "empty");
+                    let idx = i - 1;
+                    if (workspacesModel.get(idx).wsState !== st) {
+                        workspacesModel.setProperty(idx, "wsState", st);
                     }
-                } else {
-                    for (let i = 1; i <= totalWs; i++) {
-                        let st = (i === focusedId) ? "active" : (occupiedMap[i] ? "occupied" : "empty");
-                        let idx = i - 1;
-                        if (workspacesModel.get(idx).wsState !== st) {
-                            workspacesModel.setProperty(idx, "wsState", st);
-                        }
-                        if (i === focusedId) newActive = idx;
-                    }
+                    if (i === focusedId) newActive = idx;
                 }
 
                 if (newActive !== -1 && workspacesModel.activeIndex !== newActive) {
@@ -258,7 +262,10 @@ Variants {
                 target: Hyprland
                 function onFocusedWorkspaceChanged() { barWindow.updateNativeWorkspaces(); }
                 function onRawEvent(name, data) {
-                    if (name === "workspace" || name === "createworkspace" || name === "destroyworkspace" || name === "focusedmon" || name === "moveworkspace") {
+                    if (name === "workspace" || name === "createworkspace" || name === "destroyworkspace"
+                        || name === "focusedmon" || name === "moveworkspace" || name === "moveworkspacev2"
+                        || name === "openwindow" || name === "closewindow" || name === "movewindow" || name === "movewindowv2"
+                        || name === "renameworkspace") {
                         barWindow.updateNativeWorkspaces();
                     }
                 }
