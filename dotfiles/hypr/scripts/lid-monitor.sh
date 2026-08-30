@@ -5,18 +5,7 @@
 
 set -uo pipefail
 
-APPLY_PROFILE="$HOME/.config/hypr/scripts/quickshell/battery/apply_profile.sh"
 LOCK_SH="$HOME/.config/hypr/scripts/lock.sh"
-PROFILE_MARKER="/tmp/qs_power_profile"
-SAVED_PROFILE="$HOME/.cache/qs_lid_prev_profile"
-SET_EPP="$HOME/.config/hypr/scripts/quickshell/battery/set_epp.sh"
-
-valid_profile() {
-    case "$1" in
-        performance|balanced|power-saver) return 0 ;;
-        *) return 1 ;;
-    esac
-}
 
 locked() {
     pgrep -f 'quickshell.*Lock\.qml' >/dev/null
@@ -25,28 +14,6 @@ locked() {
 lock_session() {
     if ! locked; then
         "$LOCK_SH" >/dev/null 2>&1 &
-    fi
-}
-
-save_current_profile() {
-    local cur
-    cur=$(cat "$PROFILE_MARKER" 2>/dev/null || echo "")
-    if valid_profile "$cur"; then
-        echo "$cur" > "$SAVED_PROFILE"
-    else
-        rm -f "$SAVED_PROFILE"
-    fi
-}
-
-restore_profile() {
-    local saved
-    saved=$(cat "$SAVED_PROFILE" 2>/dev/null || echo "")
-    if valid_profile "$saved"; then
-        if "$APPLY_PROFILE" "$saved"; then
-            rm -f "$SAVED_PROFILE"
-        fi
-    else
-        rm -f "$SAVED_PROFILE"
     fi
 }
 
@@ -62,10 +29,7 @@ apply_lid_open_state() {
 
 case "${1:-}" in
     close)
-        # 1. Snapshot the current power state
-        save_current_profile
-        
-        # 2. Lock using Hyprlock (Quickshell Lock.qml)
+        # 1. Lock using Hyprlock (Quickshell Lock.qml)
         lock_session
         
         # 3. Apply ALL temporary low-power changes

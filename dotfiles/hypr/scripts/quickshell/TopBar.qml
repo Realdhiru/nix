@@ -659,10 +659,13 @@ if (diff > 0) {
                         height: barWindow.barHeight
                         clip: true
 
-                        width: barWindow.hasVisibleMedia ? infoLayout.implicitWidth + barWindow.s(24) : 0
+                        readonly property bool activeNow: barWindow.musicData.status === "Playing" && barWindow.hasVisibleMedia
+                        width: activeNow ? infoLayout.implicitWidth + barWindow.s(24) : 0
+                        Behavior on width { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
 
                         visible: width > 0
-                        opacity: 1.0
+                        opacity: activeNow ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
 
                         Item {
                             id: mediaLayoutContainer
@@ -671,7 +674,7 @@ if (diff > 0) {
                             anchors.leftMargin: barWindow.s(12)
                             height: parent.height
                             width: infoLayout.implicitWidth
-                            opacity: barWindow.hasVisibleMedia ? 1.0 : 0.0
+                            opacity: parent.activeNow ? 1.0 : 0.0
 
                             MouseArea {
                                 id: mediaInfoMouse

@@ -14,7 +14,7 @@
     enable = true;
     settings = {
       # CPU & Performance Management (TLP as Sole Hardware Authority)
-      CPU_SCALING_GOVERNOR_ON_AC  = "performance";
+      CPU_SCALING_GOVERNOR_ON_AC  = "powersave";
       CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
       CPU_SCALING_GOVERNOR_ON_SAV = "powersave";
 
@@ -41,13 +41,14 @@
       PCIE_ASPM_ON_BAT = "powersupersave";
 
       # FIX: Prevent USB Bluetooth interface from dropping
-      USB_AUTOSUSPEND = 0;
+      USB_AUTOSUSPEND = 1;
+      USB_AUTOSUSPEND_DISABLE_ON_AC = 1;
       USB_EXCLUDE_BTUSB = 1;
       USB_DENYLIST = "3554:fc00";
 
-      # FIX: Prevent Wi-Fi interface from ignoring beacons
+      # Wi-Fi Power Save
       WIFI_PWR_ON_AC  = "off";
-      WIFI_PWR_ON_BAT = "off";
+      WIFI_PWR_ON_BAT = "on";
 
       SOUND_POWER_SAVE_ON_AC      = 1;
       SOUND_POWER_SAVE_ON_BAT     = 1;
@@ -64,7 +65,9 @@
   systemd.services.asus-shutdown.restartIfChanged = false;
 
   # Disable asusd platform-profile switching & EPP linking so TLP is sole authority
-  environment.etc."asusd/asusd.ron".text = ''
+  environment.etc."asusd/asusd.ron" = {
+    mode = "0644";
+    text = ''
     (
         charge_control_end_threshold: 80,
         base_charge_control_end_threshold: 80,
@@ -95,6 +98,7 @@
         armoury_settings: {},
     )
   '';
+  };
 
   # --- 4. LID SWITCH uaccess (event-driven lid watcher) ---
   # The lid switch is an input device (SW_LID) and emits NO kernel

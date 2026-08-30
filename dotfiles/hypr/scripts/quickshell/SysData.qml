@@ -336,10 +336,10 @@ Item {
 
         root._applyVisualOverrides(name);
 
-        let tlpCmd = (name === "performance") ? "performance" : (name === "power-saver") ? "power-saver" : (name === "balanced") ? "balanced" : "start";
-        if (!isManual) tlpCmd = "start";
-
-        Quickshell.execDetached(["sudo", "tlp", tlpCmd]);
+        if (isManual) {
+            let tlpCmd = (name === "performance") ? "performance" : (name === "power-saver") ? "power-saver" : "balanced";
+            Quickshell.execDetached(["sudo", "tlp", tlpCmd]);
+        }
 
         let targetRR = (name === "performance") ? "120" : "60";
 
