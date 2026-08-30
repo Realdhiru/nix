@@ -19,6 +19,29 @@ get_audio_info() {
     echo "$vol_pct $mute"
 }
 
+brightness_step() {
+    local cur max pct step
+
+    cur=$(brightnessctl get)
+    max=$(brightnessctl max)
+
+    pct=$(( cur * 100 / max ))
+
+    if (( pct < 2 )); then
+        step=1
+    elif (( pct < 5 )); then
+        step=$(( max / 400 ))
+    elif (( pct < 10 )); then
+        step=$(( max / 250 ))
+    else
+        step=$(( max / 20 ))   # 5% steps for >= 10%
+    fi
+
+    (( step < 1 )) && step=1
+
+    echo "$step"
+}
+
 case "${1:-}" in
     vol-up)
         wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
@@ -60,7 +83,7 @@ case "${1:-}" in
         fi
         ;;
     bright-up)
-        brightnessctl set 5%+ >/dev/null
+        brightnessctl -n1 set +"$(brightness_step)" >/dev/null
         cur=$(brightnessctl get)
         max=$(brightnessctl max)
         pct=$(( (cur * 100 + max / 2) / max ))
@@ -70,7 +93,7 @@ case "${1:-}" in
         notify_osd 9992 "$icon" "Brightness" "${pct}%"
         ;;
     bright-down)
-        brightnessctl set 5%- >/dev/null
+        brightnessctl -n1 set "$(brightness_step)"- >/dev/null
         cur=$(brightnessctl get)
         max=$(brightnessctl max)
         pct=$(( (cur * 100 + max / 2) / max ))

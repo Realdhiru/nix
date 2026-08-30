@@ -690,28 +690,59 @@ if (diff > 0) {
                                     scale: mediaInfoMouse.containsMouse ? 1.02 : 1.0
                                     Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
 
-                                    Rectangle {
-                                        width: barWindow.s(32); height: barWindow.s(32); radius: barWindow.s(8)
-                                        color: mocha.base
-                                        border.width: barWindow.displayArtReady && barWindow.musicData.status === "Playing" ? 1 : 0
-                                        border.color: mocha.mauve
-                                        clip: true
-                                        anchors.verticalCenter: parent.verticalCenter
+                                    Item {
+                                         id: cavaVisualizer
+                                         anchors.verticalCenter: parent.verticalCenter
+                                         readonly property int barCount: 8
+                                         readonly property int segCount: 10
+                                         readonly property real barW: barWindow.s(8)
+                                         readonly property real barGap: barWindow.s(2)
+                                         readonly property real segH: barWindow.s(2.5)
+                                         readonly property real segGap: barWindow.s(1)
+                                         readonly property real maxBarH: segCount * (segH + segGap) - segGap
+                                         readonly property real fullWidth: barCount * barW + (barCount - 1) * barGap
 
-                                        Image {
-                                            id: artImage
-                                            anchors.fill: parent
-                                            source: barWindow.displayArtReady && barWindow.displayArtUrl ? "file://" + barWindow.displayArtUrl : ""
-                                            fillMode: Image.PreserveAspectCrop
-                                            asynchronous: true
-                                            cache: false
-                                            smooth: true
-                                            mipmap: true
-                                            sourceSize.width: barWindow.s(32) * 3 * (Screen.devicePixelRatio || 1)
-                                            sourceSize.height: barWindow.s(32) * 3 * (Screen.devicePixelRatio || 1)
-                                            opacity: status === Image.Ready ? 1 : 0
-                                            Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutQuad } }
-                                        }
+                                         readonly property bool activeNow: barWindow.musicData.status === "Playing"
+                                         width: activeNow ? fullWidth : 0
+                                         height: maxBarH
+                                         visible: width > 0
+                                         opacity: activeNow ? 1.0 : 0.0
+                                         Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                                         Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+
+                                         Repeater {
+                                             model: cavaVisualizer.barCount
+                                             delegate: Item {
+                                                 id: barCol
+                                                 required property int index
+                                                 width: cavaVisualizer.barW
+                                                 height: cavaVisualizer.maxBarH
+                                                 x: index * (cavaVisualizer.barW + cavaVisualizer.barGap)
+                                                 anchors.bottom: parent.bottom
+
+                                                 property int rawVal: barWindow.cavaBars[index] || 0
+                                                 property int activeSegs: Math.round((rawVal / 100) * cavaVisualizer.segCount)
+
+                                                 Repeater {
+                                                     model: cavaVisualizer.segCount
+                                                     delegate: Rectangle {
+                                                         id: segRect
+                                                         required property int index
+                                                         width: cavaVisualizer.barW
+                                                         height: cavaVisualizer.segH
+                                                         radius: barWindow.s(0.5)
+                                                         anchors.bottom: parent.bottom
+                                                         anchors.bottomMargin: index * (cavaVisualizer.segH + cavaVisualizer.segGap)
+
+                                                         property bool isLit: index < barCol.activeSegs
+                                                         visible: isLit || index === 0
+                                                         opacity: isLit ? 1.0 : 0.12
+
+                                                         color: barWindow.cavaBarColor(barCol.index, cavaVisualizer.barCount, index, cavaVisualizer.segCount)
+                                                     }
+                                                 }
+                                             }
+                                         }
                                     }
                                     Column {
                                         id: mediaInfoColumn
@@ -728,20 +759,69 @@ if (diff > 0) {
                                         TextMetrics {
                                             id: timeMetrics
                                             font: timeText.font
-                                            text: barWindow.displayTime
                                         }
 
-                                        Text {
-                                            id: titleText
-                                            text: barWindow.displayTitle
-                                            font.family: "JetBrains Mono"
-                                            font.weight: Font.Black
-                                            font.pixelSize: barWindow.s(11)
-                                            color: mocha.text
+                                        Item {
+                                            id: titleClipRect
                                             width: parent.width
-                                            elide: Text.ElideRight
-                                            verticalAlignment: Text.AlignVCenter
+                                            height: titleText.implicitHeight
+                                            clip: true
+
+                                            property int marqueeSpacing: barWindow.s(30)
+                                            property bool isOver: titleText.implicitWidth > width
+
+                                            Item {
+                                                id: marqueeContainer
+                                                height: parent.height
+
+                                                Row {
+                                                    spacing: titleClipRect.marqueeSpacing
+                                                    Text {
+                                                        id: titleText
+                                                        text: barWindow.displayTitle
+                                                        font.family: "JetBrains Mono"
+                                                        font.weight: Font.Black
+                                                        font.pixelSize: barWindow.s(11)
+                                                        color: mocha.text
+
+                                                        onTextChanged: {
+                                                            marqueeContainer.x = 0;
+                                                            if (implicitWidth > titleClipRect.width) {
+                                                                titleAnim.restart();
+                                                            } else {
+                                                                titleAnim.stop();
+                                                            }
+                                                        }
+                                                    }
+                                                    Text {
+                                                        id: titleTextClone
+                                                        text: barWindow.displayTitle
+                                                        font.family: "JetBrains Mono"
+                                                        font.weight: Font.Black
+                                                        font.pixelSize: barWindow.s(11)
+                                                        color: mocha.text
+                                                        visible: titleClipRect.isOver
+                                                    }
+                                                }
+
+                                                SequentialAnimation on x {
+                                                    id: titleAnim
+                                                    loops: Animation.Infinite
+                                                    running: titleClipRect.isOver
+
+                                                    PauseAnimation { duration: 2500 }
+
+                                                    NumberAnimation {
+                                                        from: 0
+                                                        to: -(titleText.implicitWidth + titleClipRect.marqueeSpacing)
+                                                        duration: (titleText.implicitWidth + titleClipRect.marqueeSpacing) * 30
+                                                    }
+
+                                                    PropertyAction { target: marqueeContainer; property: "x"; value: 0 }
+                                                }
+                                            }
                                         }
+
                                         Text {
                                             id: timeText
                                             text: barWindow.displayTime
@@ -759,71 +839,7 @@ if (diff > 0) {
                         }
                     }
 
-                    Rectangle {
-                        id: cavaBox
-                        color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
-                        radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
-                        height: barWindow.barHeight
-                        clip: true
 
-                        readonly property bool activeNow: barWindow.musicData.status === "Playing"
-                        width: activeNow ? cavaVisualizer.fullWidth + barWindow.s(24) : 0
-                        Behavior on width { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
-
-                        visible: width > 0
-                        opacity: activeNow ? 1.0 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
-
-                        Item {
-                            id: cavaVisualizer
-                            anchors.centerIn: parent
-                            readonly property int barCount: 8
-                            readonly property int segCount: 10
-                            readonly property real barW: barWindow.s(8)
-                            readonly property real barGap: barWindow.s(3)
-                            readonly property real segH: barWindow.s(2)
-                            readonly property real segGap: barWindow.s(1)
-                            readonly property real maxBarH: segCount * (segH + segGap) - segGap
-                            readonly property real fullWidth: barCount * barW + (barCount - 1) * barGap
-
-                            width: fullWidth
-                            height: maxBarH
-
-                            Repeater {
-                                model: cavaVisualizer.barCount
-                                delegate: Item {
-                                    id: barCol
-                                    required property int index
-                                    width: cavaVisualizer.barW
-                                    height: cavaVisualizer.maxBarH
-                                    x: index * (cavaVisualizer.barW + cavaVisualizer.barGap)
-                                    anchors.bottom: parent.bottom
-
-                                    property int rawVal: barWindow.cavaBars[index] || 0
-                                    property int activeSegs: Math.round((rawVal / 100) * cavaVisualizer.segCount)
-
-                                    Repeater {
-                                        model: cavaVisualizer.segCount
-                                        delegate: Rectangle {
-                                            id: segRect
-                                            required property int index
-                                            width: cavaVisualizer.barW
-                                            height: cavaVisualizer.segH
-                                            radius: barWindow.s(0.5)
-                                            anchors.bottom: parent.bottom
-                                            anchors.bottomMargin: index * (cavaVisualizer.segH + cavaVisualizer.segGap)
-
-                                            property bool isLit: index < barCol.activeSegs
-                                            visible: isLit || index === 0
-                                            opacity: isLit ? 1.0 : 0.12
-
-                                            color: barWindow.cavaBarColor(barCol.index, cavaVisualizer.barCount, index, cavaVisualizer.segCount)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                         Rectangle {
                             id: centerBox
@@ -1075,7 +1091,7 @@ if (diff > 0) {
                                     Item {
                                         anchors.fill: parent
                                         
-                                        property real fillW: Math.max(parent.height, sliderContainer.pct * parent.width)
+                                        property real fillW: sliderContainer.pct > 0 ? Math.max(parent.height, sliderContainer.pct * parent.width) : 0
                                         Behavior on fillW { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
                                         
                                         Rectangle {
@@ -1089,7 +1105,7 @@ if (diff > 0) {
                                             width: parent.height + barWindow.s(4)
                                             height: parent.height + barWindow.s(4)
                                             radius: width / 2
-                                            color: sliderContainer.isMuted ? mocha.subtext1 : mocha.text
+                                            color: sliderContainer.isMuted ? mocha.subtext1 : mocha.mauve
                                             border.color: mocha.surface2
                                             border.width: barWindow.s(1)
                                             
