@@ -53,7 +53,7 @@ wcli_pid=$!
 # i915 attributes hangs to. Track every descendant so attribution is exact.
 wpid=
 probe_pids=""
-for _ in $(seq 1 20); do
+for _ in $(seq 1 40); do
   # BFS over ps snapshot: all descendants of $wcli_pid, then filter for wezterm-gui
   ps_out=$(ps -eo pid=,ppid=,comm=)
   frontier="$wcli_pid"
