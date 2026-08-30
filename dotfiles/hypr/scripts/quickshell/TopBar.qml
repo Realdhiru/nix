@@ -1068,7 +1068,7 @@ if (diff > 0) {
                                     Rectangle {
                                         anchors.fill: parent
                                         radius: height / 2
-                                        color: mocha.surface0
+                                        color: mocha.surface1
                                     }
                                     
                                     // Fill and Thumb container (for shared animation)
@@ -1082,7 +1082,7 @@ if (diff > 0) {
                                             width: parent.fillW
                                             height: parent.height
                                             radius: height / 2
-                                            color: sliderContainer.isMuted ? mocha.subtext1 : mocha.text
+                                            color: sliderContainer.isMuted ? mocha.subtext1 : mocha.mauve
                                         }
                                         
                                         Rectangle {

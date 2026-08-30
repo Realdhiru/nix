@@ -1,84 +1,82 @@
 #!/usr/bin/env bash
+set -u
 
-send() {
-    notify-send -a "System" -r 9990 -t 1200 -u low -i "$1" "$2" "$3"
+notify_osd() {
+    notify-send -a "System" -r "$1" -t 1200 -u low -i "$2" "$3" "$4"
 }
 
-brightness_step() {
-    local cur max pct step
-
-    cur=$(brightnessctl get)
-    max=$(brightnessctl max)
-
-    # Current brightness percentage (0-100)
-    pct=$(( cur * 100 / max ))
-
-    # Smooth adaptive curve.
-    #
-    # Lowest brightness:
-    #   Always 1 hardware step (finest possible precision).
-    #
-    # Higher brightness:
-    #   Step gradually increases based on hardware max,
-    #   making it feel identical across laptops.
-
-    if (( pct < 2 )); then
-        step=1
-    elif (( pct < 5 )); then
-        step=$(( max / 400 ))
-    elif (( pct < 10 )); then
-        step=$(( max / 250 ))
-    elif (( pct < 25 )); then
-        step=$(( max / 40 ))   # ~2.5%
-    elif (( pct < 50 )); then
-        step=$(( max / 20 ))   # ~5%
-    elif (( pct < 75 )); then
-        step=$(( max / 15 ))   # ~6.6%
-    else
-        step=$(( max / 10 ))   # ~10%
+get_audio_info() {
+    local target="$1" raw vol_val vol_pct=0 mute=""
+    raw=$(wpctl get-volume "$target" 2>/dev/null) || return 0
+    [[ "$raw" == *"[MUTED]"* ]] && mute="muted"
+    vol_val="${raw#*: }"
+    vol_val="${vol_val%% *}"
+    if [[ "$vol_val" =~ ^([0-9]+)\.([0-9]{2}) ]]; then
+        vol_pct=$(( 100 * 10#${BASH_REMATCH[1]} + 10#${BASH_REMATCH[2]} ))
+    elif [[ "$vol_val" =~ ^([0-9]+) ]]; then
+        vol_pct=$(( 100 * 10#${BASH_REMATCH[1]} ))
     fi
-
-    # Never allow 0-step on low-resolution backlights.
-    (( step < 1 )) && step=1
-
-    echo "$step"
+    echo "$vol_pct $mute"
 }
 
-brightness_osd() {
-    local cur max pct
-
-    cur=$(brightnessctl get)
-    max=$(brightnessctl max)
-
-    pct=$(awk "BEGIN { printf \"%.1f\", ($cur/$max)*100 }")
-
-    send "$1" "Brightness" "${pct}%"
-}
-
-case "$1" in
+case "${1:-}" in
     vol-up)
         wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
         wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+
+        read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
+        icon="audio-volume-high"
+        (( pct < 30 )) && icon="audio-volume-low"
+        (( pct >= 30 && pct < 70 )) && icon="audio-volume-medium"
+        notify_osd 9990 "$icon" "Volume" "${pct}%"
         ;;
-
     vol-down)
         wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
         wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+        read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
+        icon="audio-volume-high"
+        (( pct < 30 )) && icon="audio-volume-low"
+        (( pct >= 30 && pct < 70 )) && icon="audio-volume-medium"
+        notify_osd 9990 "$icon" "Volume" "${pct}%"
         ;;
-
     vol-mute)
         wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+        read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
+        if [ "$mute" = "muted" ]; then
+            notify_osd 9990 "audio-volume-muted" "Volume" "${pct}% (Muted)"
+        else
+            icon="audio-volume-high"
+            (( pct < 30 )) && icon="audio-volume-low"
+            (( pct >= 30 && pct < 70 )) && icon="audio-volume-medium"
+            notify_osd 9990 "$icon" "Volume" "${pct}%"
+        fi
         ;;
-
     mic-mute)
         wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+        read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SOURCE@)
+        if [ "$mute" = "muted" ]; then
+            notify_osd 9991 "microphone-sensitivity-muted" "Microphone" "Muted"
+        else
+            notify_osd 9991 "microphone-sensitivity-high" "Microphone" "Unmuted"
+        fi
         ;;
-
     bright-up)
-        brightnessctl -n1 set +"$(brightness_step)" >/dev/null
+        brightnessctl set 5%+ >/dev/null
+        cur=$(brightnessctl get)
+        max=$(brightnessctl max)
+        pct=$(( (cur * 100 + max / 2) / max ))
+        icon="display-brightness-high"
+        (( pct < 35 )) && icon="display-brightness-low"
+        (( pct >= 35 && pct < 70 )) && icon="display-brightness-medium"
+        notify_osd 9992 "$icon" "Brightness" "${pct}%"
         ;;
-
     bright-down)
-        brightnessctl -n1 set "$(brightness_step)"- >/dev/null
+        brightnessctl set 5%- >/dev/null
+        cur=$(brightnessctl get)
+        max=$(brightnessctl max)
+        pct=$(( (cur * 100 + max / 2) / max ))
+        icon="display-brightness-high"
+        (( pct < 35 )) && icon="display-brightness-low"
+        (( pct >= 35 && pct < 70 )) && icon="display-brightness-medium"
+        notify_osd 9992 "$icon" "Brightness" "${pct}%"
         ;;
 esac
