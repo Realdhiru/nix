@@ -54,18 +54,28 @@ wcli_pid=$!
 wpid=
 probe_pids=""
 for _ in $(seq 1 20); do
-  # BFS over ps snapshot: descendants of $wcli_pid matching wezterm-gui
+  # BFS over ps snapshot: all descendants of $wcli_pid, then filter for wezterm-gui
+  ps_out=$(ps -eo pid=,ppid=,comm=)
   frontier="$wcli_pid"
-  found=""
+  all_descendants=""
   for _ in $(seq 1 6); do
-    kids=$(ps -eo pid=,ppid=,comm= | awk -v p="$frontier" '
-      $2 == p && $3 == "wezterm-gui" { print $1 }
-      $2 == p && $3 != "wezterm-gui" { next }' | tr '\n' ' ')
-    [ -n "$kids" ] && found="$found $kids"
-    frontier="$kids"
     [ -z "$frontier" ] && break
+    next_frontier=$(echo "$ps_out" | awk -v f="$frontier" '
+      BEGIN { split(f, arr, " "); for (i in arr) pids[arr[i]] = 1 }
+      pids[$2] { print $1 }
+    ' | tr '\n' ' ')
+    if [ -n "$next_frontier" ]; then
+      all_descendants="$all_descendants $next_frontier"
+      frontier="$next_frontier"
+    else
+      break
+    fi
   done
-  probe_pids=$(echo "$found" | tr ' ' '\n' | sort -un | tr '\n' ' ')
+  gui_pids=$(echo "$ps_out" | awk -v d="$all_descendants" '
+    BEGIN { split(d, arr, " "); for (i in arr) pids[arr[i]] = 1 }
+    pids[$1] && $3 == "wezterm-gui" { print $1 }
+  ' | tr '\n' ' ')
+  probe_pids=$(echo "$gui_pids" | tr ' ' '\n' | sort -un | tr '\n' ' ')
   [ -n "$probe_pids" ] && break
   sleep 0.5
 done
