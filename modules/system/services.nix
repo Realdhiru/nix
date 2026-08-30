@@ -106,4 +106,23 @@
       HandleLidSwitch = "ignore";
     };
   };
+
+  # Declarative Desktop Portal & Camera/Screen Sharing support
+  xdg.portal = {
+    enable = true;
+    extraPortals = with pkgs; [
+      xdg-desktop-portal-hyprland
+      xdg-desktop-portal-gtk
+    ];
+    config.common.default = [ "hyprland" "gtk" ];
+  };
+
+  # Hyprland session target (bound to graphical-session for Hyprland sessions only)
+  systemd.user.targets.hyprland-session = {
+    description = "Hyprland compositor session";
+    documentation = [ "man:systemd.special(7)" ];
+    bindsTo = [ "graphical-session.target" ];
+    wants = [ "graphical-session.target" ];
+    before = [ "graphical-session.target" ];
+  };
 }
