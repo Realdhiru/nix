@@ -127,7 +127,7 @@ Item {
                 let timeoutMs;
                 if (n.timeout === 0 || hasActions) timeoutMs = 0;
                 else if (n.timeout > 0) timeoutMs = n.timeout;
-                else timeoutMs = 1000;
+                else timeoutMs = 4000;
 
                 let incomingIsSticky = (timeoutMs === 0);
                 if (root.tickerIsSticky && !isSameAsShowing && !incomingIsSticky) {

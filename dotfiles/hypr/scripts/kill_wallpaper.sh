@@ -2,9 +2,13 @@
 
 # 1. Stop all desktop wallpaper rendering daemons (awww and mpvpaper)
 "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop 2>/dev/null || true
-pkill -15 -x .mpvpaper-wrapp 2>/dev/null || true
-pkill -15 -x mpvpaper 2>/dev/null || true
-pkill -f mpvpaper 2>/dev/null || true
+pids=$(pidof .mpvpaper-wrapped 2>/dev/null || true)
+if [ -n "$pids" ]; then
+    for pid in $pids; do kill -15 "$pid" 2>/dev/null || true; done
+    sleep 0.1
+    pids=$(pidof .mpvpaper-wrapped 2>/dev/null || true)
+    for pid in $pids; do kill -9 "$pid" 2>/dev/null || true; done
+fi
 rm -f /tmp/mpv-paper-socket "$HOME/.cache/mpvpaper.pid"
 
 # 2. Clear current wallpaper state file

@@ -88,7 +88,14 @@ if [ -n "$WALL" ] && [ -f "$WALL" ]; then
     EXT="${WALL##*.}"
     EXT="${EXT,,}"
     case "$EXT" in
-        mp4|mkv|mov|webm) : ;;
+        mp4|mkv|mov|webm)
+            (
+                sleep 0.2
+                if ! pidof .mpvpaper-wrapped >/dev/null 2>&1; then
+                    "$HOME/.config/hypr/scripts/set_wallpaper.sh" "$WALL" >/dev/null 2>&1
+                fi
+            ) &
+            ;;
         *)
             if awww query >/dev/null 2>&1; then
                 awww img "$WALL" \

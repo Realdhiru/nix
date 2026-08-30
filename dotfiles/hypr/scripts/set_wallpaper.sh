@@ -33,33 +33,35 @@ if [ "$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null)" != "$WALL" ]; the
     exit 0
 fi
 
-# Reliable teardown helper for mpvpaper (handles NixOS .mpvpaper-wrapp comm name)
+mpvpaper_pids() {
+    pidof .mpvpaper-wrapped 2>/dev/null || true
+}
+
+# Reliable teardown helper for mpvpaper (handles NixOS .mpvpaper-wrapped binary name)
 stop_mpvpaper() {
-    pkill -15 -x .mpvpaper-wrapp 2>/dev/null || true
-    pkill -15 -x mpvpaper 2>/dev/null || true
-    pkill -15 -f mpvpaper 2>/dev/null || true
+    local pids pid
+    pids=$(mpvpaper_pids)
+    if [ -z "$pids" ]; then
+        rm -f /tmp/mpv-paper-socket "$HOME/.cache/mpvpaper.pid"
+        return 0
+    fi
+
+    for pid in $pids; do
+        kill -15 "$pid" 2>/dev/null || true
+    done
 
     for i in {1..10}; do
-        if ! pgrep -x .mpvpaper-wrapp >/dev/null 2>&1 && \
-           ! pgrep -x mpvpaper >/dev/null 2>&1 && \
-           ! pgrep -f mpvpaper >/dev/null 2>&1; then
-            break
-        fi
+        [ -z "$(mpvpaper_pids)" ] && break
         sleep 0.05
     done
 
-    if pgrep -x .mpvpaper-wrapp >/dev/null 2>&1 || \
-       pgrep -x mpvpaper >/dev/null 2>&1 || \
-       pgrep -f mpvpaper >/dev/null 2>&1; then
-        pkill -9 -x .mpvpaper-wrapp 2>/dev/null || true
-        pkill -9 -x mpvpaper 2>/dev/null || true
-        pkill -9 -f mpvpaper 2>/dev/null || true
+    pids=$(mpvpaper_pids)
+    if [ -n "$pids" ]; then
+        for pid in $pids; do
+            kill -9 "$pid" 2>/dev/null || true
+        done
         for i in {1..10}; do
-            if ! pgrep -x .mpvpaper-wrapp >/dev/null 2>&1 && \
-               ! pgrep -x mpvpaper >/dev/null 2>&1 && \
-               ! pgrep -f mpvpaper >/dev/null 2>&1; then
-                break
-            fi
+            [ -z "$(mpvpaper_pids)" ] && break
             sleep 0.05
         done
     fi

@@ -31,18 +31,20 @@ notify_osd() {
         raw_sink=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null) || return 0
         raw_mic=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null) || return 0
 
-        local vol_pct sink_mute mic_mute
-        vol_pct=$(echo "$raw_sink" | awk '{print int($2*100)}')
-        if echo "$raw_sink" | grep -q "MUTED"; then
+        local vol_pct=0 sink_mute="unmuted" mic_mute="unmuted"
+        if [[ "$raw_sink" == *"[MUTED]"* ]]; then
             sink_mute="muted"
-        else
-            sink_mute="unmuted"
+        fi
+        if [[ "$raw_mic" == *"[MUTED]"* ]]; then
+            mic_mute="muted"
         fi
 
-        if echo "$raw_mic" | grep -q "MUTED"; then
-            mic_mute="muted"
-        else
-            mic_mute="unmuted"
+        local vol_val="${raw_sink#*: }"
+        vol_val="${vol_val%% *}"
+        if [[ "$vol_val" =~ ^([0-9]+)\.([0-9]{2}) ]]; then
+            vol_pct=$(( 100 * 10#${BASH_REMATCH[1]} + 10#${BASH_REMATCH[2]} ))
+        elif [[ "$vol_val" =~ ^([0-9]+) ]]; then
+            vol_pct=$(( 100 * 10#${BASH_REMATCH[1]} ))
         fi
 
         # Skip notification on initial baseline pass
