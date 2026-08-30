@@ -19,9 +19,13 @@
      - **Battery Power Saver**: Maximum battery life (`power` EPP, Turbo `0` / 2.6 GHz base clock cap, Platform Profile `quiet`, ASPM `powersupersave`, Wi-Fi `on`).
    - Explicitly declared `RUNTIME_PM_ON_SAV`, `PCIE_ASPM_ON_SAV`, `WIFI_PWR_ON_SAV` in `modules/system/power.nix`.
 
-3. **MPV Local Media MPRIS Integration**:
-   - Installed `mpris.so` in `~/.config/mpv/scripts/mpris.so`.
-   - Overrode `mpv` package in `modules/system/packages.nix` with `(mpv.override { scripts = [ mpvScripts.mpris ]; })`. Local media playback in `mpv` now emits standard D-Bus `org.mpris.MediaPlayer2` signals.
+3. **MPV Local Media MPRIS Integration & Wallpaper Isolation**:
+   - Installed `mpris.so` in `~/.config/mpv/scripts/mpris.so` and overrode `mpv` package with `(mpv.override { scripts = [ mpvScripts.mpris ]; })` for standard D-Bus `org.mpris.MediaPlayer2` media tracking.
+   - Fixed topbar music widget hijacking by passing `--load-scripts=no` to `mpvpaper` in `set_wallpaper.sh`. Wallpaper rendering is isolated from MPRIS while user media playback in `mpv` continues broadcasting media status and driving `cava` audio visualizers.
+
+4. **Helium Browser Integration**:
+   - Added `oxcl/nix-flake-helium-browser` flake input in `flake.nix`.
+   - Added `inputs.helium.packages.${pkgs.stdenv.hostPlatform.system}.default` to system packages in `modules/system/packages.nix`.
 
 4. **UI & Geometry Fixes**:
    - Reverted popup `Scaler` components across all 9 popup QML files back to single-pass `currentWidth: Screen.width` to eliminate double-scaling multiplication.

@@ -87,7 +87,7 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
         fi
     fi
 
-    mpvpaper -o "no-audio --loop-playlist --hwdec=vaapi --panscan=1.0 --input-ipc-server=/tmp/mpv-paper-socket" '*' "$WALL_TARGET" 8>&- > /dev/null 2>&1 &
+    mpvpaper -o "no-audio --load-scripts=no --loop-playlist --hwdec=vaapi --panscan=1.0 --input-ipc-server=/tmp/mpv-paper-socket" '*' "$WALL_TARGET" 8>&- > /dev/null 2>&1 &
 
     # Inherit Power-Saver paused state if currently active
     CURRENT_PROF=$(cat /tmp/qs_requested_profile 2>/dev/null || echo "")
@@ -132,7 +132,7 @@ else
         # FALLBACK: If awww fails (e.g., unsupported format, fake extension, or crashes), fallback to mpvpaper
         "$HOME/.config/hypr/scripts/ensure_awww.sh" --stop 8>&-
         stop_mpvpaper
-        mpvpaper -o "no-audio --loop-playlist --hwdec=auto --panscan=1.0" '*' "$WALL" 8>&- > /dev/null 2>&1 &
+        mpvpaper -o "no-audio --load-scripts=no --loop-playlist --hwdec=auto --panscan=1.0" '*' "$WALL" 8>&- > /dev/null 2>&1 &
     fi
 fi
 

@@ -19,6 +19,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    helium = {
+      url = "github:oxcl/nix-flake-helium-browser";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     anifetch = {
       url = "github:Notenlish/anifetch";
       inputs.nixpkgs.follows = "nixpkgs";
