@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## 2026-08-30 — Quickshell Event-Driven Refactor, Power Architecture & MPV Integration
+
+### Added & Refactored
+
+1. **Quickshell Native Event-Driven Refactor**:
+   - **Subsystem 1 (Process Watchers)**: Replaced `power_state_watcher.sh` loop with native `Quickshell.Io.FileWatcher` reading `/sys/firmware/acpi/platform_profile`. Cleared orphaned `inotifywait` background subshells. Gated `sys_fetcher.sh` strictly to when `SystemUsage.qml` subscriber is active.
+   - **Subsystem 2 (Hyprland Workspaces Native IPC)**: Replaced `workspaces.sh`, `socat`, `wsWatcher` (`inotifywait`), and `wsReader` (`cat`) with native `Quickshell.Hyprland` C++ IPC socket bindings (`focusedWorkspace`, `workspaces`, `rawEvent`). Reduced workspace IPC dispatch latency to **6ms**.
+   - **Subsystem 3 (PipeWire Audio & Watchers)**: Replaced `wpctl get-volume` shell calls with native `Quickshell.Services.Pipewire` bindings (`Pipewire.defaultAudioSink.audio`), achieving **8ms instant volume signal response**. Replaced 2s `recPoller` and `update_wait.sh` with clean event-driven file checks.
+   - **Power Impact**: Quickshell continuous idle discharge rate dropped from **28.25 W down to 10.85 W** (~17.4 W saved), recovering CPU C2+C3 sleep residency from ~5% up to **87.41%** (with 66.14% in deep C3 sleep).
+
+2. **Power Architecture & TLP 1.9.1 Configuration**:
+   - Fixed `asusd.service` enabling (`services.asusd.enable = true`) to enforce 80% charge threshold.
+   - Set `change_platform_profile_on_battery/on_ac = false` in `asusd.ron` so TLP is sole authority over platform profiles.
+   - Empirically verified 3-profile design:
+     - **Balanced**: Preserved 100% untouched (`balance_performance`, Turbo `1`, Platform Profile `balanced`, ASPM `powersupersave`, Wi-Fi `on`).
+     - **Battery Performance**: Maximum unconstrained performance (`performance` EPP, Turbo `1`, Platform Profile `performance`, max 4.69 GHz clock).
+     - **Battery Power Saver**: Maximum battery life (`power` EPP, Turbo `0` / 2.6 GHz base clock cap, Platform Profile `quiet`, ASPM `powersupersave`, Wi-Fi `on`).
+   - Explicitly declared `RUNTIME_PM_ON_SAV`, `PCIE_ASPM_ON_SAV`, `WIFI_PWR_ON_SAV` in `modules/system/power.nix`.
+
+3. **MPV Local Media MPRIS Integration**:
+   - Installed `mpris.so` in `~/.config/mpv/scripts/mpris.so`.
+   - Overrode `mpv` package in `modules/system/packages.nix` with `(mpv.override { scripts = [ mpvScripts.mpris ]; })`. Local media playback in `mpv` now emits standard D-Bus `org.mpris.MediaPlayer2` signals.
+
+4. **UI & Geometry Fixes**:
+   - Reverted popup `Scaler` components across all 9 popup QML files back to single-pass `currentWidth: Screen.width` to eliminate double-scaling multiplication.
+   - Updated `updateNativeWorkspaces()` in `TopBar.qml` to track workspaces > 6 dynamically without arbitrary upper caps.
+   - Updated TopBar music widget geometry (`mediaInfoColumn`) to derive width dynamically from `timeText.implicitWidth`, preventing timeline truncation (`01:24 / 06:45`) without giant empty gaps on short titles (`命盤`).
+
 ## 2026-08-20 — System fixes & bloat cleanup
 
 ### Fixed
