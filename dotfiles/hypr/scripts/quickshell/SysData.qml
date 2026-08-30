@@ -309,18 +309,30 @@ Item {
         }
     }
 
+    Timer {
+        id: profileRefreshTimer
+        interval: 600
+        repeat: false
+        onTriggered: {
+            platformProfileProc.running = false;
+            platformProfileProc.running = true;
+        }
+    }
+
     function setPowerProfile(name, isManual) {
         if (isManual === undefined) isManual = true;
         if (isManual) root._manualOverride = true;
 
         root.requestedProfile = name;
+        root.powerProfile = name;
         Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_requested_profile"]);
 
         root._applyVisualOverrides(name);
 
         if (isManual) {
             let tlpCmd = (name === "performance") ? "performance" : (name === "power-saver") ? "power-saver" : "balanced";
-            Quickshell.execDetached(["sudo", "tlp", tlpCmd]);
+            Quickshell.execDetached(["sudo", "/run/current-system/sw/bin/tlp", tlpCmd]);
+            profileRefreshTimer.restart();
         }
 
         let targetRR = (name === "performance") ? "120" : "60";

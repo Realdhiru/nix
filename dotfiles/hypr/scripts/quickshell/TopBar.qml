@@ -214,16 +214,22 @@ Variants {
             function updateNativeWorkspaces() {
                 let focusedId = (Hyprland.focusedWorkspace && Hyprland.focusedWorkspace.id) ? Hyprland.focusedWorkspace.id : 1;
                 let occupiedMap = {};
+                let maxWs = 6;
+                if (focusedId > maxWs) maxWs = focusedId;
+
                 if (Hyprland.workspaces) {
                     let values = Hyprland.workspaces.values;
                     for (let i = 0; i < values.length; i++) {
                         let ws = values[i];
-                        if (ws && ws.id) occupiedMap[ws.id] = true;
+                        if (ws && ws.id) {
+                            occupiedMap[ws.id] = true;
+                            if (ws.id > maxWs) maxWs = ws.id;
+                        }
                     }
                 }
 
                 let newActive = -1;
-                let totalWs = 6;
+                let totalWs = maxWs;
 
                 if (workspacesModel.count !== totalWs) {
                     workspacesModel.clear();
@@ -706,8 +712,7 @@ Variants {
                                         id: mediaInfoColumn
                                         spacing: barWindow.s(2)
                                         anchors.verticalCenter: parent.verticalCenter
-                                        property real maxColWidth: barWindow.width < 1920 ? barWindow.s(140) : barWindow.s(200)
-                                        width: Math.min(Math.max(titleMetrics.width, timeMetrics.width), maxColWidth)
+                                        width: Math.max(timeMetrics.width + barWindow.s(2), barWindow.s(81))
 
                                         TextMetrics {
                                             id: titleMetrics
