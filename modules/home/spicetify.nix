@@ -1,13 +1,6 @@
 { config, pkgs, ... }:
 
 let
-  liquifyThemeSrc = pkgs.fetchFromGitHub {
-    owner = "NMWplays";
-    repo = "Liquify";
-    rev = "69dbb54495fb2217838d3bfbb6fdbae4e4d30b00";
-    hash = "sha256-+/uJFp834gK2EiJO9rWOJMcRIXtLroUzV9C1dMhggvM=";
-  };
-
   marketplaceSrc = pkgs.fetchzip {
     url = "https://github.com/spicetify/marketplace/releases/download/v1.0.10/marketplace.zip";
     hash = "sha256-WgErEKALKg8XCx2jx3gigYhBVRL5ncrJZjVa1Dnfp7w=";
@@ -34,24 +27,6 @@ in
       mkdir -p "$HOME/.config/spicetify/Themes"
       mkdir -p "$HOME/.config/spicetify/Extensions"
       mkdir -p "$HOME/.config/spicetify/CustomApps"
-
-      # Seed Liquify theme if not present
-      if [ ! -d "$HOME/.config/spicetify/Themes/Liquify" ]; then
-        echo "Seeding Liquify theme to ~/.config/spicetify/Themes/Liquify..."
-        cp -rfL "${liquifyThemeSrc}" "$HOME/.config/spicetify/Themes/Liquify"
-        chmod -R u+w "$HOME/.config/spicetify/Themes/Liquify"
-      fi
-
-      # Seed custom extensions if not present
-      if [ -d "${./spicetify}" ]; then
-        for ext in "${./spicetify}"/*; do
-          ext_name="$(basename "$ext")"
-          if [ ! -f "$HOME/.config/spicetify/Extensions/$ext_name" ]; then
-            cp -fL "$ext" "$HOME/.config/spicetify/Extensions/$ext_name"
-            chmod u+w "$HOME/.config/spicetify/Extensions/$ext_name"
-          fi
-        done
-      fi
 
       # Seed Marketplace if not present
       if [ ! -d "$HOME/.config/spicetify/CustomApps/marketplace" ]; then
@@ -86,10 +61,7 @@ in
 
           # Initialize config if newly created
           if [ ! -f "$HOME/.config/spicetify/config-xpui.ini" ]; then
-            spicetify config current_theme Liquify 2>/dev/null || true
-            spicetify config extensions lyrics-raf-fallback.js 2>/dev/null || true
-            spicetify config extensions liquify-config-seed.js 2>/dev/null || true
-            spicetify config custom_apps marketplace 2>/dev/null || true
+            spicetify config current_theme marketplace custom_apps marketplace 2>/dev/null || true
           fi
 
           echo "Applying Spicetify patch..."
