@@ -53,6 +53,8 @@
             (final: prev: {
               buuf-nestort-icon-theme =
                 prev.callPackage ./pkgs/buuf-nestort.nix { };
+              hypr-kdeconnect-portal =
+                prev.callPackage ./pkgs/hypr-kdeconnect-portal.nix { };
               pcmanfm-qt = prev.pcmanfm-qt.overrideAttrs (old: {
                 patches = (old.patches or [ ]) ++ [ ./pkgs/pcmanfm-qt-appid.patch ];
               });

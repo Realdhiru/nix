@@ -48,6 +48,10 @@
 
   # KDE Connect (enables daemon + opens required firewall ports 1714-1764)
   programs.kdeconnect.enable = true;
+  services.udev.packages = [ pkgs.kdePackages.kdeconnect-kde ];
+
+  # Virtual input device support for KDE Connect digitizer / drawing tablet
+  hardware.uinput.enable = true;
 
   # Power management.
   services.upower = {
@@ -113,8 +117,17 @@
     extraPortals = with pkgs; [
       xdg-desktop-portal-hyprland
       xdg-desktop-portal-gtk
+      hypr-kdeconnect-portal
     ];
-    config.common.default = [ "hyprland" "gtk" ];
+    config = {
+      common = {
+        default = [ "hyprland" "gtk" ];
+      };
+      hyprland = {
+        default = [ "hyprland" "gtk" ];
+        "org.freedesktop.impl.portal.RemoteDesktop" = [ "hypr-kdeconnect" ];
+      };
+    };
   };
 
   # Hyprland session target (bound to graphical-session for Hyprland sessions only)

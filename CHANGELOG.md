@@ -1,5 +1,72 @@
 # CHANGELOG
 
+## 2026-09-07 — Reproducible KDE Connect Remote Input, Presentation Remote & Drawing Tablet on Hyprland
+
+### Fixed & Implemented
+
+1. **Wayland RemoteDesktop Portal Bridge (`pkgs/hypr-kdeconnect-portal.nix`, `flake.nix`, `modules/system/services.nix`)**:
+   - **Root Cause**: KDE Connect 26.04+ on Wayland requires the `org.freedesktop.portal.RemoteDesktop` interface (via `ConnectToEIS` and `libeis`). Neither `xdg-desktop-portal-hyprland` nor `xdg-desktop-portal-gtk` implements RemoteDesktop, silently disabling the touchpad mouse, keyboard input, and presentation slide keys.
+   - **Solution**: Packaged `hypr-kdeconnect-portal` (based on `hypr-kdeconnect-fix`), implementing `org.freedesktop.impl.portal.desktop.hypr_kdeconnect`. It translates incoming `libeis` events and RemoteDesktop calls into Hyprland-native `zwlr_virtual_pointer_v1` and `zwp_virtual_keyboard_v1` protocols.
+   - **Flake Integration**: Declared the derivation in `pkgs/hypr-kdeconnect-portal.nix`, registered it in `flake.nix` overlays, added it to `xdg.portal.extraPortals`, and routed `RemoteDesktop` specifically to `hypr-kdeconnect` in `xdg.portal.config.hyprland`.
+
+2. **Drawing Tablet & Virtual Digitizer Permissions (`modules/system/services.nix`, `modules/system/users.nix`)**:
+   - **Root Cause**: The KDE Connect digitizer plugin (`kdeconnect_digitizer.so`) writes directly to `/dev/uinput`. The device node was restricted to `0600 root:root` and user `realdhiru` lacked the necessary groups and uaccess tags.
+   - **Solution**: Enabled `hardware.uinput.enable = true;`, added `services.udev.packages = [ pkgs.kdePackages.kdeconnect-kde ];` (deploying `40-kdeconnect-uinput.rules` with `TAG+="uaccess"`), and added `"uinput"` and `"input"` to `users.users.realdhiru.extraGroups`.
+   - **Reproducibility**: Entirely codified in the NixOS flake repository; persists across all rebuilds and cleanly ports to any new machine using this flake.
+
+---
+
+## 2026-09-06 — Wallpaper Indexing, TopBar Workspaces & Dynamic Scaler Fixes
+
+### Fixed & Optimized
+
+1. **Wallpaper Indexing, Previews & Canonical State Persistence**:
+   - **Filtered Indexation (`wallpaper_thumbnail.sh`)**: Excluded hidden directories (`-not -path '*/.*'`) and restricted discovery to valid media extensions (`.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`, `.mp4`, `.mkv`, `.mov`, `.webm`). Cleaned 347 invalid `.git/objects` blobs that were previously polluting `flat/` and causing blank/broken previews in `WallpaperPicker.qml`.
+   - **Case-Insensitive Extensions (`WallpaperPicker.qml`)**: Expanded `FolderListModel.nameFilters` to include uppercase variants (`*.PNG`, `*.JPG`, etc.), fixing missing previews for files with uppercase extensions.
+   - **Canonical Path Resolution (`set_wallpaper.sh`, `boot_wallpaper.sh`)**: `set_wallpaper.sh` now resolves `realpath` before writing `~/.cache/current_wallpaper.txt`. Prevents ephemeral `.cache` symlink paths from saving to state, eliminating the reboot fallback where random wallpapers were selected.
+   - **Color-Extraction Cache Hit (`set_wallpaper.sh`)**: Fixed thumbnail lookup in `set_wallpaper.sh` to search for cached hash-prefixed thumbnails (`*_${BASENAME}`), avoiding redundant ImageMagick / FFmpeg re-decoding.
+   - **Odd-Dimension GIF Encoding & Fallback (`set_wallpaper.sh`)**: Injected `pad=ceil(iw/2)*2:ceil(ih/2)*2` filter into the GIF-to-MP4 FFmpeg conversion pipeline. Fixes H.264 encoder failures on GIFs with odd width/height (such as `Blackrush.gif` at 640x303) that previously produced empty 0-byte cache files. Added `-s` non-empty validation and automatic fallback to raw GIF playback if conversion fails.
+   - **Daemon Process Lifecycle (`set_wallpaper.sh`)**: Added `disown` to background `mpvpaper` and socket watcher invocations, preventing subshell exit signals from prematurely terminating live video/GIF wallpapers.
+   - **Zero-Residue Wallpaper Deletion & Auto-Watcher (`wallpaper_thumbnail.sh`, `wallpaper_watcher.sh`, `startup.lua`)**: Integrated a comprehensive multi-tier cleanup engine into `wallpaper_thumbnail.sh` and created an event-driven `wallpaper_watcher.sh` inotify daemon registered in `startup.lua`. The moment a wallpaper is deleted from `~/Pictures/Wallpapers` (via GUI or CLI), all associated artifacts—the symlink in `flat/`, generated thumbnail in `thumbs/`, color marker in `colors_markers/`, and converted video in `converted_gifs/`—are immediately purged with zero residue. If the deleted file was the active wallpaper, it gracefully switches to a healthy remaining wallpaper.
+
+2. **TopBar Workspace & Media Widget Styling (`TopBar.qml`)**:
+   - **Adaptive Terminal Background Opacity for Light Wallpapers (`wezterm.lua`)**: Resolved unreadable terminal text on bright wallpapers where 100% transparent backgrounds (`opacity = 0.0`) blended into white wallpaper regions. Added dynamic lightness detection watching `~/.cache/matugen/wallpaper_is_light.txt`: on light wallpapers, WezTerm automatically shifts to a rich, dark frosted background (`opacity = 0.88`), providing crisp text definition and 100% legibility while reverting to full transparency (`opacity = 0.0`) on dark wallpapers.
+   - **Fixed Quickshell Non-Existent FileWatcher Type (`MatugenColors.qml`)**: Removed invalid `FileWatcher` declaration in `MatugenColors.qml` that was causing `ERROR: FileWatcher is not a type`, reverting to the high-frequency 1-second dynamic poller to guarantee rock-solid runtime stability.
+   - **Adaptive Contrast-Aware TopBar Pills for Light Wallpapers (`set_wallpaper.sh`, `MatugenColors.qml`, `TopBar.qml`)**:
+     - *Luminance Telemetry*: Enhanced `set_wallpaper.sh` to measure the HSL luminance of the top 15% region of the wallpaper (`top_lum`) where the topbar sits. Automatically determines whether the top region is bright (`top_lum > 55%` or overall `lum > 60%`) and injects `"isLight": true/false` into `qs_colors.json`.
+     - *Adaptive Capsule Styling*: Added unified dynamic pill styling properties (`pillBg`, `pillBgHover`, `pillBorder`, `pillBorderHover`) to `TopBar.qml`.
+       - On **Dark Wallpapers**: Pills retain their sleek, subtle translucency (`surface1` at `0.35` alpha).
+       - On **Light Wallpapers**: Pills automatically transform into rich, dark frosted capsules (`crust` at `0.82` alpha with `0.12` contrast border), shielding all icons, workspaces, time, battery, and media text for 100% pin-sharp contrast and legibility against bright backgrounds.
+     - *Zero-Latency Sync*: Added `Quickshell.Io.FileWatcher` to `MatugenColors.qml` to instantly reload colors whenever `qs_colors.json` is updated.
+   - **Opaque Media Pill Text & Visualizer**: Made the track title, playback time (`mocha.text`), and CAVA visualizer segments 100% solid/opaque (`alpha = 1.0`) with ghost dot segments removed, providing crisp definition and high visibility on light wallpapers while preserving the normal transparent container baseline.
+   - **CAVA Visualizer Baseline & Margin Alignment**: Fixed the visual misalignment where CAVA bars were sagging below the timeline text. Anchored `cavaVisualizer`'s bottom to `mediaInfoColumn.bottom` with dynamic baseline compensation (`Math.round(timeText.implicitHeight - timeText.baselineOffset)`), and tuned segment parameters (`segCount: 8`, `segH: s(2)`, `segGap: s(1)`) so that CAVA's bottom baseline matches the timeline text baseline and its peak height matches the title text height. Both top and bottom capsule margins now align down to the pixel.
+   - **Zero-Overhead Workspace Switching**: Replaced `Quickshell.execDetached` bash subprocess invocation on pill click with native `Hyprland.dispatch("workspace " + wsName)`.
+   - **Highlight Jitter Elimination**: Fixed `activeHighlight` coordinate bouncing during pill expansion/contraction by smoothing animation curves and eliminating layout race conditions.
+   - **Special Workspaces & Dead Code**: Guarded `updateNativeWorkspaces()` against invalid/negative scratchpad IDs, and removed dead `workspaces.sh` script and unused `workspaceCount: 69` property.
+
+3. **Scaling Desync Root Cause Fix (`settings.json`, `Main.qml`, `Scaler.qml`)**:
+   - **Reverted Dual-Scaling Experiment**: Kept `Scaler.qml`, `Main.qml`, and `TopBar.qml` strictly adhering to the single-pass scaling rule defined in `AGENTS.md`.
+   - **Proven Root Cause**: `settings.json` contained a stale `"uiScale": 1.3`. `settingsReader` in `Main.qml` executed `watchers/settings_wait.sh`, which has a 300-second (`timeout 300 inotifywait`) failsafe. On reload/startup, `masterWindow.globalUiScale` started at `1.0` (matching all popup widget scalers). Exactly 300s (5 minutes) later, the timeout expired and `settingsReader` read `1.3`, blowing up `WindowRegistry.js` bounds to 1476px while inner widgets were scaled for 1135px, causing the 340px clipping and overlapping shown in the screenshot.
+   - **Resolution**: Aligned `settings.json` to `"uiScale": 1.0` so `Main.qml` and all popup widgets remain in 100% permanent scale alignment on boot, across reloads, and after the 300s timeout.
+
+4. **Minimal Stacked Card Lockscreen Redesign & Stability Overhaul (`Lock.qml`, `lock.sh`)**:
+   - **Crash-Loop & Singleton Guard (`lock.sh`)**: Added a mutex (`pgrep -f 'quickshell.*Lock\.qml'`) to prevent multiple processes from racing over the Wayland `ext-session-lock-v1` singleton. Integrated automatic recovery (`hl.clear_crashed_lockscreen()`) to ensure the compositor never bricks into the emergency crash screen ("Oopsie daisy"). Removed dangerous infinite while-loop.
+   - **Smooth Dot Typing Model (`Lock.qml`)**: Replaced the integer-based `Repeater` (which caused full-list destruction/jitter on every keystroke) with a dynamic `ListModel` (`passModel`). Dots now pop into place with isolated spring animations (`scale: 0.3 -> 1.0`, `Easing.OutBack`), providing a 60fps buttery-smooth typing feel.
+   - **Removed Obtrusive Ring Overlay**: Stripped out the old 1-second spinning concentric rings and lock orb overlay in favor of a clean, non-blocking entrance transition where the capsule card gracefully glides into place while maintaining instant typing readiness.
+   - **Prominent Card & Stacked Typography**: Proportioned central capsule card to occupy ~24% width and ~62% height with bold 110–140px stacked two-tone clock (`root.blue` and `root.lockText`), JetBrains Mono dotted zero, and `dd MMM dddd` date.
+   - **Hyprland Daily Splash Quotes**: Linked bottom greeting to `hyprctl splash` to render dynamic daily Hyprland quotes.
+   - **Dynamic Tech Telemetry & Hacker Top Status Header (`Lock.qml`, `lock.sh`)**: Completely eliminated emojis and personal user names in favor of an authentic UNIX, hacker, and live system telemetry status engine. Every single lock event picks a unique technical line from a diverse 45+ item pool combining live system telemetry (`SYS_KERNEL`, `SYS_LOAD`, `SYS_UPTIME` exported via `lock.sh`) with cryptographic, PAM, Wayland, and NixOS security lines (e.g. `[SYS_KERNEL] Linux 7.2.1 // Load: 3.52 // Up: 12h 15m`, `[SEC_GATEWAY] Hyprland [ext-session-lock-v1]`, `chmod 000 /dev/display -- Authenticate to restore permissions`, `cat /dev/urandom > /dev/lockscreen -- Entropy pool primed`).
+   - **Frosted Glass Aesthetic & Reduced Darkness**: Decreased central capsule card darkness by switching from opaque `crust` at `0.72` to translucent `surface0` at `0.22` with a specular top reflection highlight (`rgba(255, 255, 255, 0.24)`) and subtle glass border (`rgba(255, 255, 255, 0.18)`). Reduced overall screen dimmer opacity from `0.38` down to `0.18` and boosted Gaussian background blur (`blurMax: 40`, `blur: 0.65`) so wallpaper tones illuminate through the glass with genuine depth.
+   - **Fluid Displaced Password Dots & Soft Frame Interpolation**: Replaced the static `Row` container with an animated-width `ListView` equipped with `displaced`, `add`, and `remove` transitions. Eliminated the jarring 1-frame horizontal snapping where all existing dots jumped instantly whenever a key was pressed or deleted.
+     - *Soft Blossoming (85ms)*: New dots now expand gracefully from `scale: 0.1` to `1.0` with `Easing.OutCubic` and soft `65ms` opacity entry.
+     - *Smooth Horizontal Glide (80ms)*: Existing dots smoothly glide across horizontal coordinate space via `displaced: Transition` and `Behavior on width` (`80ms`, `Easing.OutQuad`).
+     - *Soft Exit Dissolve (70ms)*: Backspaced dots shrink smoothly into nothingness (`scale -> 0.0`, `70ms`) rather than abruptly disappearing in a single frame.
+     - *Fading Placeholder (80ms)*: Added `Behavior on opacity` to `"Use Me ;)"` placeholder text so it softly dissolves rather than blinking off.
+   - **Zero-Blank Frame-0 Seamless Wallpaper**: Eliminated the 1-second pitch-black screen flash when locking. `lock.sh` now directly pre-exports `CURRENT_WALLPAPER` into the execution environment, enabling `Lock.qml` to resolve and synchronously decode the wallpaper on Frame 0 (`asynchronous: false`, `cache: true`). The opaque dark fallback rectangle (`color: root.base`) is removed from the active render tree, and the asynchronous bash child process probe is eliminated.
+   - **Cinematic Depth-of-Field Focus & Unlock Dissolve Transitions**:
+     - *Entrance (Lock)*: Rather than jarringly jumping into dark blur, the lock surface begins with the wallpaper in 100% sharp focus (`blur = 0`, `dimmer = 0`). Over 240ms (`Easing.OutCubic`), the background smoothly glides from clear focus into a creamy Gaussian frosted blur while the center clock card softly fades into view.
+     - *Exit (Unlock)*: Pressing Enter with the valid password triggers `exitSequence` (180ms) prior to dropping the session lock. The clock card gently fades out and the frosted blur dissolves seamlessly back to razor-sharp wallpaper focus, transitioning into the desktop and application windows without tearing or abrupt cuts.
+
 ## 2026-08-30 — Quickshell Event-Driven Refactor, Power Architecture & MPV Integration
 
 ### Added & Refactored

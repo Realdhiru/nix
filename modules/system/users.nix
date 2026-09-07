@@ -7,6 +7,8 @@
     extraGroups = [
       "wheel"
       "networkmanager"
+      "uinput"
+      "input"
     ];
     shell = pkgs.zsh;
   };
