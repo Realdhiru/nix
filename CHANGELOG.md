@@ -33,6 +33,15 @@
 6. **Process Detachment for Quickshell (`dotfiles/hypr/scripts/reload.sh`)**:
    - Wrapped Quickshell invocation with `nohup` and `disown` to protect the process from shell SIGHUP signals.
 
+7. **Quickshell Inotify Feedback Loop & Idle Battery Drain Fix (`dotfiles/hypr/scripts/quickshell/watchers/colors_wait.sh`)**:
+   - **Root Cause**: `MatugenColors.qml` is instantiated across 11 distinct desktop UI components, each launching `colors_wait.sh`. The script unconditionally called `touch "$TARGET"` (`~/.cache/matugen/qs_colors.json`) on start, firing `CLOSE_WRITE` to all 10 other concurrent watchers. Each instance simultaneously unblocked, ran `onStreamFinished`, and re-triggered `colors_wait.sh`, establishing an 11-way runaway fork bomb spawning **3,882 processes/second** and generating 42,000 context switches/sec, 30,000 interrupts/sec, driving CPU to 84°C and battery idle discharge to ~48W.
+   - **Solution**: Changed `touch "$TARGET"` in `colors_wait.sh` to only touch if the file does not exist (`[ -f "$TARGET" ] || touch "$TARGET"`). When the cache exists, instances block dormant in `inotifywait` waiting for legitimate theme changes. CPU idle rose to 95%, system load dropped to 1-2%, and process spawn rate dropped to ~2.5 PIDs/s.
+
+8. **Battery Power Profile & Spike Optimization (`modules/system/power.nix`)**:
+   - **Root Cause**: TLP on battery had `CPU_BOOST_ON_BAT = 1`, `CPU_HWP_DYN_BOOST_ON_BAT = 1`, and `CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_performance"`. Whenever light background processes or browser tabs woke up, Intel P-cores spiked up to 4.7 GHz at high voltage, causing excessive battery discharge and preventing CPU package sleep.
+   - **Solution**: Configured `CPU_BOOST_ON_BAT = 0` (caps 12 cores at base frequency on battery to cut voltage spikes while preserving full 12-core throughput), `CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_power"`, `CPU_HWP_DYN_BOOST_ON_BAT = 0`, and set `PLATFORM_PROFILE_ON_BAT = "quiet"`.
+
+
 ---
 
 ## 2026-09-06 — Wallpaper Indexing, TopBar Workspaces & Dynamic Scaler Fixes

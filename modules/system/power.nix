@@ -19,19 +19,19 @@
       CPU_SCALING_GOVERNOR_ON_SAV = "powersave";
 
       CPU_ENERGY_PERF_POLICY_ON_AC  = "performance";
-      CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_performance";
+      CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_power";
       CPU_ENERGY_PERF_POLICY_ON_SAV = "power";
 
       CPU_BOOST_ON_AC  = 1;
-      CPU_BOOST_ON_BAT = 1;
+      CPU_BOOST_ON_BAT = 0;
       CPU_BOOST_ON_SAV = 0;
 
       CPU_HWP_DYN_BOOST_ON_AC  = 1;
-      CPU_HWP_DYN_BOOST_ON_BAT = 1;
+      CPU_HWP_DYN_BOOST_ON_BAT = 0;
       CPU_HWP_DYN_BOOST_ON_SAV = 0;
 
       PLATFORM_PROFILE_ON_AC  = "performance";
-      PLATFORM_PROFILE_ON_BAT = "balanced";
+      PLATFORM_PROFILE_ON_BAT = "quiet";
       PLATFORM_PROFILE_ON_SAV = "quiet";
 
       RUNTIME_PM_ON_AC  = "on";
