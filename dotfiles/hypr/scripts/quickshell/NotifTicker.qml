@@ -36,7 +36,15 @@ Item {
     }
 
     function dismiss(uid) {
-        if (root.tickerNotif && root.tickerNotif.uid === uid) root.tickerNotif = null;
+        if (root.tickerNotif && root.tickerNotif.uid === uid) {
+            root.tickerNotif = null;
+            tickerTimeoutTimer.stop();
+            root.tickerIsSticky = false;
+        }
+        let liveN = root.liveNotifs[uid];
+        if (liveN) {
+            try { liveN.dismiss(); } catch(e) {}
+        }
     }
 
     function invokeDefault() {
@@ -110,6 +118,27 @@ Item {
 
             root.liveNotifs[currentUid] = n;
 
+            // Automatically clean up when the notification is closed by the client
+            // (e.g. phone call answered, declined, or ended on the phone)
+            n.closed.connect((reason) => {
+                if (root.tickerNotif && root.tickerNotif.uid === currentUid) {
+                    root.tickerNotif = null;
+                    tickerTimeoutTimer.stop();
+                    root.tickerIsSticky = false;
+                }
+                delete root.liveNotifs[currentUid];
+                let isCall = (notifAppName.toLowerCase().includes("kde") &&
+                    (notifSummary.toLowerCase().includes("call") || notifSummary.toLowerCase().includes("incoming")));
+                if (isCall) {
+                    for (let i = 0; i < globalNotificationHistory.count; i++) {
+                        if (globalNotificationHistory.get(i).uid === currentUid) {
+                            globalNotificationHistory.remove(i);
+                            break;
+                        }
+                    }
+                }
+            });
+
             let notifData = {
                 "appName":     notifAppName,
                 "summary":     notifSummary,
@@ -124,12 +153,29 @@ Item {
 
             if (!root.isStartup) {
                 let hasActions = extractedActions.length > 0;
-                let timeoutMs;
-                if (n.timeout === 0 || hasActions) timeoutMs = 0;
-                else if (n.timeout > 0) timeoutMs = n.timeout;
-                else timeoutMs = 4000;
+                let isCall = (notifAppName.toLowerCase().includes("kde") &&
+                    (notifSummary.toLowerCase().includes("call") || notifSummary.toLowerCase().includes("incoming")));
 
-                let incomingIsSticky = (timeoutMs === 0);
+                let timeoutMs = 4000;
+                let exp = (n.expireTimeout !== undefined && !isNaN(n.expireTimeout)) ? n.expireTimeout : -1;
+
+                if (isCall) {
+                    // Incoming phone call: stays on ticker while ringing (with a 45s safety bound),
+                    // but automatically disappears the exact millisecond the call is picked or hung up.
+                    timeoutMs = 45000;
+                } else if (exp === 0) {
+                    timeoutMs = 0; // Explicitly sticky from sender
+                } else if (exp > 0) {
+                    timeoutMs = exp;
+                } else if (hasActions) {
+                    // Actions present: give 12 seconds so user can react, then expire from ticker
+                    // (persists safely in the Battery/Notification history panel).
+                    timeoutMs = 12000;
+                } else {
+                    timeoutMs = 4000;
+                }
+
+                let incomingIsSticky = (timeoutMs === 0 || isCall);
                 if (root.tickerIsSticky && !isSameAsShowing && !incomingIsSticky) {
                     // dropped from the ticker, but it's still in history above
                 } else {

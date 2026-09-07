@@ -15,8 +15,8 @@ Item {
     width: layoutWidth
     height: layoutHeight
 
-    property var notifModel
-    property var liveNotifs
+    property var notifModel: NotifTicker.notifModel
+    property var liveNotifs: NotifTicker.liveNotifs
 
     onNotifModelChanged: Qt.callLater(window.enforceNotificationSort)
     
@@ -675,7 +675,14 @@ Item {
                                 Connections {
                                     target: delegateWrapper.realNotif || null
                                     function onClosed() {
-                                        delegateWrapper.removeThisNotif();
+                                        // Only auto-delete transient active phone call notifications when the call ends.
+                                        // Persistent notifications (errors, messages, updates, alerts) remain in history.
+                                        let app = (model.appName || "").toLowerCase();
+                                        let sum = (model.summary || "").toLowerCase();
+                                        let isCall = (app.includes("kde") && (sum.includes("call") || sum.includes("incoming")));
+                                        if (isCall) {
+                                            delegateWrapper.removeThisNotif();
+                                        }
                                     }
                                 }
 

@@ -52,6 +52,9 @@
 
   # Virtual input device support for KDE Connect digitizer / drawing tablet
   hardware.uinput.enable = true;
+  services.udev.extraRules = ''
+    KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0666", TAG+="uaccess", OPTIONS+="static_node=uinput"
+  '';
 
   # Power management.
   services.upower = {

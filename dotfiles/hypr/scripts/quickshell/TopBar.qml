@@ -1017,6 +1017,36 @@ Variants {
                                         }
                                     }
                                 }
+
+                                Rectangle {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    height: barWindow.s(22)
+                                    width: barWindow.s(22)
+                                    radius: barWindow.s(11)
+                                    color: closeMa.containsMouse ? mocha.surface2 : "transparent"
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "󰅖"
+                                        font.family: "Iosevka Nerd Font"
+                                        font.pixelSize: barWindow.s(11)
+                                        color: closeMa.containsMouse ? mocha.red : mocha.overlay1
+                                        Behavior on color { ColorAnimation { duration: 150 } }
+                                    }
+
+                                    MouseArea {
+                                        id: closeMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (notifLayout.n) {
+                                                NotifTicker.dismiss(notifLayout.n.uid);
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                                 RowLayout {

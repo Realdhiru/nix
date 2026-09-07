@@ -9,10 +9,29 @@
    - **Solution**: Packaged `hypr-kdeconnect-portal` (based on `hypr-kdeconnect-fix`), implementing `org.freedesktop.impl.portal.desktop.hypr_kdeconnect`. It translates incoming `libeis` events and RemoteDesktop calls into Hyprland-native `zwlr_virtual_pointer_v1` and `zwp_virtual_keyboard_v1` protocols.
    - **Flake Integration**: Declared the derivation in `pkgs/hypr-kdeconnect-portal.nix`, registered it in `flake.nix` overlays, added it to `xdg.portal.extraPortals`, and routed `RemoteDesktop` specifically to `hypr-kdeconnect` in `xdg.portal.config.hyprland`.
 
-2. **Drawing Tablet & Virtual Digitizer Permissions (`modules/system/services.nix`, `modules/system/users.nix`)**:
-   - **Root Cause**: The KDE Connect digitizer plugin (`kdeconnect_digitizer.so`) writes directly to `/dev/uinput`. The device node was restricted to `0600 root:root` and user `realdhiru` lacked the necessary groups and uaccess tags.
-   - **Solution**: Enabled `hardware.uinput.enable = true;`, added `services.udev.packages = [ pkgs.kdePackages.kdeconnect-kde ];` (deploying `40-kdeconnect-uinput.rules` with `TAG+="uaccess"`), and added `"uinput"` and `"input"` to `users.users.realdhiru.extraGroups`.
+2. **Pointer Stability & Linear Acceleration Curve (`dotfiles/hypr/input.lua`)**:
+   - **Root Cause**: Hyprland's default input configuration had `sensitivity = 0.5` and `accel_profile = "adaptive"`. Because Android's KDE Connect touchpad already applies finger acceleration, Hyprland's non-linear curve compounded the movement, leading to severe pointer flinging, overshoot, and jitter.
+   - **Solution**: Configured a dedicated device block for Hyprland's virtual pointer (`unknown-device`) setting `accel_profile = "flat"` and `sensitivity = 0.0`. This provides 1:1 linear pointer movement matching the phone screen without overshoot.
+
+3. **Drawing Tablet & Virtual Digitizer Permissions (`modules/system/services.nix`, `modules/system/users.nix`)**:
+   - **Root Cause**: The KDE Connect digitizer plugin (`kdeconnect_digitizer.so`) writes directly to `/dev/uinput`. The device node was restricted to `0600 root:root` and user `realdhiru` lacked the necessary permissions, failing device creation with "failed to create virtual input device".
+   - **Solution**: Added `services.udev.extraRules` setting `KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0666", TAG+="uaccess", OPTIONS+="static_node=uinput"`, enabled `hardware.uinput.enable = true`, added KDE Connect udev rules, and granted `uinput` and `input` groups.
    - **Reproducibility**: Entirely codified in the NixOS flake repository; persists across all rebuilds and cleanly ports to any new machine using this flake.
+
+4. **Phone Call Notification Lifecycle & TopBar Dismissal (`dotfiles/hypr/scripts/quickshell/NotifTicker.qml`, `dotfiles/hypr/scripts/quickshell/TopBar.qml`)**:
+   - **Root Cause**: Quickshell treated notifications with actions as permanent sticky pills (`timeoutMs = 0`), preventing incoming call notifications from clearing unless "Mute Call" was clicked. Furthermore, the D-Bus `Notification.closed` signal was not monitored, causing the call pill to remain stuck even after the call was answered or hung up.
+   - **Solution**:
+     - Connected `n.closed.connect(...)` in `NotifTicker.qml` to instantly dismiss ticker pills and purge the call from history the millisecond the call is answered, declined, or ended.
+     - Set a 45s ringing boundary for incoming calls and a 12s reaction timeout for generic action notifications.
+     - Added a dedicated dismiss "󰅖" button directly into the TopBar notification pill so users can dismiss the pill immediately without muting the call.
+
+5. **Notification History Persistence in BatteryPopup (`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`)**:
+   - **Root Cause**: `BatteryPopup.qml` contained a delegate connection `realNotif.onClosed: delegateWrapper.removeThisNotif()`, causing all transient notifications (such as system errors, KDE Connect warnings, and alerts) to disappear from the notification history panel the moment their on-screen ticker expired.
+   - **Solution**: Restricted automatic removal strictly to completed phone calls. System errors, KDE Connect notifications, files, and messages remain securely in the history panel until explicitly dismissed with the panel's "󰅖" clear button.
+   - Directly bound `notifModel` and `liveNotifs` to `NotifTicker` singletons to guarantee instant synchronization.
+
+6. **Process Detachment for Quickshell (`dotfiles/hypr/scripts/reload.sh`)**:
+   - Wrapped Quickshell invocation with `nohup` and `disown` to protect the process from shell SIGHUP signals.
 
 ---
 

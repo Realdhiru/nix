@@ -33,4 +33,5 @@ fi
 QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
 
 # 5. Cold boot exactly ONE fresh instance in the background
-"$QS_BIN" -p "$QS_TARGET" >/dev/null 2>&1 &
+nohup "$QS_BIN" -p "$QS_TARGET" >/dev/null 2>&1 &
+disown

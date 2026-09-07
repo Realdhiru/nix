@@ -14,3 +14,14 @@ hl.config({
     },
 })
 -- hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
+-- Dedicated configuration for KDE Connect virtual pointer:
+-- Disables non-linear adaptive acceleration curve to prevent erratic flinging/jitter over Wi-Fi
+hl.config({
+    device = {
+        {
+            name = "unknown-device",
+            sensitivity = 0.0,
+            accel_profile = "flat",
+        },
+    },
+})
