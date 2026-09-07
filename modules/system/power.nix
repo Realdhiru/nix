@@ -5,6 +5,10 @@
     "vm.dirty_writeback_centisecs" = 6000;
   };
 
+  boot.kernelParams = [
+    "i915.enable_fbc=1"
+  ];
+
   # --- 2. TLP CONFIGURATION (SOLE POWER MANAGER) ---
   # NixOS strictly forbids running both TLP and power-profiles-daemon
   services.power-profiles-daemon.enable = lib.mkForce false;
@@ -18,7 +22,7 @@
       CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
       CPU_SCALING_GOVERNOR_ON_SAV = "powersave";
 
-      CPU_ENERGY_PERF_POLICY_ON_AC  = "performance";
+      CPU_ENERGY_PERF_POLICY_ON_AC  = "balance_performance";
       CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_power";
       CPU_ENERGY_PERF_POLICY_ON_SAV = "power";
 
@@ -34,7 +38,7 @@
       PLATFORM_PROFILE_ON_BAT = "quiet";
       PLATFORM_PROFILE_ON_SAV = "quiet";
 
-      RUNTIME_PM_ON_AC  = "on";
+      RUNTIME_PM_ON_AC  = "auto";
       RUNTIME_PM_ON_BAT = "auto";
       RUNTIME_PM_ON_SAV = "auto";
 

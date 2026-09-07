@@ -41,6 +41,10 @@
    - **Root Cause**: TLP on battery had `CPU_BOOST_ON_BAT = 1`, `CPU_HWP_DYN_BOOST_ON_BAT = 1`, and `CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_performance"`. Whenever light background processes or browser tabs woke up, Intel P-cores spiked up to 4.7 GHz at high voltage, causing excessive battery discharge and preventing CPU package sleep.
    - **Solution**: Configured `CPU_BOOST_ON_BAT = 0` (caps 12 cores at base frequency on battery to cut voltage spikes while preserving full 12-core throughput), `CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_power"`, `CPU_HWP_DYN_BOOST_ON_BAT = 0`, and set `PLATFORM_PROFILE_ON_BAT = "quiet"`.
 
+9. **Smart AC Performance Profile & Intel GPU Framebuffer Compression (`modules/system/power.nix`)**:
+   - **Root Cause**: On AC power, `CPU_ENERGY_PERF_POLICY_ON_AC = "performance"` forced all 12 cores to remain pegged at 4.4 GHz at 0% load, running hot (60°C–70°C) and exhausting thermal boost budget before workloads began. Furthermore, Intel GPU Framebuffer Compression (`enable_fbc`) was disabled, forcing the memory bus to stream ~2.2 GB/s of raw uncompressed display buffer at 120Hz.
+   - **Solution**: Configured `CPU_ENERGY_PERF_POLICY_ON_AC = "balance_performance"` (downclocks idle cores to 400 MHz–800 MHz while ramping to 4.7 GHz in <1ms under load) and `RUNTIME_PM_ON_AC = "auto"`. Added `"i915.enable_fbc=1"` to `boot.kernelParams` to free memory bandwidth for 3D games and compositor tasks.
+
 
 ---
 
