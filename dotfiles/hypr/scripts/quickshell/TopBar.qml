@@ -60,6 +60,22 @@ Variants {
                 id: mocha
             }
 
+            readonly property color pillBg: mocha.isLight
+                ? Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, 0.45)
+                : Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
+
+            readonly property color pillBgHover: mocha.isLight
+                ? Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.60)
+                : Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.60)
+
+            readonly property color pillBorder: mocha.isLight
+                ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08)
+                : Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+
+            readonly property color pillBorderHover: mocha.isLight
+                ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.15)
+                : Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.12)
+
             property bool showHelpIcon: true
             property bool isRecording: false
 
@@ -191,15 +207,12 @@ Variants {
 
             function cavaBarColor(barIndex, barCount, segIndex, segCount) {
                 let primary = mocha.mauve;
-                let horizFactor = (barCount <= 1) ? 1.0 : (0.60 + 0.40 * (barIndex / (barCount - 1)));
-                let vertFactor = (segCount <= 1) ? 1.0 : (0.45 + 0.55 * (segIndex / (segCount - 1)));
-                let brightness = horizFactor * vertFactor;
-
+                let vertFactor = (segCount <= 1) ? 1.0 : (0.85 + 0.15 * (segIndex / (segCount - 1)));
                 return Qt.rgba(
-                    primary.r * brightness,
-                    primary.g * brightness,
-                    primary.b * brightness,
-                    0.75 + 0.25 * vertFactor
+                    Math.min(1.0, primary.r * vertFactor),
+                    Math.min(1.0, primary.g * vertFactor),
+                    Math.min(1.0, primary.b * vertFactor),
+                    1.0
                 );
             }
 
@@ -468,10 +481,12 @@ Variants {
 
                     Rectangle {
                         id: workspacesBox
-                        color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
+                        color: barWindow.pillBg
                         radius: barWindow.s(14)
                         border.width: 1
-                        border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+                        border.color: barWindow.pillBorder
+                        Behavior on color { ColorAnimation { duration: 250 } }
+                        Behavior on border.color { ColorAnimation { duration: 250 } }
                         height: barWindow.barHeight
                         clip: true
 
@@ -622,8 +637,10 @@ Variants {
 
                     Rectangle {
                         id: mediaBox
-                        color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
-                        radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+                        color: barWindow.pillBg
+                        radius: barWindow.s(14); border.width: 1; border.color: barWindow.pillBorder
+                        Behavior on color { ColorAnimation { duration: 250 } }
+                        Behavior on border.color { ColorAnimation { duration: 250 } }
                         height: barWindow.barHeight
                         clip: true
 
@@ -663,12 +680,13 @@ Variants {
 
                                     Item {
                                          id: cavaVisualizer
-                                         anchors.verticalCenter: parent.verticalCenter
+                                         anchors.bottom: mediaInfoColumn.bottom
+                                         anchors.bottomMargin: Math.round(timeText.implicitHeight - timeText.baselineOffset)
                                          readonly property int barCount: 8
-                                         readonly property int segCount: 10
+                                         readonly property int segCount: 8
                                          readonly property real barW: barWindow.s(8)
                                          readonly property real barGap: barWindow.s(2)
-                                         readonly property real segH: barWindow.s(2.5)
+                                         readonly property real segH: barWindow.s(2)
                                          readonly property real segGap: barWindow.s(1)
                                          readonly property real maxBarH: segCount * (segH + segGap) - segGap
                                          readonly property real fullWidth: barCount * barW + (barCount - 1) * barGap
@@ -706,8 +724,8 @@ Variants {
                                                          anchors.bottomMargin: index * (cavaVisualizer.segH + cavaVisualizer.segGap)
 
                                                          property bool isLit: index < barCol.activeSegs
-                                                         visible: isLit || index === 0
-                                                         opacity: isLit ? 1.0 : 0.12
+                                                         visible: isLit
+                                                         opacity: 1.0
 
                                                          color: barWindow.cavaBarColor(barCol.index, cavaVisualizer.barCount, index, cavaVisualizer.segCount)
                                                      }
@@ -798,7 +816,7 @@ Variants {
                                             font.family: "JetBrains Mono"
                                             font.weight: Font.Bold
                                             font.pixelSize: barWindow.s(10.5)
-                                            color: mocha.subtext0
+                                            color: mocha.text
                                             width: parent.width
                                             elide: Text.ElideRight
                                             verticalAlignment: Text.AlignVCenter
@@ -815,8 +833,10 @@ Variants {
                             id: centerBox
                             property bool isHovered: centerMouse.containsMouse
                             property bool notifActive: NotifTicker.tickerVisible
-                            color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6) : Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
-                            radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.12 : 0.05)
+                            color: isHovered ? barWindow.pillBgHover : barWindow.pillBg
+                            radius: barWindow.s(14); border.width: 1; border.color: isHovered ? barWindow.pillBorderHover : barWindow.pillBorder
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
                         height: barWindow.barHeight
                         width: (centerBox.notifActive ? notifLayout.implicitWidth : centerLayout.implicitWidth) + barWindow.s(36)
                         Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutExpo } }
@@ -1120,9 +1140,11 @@ Variants {
                         Rectangle {
                             height: barWindow.barHeight
                             radius: barWindow.s(14)
-                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+                            border.color: barWindow.pillBorder
                             border.width: 1
-                            color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
+                            color: barWindow.pillBg
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
 
                             property real targetWidth: trayRepeater.count > 0 ? trayLayout.width + barWindow.s(24) : 0
                             width: targetWidth
@@ -1215,10 +1237,12 @@ Variants {
                         Rectangle {
                             height: barWindow.barHeight
                             radius: barWindow.s(14)
-                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+                            border.color: barWindow.pillBorder
                             border.width: 1
-                            color: Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
+                            color: barWindow.pillBg
                             clip: true
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
 
                             width: sysLayout.implicitWidth + barWindow.s(20)
 
@@ -1280,10 +1304,12 @@ Variants {
                             id: recButton
                             property bool isHovered: recMouse.containsMouse
 
-                            color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.6) : Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
+                            color: isHovered ? barWindow.pillBgHover : barWindow.pillBg
                             radius: barWindow.s(14)
                             border.width: 1
-                            border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.12 : 0.05)
+                            border.color: isHovered ? barWindow.pillBorderHover : barWindow.pillBorder
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
 
                             property real targetWidth: barWindow.isRecording ? barWindow.barHeight : 0
                             width: targetWidth

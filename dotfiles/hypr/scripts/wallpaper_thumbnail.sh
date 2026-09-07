@@ -11,10 +11,87 @@ COLOR_DIR="$CACHE_DIR/colors_markers"
 FLAT_DIR="$CACHE_DIR/flat"
 
 # Ensure target directories exist before processing
-mkdir -p "$THUMB" "$COLOR_DIR" "$FLAT_DIR"
+GIF_DIR="$HOME/.cache/converted_gifs"
+mkdir -p "$THUMB" "$COLOR_DIR" "$FLAT_DIR" "$GIF_DIR"
+
+# 1. Clean broken symlinks in flat/ and their associated cache
+if [ -d "$FLAT_DIR" ]; then
+    while IFS= read -r -d '' link; do
+        base=$(basename "$link")
+        raw_name="${base#*_}"
+        
+        rm -f "$THUMB/$base" "$THUMB/$base.jpg" "$THUMB/$raw_name" "$THUMB/$raw_name.jpg" 2>/dev/null || true
+        rm -f "$COLOR_DIR/${base}_HEX_"* "$COLOR_DIR/${raw_name}_HEX_"* 2>/dev/null || true
+        rm -f "$GIF_DIR/${base}.mp4" "$GIF_DIR/${raw_name}.mp4" 2>/dev/null || true
+        rm -f "$link" 2>/dev/null || true
+    done < <(find "$FLAT_DIR" -xtype l -print0 2>/dev/null)
+fi
+
+# 2. Sweep thumbs directory for orphaned thumbnails
+if [ -d "$THUMB" ] && [ -d "$FLAT_DIR" ]; then
+    for t in "$THUMB"/*; do
+        [ -f "$t" ] || continue
+        t_name=$(basename "$t")
+        clean_name="${t_name#*_}"
+        clean_no_jpg="${clean_name%.jpg}"
+        t_no_jpg="${t_name%.jpg}"
+
+        found=0
+        for candidate in "$t_name" "$t_no_jpg" "$clean_name" "$clean_no_jpg"; do
+            if [ -e "$FLAT_DIR/$candidate" ]; then
+                found=1
+                break
+            fi
+        done
+        [ "$found" -eq 0 ] && rm -f "$t" 2>/dev/null || true
+    done
+fi
+
+# 3. Sweep color markers for orphaned markers
+if [ -d "$COLOR_DIR" ] && [ -d "$FLAT_DIR" ]; then
+    for m in "$COLOR_DIR"/*; do
+        [ -f "$m" ] || continue
+        m_name=$(basename "$m")
+        wall_name="${m_name%_HEX_*}"
+        clean_wall="${wall_name#*_}"
+        clean_no_jpg="${clean_wall%.jpg}"
+        wall_no_jpg="${wall_name%.jpg}"
+
+        found=0
+        for candidate in "$wall_name" "$wall_no_jpg" "$clean_wall" "$clean_no_jpg"; do
+            if [ -e "$FLAT_DIR/$candidate" ]; then
+                found=1
+                break
+            fi
+        done
+        [ "$found" -eq 0 ] && rm -f "$m" 2>/dev/null || true
+    done
+fi
+
+# 4. Sweep converted_gifs for orphaned mp4s
+if [ -d "$GIF_DIR" ] && [ -d "$FLAT_DIR" ]; then
+    for g in "$GIF_DIR"/*.mp4; do
+        [ -f "$g" ] || continue
+        g_name=$(basename "$g" .mp4)
+        clean_gif="${g_name#*_}"
+        gif_name1="$clean_gif"
+        gif_name2="${clean_gif%.gif}.gif"
+        raw_name1="$g_name"
+        raw_name2="${g_name%.gif}.gif"
+
+        found=0
+        for candidate in "$raw_name1" "$raw_name2" "$gif_name1" "$gif_name2"; do
+            if [ -e "$FLAT_DIR/$candidate" ] || [ -f "$SRC/$candidate" ]; then
+                found=1
+                break
+            fi
+        done
+        [ "$found" -eq 0 ] && rm -f "$g" 2>/dev/null || true
+    done
+fi
 
 # Export the variables so they are accessible by the xargs subshells
-export THUMB COLOR_DIR FLAT_DIR
+export THUMB COLOR_DIR FLAT_DIR GIF_DIR
 
 # Define the processing logic as an exported function.
 process_wallpaper() {
@@ -71,5 +148,5 @@ export -f process_wallpaper
 CORES=$(nproc)
 THREADS=$(( CORES > 2 ? CORES - 1 : 1 ))
 
-# Execute the pipeline. Using -print0 and -0 safely handles filenames with spaces/newlines.
-find "$SRC" -type f -print0 | xargs -0 -P "$THREADS" -I {} bash -c 'process_wallpaper "$@"' _ {}
+# Execute the pipeline. Skip hidden paths and process only valid media files.
+find "$SRC" -not -path '*/.*' -type f \(     -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o     -iname '*.gif' -o -iname '*.mp4' -o -iname '*.mkv' -o -iname '*.mov' -o     -iname '*.webm' \) -print0 | xargs -0 -P "$THREADS" -I {} bash -c 'process_wallpaper "$@"' _ {}

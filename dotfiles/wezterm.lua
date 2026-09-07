@@ -6,7 +6,26 @@ config.window_close_confirmation = "NeverPrompt"
 config.hide_tab_bar_if_only_one_tab = true
 config.adjust_window_size_when_changing_font_size = false
 
-config.window_background_opacity = 0.0
+-- Dynamic background opacity: on light wallpapers, make terminal dark for contrast;
+-- on dark wallpapers, keep transparent as configured.
+local is_light = false
+local light_file = wezterm.home_dir .. "/.cache/matugen/wallpaper_is_light.txt"
+wezterm.add_to_config_reload_watch_list(light_file)
+
+local f = io.open(light_file, "r")
+if f then
+    local content = f:read("*all")
+    f:close()
+    if content and content:match("true") then
+        is_light = true
+    end
+end
+
+if is_light then
+    config.window_background_opacity = 0.42
+else
+    config.window_background_opacity = 0.0
+end
 
 -- Render via WebGpu (Vulkan/ANV): the iris-GL path on mesa 26.2 + i915 hangs
 -- (ecode 12:1:859ffffb) on this Alder Lake Iris Xe; the Vulkan path is clean.

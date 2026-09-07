@@ -22,8 +22,8 @@ if [ -f "$HOME/.cache/current_wallpaper.txt" ]; then
 fi
 
 if [ -z "$WALL" ]; then
-    WALL="$(find "$HOME/Pictures/Wallpapers" -maxdepth 1 -type f \( \
-        -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o \
+    WALL="$(find "$HOME/Pictures/Wallpapers" -not -path '*/.*' -type f \( \
+        -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o \
         -iname '*.gif' -o -iname '*.mp4' -o -iname '*.mkv' -o \
         -iname '*.mov' -o -iname '*.webm' \) -printf '%T@ %p\n' 2>/dev/null \
         | sort -rn | head -n 1 | cut -d' ' -f2-)"

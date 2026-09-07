@@ -10,6 +10,7 @@ hl.on("hyprland.start", function()
 
     hl.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/lock.sh")
     hl.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/boot_wallpaper.sh")
+    hl.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/wallpaper_watcher.sh")
 
     -- Idle
     hl.exec_cmd("hypridle")

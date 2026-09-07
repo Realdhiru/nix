@@ -571,7 +571,7 @@ Item {
     FolderListModel {
         id: srcModel
         folder: "file://" + window.srcDir
-        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm", "*.JPG", "*.JPEG", "*.PNG", "*.WEBP", "*.GIF", "*.MP4", "*.MKV", "*.MOV", "*.WEBM"]
         showDirs: false
         onCountChanged: {
             if (window.isDownloadingWallpaper && window.isDownloaded(window.currentDownloadName)) {
@@ -737,7 +737,7 @@ Item {
     FolderListModel {
         id: localFolderModel
         folder: window.flatSrcDir
-        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm", "*.JPG", "*.JPEG", "*.PNG", "*.WEBP", "*.GIF", "*.MP4", "*.MKV", "*.MOV", "*.WEBM"]
         showDirs: false
         sortField: FolderListModel.Name
         onCountChanged: window.syncLocalModel()
@@ -830,7 +830,7 @@ Item {
     FolderListModel {
         id: searchFolderModel
         folder: window.searchDir
-        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm"]
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mkv", "*.mov", "*.webm", "*.JPG", "*.JPEG", "*.PNG", "*.WEBP", "*.GIF", "*.MP4", "*.MKV", "*.MOV", "*.WEBM"]
         showDirs: false
         sortField: FolderListModel.Name
         onFolderChanged: {
@@ -957,8 +957,8 @@ Item {
             readonly property real targetHeight: isVisuallyEnlarged ? (window.itemHeight + window.s(30)) : window.itemHeight
             
             readonly property string thumbPath: window.currentFilter === "Search"
-                ? window.searchDir + "/" + safeFileName
-                : "file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName)
+                ? encodeURI(window.searchDir + "/" + safeFileName)
+                : encodeURI("file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName))
 
             width: matchesFilter ? (targetWidth + window.spacing) : 0
             visible: width > 0.1 || opacity > 0.01

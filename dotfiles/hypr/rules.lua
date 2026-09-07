@@ -2,19 +2,19 @@
 -- Opacity
 -- ======================================================
 
-hl.window_rule({ match = { class = "^codium$" }, opacity = "0.63" })
-hl.window_rule({ match = { class = "^antigravity-ide$" }, opacity = "0.71" })
-hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.6" })
+hl.window_rule({ match = { class = "^codium$" }, opacity = "0.57" })
+hl.window_rule({ match = { class = "^antigravity-ide$" }, opacity = "0.7" })
+hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.67" })
 
 -- Brave Apps
-hl.window_rule({ match = { class = "^brave-chat\\.openai\\.com__-Default$" }, opacity = "0.55" })                        -- ChatGPT
-hl.window_rule({ match = { class = "^brave-gemini\\.google\\.com__app-Default$" }, opacity = "0.55" })                   -- Gemini
-hl.window_rule({ match = { class = "^brave-claude\\.ai__new-Default$" }, opacity = "0.55" })                              -- Claude
-hl.window_rule({ match = { class = "^brave-monkeytype\\.com__-Default$" }, opacity = "0.50" })                            -- Monkeytype
-hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab25a38c938de4f8-Default$" }, opacity = "0.65" }) -- Notion
+hl.window_rule({ match = { class = "^brave-chat\\.openai\\.com__-Default$" }, opacity = "0.57" })                        -- ChatGPT
+hl.window_rule({ match = { class = "^brave-gemini\\.google\\.com__app-Default$" }, opacity = "0.57" })                   -- Gemini
+hl.window_rule({ match = { class = "^brave-claude\\.ai__new-Default$" }, opacity = "0.57" })                              -- Claude
+hl.window_rule({ match = { class = "^brave-monkeytype\\.com__-Default$" }, opacity = "0.57" })                            -- Monkeytype
+hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab25a38c938de4f8-Default$" }, opacity = "0.57" }) -- Notion
 
 -- Spotify Lyrics (Chromium)
-hl.window_rule({ match = { class = "^Chromium-browser$" }, opacity = "0.80" })
+hl.window_rule({ match = { class = "^Chromium-browser$" }, opacity = "0.57" })
 
 -- ======================================================
 -- Global Rules
