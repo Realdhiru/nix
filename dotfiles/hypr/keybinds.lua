@@ -43,6 +43,9 @@ hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr
 
 hl.bind(mainMod .. " + CTRL + SHIFT + V", hl.dsp.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/fix_audio.sh"))
 
+-- Toggle UI Dark / Normal Mode (Opacity & Contrast)
+hl.bind(mainMod .. " + CTRL + D", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/toggle_dark_mode.sh"))
+
 -- Reload Hyprland & Quickshell
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/reload.sh"))
 

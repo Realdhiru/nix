@@ -136,11 +136,11 @@ exec 8>&- 2>/dev/null || true
     # Rapid top luminance assessment for topbar contrast
     eval $(magick "$SEED[0]" -crop 100%x15%+0+0 -colorspace HSL -format "top_lum=%[fx:mean.b*100]" info: 2>/dev/null || echo "top_lum=50")
 
+    # Read user's chosen UI mode (manual toggle via CTRL+SUPER+D); do not override automatically
     is_light="false"
-    if (( $(echo "${top_lum:-50} > 55" | bc -l 2>/dev/null || echo 0) )); then
-        is_light="true"
+    if [ -f "$HOME/.cache/matugen/wallpaper_is_light.txt" ]; then
+        is_light=$(cat "$HOME/.cache/matugen/wallpaper_is_light.txt" 2>/dev/null || echo "false")
     fi
-    echo "$is_light" > "$HOME/.cache/matugen/wallpaper_is_light.txt"
 
     # Intelligent color scheme extraction:
     # 1. B&W / desaturated / washed-out pale wallpapers (Sat < 18%) -> scheme-monochrome (prefers pure white #FFFFFF, zero fake cyan).

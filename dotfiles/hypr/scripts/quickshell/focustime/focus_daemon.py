@@ -363,9 +363,17 @@ def get_active_window_hyprctl():
 
 def is_locked():
     try:
-        subprocess.check_output(['pgrep', '-x', 'hyprlock'])
-        return True
-    except subprocess.CalledProcessError:
+        with os.scandir('/proc') as it:
+            for entry in it:
+                if entry.name.isdigit():
+                    try:
+                        with open(f"/proc/{entry.name}/comm", "rb") as f:
+                            if f.read().startswith(b"hyprlock"):
+                                return True
+                    except (FileNotFoundError, PermissionError):
+                        continue
+        return False
+    except Exception:
         return False
 
 def resolve_hypr_signature():

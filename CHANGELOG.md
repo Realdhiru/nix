@@ -45,6 +45,14 @@
    - **Root Cause**: On AC power, `CPU_ENERGY_PERF_POLICY_ON_AC = "performance"` forced all 12 cores to remain pegged at 4.4 GHz at 0% load, running hot (60°C–70°C) and exhausting thermal boost budget before workloads began. Furthermore, Intel GPU Framebuffer Compression (`enable_fbc`) was disabled, forcing the memory bus to stream ~2.2 GB/s of raw uncompressed display buffer at 120Hz.
    - **Solution**: Configured `CPU_ENERGY_PERF_POLICY_ON_AC = "balance_performance"` (downclocks idle cores to 400 MHz–800 MHz while ramping to 4.7 GHz in <1ms under load) and `RUNTIME_PM_ON_AC = "auto"`. Added `"i915.enable_fbc=1"` to `boot.kernelParams` to free memory bandwidth for 3D games and compositor tasks.
 
+10. **Focus Daemon Zero-Fork In-Process Screen Lock Detection (`dotfiles/hypr/scripts/quickshell/focustime/focus_daemon.py`)**:
+    - **Root Cause**: `focus_daemon.py` called `subprocess.check_output(['pgrep', '-x', 'hyprlock'])` every 1 second in its main tracking loop, spawning 3,600 external processes per hour and interrupting CPU sleep states.
+    - **Solution**: Replaced the subprocess call with direct in-process `/proc` scanning (`os.scandir('/proc')`), eliminating all fork/exec overhead while preserving lock detection.
+
+11. **Manual Dark Mode / Normal UI Mode Toggle (`keybinds.lua`, `set_wallpaper.sh`, `toggle_dark_mode.sh`)**:
+    - **Change**: Replaced automatic luminance-based dark mode triggering with a manual keybind toggle. Removed auto-overwriting of `wallpaper_is_light.txt` in `set_wallpaper.sh` so the user's selected mode persists across wallpaper changes.
+    - **Keybind**: Bound `CTRL + SUPER + D` to `toggle_dark_mode.sh`. Toggles between Normal mode (100% transparent terminal, translucent TopBar pills) and Dark Contrast mode (0.42 frosted dark terminal, high-contrast TopBar pills) with live Quickshell/WezTerm reload and low-priority OSD notification.
+
 
 ---
 
