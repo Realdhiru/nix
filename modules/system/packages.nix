@@ -63,8 +63,10 @@ in
     file gsettings-desktop-schemas
 
     antigravity-ide
-
-
   ];
 
+  programs.appimage = {
+    enable = true;
+    binfmt = true;
+  };
 }

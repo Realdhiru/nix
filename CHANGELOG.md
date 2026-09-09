@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-09-10 — Declarative AppImage Execution via binfmt_misc (`modules/system/packages.nix`)
+
+- **Context**: Running AppImages directly on NixOS previously failed because AppImages depend on standard FHS paths (`/lib64/ld-linux-x86-64.so.2`) absent in NixOS.
+- **Decision**: Enabled `programs.appimage = { enable = true; binfmt = true; };` in `modules/system/packages.nix`.
+- **Result**: Automatically installs `appimage-run` and registers the AppImage ELF binary header in kernel `binfmt_misc`. AppImages can now be executed directly (`./app.AppImage` or via GUI file manager/Rofi) without manually invoking `appimage-run`.
+
 ## 2026-09-07 — Reproducible KDE Connect Remote Input, Presentation Remote & Drawing Tablet on Hyprland
 
 ### Fixed & Implemented
