@@ -17,6 +17,16 @@ hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab
 hl.window_rule({ match = { class = "^Chromium-browser$" }, opacity = "0.57" })
 
 -- ======================================================
+-- Neo Browser (Xephyr :7 — dedicated nested X server)
+-- Fills the display with native resolution so content
+-- renders crisp without 1/4 quadrant letterboxing.
+-- ======================================================
+
+hl.window_rule({ match = { class = "^Xephyr$" }, float = true })
+hl.window_rule({ match = { class = "^Xephyr$" }, size = { "100%", "100%" } })
+hl.window_rule({ match = { class = "^Xephyr$" }, center = true })
+
+-- ======================================================
 -- Global Rules
 -- ======================================================
 
