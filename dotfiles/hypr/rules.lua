@@ -18,12 +18,13 @@ hl.window_rule({ match = { class = "^Chromium-browser$" }, opacity = "0.57" })
 
 -- ======================================================
 -- Neo Browser (Xephyr :7 — dedicated nested X server)
--- Fills the display with native resolution so content
--- renders crisp without 1/4 quadrant letterboxing.
+-- Xephyr root is 1440x810 (logical resolution). XWayland
+-- halves it to 720x405; this rule forces the host window
+-- back to full logical size so the content appears 2×.
 -- ======================================================
 
 hl.window_rule({ match = { class = "^Xephyr$" }, float = true })
-hl.window_rule({ match = { class = "^Xephyr$" }, size = { "100%", "100%" } })
+hl.window_rule({ match = { class = "^Xephyr$" }, size = { 1440, 810 } })
 hl.window_rule({ match = { class = "^Xephyr$" }, center = true })
 
 -- ======================================================
