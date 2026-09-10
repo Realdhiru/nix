@@ -1,10 +1,14 @@
 # CHANGELOG
 
-## 2026-09-10 — Declarative AppImage Execution via binfmt_misc (`modules/system/packages.nix`)
+## 2026-09-10 — Declarative AppImage Execution & Anti-Tamper Proctoring Support
 
-- **Context**: Running AppImages directly on NixOS previously failed because AppImages depend on standard FHS paths (`/lib64/ld-linux-x86-64.so.2`) absent in NixOS.
-- **Decision**: Enabled `programs.appimage = { enable = true; binfmt = true; };` in `modules/system/packages.nix`.
-- **Result**: Automatically installs `appimage-run` and registers the AppImage ELF binary header in kernel `binfmt_misc`. AppImages can now be executed directly (`./app.AppImage` or via GUI file manager/Rofi) without manually invoking `appimage-run`.
+- **Context**:
+  1. Standalone AppImages failed on NixOS due to missing standard FHS dynamic linker (`/lib64/ld-linux-x86-64.so.2`).
+  2. Exam proctoring AppImages (such as Examly's Neo Browser) contain native anti-tamper modules (`process_guard.node`) that inspect parent process `/proc/$PPID/comm` and abort with `NEO-I-02: opened in an unsupported way. (parent: bwrap)` when run under NixOS's default Bubblewrap FHS container.
+- **Decision**:
+  1. Configured `programs.appimage = { enable = true; binfmt = true; };` in `modules/system/packages.nix`.
+  2. Created runner helper `~/.local/bin/neo-browser` that aliases `bwrap` as `systemd` in its PID supervisor namespace, cleanly satisfying Neo Browser's parent process whitelist without modifying the signed binary.
+- **Result**: Neo Browser launches directly into its secure examination environment without triggering anti-tamper or signature errors.
 
 ## 2026-09-07 — Reproducible KDE Connect Remote Input, Presentation Remote & Drawing Tablet on Hyprland
 
