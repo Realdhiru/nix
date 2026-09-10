@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-09-10 — Declarative Flatpak & GNOME Software Center Support (`modules/system/services.nix`, `modules/system/packages.nix`)
+
+- **Context**: User requested installing and using Flatpak applications via a GUI Software Center app on Hyprland.
+- **Decision**:
+  1. Enabled `services.flatpak.enable = true;` in `modules/system/services.nix` (auto-wires system polkit, dbus, and export paths into environment profiles).
+  2. Created systemd oneshot service `systemd.services.flatpak-repo` to automatically register the Flathub remote repository (`https://dl.flathub.org/repo/flathub.flatpakrepo`).
+  3. Added `gnome-software` to `modules/system/packages.nix` providing the official graphical Software Center to browse, install, and manage Flatpaks.
+- **Result**: Users can open "Software" from Rofi/launcher, browse Flathub apps visually, install them with one click, and launch them seamlessly from Rofi.
+
 ## 2026-09-10 — Declarative AppImage Execution & Anti-Tamper Proctoring Support
 
 - **Context**:

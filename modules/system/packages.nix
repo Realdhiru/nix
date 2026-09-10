@@ -63,6 +63,7 @@ in
     file gsettings-desktop-schemas
 
     antigravity-ide
+    gnome-software
   ];
 
   programs.appimage = {
