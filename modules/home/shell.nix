@@ -20,9 +20,6 @@
     };
 
     initContent = ''
-      if [ -z "$DISPLAY" ] && [ "''${XDG_VTNR:-0}" = "1" ]; then
-          exec start-hyprland
-      fi
       # Rebuild safety policy (2026-08-16 i915 incident, docs/decisions.md):
       #   record known-good -> commit -> BUILD (no activation on failure) ->
       #   switch -> health gate -> auto-rollback on critical checks.

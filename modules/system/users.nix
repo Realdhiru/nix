@@ -13,8 +13,7 @@
     shell = pkgs.zsh;
   };
 
-  services.getty.autologinUser = "realdhiru";
-  services.getty.autologinOnce = true;
+
 
   # Narrowly-scoped passwordless sudo for the exact commands the Quickshell
   # power-profile/battery popup and audio-recovery script need to run as

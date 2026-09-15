@@ -24,30 +24,68 @@ fi
 
 [ -n "$MONITOR" ] || exit 1
 
-CUR=$(hyprctl monitors -j 2>/dev/null | python3 -c "
+CUR=""
+if grep -q "^monitor=$MONITOR,.*,transform,2" "$CACHE_FILE" 2>/dev/null; then
+    CUR=2
+elif grep -q "^monitor=$MONITOR,.*,transform,0" "$CACHE_FILE" 2>/dev/null; then
+    CUR=0
+fi
+
+if [ -z "$CUR" ]; then
+    CUR=$(hyprctl monitors -j 2>/dev/null | python3 -c "
 import json, sys
-monitors = json.load(sys.stdin)
-for m in monitors:
-    if m['name'] == '$MONITOR':
-        print(m['transform']); break
+try:
+    for m in json.load(sys.stdin):
+        if m['name'] == '$MONITOR':
+            print(m.get('transform', 0)); break
+except: pass
 ")
+fi
 CUR="${CUR:-0}"
 
-if [ "$CUR" = "2" ]; then NEW=0; else NEW=2; fi
+TARGET_ARG="${1:-toggle}"
+if [ "$TARGET_ARG" = "0" ] || [ "$TARGET_ARG" = "normal" ]; then
+    NEW=0
+elif [ "$TARGET_ARG" = "2" ] || [ "$TARGET_ARG" = "180" ] || [ "$TARGET_ARG" = "inverted" ]; then
+    NEW=2
+elif [ "$CUR" = "2" ]; then
+    NEW=0
+else
+    NEW=2
+fi
 
 # Base monitor spec (everything before any ,transform,N segment)
+BASE=""
 if grep -q "^monitor=$MONITOR," "$CACHE_FILE" 2>/dev/null; then
-    BASE="$(grep "^monitor=$MONITOR," "$CACHE_FILE" | head -n 1 | sed -E 's/,transform,[0-9]*//' | cut -d= -f2-)"
-else
-    BASE="$MONITOR"
-    echo "monitor=$MONITOR" >> "$CACHE_FILE"
+    BASE="$(grep "^monitor=$MONITOR," "$CACHE_FILE" | head -n 1 | sed -E 's/,transform[=,][0-9]+//g' | cut -d= -f2-)"
 fi
 
-# Update the cache: strip any old transform, append the new one unless 0
-sed -i "/^monitor=$MONITOR,/ s/,transform,[0-9]*//" "$CACHE_FILE"
-if [ "$NEW" != "0" ]; then
-    sed -i "/^monitor=$MONITOR,/ s|\$|,transform,$NEW|" "$CACHE_FILE"
+IFS=',' read -r -a BASE_FIELDS <<< "$BASE"
+if [ "${#BASE_FIELDS[@]}" -lt 4 ]; then
+    # Fallback to querying hyprctl monitors directly
+    MON_INFO=$(hyprctl monitors -j 2>/dev/null | python3 -c "
+import json, sys
+try:
+    for m in json.load(sys.stdin):
+        if m['name'] == '$MONITOR':
+            w = m['width']; h = m['height']; rr = round(m['refreshRate'])
+            x = m['x']; y = m['y']; scl = m['scale']
+            print(f'{w}x{h}@{rr},{x}x{y},{scl}')
+            break
+except: pass
+")
+    if [ -n "$MON_INFO" ]; then
+        BASE="$MONITOR,$MON_INFO,bitdepth,10"
+        IFS=',' read -r -a BASE_FIELDS <<< "$BASE"
+    fi
 fi
+
+# Update the cache atomically: replace or append monitor spec with new transform
+ENTRY="monitor=$BASE,transform,$NEW"
+if grep -q "^monitor=$MONITOR" "$CACHE_FILE" 2>/dev/null; then
+    sed -i "/^monitor=$MONITOR/d" "$CACHE_FILE"
+fi
+echo "$ENTRY" >> "$CACHE_FILE"
 
 # Also persist in central state file ~/.config/hypr/settings.json
 SETTINGS_FILE="$HOME/.config/hypr/settings.json"
@@ -60,13 +98,10 @@ fi
 
 # Apply live (explicit transform so restoring to 0 works).
 # Lua engine: hyprctl keyword is rejected, use eval with the same fields.
-# Base spec format (cache-compatible): NAME,MODE,POS,SCALE[,bitdepth,B][,cm,C]
-# (fallback BASE = bare monitor name, all other fields at legacy defaults)
-IFS=',' read -r -a BASE_FIELDS <<< "$BASE"
 OUTPUT="${BASE_FIELDS[0]}"
 LUA_MON="hl.monitor({output='$OUTPUT',transform=$NEW"
-if [ "${#BASE_FIELDS[@]}" -ge 2 ]; then
-    LUA_MON="$LUA_MON,mode='${BASE_FIELDS[1]}',position='${BASE_FIELDS[2]}',scale='${BASE_FIELDS[3]}'"
+if [ "${#BASE_FIELDS[@]}" -ge 4 ]; then
+    LUA_MON="$LUA_MON,mode='${BASE_FIELDS[1]}',position='${BASE_FIELDS[2]}',scale=${BASE_FIELDS[3]}"
     i=4
     while [ $i -lt "${#BASE_FIELDS[@]}" ]; do
         case "${BASE_FIELDS[$i]}" in
@@ -76,7 +111,14 @@ if [ "${#BASE_FIELDS[@]}" -ge 2 ]; then
         i=$((i + 2))
     done
 fi
-hyprctl eval "$LUA_MON})" >/dev/null 2>&1
+hyprctl eval "$LUA_MON}); hl.exec_scheduled_prop_refresh_immediately()" >/dev/null 2>&1
+
+if [ "$NEW" = "2" ]; then
+    notify-send -a "Display" -i video-display "Orientation: 180° Inverted" "Screen rotated 180 degrees" 2>/dev/null || true
+else
+    notify-send -a "Display" -i video-display "Orientation: Standard" "Screen restored to standard orientation" 2>/dev/null || true
+fi
+
 
 # Re-commit the wallpaper layer surface to the rotated output. A 180° toggle
 # keeps logical dimensions, so a full daemon restart (ensure_awww.sh

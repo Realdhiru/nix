@@ -1251,8 +1251,57 @@ Item {
                             }
                         }
 
+                        Rectangle {
+                            id: flip180Btn
+                            Layout.alignment: Qt.AlignVCenter
+                            Layout.preferredWidth: window.s(84)
+                            Layout.preferredHeight: window.s(36)
+                            Layout.leftMargin: window.s(16)
+                            radius: window.s(10)
+                            property bool isCurrent180: monitorsModel.count > 0 && monitorsModel.get(window.activeEditIndex).transform === 2
+                            color: flip180Ma.containsMouse ? window.surface1 : (isCurrent180 ? Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, 0.2) : window.surface0)
+                            border.color: flip180Ma.containsMouse ? window.surface2 : (isCurrent180 ? window.mauve : window.surface1)
+                            border.width: 1
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: window.s(6)
+                                Text {
+                                    font.family: "Iosevka Nerd Font"
+                                    font.pixelSize: window.s(16)
+                                    color: flip180Btn.isCurrent180 ? window.mauve : window.text
+                                    text: "󰑮"
+                                }
+                                Text {
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: window.s(12)
+                                    font.weight: Font.Bold
+                                    color: flip180Btn.isCurrent180 ? window.mauve : window.text
+                                    text: "180°"
+                                }
+                            }
+
+                            MouseArea {
+                                id: flip180Ma
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (monitorsModel.count === 0) return;
+                                    window.activeFocusIndex = 1;
+                                    let curT = monitorsModel.get(window.activeEditIndex).transform || 0;
+                                    let newT = curT === 2 ? 0 : 2;
+                                    monitorsModel.setProperty(window.activeEditIndex, "transform", newT);
+                                    delayedLayoutUpdate.restart();
+                                }
+                            }
+                        }
+
                         Item { Layout.fillWidth: true }
-                    }                    Item { Layout.preferredHeight: window.s(2) }
+                    }
+                    Item { Layout.preferredHeight: window.s(2) }
 
                     // --- REFRESH RATE SLIDER SECTION ---
                     Item {

@@ -151,4 +151,10 @@
     wants = [ "graphical-session.target" ];
     before = [ "graphical-session.target" ];
   };
+
+  # Ly console display manager
+  services.displayManager.ly = {
+    enable = true;
+  };
+  services.displayManager.defaultSession = "hyprland";
 }

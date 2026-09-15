@@ -51,6 +51,20 @@ local function apply_power_monitor()
         end
         i = i + 2
     end
+    if mon.transform == nil then
+        local sf = io.open(os.getenv("HOME") .. "/.config/hypr/settings.json", "r")
+        if sf then
+            local content = sf:read("*a")
+            sf:close()
+            if content then
+                local tf = content:match('"transform"%s*:%s*(%d+)')
+                if tf and tonumber(tf) ~= 0 then
+                    mon.transform = tonumber(tf)
+                end
+            end
+        end
+    end
+    mon.transform = mon.transform or 0
     hl.monitor(mon)
 end
 apply_power_monitor()

@@ -998,6 +998,42 @@ Item {
                                 onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle network"])
                             }
                         }
+
+                        Rectangle {
+                            id: rotateBtn
+                            width: window.s(44); height: window.s(48); radius: window.s(10)
+                            color: rotateBtnMa.containsMouse ? window.surface1 : (SysData.isRotated ? Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, 0.2) : window.surface0)
+                            border.color: rotateBtnMa.containsMouse ? window.surface2 : (SysData.isRotated ? window.mauve : window.surface1)
+                            border.width: 1
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                            Rectangle {
+                                anchors.fill: parent; radius: window.s(10)
+                                color: SysData.isRotated ? window.mauve : window.text
+                                opacity: SysData.isRotated ? 0.15 : 0.05
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                font.family: "Iosevka Nerd Font"
+                                font.pixelSize: window.s(20)
+                                color: rotateBtnMa.containsMouse ? window.text : (SysData.isRotated ? window.mauve : window.overlay1)
+                                text: "󰑮"
+                                rotation: SysData.isRotated ? 180 : 0
+                                Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+
+                            MouseArea {
+                                id: rotateBtnMa
+                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/rotate_display.sh"]);
+                                }
+                            }
+                        }
                     }
 
                     Rectangle {

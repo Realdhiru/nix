@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 2026-09-16 — Ly Display Manager, Autologin Removal & Deterministic 180° Screen Inversion
+
+- **Context**: 
+  1. User requested switching display management to `ly` (terminal-based, lightweight display manager) and removing automatic getty console login on TTY 1.
+  2. User frequently uses the laptop tilted 180° and needed persistent display orientation across reboots, power state transitions (AC/battery profile switches via `SysData.qml`), and Hyprland reloads, along with quick 1-click UI toggles and hotkey support (`Ctrl + Escape`).
+- **Decision**:
+  1. **Ly Display Manager & Session Management (`modules/system/services.nix`, `modules/system/users.nix`, `modules/home/shell.nix`)**:
+     - Enabled `services.displayManager.ly.enable = true;` and `services.displayManager.defaultSession = "hyprland";`.
+     - Removed `services.getty.autologinUser` and `services.getty.autologinOnce` from `modules/system/users.nix`.
+     - Removed automated `exec start-hyprland` check on TTY 1 in `programs.zsh.initContent` from `modules/home/shell.nix`, allowing Ly to cleanly manage session authentication and compositor launch.
+  2. **Deterministic Dynamic Screen Orientation & Atomic State Sync (`dotfiles/hypr/scripts/rotate_display.sh`)**:
+     - Identified that Hyprland Lua `hl.monitor()` calls stage monitor modes in memory but require `hl.exec_scheduled_prop_refresh_immediately()` to trigger immediate DRM/KMS live pageflips without requiring a full compositor restart.
+     - Synchronized orientation state between `~/.cache/hypr_power_monitor.conf` and `~/.config/hypr/settings.json`, ensuring cached format `,transform,<0|2>` preserves refresh rate and scaling settings (`2880x1620@120,auto,2,bitdepth,10`).
+     - Added symlink `~/.local/bin/rotate-display` pointing directly to `rotate_display.sh`.
+  3. **Power Profile & Battery Transition Safety (`dotfiles/hypr/scripts/quickshell/SysData.qml`, `dotfiles/hypr/hyprland.lua`)**:
+     - Fixed `SysData.qml` omitting the transform parameter during battery/AC power state line generation.
+     - Added reactive `FileView` in `SysData.qml` to track `isRotated` and `displayTransform` without polling.
+     - Updated `hyprland.lua` `apply_power_monitor()` to parse the cached transform and fall back to `settings.json`.
+  4. **QuickShell UI 180° Inversion Controls (`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`, `dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml`)**:
+     - Added an orientation toggle button (`󰑮`) in `BatteryPopup.qml` header alongside the network button with visual rotation state cues.
+     - Added a dedicated "180° Flip" button (`flip180Btn`) in `MonitorPopup.qml` beside the rotary transform dial for single-click inverted/normal switching.
+- **Result**: Clean Ly terminal login screen, permanent screen orientation persistence across battery/AC transitions and Hyprland reloads, and instant 180° screen rotation via keyboard shortcut (`Ctrl + Escape`) or QuickShell popup buttons.
+
 ## 2026-09-10 — Declarative Flatpak & GNOME Software Center Support (`modules/system/services.nix`, `modules/system/packages.nix`)
 
 - **Context**: User requested installing and using Flatpak applications via a GUI Software Center app on Hyprland.

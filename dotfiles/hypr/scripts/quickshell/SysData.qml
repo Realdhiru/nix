@@ -213,6 +213,27 @@ Item {
     property string saverVisualState: "normal" // "normal" | "applying-saver" | "saver-applied" | "restoring"
     readonly property int displayRefreshRate: _displayRefreshRate
     property int _displayRefreshRate: 60
+    readonly property int displayTransform: _displayTransform
+    property int _displayTransform: 0
+    readonly property bool isRotated: _displayTransform === 2
+
+    FileView {
+        id: monitorConfView
+        path: Quickshell.env("HOME") + "/.cache/hypr_power_monitor.conf"
+        onLoaded: root._updateTransformFromConf()
+        onFileChanged: root._updateTransformFromConf()
+    }
+
+    function _updateTransformFromConf() {
+        if (!monitorConfView.exists()) return;
+        let content = monitorConfView.text();
+        let match = content.match(/transform,(\d+)/);
+        if (match) {
+            root._displayTransform = parseInt(match[1]);
+        } else {
+            root._displayTransform = 0;
+        }
+    }
 
     property bool _manualOverride: false
     property bool _acInitialized: false
@@ -344,15 +365,15 @@ Item {
                 RES=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n) | "\\(.width)x\\(.height)"')
                 SCALE=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).scale')
                 TRANSFORM=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).transform')
-                TRANSFORM_STR=""
-                [ -n "$TRANSFORM" ] && [ "$TRANSFORM" != "0" ] && TRANSFORM_STR=",transform=$TRANSFORM"
+                TRANSFORM_VAL="${TRANSFORM:-0}"
 
-                echo "monitor=$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10" > ~/.cache/hypr_power_monitor.conf
+                echo "monitor=$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10,transform,$TRANSFORM_VAL" > ~/.cache/hypr_power_monitor.conf
 
                 CUR_RR=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).refreshRate' | awk '{print int($1 + 0.5)}')
                 if [ "$CUR_RR" != "${targetRR}" ]; then
-                    hyprctl eval "hl.monitor({output='$INT_MON',mode='$RES@${targetRR}',position='auto',scale=$SCALE,bitdepth=10$TRANSFORM_STR})" 2>/dev/null
+                    hyprctl eval "hl.monitor({output='$INT_MON',mode='$RES@${targetRR}',position='auto',scale=$SCALE,bitdepth=10,transform=$TRANSFORM_VAL}); hl.exec_scheduled_prop_refresh_immediately()" 2>/dev/null
                 fi
+
             fi
         `;
 
