@@ -45,17 +45,23 @@
     force = true;
   };
 
-  xdg.configFile."wezterm/wezterm.lua".source =
-    config.lib.file.mkOutOfStoreSymlink
+  xdg.configFile."wezterm/wezterm.lua" = {
+    source = config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/wezterm.lua";
+    force = true;
+  };
 
-  xdg.configFile."fastfetch/config.jsonc".source =
-    config.lib.file.mkOutOfStoreSymlink
+  xdg.configFile."fastfetch/config.jsonc" = {
+    source = config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/fastfetch.jsonc";
+    force = true;
+  };
       
-  xdg.configFile."matugen".source =
-    config.lib.file.mkOutOfStoreSymlink
+  xdg.configFile."matugen" = {
+    source = config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/matugen";
+    force = true;
+  };
 
   xdg.configFile."opencode/ponytail".source =
     config.lib.file.mkOutOfStoreSymlink "${inputs.ponytail}";

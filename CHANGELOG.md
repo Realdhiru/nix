@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 2026-09-16 — Rebuild Activation Stability: Home Manager Force Clobber & Flatpak Offline Resilience
+
+- **Context**: `nixos-rebuild switch` failed during activation with unit failures in `home-manager-realdhiru.service` (clobber conflict on `~/.config/matugen`) and `flatpak-repo.service` (`Could not resolve hostname dl.flathub.org`).
+- **Decision**:
+  1. **Home Manager Overwrite & Backup Protection (`home.nix`, `flake.nix`)**:
+     - Added `force = true;` to `xdg.configFile."matugen"`, `xdg.configFile."wezterm/wezterm.lua"`, and `xdg.configFile."fastfetch/config.jsonc"` in `home.nix` so out-of-store symlinks are cleanly replaced without activation errors.
+     - Added `home-manager.backupFileExtension = "hm-backup";` in `flake.nix` to ensure unmanaged conflicting dotfiles are automatically backed up rather than failing system activation.
+     - Re-linked `~/.config/matugen` and `~/.config/rofi` to the authoritative `~/nix/dotfiles/*` paths.
+  2. **Flatpak Systemd Unit Ordering & Offline Resilience (`modules/system/services.nix`)**:
+     - Configured `systemd.services.flatpak-repo` with `after = [ "network-online.target" ];` and `wants = [ "network-online.target" ];` so it does not fire prematurely while networking daemons are restarting.
+     - Marked service as `Type = "oneshot"; RemainAfterExit = true;` and added a pre-check (`grep -qx "flathub"`) so already-registered remotes or offline rebuilds will never cause service failure.
+- **Result**: `nixos-rebuild build` evaluates and builds cleanly with no activation blockers.
+
 ## 2026-09-16 — Ly Display Manager, Autologin Removal & Deterministic 180° Screen Inversion
 
 - **Context**: 
