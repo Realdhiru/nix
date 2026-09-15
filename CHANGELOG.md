@@ -17,6 +17,7 @@
   3. **Power Profile & Battery Transition Safety (`dotfiles/hypr/scripts/quickshell/SysData.qml`, `dotfiles/hypr/hyprland.lua`)**:
      - Fixed `SysData.qml` omitting the transform parameter during battery/AC power state line generation.
      - Added reactive `FileView` in `SysData.qml` to track `isRotated` and `displayTransform` without polling.
+     - Fixed QML syntax crash by escaping bash parameter expansion (`\${TRANSFORM:-0}`) in JS template literal and removing nonexistent `.exists()` on `FileView`.
      - Updated `hyprland.lua` `apply_power_monitor()` to parse the cached transform and fall back to `settings.json`.
   4. **QuickShell UI 180° Inversion Controls (`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`, `dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml`)**:
      - Added an orientation toggle button (`󰑮`) in `BatteryPopup.qml` header alongside the network button with visual rotation state cues.

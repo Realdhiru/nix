@@ -220,13 +220,14 @@ Item {
     FileView {
         id: monitorConfView
         path: Quickshell.env("HOME") + "/.cache/hypr_power_monitor.conf"
+        watchChanges: true
         onLoaded: root._updateTransformFromConf()
         onFileChanged: root._updateTransformFromConf()
     }
 
     function _updateTransformFromConf() {
-        if (!monitorConfView.exists()) return;
         let content = monitorConfView.text();
+        if (!content) return;
         let match = content.match(/transform,(\d+)/);
         if (match) {
             root._displayTransform = parseInt(match[1]);
@@ -365,7 +366,7 @@ Item {
                 RES=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n) | "\\(.width)x\\(.height)"')
                 SCALE=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).scale')
                 TRANSFORM=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).transform')
-                TRANSFORM_VAL="${TRANSFORM:-0}"
+                TRANSFORM_VAL="\${TRANSFORM:-0}"
 
                 echo "monitor=$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10,transform,$TRANSFORM_VAL" > ~/.cache/hypr_power_monitor.conf
 
