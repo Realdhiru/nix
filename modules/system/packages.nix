@@ -37,7 +37,7 @@ in
     ntfs3g pcmanfm-qt kdePackages.filelight lxqt.lxqt-archiver ffmpegthumbnailer gdk-pixbuf librsvg webp-pixbuf-loader libheif libjxl
 
     # Launchers & Clipboard
-    rofi wl-clipboard cliphist
+    rofi fuzzel fd wl-clipboard cliphist
 
     # Screenshots & Recording
     grim slurp grimblast gpu-screen-recorder-gtk

@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 2026-09-16 — Fuzzel Application Launcher & Fast File Search Coexistence Trial
+
+- **Fuzzel & fd System Packages (`modules/system/packages.nix`)**:
+  - Added `fuzzel` (ultra-lightweight Wayland launcher) and `fd` (fast file crawler) to system packages alongside Rofi.
+- **Matching Glass Aesthetic (`dotfiles/fuzzel/fuzzel.ini`, `dotfiles/hypr/rules.lua`)**:
+  - Recreated the dark frosted glass aesthetic from `rofi/theme.rasi`: 14px JetBrains Mono font, 16px corner radius, left screen offset, `#00000073` translucent background, and Hyprland layer-shell blur (`blur = true`, `ignore_alpha = 0.1`, `animation = slide left`).
+- **Dual Vertical & Horizontal Navigation**:
+  - Configured vertical navigation (`Up`/`Down`, `Ctrl+N`/`Ctrl+P`, `Ctrl+J`/`Ctrl+K`) and horizontal navigation (`Left`/`Right` for paging).
+- **Interactive File Search (`dotfiles/hypr/scripts/fuzzel_file_search.sh`)**:
+  - Added an interactive file finder using `fd` to stream user directories (`~/Documents`, `~/Downloads`, `~/Pictures`, `~/Videos`, `~/Music`, `~/nix`, `~/Desktop`) into Fuzzel dmenu mode and open selections via `xdg-open`.
+- **Keybindings (`dotfiles/hypr/keybinds.lua`)**:
+  - `Super + Space`: Launch Fuzzel application launcher.
+  - `Super + Shift + F`: Launch Fuzzel interactive file search.
+  - `Super + A`: Kept on Rofi for comparison.
+
 ## 2026-09-16 — Bootloader Visibility, Stable Generation Pinning, Filelight & Desktop Fixes
 
 - **Bootloader Menu Generation Visibility (`modules/system/boot.nix`)**:

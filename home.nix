@@ -40,6 +40,12 @@
     force = true;
   };
 
+  xdg.configFile."fuzzel" = {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/fuzzel";
+    force = true;
+  };
+
   xdg.configFile."wezterm/wezterm.lua" = {
     source = config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/wezterm.lua";
