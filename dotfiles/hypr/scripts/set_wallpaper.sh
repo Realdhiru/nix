@@ -17,6 +17,12 @@ BASENAME=$(basename "$WALL")
 
 # 1. Update the wallpaper state cache file instantly
 mkdir -p "$HOME/.cache"
+if [ -f "$HOME/.cache/current_wallpaper.txt" ]; then
+    OLD_WALL="$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null || true)"
+    if [ -n "$OLD_WALL" ] && [ "$OLD_WALL" != "$WALL" ] && [ -f "$OLD_WALL" ]; then
+        echo "$OLD_WALL" > "$HOME/.cache/previous_wallpaper.txt"
+    fi
+fi
 echo "$WALL" > "$HOME/.cache/current_wallpaper.txt"
 echo "$WALL" > "$HOME/.cache/last_wallpaper.txt"
 

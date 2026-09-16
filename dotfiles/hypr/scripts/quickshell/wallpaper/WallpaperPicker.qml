@@ -250,7 +250,9 @@ Item {
             if (window.hasSearched) {
                 window.isSearchPaused = true;
             }
+            Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; python3 ~/Pictures/Wallpapers/scripts/auto_organize.py"]);
         } else {
+            Quickshell.execDetached(["bash", "-c", "mkdir -p '" + Caching.getRunDir("wallpaper_picker") + "'; touch '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
             window.isFilterAnimating = true;
             filterAnimationTimer.restart();
             if (window.currentFilter !== "Search") {
@@ -295,7 +297,15 @@ Item {
                                (window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused && window.visibleItemCount === 0) || 
                                (window.currentFilter !== "Search" && window.isLoading)
 
+    property string statusToast: ""
+    Timer {
+        id: toastTimer
+        interval: 2000
+        onTriggered: window.statusToast = ""
+    }
+
     property string currentNotification: {
+        if (window.statusToast !== "") return window.statusToast;
         if (window.isDownloadingWallpaper) return "Downloading wallpaper...";
         if (window.currentFilter === "Search") {
             if (!window.hasSearched) return "Type something to search...";
@@ -381,6 +391,130 @@ Item {
             if (srcModel.get(i, "fileName") === name) return true;
         }
         return false;
+    }
+
+    function deleteCurrentWallpaper() {
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (!targetModel || targetModel.count === 0) return;
+        let idx = view.currentIndex;
+        if (idx < 0 || idx >= targetModel.count) return;
+
+        let item = targetModel.get(idx);
+        if (!item || !item.fileName) return;
+
+        let fileName = String(item.fileName);
+        const escapeBash = (str) => String(str).replace(/(["\\$`])/g, '\\$1');
+
+        if (window.currentFilter === "Search") {
+            let destFile = window.srcDir + "/" + fileName;
+            let thumbPath = decodeURIComponent(window.searchDir.replace("file://", "")) + "/" + fileName;
+            let mapFile = Caching.getCacheDir("wallpaper_picker") + "/search_map.txt";
+
+            let deleteSearchScript = `
+                export DEST_FILE="${escapeBash(destFile)}"
+                export THUMB_PATH="${escapeBash(thumbPath)}"
+                export MAP_FILE="${escapeBash(mapFile)}"
+                export FILE_NAME="${escapeBash(fileName)}"
+
+                CUR_WALL="$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null || true)"
+                if [ "$CUR_WALL" = "$DEST_FILE" ] || [[ "$CUR_WALL" == *"/$FILE_NAME" ]]; then
+                    PREV="$(cat "$HOME/.cache/previous_wallpaper.txt" 2>/dev/null || true)"
+                    if [ -n "$PREV" ] && [ -f "$PREV" ] && [ "$PREV" != "$CUR_WALL" ]; then
+                        ~/.config/hypr/scripts/set_wallpaper.sh "$PREV"
+                    else
+                        ~/.config/hypr/scripts/boot_wallpaper.sh
+                    fi
+                fi
+
+                rm -f "$DEST_FILE" "\${DEST_FILE}.tmp"
+                rm -f "$THUMB_PATH"
+                if [ -f "$MAP_FILE" ]; then
+                    grep -v "^\$FILE_NAME|" "\$MAP_FILE" > "\${MAP_FILE}.tmp" 2>/dev/null && mv "\${MAP_FILE}.tmp" "\$MAP_FILE" || rm -f "\${MAP_FILE}.tmp"
+                fi
+            `;
+            Quickshell.execDetached(["bash", "-c", deleteSearchScript]);
+
+            if (window.downloadedSearchMap && window.downloadedSearchMap[fileName]) {
+                let map = window.downloadedSearchMap;
+                delete map[fileName];
+                window.downloadedSearchMap = map;
+            }
+
+            window.isModelChanging = true;
+            targetModel.remove(idx);
+            window.isModelChanging = false;
+
+            if (idx >= targetModel.count) idx = Math.max(0, targetModel.count - 1);
+            view.currentIndex = idx;
+            window.updateVisibleCount();
+            window.statusToast = "Wallpaper deleted";
+            toastTimer.restart();
+            return;
+        }
+
+        // Local filters (All, GIFs, Videos)
+        let flatPath = window.flatSrcDir.replace("file://", "") + "/" + fileName;
+        let deleteLocalScript = `
+            export FLAT_PATH="${escapeBash(flatPath)}"
+            export FILE_NAME="${escapeBash(fileName)}"
+
+            REAL_PATH="$(readlink -f "$FLAT_PATH" 2>/dev/null || true)"
+            if [ -z "$REAL_PATH" ] || [ ! -f "$REAL_PATH" ]; then
+                REAL_PATH="$HOME/Pictures/Wallpapers/$FILE_NAME"
+            fi
+
+            CUR_WALL="$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null || true)"
+            if [ "$CUR_WALL" = "$REAL_PATH" ] || [ "$CUR_WALL" = "$FLAT_PATH" ] || [[ "$CUR_WALL" == *"/$FILE_NAME" ]]; then
+                PREV="$(cat "$HOME/.cache/previous_wallpaper.txt" 2>/dev/null || true)"
+                if [ -n "$PREV" ] && [ -f "$PREV" ] && [ "$PREV" != "$CUR_WALL" ]; then
+                    ~/.config/hypr/scripts/set_wallpaper.sh "$PREV"
+                else
+                    ~/.config/hypr/scripts/boot_wallpaper.sh
+                fi
+            fi
+
+            if [ -n "$REAL_PATH" ] && [ -f "$REAL_PATH" ]; then
+                python3 "$HOME/Pictures/Wallpapers/scripts/auto_organize.py" --delete "$REAL_PATH" || rm -f "$REAL_PATH"
+            fi
+
+            rm -f "$FLAT_PATH"
+            rm -f "$HOME/.cache/quickshell/wallpaper_picker/thumbs/\${FILE_NAME}"*
+            rm -f "$HOME/.cache/quickshell/wallpaper_picker/colors_markers/\${FILE_NAME}"*
+            rm -f "$HOME/.cache/converted_gifs/\${FILE_NAME}"*
+        `;
+        Quickshell.execDetached(["bash", "-c", deleteLocalScript]);
+
+        window.isModelChanging = true;
+        targetModel.remove(idx);
+        if (targetModel !== localProxyModel) {
+            for (let i = 0; i < localProxyModel.count; i++) {
+                if (localProxyModel.get(i).fileName === fileName) {
+                    localProxyModel.remove(i);
+                    break;
+                }
+            }
+        }
+        if (targetModel === localProxyModel) {
+            for (let i = 0; i < gifsProxyModel.count; i++) {
+                if (gifsProxyModel.get(i).fileName === fileName) {
+                    gifsProxyModel.remove(i);
+                    break;
+                }
+            }
+            for (let i = 0; i < videosProxyModel.count; i++) {
+                if (videosProxyModel.get(i).fileName === fileName) {
+                    videosProxyModel.remove(i);
+                    break;
+                }
+            }
+        }
+        window.isModelChanging = false;
+
+        if (idx >= targetModel.count) idx = Math.max(0, targetModel.count - 1);
+        view.currentIndex = idx;
+        window.updateVisibleCount();
+        window.statusToast = "Wallpaper deleted";
+        toastTimer.restart();
     }
 
     onWidgetArgChanged: {
@@ -637,6 +771,11 @@ Item {
                 if (fname) window.applyWallpaper(String(fname), window.isVideoFile(String(fname)));
             }
         } 
+    }
+    Shortcut { 
+        sequence: "Delete"
+        enabled: !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
+        onActivated: window.deleteCurrentWallpaper()
     }
     Shortcut { sequence: "Escape"; enabled: !window.isApplying && window.currentFilter === "Search"; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
     Shortcut { sequence: "Tab"; enabled: !window.isApplying; onActivated: window.cycleFilter(1) }
@@ -1460,7 +1599,7 @@ Item {
     }
 
     Component.onCompleted: {
-        Quickshell.execDetached(["bash", "-c", "mkdir -p '" + decodeURIComponent(window.searchDir.replace("file://", "")) + "'"]);
+        Quickshell.execDetached(["bash", "-c", "mkdir -p '" + decodeURIComponent(window.searchDir.replace("file://", "")) + "'; mkdir -p '" + Caching.getRunDir("wallpaper_picker") + "'; touch '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
         window.loadMonitors();
 
         if (searchState.searched) {
@@ -1477,6 +1616,7 @@ Item {
     }
 
     Component.onDestruction: {
+        Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; python3 ~/Pictures/Wallpapers/scripts/auto_organize.py &"]);
         if (window.hasSearched) {
             searchState.query = searchInput.text;
             searchState.searched = window.hasSearched;

@@ -25,7 +25,10 @@
   - **Removed Redundant Color Shades**: Removed 6 subjective color shade filters (`Dark`, `Blue`, `Warm`, `Green`, `Purple`, `Light`) in favor of 4 purposeful, high-utility tabs: **All**, **GIFs**, **Videos**, and **Search**.
   - **Dedicated ListModels**: Implemented dedicated sub-models (`gifsProxyModel`, `videosProxyModel`, `localProxyModel`) populated cleanly in `syncLocalModel()`.
   - **Eliminated Width:0 Ghost Items**: Replaced the previous `width: 0` / `opacity: 0` filtering hack in `ListView`. Every item in the active model is 100% visible, completely eliminating jittery scrolling, blank gaps, and navigation bugs when browsing GIFs or videos.
-  - **Cleaned State & Overhead**: Removed unnecessary color marker watchers (`markerModel`, `markerDebounce`) and hex parsing from QuickShell runtime.
+- **Wallpaper Picker Interactive Delete & Zero-Battery Ingest-On-Close (`WallpaperPicker.qml`, `set_wallpaper.sh`, `auto_organize.py`)**:
+  - **Keyboard `Delete` Shortcut**: Added an interactive `Delete` key binding to `WallpaperPicker.qml`. Pressing `Delete` on any preview immediately reverts the desktop wallpaper (via `~/.cache/previous_wallpaper.txt`) if active, wipes the downloaded media from disk, purges search/local thumbnails, removes the card from the active model without layout jitter, and flashes a "Wallpaper deleted" toast notification.
+  - **Zero-Battery Ingest-On-Close**: Configured QuickShell to write `/run/user/$UID/quickshell/wallpaper_picker/picker_active` while the wallpaper picker is open. `auto_organize.py` detects this flag and defers moving root downloads into color folders and Git until the picker window closes, avoiding premature Git commits, CPU wakeups, and unnecessary battery consumption.
+  - **Safe Staging**: Updated `auto_organize.py` Git commit routines to explicitly stage only the organized category target, README gallery, and previews instead of `git add -A`, preventing loose root inbox files from being committed accidentally.
 
 ## 2026-09-16 — Power Profile Mode Fix: TLP Battery ACPI Profile & QuickShell State Reconciliation
 
