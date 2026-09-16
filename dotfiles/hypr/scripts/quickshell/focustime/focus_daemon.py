@@ -363,18 +363,25 @@ def get_active_window_hyprctl():
 
 def is_locked():
     try:
-        with os.scandir('/proc') as it:
-            for entry in it:
-                if entry.name.isdigit():
-                    try:
-                        with open(f"/proc/{entry.name}/comm", "rb") as f:
-                            if f.read().startswith(b"hyprlock"):
-                                return True
-                    except (FileNotFoundError, PermissionError):
-                        continue
-        return False
+        # Check for QuickShell Lock.qml or hyprlock without walking all of /proc
+        r1 = subprocess.run(
+            ["pgrep", "-f", r"quickshell.*Lock\.qml"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=0.2
+        )
+        if r1.returncode == 0:
+            return True
+        r2 = subprocess.run(
+            ["pgrep", "-x", "hyprlock"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=0.2
+        )
+        return r2.returncode == 0
     except Exception:
         return False
+
 
 def resolve_hypr_signature():
     """Current Hyprland instance signature, or None.
@@ -786,7 +793,7 @@ def main():
         # paths), which the event-driven check in listen_hyprland_ipc()
         # would otherwise miss until the next real window switch.
         with _state_lock:
-            if current_app_class != "Locked" and is_locked():
+            if current_app_class != "Locked" and (tick_counter % 3 == 0) and is_locked():
                 current_app_class, current_app_title = "Locked", "Locked"
             cls_snapshot = current_app_class
             title_snapshot = current_app_title

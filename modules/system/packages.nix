@@ -34,7 +34,7 @@ in
     brave
 
     # File Management
-    ntfs3g pcmanfm-qt lxqt.lxqt-archiver ffmpegthumbnailer gdk-pixbuf librsvg webp-pixbuf-loader libheif libheif.out libjxl libjxl.out
+    ntfs3g pcmanfm-qt lxqt.lxqt-archiver ffmpegthumbnailer gdk-pixbuf librsvg webp-pixbuf-loader libheif libjxl
 
     # Launchers & Clipboard
     rofi wl-clipboard cliphist
@@ -43,7 +43,7 @@ in
     grim slurp grimblast gpu-screen-recorder-gtk
 
     # Media & Display
-    (mpv.override { scripts = [ mpvScripts.mpris ]; }) mpvpaper awww playerctl brightnessctl easyeffects cava loupe ffmpeg imagemagick zbar
+    (mpv.override { scripts = [ mpvScripts.mpris ]; }) mpvpaper awww playerctl brightnessctl cava loupe ffmpeg imagemagick zbar
 
     # Documents & Creative
     kdePackages.okular onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic

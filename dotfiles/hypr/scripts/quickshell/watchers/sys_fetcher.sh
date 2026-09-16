@@ -16,9 +16,9 @@ read -r _ u n s i io ir so st g gn <<< "$(grep '^cpu ' /proc/stat)"
 # just go blank in that case.
 DEFAULT_IFACE=$(ip route show default 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="dev") {print $(i+1); exit}}')
 if [ -n "$DEFAULT_IFACE" ]; then
-    read rx tx <<< "$(awk -v iface="${DEFAULT_IFACE}:" '$1==iface{print $2, $10}' /proc/net/dev)"
+    read -r rx tx <<< "$(awk -v iface="${DEFAULT_IFACE}:" '$1==iface{print $2, $10}' /proc/net/dev)"
 else
-    read rx tx <<< "$(awk -v IGNORECASE=1 '/^ *[ew]/{rx+=$2; tx+=$10} END{print rx, tx}' /proc/net/dev)"
+    read -r rx tx <<< "$(awk -v IGNORECASE=1 '/^ *[ew]/{rx+=$2; tx+=$10} END{print rx, tx}' /proc/net/dev)"
 fi
 rx=${rx:-0}; tx=${tx:-0}
 
@@ -55,32 +55,38 @@ else
 
     if [ "$DIFF_TOTAL" -eq 0 ]; then CPU_USAGE=0; else CPU_USAGE=$(( 100 * (DIFF_TOTAL - DIFF_IDLE) / DIFF_TOTAL )); fi
 
-    # Enforce strict positive limits to block negative UI byte spikes on network reset
-    TIME_DIFF_SEC=$(awk "BEGIN {print ($NOW - $p_now) / 1000000000}")
-    # Parens around the comparison are required here — inside a printf
-    # argument list, a bare `>` is parsed by awk as output redirection
-    # (like `print x > "file"`), not a numeric comparison. Without the
-    # parens this was a syntax error on every single invocation, silently
-    # leaving RX_RATE/TX_RATE empty (confirmed: this is why net speed
-    # never showed real values, not the interface-selection logic above).
-    if awk "BEGIN {exit !($TIME_DIFF_SEC > 0)}"; then
-        RX_RATE=$(awk "BEGIN {val=($rx - $p_rx) / $TIME_DIFF_SEC; printf \"%d\", (val>0?val:0)}")
-        TX_RATE=$(awk "BEGIN {val=($tx - $p_tx) / $TIME_DIFF_SEC; printf \"%d\", (val>0?val:0)}")
-    else
-        RX_RATE=0; TX_RATE=0
-    fi
+    # Consolidated single awk computation for network rates
+    read -r RX_RATE TX_RATE <<< "$(awk -v now="$NOW" -v pnow="$p_now" -v rx="$rx" -v prx="$p_rx" -v tx="$tx" -v ptx="$p_tx" '
+        BEGIN {
+            tdiff = (now - pnow) / 1000000000
+            if (tdiff > 0) {
+                rxr = (rx - prx) / tdiff; if (rxr < 0) rxr = 0
+                txr = (tx - ptx) / tdiff; if (txr < 0) txr = 0
+                printf "%d %d\n", rxr, txr
+            } else {
+                print "0 0"
+            }
+        }
+    ')"
 fi
 
 # --- RAM Calculation (Snapshot) ---
 while IFS=":" read -r key val; do
     case "$key" in
-        MemTotal) TOTAL_MEM=$(echo "$val" | awk '{print $1}') ;;
-        MemAvailable) AVAIL_MEM=$(echo "$val" | awk '{print $1}') ;;
+        MemTotal)
+            val="${val//[[:space:]]/}"
+            TOTAL_MEM="${val%kB}"
+            ;;
+        MemAvailable)
+            val="${val//[[:space:]]/}"
+            AVAIL_MEM="${val%kB}"
+            ;;
     esac
 done < /proc/meminfo
 USED_MEM=$((TOTAL_MEM - AVAIL_MEM))
 RAM_PCT=$(( 100 * USED_MEM / TOTAL_MEM ))
-RAM_GB=$(awk "BEGIN {printf \"%.1f\", $USED_MEM / 1024 / 1024}")
+RAM_GB_INT=$(( USED_MEM * 10 / 1048576 ))
+RAM_GB="$(( RAM_GB_INT / 10 )).$(( RAM_GB_INT % 10 ))"
 
 # --- Temperature Calculation (Snapshot) ---
 TEMP_RAW=""

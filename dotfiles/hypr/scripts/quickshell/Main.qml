@@ -11,10 +11,7 @@ PanelWindow {
     color: "transparent"
 
 
-    Keys.onEscapePressed: (event) => {
-        switchWidget("hidden", "");
-        event.accepted = true;
-    }
+
 
     IpcHandler {
         target: "main"

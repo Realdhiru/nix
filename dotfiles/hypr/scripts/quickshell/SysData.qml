@@ -10,10 +10,9 @@ Item {
     readonly property string scriptPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/sys_fetcher.sh"
     readonly property string batteryFetchPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_fetch.sh"
     readonly property string batteryWaitPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_wait.sh"
-    readonly property string powerStateWatcherPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/power_state_watcher.sh"
 
     // --- Centralized Properties (CPU/RAM/temp/net -- subscribe-gated, unchanged) ---
-    property bool onBattery: false
+    readonly property bool onBattery: !root.acOnline
     property int cpu: 0
     property int ramPercent: 0
     property real ramGb: 0.0
@@ -75,7 +74,7 @@ Item {
         command: [
             "bash",
             "-c",
-            `export QS_CACHE_SYSDATA="${Caching.getCacheDir('sysdata')}"; AC=$(cat /sys/class/power_supply/*/online 2>/dev/null | head -n1 || echo 1); STATS=$(bash "${root.scriptPath}"); echo "$AC|$STATS"`
+            `export QS_CACHE_SYSDATA="${Caching.getCacheDir('sysdata')}"; bash "${root.scriptPath}"`
         ]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -83,16 +82,15 @@ Item {
                 if (!text) return;
 
                 let p = text.split("|");
-                if (p.length >= 7) {
+                if (p.length >= 6) {
                     // Safe parsing prevents UI crashes if the bash script returns empty or malformed strings
-                    let parsedCpu = parseInt(p[1]);
-                    let parsedRamP = parseInt(p[2]);
-                    let parsedRamGb = parseFloat(p[3]);
-                    let parsedTemp = parseInt(p[4]);
-                    let parsedRx = parseFloat(p[5]);
-                    let parsedTx = parseFloat(p[6]);
+                    let parsedCpu = parseInt(p[0]);
+                    let parsedRamP = parseInt(p[1]);
+                    let parsedRamGb = parseFloat(p[2]);
+                    let parsedTemp = parseInt(p[3]);
+                    let parsedRx = parseFloat(p[4]);
+                    let parsedTx = parseFloat(p[5]);
 
-                    root.onBattery = (p[0] === "0");
                     if (!isNaN(parsedCpu)) root.cpu = parsedCpu;
                     if (!isNaN(parsedRamP)) root.ramPercent = parsedRamP;
                     if (!isNaN(parsedRamGb)) root.ramGb = parsedRamGb;
@@ -288,22 +286,6 @@ Item {
             Quickshell.execDetached(["sh", "-c", "rm -f /tmp/qs_requested_profile"]);
             root._applyVisualOverrides("performance");
         } else {
-            let cmd = `cat /tmp/qs_requested_profile 2>/dev/null || echo ""`;
-            let checkProc = `
-                REQ=$(cat /tmp/qs_requested_profile 2>/dev/null || echo "")
-                if [ "$REQ" = "power-saver" ]; then
-                    echo "power-saver|true"
-                elif [ "$REQ" = "performance" ]; then
-                    echo "performance|true"
-                elif [ "$REQ" = "balanced" ]; then
-                    echo "balanced|true"
-                else
-                    echo "balanced|false"
-                fi
-            `;
-            // Execute inline bash reconciliation
-            let res = "balanced|false";
-            // Fast synchronous check if saver was active
             root.requestedProfile = "balanced";
         }
     }

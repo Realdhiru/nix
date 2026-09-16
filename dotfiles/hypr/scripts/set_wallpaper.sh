@@ -134,7 +134,7 @@ exec 8>&- 2>/dev/null || true
     fi
 
     # Rapid top luminance assessment for topbar contrast
-    eval $(magick "$SEED[0]" -crop 100%x15%+0+0 -colorspace HSL -format "top_lum=%[fx:mean.b*100]" info: 2>/dev/null || echo "top_lum=50")
+    eval $(magick "${SEED}[0]" -crop 100%x15%+0+0 -colorspace HSL -format "top_lum=%[fx:mean.b*100]" info: 2>/dev/null || echo "top_lum=50")
 
     # Read user's chosen UI mode (manual toggle via CTRL+SUPER+D); do not override automatically
     is_light="false"

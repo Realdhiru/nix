@@ -30,41 +30,31 @@ hl.window_rule({ match = { class = "^$", title = "^$", xwayland = true, float = 
 -- Bluetooth Manager
 -- ======================================================
 
-hl.window_rule({ match = { class = "^(blueman-manager)$" }, float = true })
-hl.window_rule({ match = { class = "^(blueman-manager)$" }, center = true })
-hl.window_rule({ match = { class = "^(blueman-manager)$" }, size = { 700, 500 } })
--- hl.window_rule({ match = { class = "^(blueman-manager)$" }, pin = true })
+hl.window_rule({ match = { class = "^(blueman-manager)$" }, float = true, center = true, size = { 700, 500 } })
 
 -- ======================================================
 -- PipeWire Volume Control
 -- ======================================================
 
-hl.window_rule({ match = { class = "^(com\\.saivert\\.pwvucontrol)$" }, float = true })
-hl.window_rule({ match = { class = "^(com\\.saivert\\.pwvucontrol)$" }, center = true })
-hl.window_rule({ match = { class = "^(com\\.saivert\\.pwvucontrol)$" }, size = { 900, 600 } })
--- hl.window_rule({ match = { class = "^(com\\.saivert\\.pwvucontrol)$" }, pin = true })
+hl.window_rule({ match = { class = "^(com\\.saivert\\.pwvucontrol)$" }, float = true, center = true, size = { 900, 600 } })
 
 -- ======================================================
 -- PCManFM Search Files (dialog only, main window unaffected)
 -- ======================================================
 
-hl.window_rule({ match = { class = "^(pcmanfm-qt)$", title = "^(Search Files)$" }, float = true })
-hl.window_rule({ match = { class = "^(pcmanfm-qt)$", title = "^(Search Files)$" }, center = true })
+hl.window_rule({ match = { class = "^(pcmanfm-qt)$", title = "^(Search Files)$" }, float = true, center = true })
 
 -- ======================================================
 -- Easy Effects
 -- ======================================================
 
-hl.window_rule({ match = { class = "^(com\\.github\\.wwmm\\.easyeffects)$" }, float = true })
-hl.window_rule({ match = { class = "^(com\\.github\\.wwmm\\.easyeffects)$" }, center = true })
+hl.window_rule({ match = { class = "^(com\\.github\\.wwmm\\.easyeffects)$" }, float = true, center = true })
 
 -- ======================================================
 -- Picture-in-Picture
 -- ======================================================
 
-hl.window_rule({ match = { title = "^(.*[Pp][Ii][Cc][Tt][Uu][Rr][Ee].*)$" }, float = true })
-hl.window_rule({ match = { title = "^(.*[Pp][Ii][Cc][Tt][Uu][Rr][Ee].*)$" }, pin = true })
-hl.window_rule({ match = { title = "^(.*[Pp][Ii][Cc][Tt][Uu][Rr][Ee].*)$" }, size = { "10%", "10%" } })
+hl.window_rule({ match = { title = "^(.*[Pp][Ii][Cc][Tt][Uu][Rr][Ee].*)$" }, float = true, pin = true, size = { "10%", "10%" } })
 
 -- More generic PiP matcher
 -- hl.window_rule({ match = { float = true, title = "^(.*[Pp]icture.*[Pp]icture.*)$" } })
@@ -76,9 +66,7 @@ hl.window_rule({ match = { title = "^(.*[Pp][Ii][Cc][Tt][Uu][Rr][Ee].*)$" }, siz
 -- Quickshell
 -- ======================================================
 
-hl.window_rule({ match = { title = "^app-launcher$" }, float = true })
-hl.window_rule({ match = { title = "^app-launcher$" }, center = true })
-hl.window_rule({ match = { title = "^app-launcher$" }, size = { 1200, 600 } })
+hl.window_rule({ match = { title = "^app-launcher$" }, float = true, center = true, size = { 1200, 600 } })
 
 -- ======================================================
 -- Layer Rules

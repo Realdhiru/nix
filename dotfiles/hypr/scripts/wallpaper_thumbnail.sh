@@ -120,7 +120,7 @@ process_wallpaper() {
         if [ ! -f "$target" ]; then
             # Inject memory-bound scaling constraint (-define jpeg:size) before loading the file
             # This drastically reduces RAM usage and I/O bottlenecks for 4K/8K images.
-            magick -define jpeg:size=800x800 "$file[0]" -strip -thumbnail 400x400^ -gravity center -extent 400x400 "$target"
+            magick -define jpeg:size=800x800 "${file}[0]" -strip -thumbnail 400x400^ -gravity center -extent 400x400 "$target"
         fi
     fi
 

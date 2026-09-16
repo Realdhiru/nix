@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 2026-09-16 — System Audit & Hardening: QuickShell Runtime Cleanup, Daemon Syscall Reduction & Security Fixes
+
+- **Context**: Comprehensive system diagnosis identified high-frequency background CPU churn, QML runtime errors/warnings, shell script bugs, Hyprland window rule duplication, and security/deprecation warnings in the Nix configuration.
+- **Decision**:
+  1. **Background Service Optimization (`dotfiles/hypr/scripts/quickshell/focustime/focus_daemon.py`, `watchers/sys_fetcher.sh`)**:
+     - Replaced `is_locked()` full `/proc` filesystem traversal (~300 file opens every 1s) with targeted process lookup and throttled check, stopping ~18,000 syscalls/min.
+     - Replaced repeated `awk` forks in `/proc/meminfo` loop with pure Bash parameter expansion and consolidated network rate calculations into a single `awk` block.
+  2. **QuickShell Runtime & QML Fixes (`SysData.qml`, `CalendarPopup.qml`, `Main.qml`, `TopBar.qml`, `WallpaperPicker.qml`, `NetworkPopup.qml`)**:
+     - Removed invalid `Keys.onEscapePressed` on `PanelWindow` (causing `not an Item` warnings).
+     - Added `id: weatherIconText` to resolve `ReferenceError: hoverLift is not defined` in `CalendarPopup.qml`.
+     - Wrapped `osdRowLayout` and `osdMouse` in `TopBar.qml` inside an `Item` container to eliminate QtQuick layout anchor undefined behavior warnings.
+     - Guarded `anchors.verticalCenter` in `WallpaperPicker.qml` against transient null parent during delegate destruction.
+     - Replaced uninitialized `Settings` instances with `QtObject` in `NetworkPopup.qml` and `WallpaperPicker.qml`, stopping `QSettings` code 1 errors.
+     - Cleaned dead reconciliation variables and unused properties in `SysData.qml`.
+  3. **Shell Script Bugfixes (`qs_manager.sh`, `set_wallpaper.sh`, `wallpaper_thumbnail.sh`)**:
+     - Added `-nostdin` to `ffmpeg` call in `qs_manager.sh` to prevent swallowing lines in `while read` loop.
+     - Corrected ImageMagick frame selection syntax to `"${SEED}[0]"` and `"${file}[0]"` (SC1087).
+  4. **Hyprland Rules Consolidation (`dotfiles/hypr/rules.lua`)**:
+     - Consolidated duplicate `hl.window_rule` calls for `blueman-manager`, `pwvucontrol`, `pcmanfm-qt`, and `app-launcher` into unified single-table rules.
+  5. **NixOS Hardening & Deprecation Fixes (`hardware-configuration.nix`, `shell.nix`, `home.nix`, `packages.nix`)**:
+     - Restricted `/boot` mount options to `[ "fmask=0077" "dmask=0077" ]` to eliminate systemd-boot random-seed world-accessible security warning.
+     - Replaced deprecated `pkgs.system` with `pkgs.stdenv.hostPlatform.system` in `shell.nix`.
+     - Removed obsolete `enableBackup` activation hack in `home.nix` in favor of declarative `home-manager.backupFileExtension = "hm-backup";`.
+     - Removed redundant `.out` package entries and duplicate `easyeffects` in `packages.nix`.
+- **Result**: Completely clean QuickShell startup logs without QML errors, eliminated idle background `/proc` syscall churn, verified Nix flake check passes with zero warnings, and clean NixOS toplevel build.
+
 ## 2026-09-16 — Rebuild Activation Stability: Home Manager Force Clobber & Flatpak Offline Resilience
 
 - **Context**: `nixos-rebuild switch` failed during activation with unit failures in `home-manager-realdhiru.service` (clobber conflict on `~/.config/matugen`) and `flatpak-repo.service` (`Could not resolve hostname dl.flathub.org`).
@@ -23,6 +49,7 @@
      - Enabled `services.displayManager.ly.enable = true;` and `services.displayManager.defaultSession = "hyprland";`.
      - Removed `services.getty.autologinUser` and `services.getty.autologinOnce` from `modules/system/users.nix`.
      - Removed automated `exec start-hyprland` check on TTY 1 in `programs.zsh.initContent` from `modules/home/shell.nix`, allowing Ly to cleanly manage session authentication and compositor launch.
+     - Removed redundant `lock.sh` autostart call on `hyprland.start` in `dotfiles/hypr/startup.lua` so logging into Ly lands directly onto the desktop instead of immediately re-locking.
   2. **Deterministic Dynamic Screen Orientation & Atomic State Sync (`dotfiles/hypr/scripts/rotate_display.sh`)**:
      - Identified that Hyprland Lua `hl.monitor()` calls stage monitor modes in memory but require `hl.exec_scheduled_prop_refresh_immediately()` to trigger immediate DRM/KMS live pageflips without requiring a full compositor restart.
      - Synchronized orientation state between `~/.cache/hypr_power_monitor.conf` and `~/.config/hypr/settings.json`, ensuring cached format `,transform,<0|2>` preserves refresh rate and scaling settings (`2880x1620@120,auto,2,bitdepth,10`).

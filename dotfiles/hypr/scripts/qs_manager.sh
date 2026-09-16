@@ -115,11 +115,11 @@ handle_wallpaper_prep() {
                 find "$THUMB_DIR" -maxdepth 1 -type f \
                     ! -name '.source_dir' ! -name '.manifest' -delete
                 echo "$SRC_DIR" > "$THUMB_SOURCE_FILE"
-                > "$MANIFEST"
+                : > "$MANIFEST"
             fi
         else
             echo "$SRC_DIR" > "$THUMB_SOURCE_FILE"
-            > "$MANIFEST"
+            : > "$MANIFEST"
         fi
 
         [ ! -f "$MANIFEST" ] && build_manifest
@@ -146,7 +146,7 @@ handle_wallpaper_prep() {
                 thumb="$THUMB_DIR/000_$filename"
                 [ -f "$THUMB_DIR/$filename" ] && rm -f "$THUMB_DIR/$filename"
                 if [ ! -f "$thumb" ]; then
-                    ffmpeg -y -ss 00:00:05 -i "$img" -vframes 1 \
+                    ffmpeg -nostdin -y -ss 00:00:05 -i "$img" -vframes 1 \
                         -threads 1 -f image2 -q:v 2 "$thumb" >/dev/null 2>&1
                     echo "000_$filename" >> "$MANIFEST"
                 fi

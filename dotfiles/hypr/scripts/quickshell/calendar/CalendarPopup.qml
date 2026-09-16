@@ -699,6 +699,7 @@ Item {
                                     }
                                     
                                     Text { 
+                                        id: weatherIconText
                                         Layout.alignment: Qt.AlignHCenter
                                         text: modelData.icon || (window.weatherData && window.weatherData.forecast[window.weatherView] ? window.weatherData.forecast[window.weatherView].icon : "")
                                         font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(18 * window.sf)
@@ -706,7 +707,7 @@ Item {
                                         
                                         property real hoverLift: hrMa.containsMouse ? Math.round(-3 * window.sf) : 0
                                         Behavior on hoverLift { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-                                        transform: Translate { y: hoverLift }
+                                        transform: Translate { y: weatherIconText.hoverLift }
                                     }
                                     
                                     Text { 

@@ -21,7 +21,7 @@
   fileSystems."/boot" =
     { device = "/dev/disk/by-uuid/E38C-7BAA";
       fsType = "vfat";
-      options = [ "fmask=0022" "dmask=0022" ];
+      options = [ "fmask=0077" "dmask=0077" ];
     };
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";

@@ -49,9 +49,8 @@ Item {
         }
     }
 
-    Settings {
+    QtObject {
         id: cache
-        category: "QS_NetworkWidgetUnified"
         property string lastWifiSsid: ""
         property string lastWifiJson: ""
         property string lastBtJson: ""

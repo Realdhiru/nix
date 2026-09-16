@@ -3,7 +3,7 @@
 {
   # anifetch backs the af() zsh function below (lost once as uncommitted
   # code — keep this file committed via rebuild()'s git add -A).
-  home.packages = [ inputs.anifetch.packages.${pkgs.system}.default ];
+  home.packages = [ inputs.anifetch.packages.${pkgs.stdenv.hostPlatform.system}.default ];
 
   programs.zsh = {
     enable = true;

@@ -1049,99 +1049,108 @@ Variants {
                                 }
                             }
 
-                                RowLayout {
+                                Item {
+                                    id: osdContainer
                                     visible: notifLayout.isOsd
-                                    spacing: barWindow.s(16)
-                                    
-                                    MouseArea {
-                                        id: osdMouse
+                                    Layout.alignment: Qt.AlignVCenter
+                                    implicitWidth: osdRowLayout.implicitWidth
+                                    implicitHeight: osdRowLayout.implicitHeight
+
+                                    RowLayout {
+                                        id: osdRowLayout
                                         anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            if (notifLayout.n) {
-                                                if (notifLayout.n.summary === "Brightness") {
-                                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle quickactions"])
+                                        spacing: barWindow.s(16)
+
+                                        Text {
+                                            Layout.alignment: Qt.AlignVCenter
+                                            font.family: "Iosevka Nerd Font"
+                                            font.pixelSize: barWindow.s(18)
+                                            color: mocha.text
+                                            text: {
+                                                if (!notifLayout.n) return "";
+                                                if (notifLayout.n.summary === "Volume") {
+                                                    if (notifLayout.n.body.indexOf("Muted") !== -1 || notifLayout.n.body === "Muted") return "󰝟";
+                                                    return "󰕾";
                                                 }
+                                                if (notifLayout.n.summary === "Brightness") return "󰃠";
+                                                if (notifLayout.n.summary === "Microphone") {
+                                                    if (notifLayout.n.body.indexOf("Muted") !== -1 || notifLayout.n.body === "Muted") return "󰍭";
+                                                    return "󰍬";
+                                                }
+                                                return "";
+                                            }
+                                        }
+
+                                    Item {
+                                        id: sliderContainer
+                                        Layout.alignment: Qt.AlignVCenter
+                                        Layout.preferredWidth: barWindow.s(200)
+                                        Layout.preferredHeight: barWindow.s(16)
+                                        
+                                        property bool isMuted: notifLayout.n && (notifLayout.n.body.indexOf("Muted") !== -1 || notifLayout.n.body === "Muted")
+
+                                        property real pct: {
+                                            if (!notifLayout.n) return 0;
+                                            let v = parseInt(notifLayout.n.body);
+                                            return isNaN(v) ? 0 : Math.max(0, Math.min(100, v)) / 100.0;
+                                        }
+                                        
+                                        // Track background
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            radius: height / 2
+                                            color: mocha.surface1
+                                        }
+                                        
+                                        // Fill and Thumb container (for shared animation)
+                                        Item {
+                                            anchors.fill: parent
+                                            
+                                            property real fillW: sliderContainer.pct > 0 ? Math.max(parent.height, sliderContainer.pct * parent.width) : 0
+                                            Behavior on fillW { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
+                                            
+                                            Rectangle {
+                                                width: parent.fillW
+                                                height: parent.height
+                                                radius: height / 2
+                                                color: sliderContainer.isMuted ? mocha.subtext1 : mocha.mauve
+                                            }
+                                            
+                                            Rectangle {
+                                                width: parent.height + barWindow.s(4)
+                                                height: parent.height + barWindow.s(4)
+                                                radius: width / 2
+                                                color: sliderContainer.isMuted ? mocha.subtext1 : mocha.mauve
+                                                border.color: mocha.surface2
+                                                border.width: barWindow.s(1)
+                                                
+                                                x: Math.max(0, Math.min(sliderContainer.width - width, parent.fillW - width / 2))
+                                                anchors.verticalCenter: parent.verticalCenter
                                             }
                                         }
                                     }
 
                                     Text {
                                         Layout.alignment: Qt.AlignVCenter
-                                        font.family: "Iosevka Nerd Font"
-                                        font.pixelSize: barWindow.s(18)
+                                        text: notifLayout.n ? notifLayout.n.body : ""
+                                        font.family: "JetBrains Mono"
+                                        font.weight: Font.Bold
+                                        font.pixelSize: barWindow.s(14)
                                         color: mocha.text
-                                        text: {
-                                            if (!notifLayout.n) return "";
-                                            if (notifLayout.n.summary === "Volume") {
-                                                if (notifLayout.n.body.indexOf("Muted") !== -1 || notifLayout.n.body === "Muted") return "󰝟";
-                                                return "󰕾";
-                                            }
-                                            if (notifLayout.n.summary === "Brightness") return "󰃠";
-                                            if (notifLayout.n.summary === "Microphone") {
-                                                if (notifLayout.n.body.indexOf("Muted") !== -1 || notifLayout.n.body === "Muted") return "󰍭";
-                                                return "󰍬";
-                                            }
-                                            return "";
-                                        }
-                                    }
-
-                                Item {
-                                    id: sliderContainer
-                                    Layout.alignment: Qt.AlignVCenter
-                                    Layout.preferredWidth: barWindow.s(200)
-                                    Layout.preferredHeight: barWindow.s(16)
-                                    
-                                    property bool isMuted: notifLayout.n && (notifLayout.n.body.indexOf("Muted") !== -1 || notifLayout.n.body === "Muted")
-
-                                    property real pct: {
-                                        if (!notifLayout.n) return 0;
-                                        let v = parseInt(notifLayout.n.body);
-                                        return isNaN(v) ? 0 : Math.max(0, Math.min(100, v)) / 100.0;
-                                    }
-                                    
-                                    // Track background
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        radius: height / 2
-                                        color: mocha.surface1
-                                    }
-                                    
-                                    // Fill and Thumb container (for shared animation)
-                                    Item {
-                                        anchors.fill: parent
-                                        
-                                        property real fillW: sliderContainer.pct > 0 ? Math.max(parent.height, sliderContainer.pct * parent.width) : 0
-                                        Behavior on fillW { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
-                                        
-                                        Rectangle {
-                                            width: parent.fillW
-                                            height: parent.height
-                                            radius: height / 2
-                                            color: sliderContainer.isMuted ? mocha.subtext1 : mocha.mauve
-                                        }
-                                        
-                                        Rectangle {
-                                            width: parent.height + barWindow.s(4)
-                                            height: parent.height + barWindow.s(4)
-                                            radius: width / 2
-                                            color: sliderContainer.isMuted ? mocha.subtext1 : mocha.mauve
-                                            border.color: mocha.surface2
-                                            border.width: barWindow.s(1)
-                                            
-                                            x: Math.max(0, Math.min(sliderContainer.width - width, parent.fillW - width / 2))
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
                                     }
                                 }
 
-                                Text {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    text: notifLayout.n ? notifLayout.n.body : ""
-                                    font.family: "JetBrains Mono"
-                                    font.weight: Font.Bold
-                                    font.pixelSize: barWindow.s(14)
-                                    color: mocha.text
+                                MouseArea {
+                                    id: osdMouse
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (notifLayout.n) {
+                                            if (notifLayout.n.summary === "Brightness") {
+                                                Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle quickactions"])
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

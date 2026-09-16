@@ -9,13 +9,8 @@
       ./modules/home/vscodium.nix
   ];
 
-  # Explicitly configure the internal activation option at the user level
+  # Ensure dynamic state files exist before Hyprland boots
   home.activation = {
-    enableBackup = config.lib.dag.entryAfter [ "writeBoundary" ] ''
-      # This forces Home Manager to handle colliding targets gracefully without crashing systemd
-      export HOME_MANAGER_BACKUP_EXT="backup"
-    '';
-
     initPowerMonitor = config.lib.dag.entryAfter [ "writeBoundary" ] ''
       # Ensure dynamic state files exist before Hyprland boots to prevent parsing errors
       mkdir -p $HOME/.cache

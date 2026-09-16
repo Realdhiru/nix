@@ -8,7 +8,6 @@ hl.on("hyprland.start", function()
     -- 2. Critical: Kill competing legacy notification daemons to free the D-Bus namespace for Quickshell
     hl.exec_cmd("killall -q dunst mako swaync hyprnotify || true")
 
-    hl.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/lock.sh")
     hl.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/boot_wallpaper.sh")
     hl.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/wallpaper_watcher.sh")
 
