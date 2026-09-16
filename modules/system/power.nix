@@ -35,7 +35,7 @@
       CPU_HWP_DYN_BOOST_ON_SAV = 0;
 
       PLATFORM_PROFILE_ON_AC  = "performance";
-      PLATFORM_PROFILE_ON_BAT = "quiet";
+      PLATFORM_PROFILE_ON_BAT = "balanced";
       PLATFORM_PROFILE_ON_SAV = "quiet";
 
       RUNTIME_PM_ON_AC  = "auto";

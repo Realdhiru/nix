@@ -38,7 +38,6 @@ Item {
     property bool isOnlineSearch: false
     property bool isSearchPaused: false
     property bool hasSearched: false
-    property var colorMap: ({})
     property int cacheVersion: 0 
     
     property bool isDownloadingWallpaper: false
@@ -63,21 +62,14 @@ Item {
     property bool isModelChanging: false
     property bool searchIndexRestored: false
     
-    property bool isScrollingBlocked: window.currentFilter === "Search" && window.hasSearched && window.isSearchActive && !window.isSearchPaused
+    property bool isScrollingBlocked: false
     property bool jumpToLastOnFilterChange: false
 
     readonly property var filterData: [
-        { name: "All", hex: "", label: "All" },
-        { name: "Video", hex: "", label: "Vid" },
-        { name: "Red", hex: "#FF4500", label: "" },
-        { name: "Orange", hex: "#FFA500", label: "" },
-        { name: "Yellow", hex: "#FFD700", label: "" },
-        { name: "Green", hex: "#32CD32", label: "" },
-        { name: "Blue", hex: "#1E90FF", label: "" },
-        { name: "Purple", hex: "#8A2BE2", label: "" },
-        { name: "Pink", hex: "#FF69B4", label: "" },
-        { name: "Monochrome", hex: "#A9A9A9", label: "" },
-        { name: "Search", hex: "", label: "Search" } 
+        { name: "All", label: "All" },
+        { name: "GIFs", label: "GIF" },
+        { name: "Videos", label: "Vid" },
+        { name: "Search", label: "Search" } 
     ]
 
     ListModel { id: monitorModel }
@@ -106,6 +98,35 @@ Item {
             }
         }
     } // FIXED: Missing closing bracket for Process block
+
+    property var downloadedSearchMap: ({})
+
+    Timer {
+        id: downloadTimeoutTimer
+        interval: 25000
+        onTriggered: {
+            if (downloadProc.running) {
+                downloadProc.running = false;
+            }
+            window.isDownloadingWallpaper = false;
+        }
+    }
+
+    Process {
+        id: downloadProc
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                window.isDownloadingWallpaper = false;
+                downloadTimeoutTimer.stop();
+                if (window.currentDownloadName !== "") {
+                    let map = window.downloadedSearchMap;
+                    map[window.currentDownloadName] = true;
+                    window.downloadedSearchMap = map;
+                }
+            }
+        }
+    }
 
     function loadMonitors() {
         monitorProc.running = true;
@@ -161,21 +182,39 @@ Item {
                     export SAFE_NAME="${escapeBash(safeFileName)}"
                     export DEST_FILE="${escapeBash(destFile)}"
                     export MAP_FILE="${escapeBash(mapFile)}"
+                    export SEARCH_THUMB="${escapeBash(tempThumb)}"
                     
                     URL=\$(awk -F'|' -v fname="\$SAFE_NAME" '\$1 == fname {print \$2; exit}' "\$MAP_FILE")
-                    if [ -n "\$URL" ]; then
-                        curl -s -L -A "Mozilla/5.0" "\$URL" -o "$DEST_FILE.tmp"
-                        if file "$DEST_FILE.tmp" | grep -iq "webp"; then
-                            magick "$DEST_FILE.tmp" "$DEST_FILE"
-                            rm -f "$DEST_FILE.tmp"
-                        else
-                            mv "$DEST_FILE.tmp" "$DEST_FILE"
-                        fi
-                        
-                        ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
+                    if [ -z "\$URL" ]; then
+                        echo "ERROR: URL not found for \$SAFE_NAME in \$MAP_FILE"
+                        exit 1
                     fi
+                    
+                    TMP_FILE="\${DEST_FILE}.tmp"
+                    curl -s -L --max-time 20 --connect-timeout 5 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "\$URL" -o "\$TMP_FILE"
+                    
+                    if [ -s "\$TMP_FILE" ] && file -b --mime-type "\$TMP_FILE" | grep -q "^image/"; then
+                        if file -b --mime-type "\$TMP_FILE" | grep -q "image/webp"; then
+                            magick "\$TMP_FILE" "\$DEST_FILE" 2>/dev/null || mv "\$TMP_FILE" "\$DEST_FILE"
+                            rm -f "\$TMP_FILE"
+                        else
+                            mv "\$TMP_FILE" "\$DEST_FILE"
+                        fi
+                    elif [ -s "\$SEARCH_THUMB" ]; then
+                        cp "\$SEARCH_THUMB" "\$DEST_FILE"
+                        rm -f "\$TMP_FILE"
+                    else
+                        rm -f "\$TMP_FILE"
+                        echo "ERROR: Download failed and no fallback preview"
+                        exit 1
+                    fi
+                    
+                    ~/.config/hypr/scripts/set_wallpaper.sh "\$DEST_FILE"
+                    ~/.config/hypr/scripts/wallpaper_thumbnail.sh &
                 `;
-                Quickshell.execDetached(["bash", "-c", downloadScript]);
+                downloadProc.command = ["bash", "-c", downloadScript];
+                downloadProc.running = true;
+                downloadTimeoutTimer.restart();
             }
             return;
         }
@@ -253,7 +292,7 @@ Item {
                              (window.currentFilter === "Search" && searchFolderModel.status === FolderListModel.Loading)
 
     property bool showSpinner: window.isDownloadingWallpaper || 
-                               (window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused) || 
+                               (window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused && window.visibleItemCount === 0) || 
                                (window.currentFilter !== "Search" && window.isLoading)
 
     property string currentNotification: {
@@ -262,12 +301,13 @@ Item {
             if (!window.hasSearched) return "Type something to search...";
             if (window.isSearchPaused) return "Search Paused";
             if (window.visibleItemCount === 0) return "Searching DDG (FHD+)...";
-            return "Parsing wallpapers...";
+            return window.visibleItemCount > 0 ? (window.visibleItemCount + " wallpapers found") : "";
         }
         if (isLoading) return "Parsing wallpapers...";
         if (window.visibleItemCount === 0) return "No wallpapers found";
         if (window.currentFilter === "All") return "";
-        if (window.currentFilter === "Video") return "Videos";
+        if (window.currentFilter === "Videos" || window.currentFilter === "Video") return "Videos";
+        if (window.currentFilter === "GIFs" || window.currentFilter === "GIF") return "GIFs";
         return window.currentFilter;
     }
     
@@ -336,6 +376,7 @@ Item {
 
     function isDownloaded(name) {
         if (!name) return false;
+        if (window.downloadedSearchMap && window.downloadedSearchMap[name]) return true;
         for (let i = 0; i < srcModel.count; i++) {
             if (srcModel.get(i, "fileName") === name) return true;
         }
@@ -378,12 +419,13 @@ Item {
 
     function tryFocus() {
         if (initialFocusSet) return;
-        if (localProxyModel.count > 0) {
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (targetModel && targetModel.count > 0) {
             let foundIndex = -1;
             let cleanTarget = window.getCleanName(targetWallName);
             if (cleanTarget !== "") {
-                for (let i = 0; i < localProxyModel.count; i++) {
-                    let fname = localProxyModel.get(i).fileName || "";
+                for (let i = 0; i < targetModel.count; i++) {
+                    let fname = targetModel.get(i).fileName || "";
                     if (window.getCleanName(fname) === cleanTarget) {
                         foundIndex = i;
                         break;
@@ -414,24 +456,15 @@ Item {
     }
 
     function getModelForFilter(filter) {
-        return filter === "Search" ? searchProxyModel : localProxyModel;
+        if (filter === "Search") return searchProxyModel;
+        if (filter === "GIFs" || filter === "GIF") return gifsProxyModel;
+        if (filter === "Videos" || filter === "Video") return videosProxyModel;
+        return localProxyModel;
     }
 
     function updateVisibleCount() {
         let targetModel = window.getModelForFilter(window.currentFilter);
-        if (!targetModel || targetModel.count === 0) {
-            window.visibleItemCount = 0;
-            return;
-        }
-        let count = 0;
-        for (let i = 0; i < targetModel.count; i++) {
-            let fname = targetModel.get(i).fileName || "";
-            let isVid = window.isVideoFile(fname);
-            if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                count++;
-            }
-        }
-        window.visibleItemCount = count;
+        window.visibleItemCount = targetModel ? targetModel.count : 0;
     }
 
     function triggerOnlineSearch() {
@@ -507,66 +540,19 @@ Item {
         onTriggered: window.isItemAnimating = false
     }
 
-    function getHexBucket(hexStr) {
-        if (!hexStr) return "Monochrome";
-        hexStr = String(hexStr).trim().replace(/#/g, '');
-        if (hexStr.length > 6) hexStr = hexStr.substring(0, 6);
-        if (hexStr.length !== 6) return "Monochrome";
-
-        let r = parseInt(hexStr.substring(0,2), 16) / 255;
-        let g = parseInt(hexStr.substring(2,4), 16) / 255;
-        let b = parseInt(hexStr.substring(4,6), 16) / 255;
-        if (isNaN(r) || isNaN(g) || isNaN(b)) return "Monochrome";
-
-        let max = Math.max(r, g, b), min = Math.min(r, g, b);
-        let d = max - min;
-        let h = 0;
-        let s = max === 0 ? 0 : d / max;
-        let v = max;
-
-        if (max !== min) {
-            if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-            else if (max === g) h = (b - r) / d + 2;
-            else h = (r - g) / d + 4;
-            h /= 6;
-        }
-        h = h * 360;
-
-        if (s < 0.05 || v < 0.08) return "Monochrome";
-        if (h >= 345 || h < 15) return "Red";
-        if (h >= 15 && h < 45) return "Orange";
-        if (h >= 45 && h < 75) return "Yellow";
-        if (h >= 75 && h < 165) return "Green";
-        if (h >= 165 && h < 260) return "Blue";
-        if (h >= 260 && h < 315) return "Purple";
-        if (h >= 315 && h < 345) return "Pink";
-        return "Monochrome";
-    }
-
     function checkItemMatchesFilter(fileName, isVid, cv, filter) {
         if (filter === "Search") return true;
         if (filter === "All") return true;
-        if (filter === "Video") return isVid;
-        let hexColor = window.colorMap[String(fileName)];
-        if (!hexColor) return filter === "Monochrome";
-        return window.getHexBucket(hexColor) === filter;
+        let fStr = String(fileName);
+        if (filter === "Videos" || filter === "Video") {
+            return isVid || window.isVideoFile(fStr);
+        }
+        if (filter === "GIFs" || filter === "GIF") {
+            return fStr.toLowerCase().endsWith(".gif");
+        }
+        return true;
     }
 
-    Timer {
-        id: markerDebounce
-        interval: 300
-        onTriggered: window.processMarkers()
-    }
-
-    FolderListModel {
-        id: markerModel
-        folder: "file://" + Caching.getCacheDir("wallpaper_picker") + "/colors_markers"
-        showDirs: false
-        nameFilters: ["*_HEX_*"]
-        onCountChanged: markerDebounce.restart()
-        onStatusChanged: { if (status === FolderListModel.Ready) markerDebounce.restart() }
-    }
-    
     FolderListModel {
         id: srcModel
         folder: "file://" + window.srcDir
@@ -575,93 +561,27 @@ Item {
         onCountChanged: {
             if (window.isDownloadingWallpaper && window.isDownloaded(window.currentDownloadName)) {
                 window.isDownloadingWallpaper = false;
+                downloadTimeoutTimer.stop();
             }
         }
-    }
-
-    function processMarkers() {
-        let newMap = {};
-        for (let i = 0; i < markerModel.count; i++) {
-            let markerName = markerModel.get(i, "fileName") || "";
-            if (!markerName) continue;
-            let splitIdx = markerName.lastIndexOf("_HEX_");
-            if (splitIdx !== -1) {
-                let fName = markerName.substring(0, splitIdx);
-                let hexCode = markerName.substring(splitIdx + 5);
-                newMap[fName] = "#" + hexCode;
-            }
-        }
-        window.colorMap = newMap;
-        window.cacheVersion++;
-        window.updateVisibleCount();
     }
 
     function stepToNextValidIndex(direction) {
         let targetModel = window.getModelForFilter(window.currentFilter);
         if (!targetModel || targetModel.count === 0) return;
         
-        let start = view.currentIndex;
-        let found = -1;
-
-        if (direction === 1) {
-            for (let i = start + 1; i < targetModel.count; i++) {
-                let fname = targetModel.get(i).fileName || "";
-                let isVid = window.isVideoFile(fname);
-                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                    found = i; break;
-                }
-            }
-        } else {
-            for (let i = start - 1; i >= 0; i--) {
-                let fname = targetModel.get(i).fileName || "";
-                let isVid = window.isVideoFile(fname);
-                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                    found = i; break;
-                }
-            }
-        }
-
-        if (found !== -1) {
-            view.currentIndex = found;
-            return;
-        }
-
-        let filterOrder = ["All", "Video", "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink", "Monochrome"];
-        let currentFilterIdx = filterOrder.indexOf(window.currentFilter);
-
-        if (currentFilterIdx === -1) {
-            let current = start;
-            for (let i = 0; i < targetModel.count; i++) {
-                current = (current + direction + targetModel.count) % targetModel.count;
-                let fname = targetModel.get(current).fileName || "";
-                let isVid = window.isVideoFile(fname);
-                if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                    view.currentIndex = current;
-                    return;
-                }
-            }
-            return;
-        }
-
-        let nextFilterIdx = currentFilterIdx + direction;
-        if (nextFilterIdx >= 0 && nextFilterIdx < filterOrder.length) {
-            window.jumpToLastOnFilterChange = (direction === -1);
-            window.currentFilter = filterOrder[nextFilterIdx];
+        let nextIndex = view.currentIndex + direction;
+        if (nextIndex >= 0 && nextIndex < targetModel.count) {
+            view.currentIndex = nextIndex;
         }
     }
 
     function cycleFilter(direction) {
-        let currentIdx = -1;
-        for (let i = 0; i < window.filterData.length; i++) {
-            if (window.filterData[i].name === window.currentFilter) {
-                currentIdx = i;
-                break;
-            }
-        }
-        if (currentIdx !== -1) {
-            let nextIdx = (currentIdx + direction + window.filterData.length) % window.filterData.length;
-            window.currentFilter = window.filterData[nextIdx].name;
-        }
+        let filterOrder = ["All", "GIFs", "Videos", "Search"];
+        let currentIdx = filterOrder.indexOf(window.currentFilter);
+        if (currentIdx === -1) currentIdx = 0;
+        let nextIdx = (currentIdx + direction + filterOrder.length) % filterOrder.length;
+        window.currentFilter = filterOrder[nextIdx];
     }
 
     function applyFilters(forceSnap) {
@@ -675,48 +595,41 @@ Item {
             return;
         }
 
-        let firstValidIndex = -1;
-        let lastValidIndex = -1;
         let cleanTarget = window.getCleanName(window.targetWallName);
         let targetIndex = -1;
 
-        for (let i = 0; i < targetModel.count; i++) {
-            let fname = targetModel.get(i).fileName || "";
-            let isVid = window.isVideoFile(fname);
-            if (checkItemMatchesFilter(fname, isVid, window.cacheVersion, window.currentFilter)) {
-                if (firstValidIndex === -1) firstValidIndex = i;
-                lastValidIndex = i;
-                if (cleanTarget !== "" && window.getCleanName(fname) === cleanTarget) {
+        if (cleanTarget !== "") {
+            for (let i = 0; i < targetModel.count; i++) {
+                let fname = targetModel.get(i).fileName || "";
+                if (window.getCleanName(fname) === cleanTarget) {
                     targetIndex = i;
+                    break;
                 }
             }
         }
 
-        let indexToFocus = -1;
+        let indexToFocus = 0;
         if (targetIndex !== -1) indexToFocus = targetIndex;
-        else if (window.jumpToLastOnFilterChange && lastValidIndex !== -1) indexToFocus = lastValidIndex;
-        else if (firstValidIndex !== -1) indexToFocus = firstValidIndex;
+        else if (window.jumpToLastOnFilterChange && targetModel.count > 0) indexToFocus = targetModel.count - 1;
 
         window.jumpToLastOnFilterChange = false;
-        if (indexToFocus !== -1) {
-            window.executeFocusRestore(indexToFocus, false, forceSnap === true);
-        }
+        window.executeFocusRestore(indexToFocus, false, forceSnap === true);
         window.updateVisibleCount();
     }
 
     Shortcut { 
         sequence: "Left"; 
-        enabled: !window.isScrollingBlocked && !window.isApplying
+        enabled: !window.isApplying
         onActivated: window.stepToNextValidIndex(-1) 
     }
     Shortcut { 
         sequence: "Right"; 
-        enabled: !window.isScrollingBlocked && !window.isApplying
+        enabled: !window.isApplying
         onActivated: window.stepToNextValidIndex(1) 
     }
     Shortcut { 
         sequence: "Return"
-        enabled: !searchInput.activeFocus && !window.isScrollingBlocked && !window.isApplying
+        enabled: !searchInput.activeFocus && !window.isApplying
         onActivated: { 
             let targetModel = window.getModelForFilter(window.currentFilter);
             if (view.currentIndex >= 0 && view.currentIndex < targetModel.count) {
@@ -730,8 +643,10 @@ Item {
     Shortcut { sequence: "Backtab"; enabled: !window.isApplying; onActivated: window.cycleFilter(-1) }
 
     ListModel { id: localProxyModel }
+    ListModel { id: gifsProxyModel }
+    ListModel { id: videosProxyModel }
     ListModel { id: searchProxyModel }
-    readonly property var activeModel: window.currentFilter === "Search" ? searchProxyModel : localProxyModel
+    readonly property var activeModel: window.getModelForFilter(window.currentFilter)
 
     FolderListModel {
         id: localFolderModel
@@ -752,6 +667,8 @@ Item {
             window.allowAddAnimation = false;
             window.isModelChanging = true;
             localProxyModel.clear();
+            gifsProxyModel.clear();
+            videosProxyModel.clear();
             window._localSyncedCount = 0;
             window.isModelChanging = false;
             window.syncLocalModel();
@@ -760,15 +677,26 @@ Item {
         }
 
         if (folderCount > window._localSyncedCount) {
-            let batch = [];
+            let batchAll = [];
+            let batchGifs = [];
+            let batchVids = [];
             for (let i = window._localSyncedCount; i < folderCount; i++) {
                 let fn = localFolderModel.get(i, "fileName");
                 let fu = localFolderModel.get(i, "fileUrl");
                 if (fn !== undefined) {
-                    batch.push({ "fileName": fn, "fileUrl": String(fu) });
+                    let item = { "fileName": fn, "fileUrl": String(fu) };
+                    batchAll.push(item);
+                    let fnLower = String(fn).toLowerCase();
+                    if (fnLower.endsWith(".gif")) {
+                        batchGifs.push(item);
+                    } else if (window.isVideoFile(fn)) {
+                        batchVids.push(item);
+                    }
                 }
             }
-            if (batch.length > 0) localProxyModel.append(batch);
+            if (batchAll.length > 0) localProxyModel.append(batchAll);
+            if (batchGifs.length > 0) gifsProxyModel.append(batchGifs);
+            if (batchVids.length > 0) videosProxyModel.append(batchVids);
             window._localSyncedCount = folderCount;
         }
 
@@ -776,6 +704,8 @@ Item {
         if (isReady && window._localSyncedCount > 0) {
             window.isModelChanging = true;
             window.sortListModel(localProxyModel);
+            window.sortListModel(gifsProxyModel);
+            window.sortListModel(videosProxyModel);
             window.isModelChanging = false;
         }
 
@@ -784,44 +714,45 @@ Item {
         if (!window.initialFocusSet && window.currentFilter !== "Search" && localProxyModel.count > 0) {
             window.tryFocus();
         } else if (window.initialFocusSet && isReady && window.currentFilter !== "Search") {
-            window.tryFocus(); // Refocus after sorting
+            window.tryFocus();
         }
     }
 
     function syncSearchModel() {
-        let startIdx = searchProxyModel.count;
-        let endIdx = searchFolderModel.count;
-        if (endIdx < startIdx) {
+        let folderCount = searchFolderModel.count;
+        if (folderCount === 0 && searchProxyModel.count > 0) {
             window.isModelChanging = true;
             searchProxyModel.clear();
-            startIdx = 0;
             window.isModelChanging = false;
+            window.updateVisibleCount();
+            return;
+        }
+
+        let known = new Set();
+        for (let i = 0; i < searchProxyModel.count; i++) {
+            let item = searchProxyModel.get(i);
+            if (item && item.fileName) {
+                known.add(item.fileName);
+            }
         }
 
         let batch = [];
-        for (let i = startIdx; i < endIdx; i++) {
+        for (let i = 0; i < folderCount; i++) {
             let fn = searchFolderModel.get(i, "fileName");
             let fu = searchFolderModel.get(i, "fileUrl");
-            if (fn !== undefined) {
+            if (fn !== undefined && !known.has(fn)) {
                 batch.push({ "fileName": fn, "fileUrl": String(fu) });
+                known.add(fn);
             }
         }
-        if (batch.length > 0) searchProxyModel.append(batch);
-
-        let isReady = searchFolderModel.status === FolderListModel.Ready;
-        if (isReady && searchProxyModel.count > 0) {
-            window.isModelChanging = true;
-            window.sortListModel(searchProxyModel);
-            window.isModelChanging = false;
+        if (batch.length > 0) {
+            searchProxyModel.append(batch);
         }
 
-        if (window.currentFilter === "Search") window.updateVisibleCount();
-        if (window.currentFilter === "Search" && window.hasSearched) {
-            if (!window.searchIndexRestored) window.trySearchFocus();
-            if (window.isScrollingBlocked && startIdx === 0 && searchProxyModel.count > 0 && window.lastSearchName === "") {
-                view.forceLayout();
-                view.currentIndex = 0;
-                view.positionViewAtIndex(0, ListView.Center);
+        if (window.currentFilter === "Search") {
+            window.updateVisibleCount();
+            if (window.hasSearched && !window.searchIndexRestored) {
+                window.trySearchFocus();
             }
         }
     }
@@ -853,7 +784,7 @@ Item {
         spacing: 0
         orientation: ListView.Horizontal
         clip: false
-        interactive: !window.isScrollingBlocked && !window.isApplying
+        interactive: !window.isApplying
         cacheBuffer: 2000
 
         highlightRangeMode: ListView.StrictlyEnforceRange
@@ -897,7 +828,7 @@ Item {
             anchors.fill: parent
             acceptedButtons: Qt.NoButton
             onWheel: (wheel) => {
-                if (window.isScrollingBlocked || window.isApplying) {
+                if (window.isApplying) {
                     wheel.accepted = true;
                     return;
                 }
@@ -947,23 +878,26 @@ Item {
         delegate: Item {
             id: delegateRoot
             readonly property string safeFileName: fileName !== undefined ? String(fileName) : ""
-            readonly property bool isCurrent: ListView.isCurrentItem && !window.isScrollingBlocked
-            readonly property bool isFakeSelected: window.isScrollingBlocked && index === 0
-            readonly property bool isVisuallyEnlarged: isCurrent || isFakeSelected
+            readonly property bool isCurrent: view.currentIndex === index
+            readonly property bool isFakeSelected: false
+            readonly property bool isVisuallyEnlarged: isCurrent
             readonly property bool isVideo: window.isVideoFile(safeFileName)
-            readonly property bool matchesFilter: window.checkItemMatchesFilter(safeFileName, isVideo, window.cacheVersion, window.currentFilter)
+            readonly property bool matchesFilter: true
             readonly property real targetWidth: isVisuallyEnlarged ? (window.itemWidth * 1.5) : (window.itemWidth * 0.5)
             readonly property real targetHeight: isVisuallyEnlarged ? (window.itemHeight + window.s(30)) : window.itemHeight
             
-            readonly property string thumbPath: window.currentFilter === "Search"
-                ? encodeURI(window.searchDir + "/" + safeFileName)
-                : encodeURI("file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName))
+            readonly property string thumbPath: {
+                if (!safeFileName) return "";
+                return window.currentFilter === "Search"
+                    ? encodeURI(window.searchDir + "/" + safeFileName)
+                    : encodeURI("file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName));
+            }
 
-            width: matchesFilter ? (targetWidth + window.spacing) : 0
-            visible: width > 0.1 || opacity > 0.01
-            opacity: matchesFilter ? (isVisuallyEnlarged ? 1.0 : 0.6) : 0.0
-            scale: matchesFilter ? 1.0 : 0.5
-            height: matchesFilter ? targetHeight : 0
+            width: targetWidth + window.spacing
+            visible: true
+            opacity: isVisuallyEnlarged ? 1.0 : 0.6
+            scale: 1.0
+            height: targetHeight
             anchors.verticalCenter: parent ? parent.verticalCenter : undefined
             anchors.verticalCenterOffset: window.s(15)
             z: isVisuallyEnlarged ? 10 : 1
@@ -986,7 +920,7 @@ Item {
                 
                 MouseArea {
                     anchors.fill: parent
-                    enabled: delegateRoot.matchesFilter && !window.isScrollingBlocked && !window.isApplying
+                    enabled: delegateRoot.matchesFilter && !window.isApplying
                     onClicked: {
                         view.currentIndex = index;
                         window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo);
@@ -1246,24 +1180,25 @@ Item {
                 model: window.filterData
                 delegate: Item {
                     visible: modelData.name !== "Search"
-                    width: !visible ? 0 : ((modelData.name === "Video" || modelData.name === "All") ? window.s(44) : (modelData.hex === "" ? filterText.contentWidth + window.s(24) : window.s(36)))
+                    width: !visible ? 0 : (modelData.name === "GIFs" ? filterText.contentWidth + window.s(28) : window.s(44))
                     height: !visible ? 0 : window.s(36)
                     anchors.verticalCenter: parent.verticalCenter
                     
                     Rectangle {
                         anchors.fill: parent
                         radius: window.s(10)
-                        color: modelData.hex === "" ? (window.currentFilter === modelData.name ? _theme.surface2 : "transparent") : modelData.hex
+                        color: window.currentFilter === modelData.name ? _theme.surface2 : "transparent"
                         border.color: window.currentFilter === modelData.name ? _theme.text : _theme.surface1
                         border.width: window.currentFilter === modelData.name ? window.s(2) : 1
                         scale: window.currentFilter === modelData.name ? 1.15 : (filterMouse.containsMouse ? 1.08 : 1.0)
                         
                         Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
                         Behavior on border.color { ColorAnimation { duration: 300 } }
+                        Behavior on color { ColorAnimation { duration: 300 } }
 
                         Text {
                             id: filterText
-                            visible: modelData.hex === "" && modelData.name !== "Video" && modelData.name !== "All"
+                            visible: modelData.name === "GIFs"
                             text: modelData.label
                             anchors.centerIn: parent
                             color: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
@@ -1274,7 +1209,7 @@ Item {
                         }
 
                         Canvas {
-                            visible: modelData.name === "Video"
+                            visible: modelData.name === "Videos" || modelData.name === "Video"
                             width: window.s(14); height: window.s(16)
                             anchors.centerIn: parent
                             anchors.horizontalCenterOffset: window.s(2)

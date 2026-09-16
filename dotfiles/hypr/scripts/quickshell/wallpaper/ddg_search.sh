@@ -43,7 +43,7 @@ python3 -u "$SCRIPT_DIR/quickshell/wallpaper/get_ddg_links.py" "$QUERY" | while 
     # =========================================================================
     # PRE-FLIGHT CHECK ON THE FULL URL
     # =========================================================================
-    target_headers=$(curl -s -I -L -m 3 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "$full_url")
+    target_headers=$(curl -s -I -L -m 5 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "$full_url")
     target_type=$(echo "$target_headers" | grep -i "content-type:" | tail -n 1 | tr -d '\r')
 
     if [[ ! "$target_type" =~ "image/" ]]; then
@@ -107,4 +107,5 @@ python3 -u "$SCRIPT_DIR/quickshell/wallpaper/get_ddg_links.py" "$QUERY" | while 
     ACTIVE_TMP=""
 done
 
+echo 'done' > "$CONTROL_FILE"
 echo "=== Pipeline finished ===" >> "$LOG_FILE"

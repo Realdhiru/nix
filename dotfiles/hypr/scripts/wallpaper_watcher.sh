@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# wallpaper_watcher.sh -- background watcher that immediately cleans all residue
-# whenever a wallpaper is deleted or moved out of ~/Pictures/Wallpapers.
+# wallpaper_watcher.sh -- background watcher that immediately cleans residue
+# and synchronizes cache whenever wallpapers are added, deleted, or moved in ~/Pictures/Wallpapers.
 #
 set -uo pipefail
 
@@ -12,6 +12,7 @@ COLOR_DIR="$CACHE_DIR/colors_markers"
 FLAT_DIR="$CACHE_DIR/flat"
 GIF_DIR="$HOME/.cache/converted_gifs"
 CURRENT_TXT="$HOME/.cache/current_wallpaper.txt"
+THUMB_SCRIPT="$HOME/.config/hypr/scripts/wallpaper_thumbnail.sh"
 
 # Prevent multiple watcher instances
 LOCKFILE="$HOME/.cache/wallpaper_watcher.pid"
@@ -25,18 +26,22 @@ echo "$$" > "$LOCKFILE"
 trap 'rm -f "$LOCKFILE"' EXIT
 
 cleanup_residue() {
-    # 1. Clean broken symlinks in flat/ and their associated cache
+    # 1. Clean broken symlinks and invalid links (pointing to previews or scripts) in flat/
     if [ -d "$FLAT_DIR" ]; then
         while IFS= read -r -d '' link; do
-            local base
-            base=$(basename "$link")
-            local raw_name="${base#*_}"
-            
-            rm -f "$THUMB/$base" "$THUMB/$base.jpg" "$THUMB/$raw_name" "$THUMB/$raw_name.jpg" 2>/dev/null || true
-            rm -f "$COLOR_DIR/${base}_HEX_"* "$COLOR_DIR/${raw_name}_HEX_"* 2>/dev/null || true
-            rm -f "$GIF_DIR/${base}.mp4" "$GIF_DIR/${raw_name}.mp4" 2>/dev/null || true
-            rm -f "$link" 2>/dev/null || true
-        done < <(find "$FLAT_DIR" -xtype l -print0 2>/dev/null)
+            local target
+            target=$(readlink -f "$link" 2>/dev/null || true)
+            if [ ! -e "$link" ] || [[ "$target" == *"/previews/"* ]] || [[ "$target" == *"/scripts/"* ]]; then
+                local base
+                base=$(basename "$link")
+                local raw_name="${base#*_}"
+                
+                rm -f "$THUMB/$base" "$THUMB/$base.jpg" "$THUMB/$raw_name" "$THUMB/$raw_name.jpg" 2>/dev/null || true
+                rm -f "$COLOR_DIR/${base}_"* "$COLOR_DIR/${raw_name}_"* 2>/dev/null || true
+                rm -f "$GIF_DIR/${base}.mp4" "$GIF_DIR/${raw_name}.mp4" 2>/dev/null || true
+                rm -f "$link" 2>/dev/null || true
+            fi
+        done < <(find "$FLAT_DIR" -type l -print0 2>/dev/null)
     fi
 
     # 2. Clean orphaned thumbs
@@ -67,6 +72,7 @@ cleanup_residue() {
             local m_name
             m_name=$(basename "$m")
             local wall_name="${m_name%_HEX_*}"
+            wall_name="${wall_name%_CAT_*}"
             local clean_wall="${wall_name#*_}"
             local clean_no_jpg="${clean_wall%.jpg}"
             local wall_no_jpg="${wall_name%.jpg}"
@@ -115,12 +121,26 @@ cleanup_residue() {
     fi
 }
 
-# Run initial cleanup on startup
+# Run initial cleanup and sync on startup
 cleanup_residue
+if [ -x "$THUMB_SCRIPT" ]; then
+    "$THUMB_SCRIPT" &
+fi
 
-# Watch ~/Pictures/Wallpapers recursively for file deletion or moves
-inotifywait -m -r -e delete -e moved_from --format '%w%f' "$SRC" 2>/dev/null | while read -r deleted_file; do
-    # Debounce slightly in case of batch deletions
-    sleep 0.1
+# Watch ~/Pictures/Wallpapers recursively for any media changes (line-buffered for instant response)
+stdbuf -oL inotifywait -m -r -q \
+    -e create -e delete -e moved_from -e moved_to -e close_write \
+    --exclude "(\.git|previews|scripts|.*\.tmp|.*~)" \
+    --format '%w%f' \
+    "$SRC" 2>/dev/null | while read -r changed_file; do
+    # Debounce: drain any events arriving in rapid succession within 0.5s
+    while read -t 0.5 -r next_file; do
+        :
+    done
+
     cleanup_residue
+    if [ -x "$THUMB_SCRIPT" ]; then
+        "$THUMB_SCRIPT" &
+    fi
 done
+

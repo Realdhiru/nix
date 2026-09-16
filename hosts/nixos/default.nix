@@ -38,6 +38,7 @@
   networking.networkmanager.enable = true;
   systemd.services.NetworkManager-wait-online.enable = false;
   time.timeZone = "Asia/Kolkata";
+  time.hardwareClockInLocalTime = true;
 
   nix.settings.experimental-features = [
     "nix-command"

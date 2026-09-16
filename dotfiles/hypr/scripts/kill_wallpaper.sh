@@ -11,7 +11,10 @@ if [ -n "$pids" ]; then
 fi
 rm -f /tmp/mpv-paper-socket "$HOME/.cache/mpvpaper.pid"
 
-# 2. Clear current wallpaper state file
+# 2. Clear current wallpaper state file (preserving last_wallpaper.txt for widget recall)
+if [ -s "$HOME/.cache/current_wallpaper.txt" ]; then
+    cp -f "$HOME/.cache/current_wallpaper.txt" "$HOME/.cache/last_wallpaper.txt" 2>/dev/null || true
+fi
 rm -f "$HOME/.cache/current_wallpaper.txt"
 touch "$HOME/.cache/current_wallpaper.txt"
 

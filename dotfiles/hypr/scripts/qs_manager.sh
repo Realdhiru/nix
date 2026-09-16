@@ -217,6 +217,13 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
                 CURRENT_SRC=$(awww query 2>/dev/null | grep -o "$SRC_DIR/[^ ]*" | head -n1)
             fi
         fi
+        # Fallback to last applied wallpaper if wallpaper is disabled/killed
+        if [ -z "$CURRENT_SRC" ]; then
+            LAST_FILE="$HOME/.cache/last_wallpaper.txt"
+            if [ -s "$LAST_FILE" ]; then
+                read -r CURRENT_SRC < "$LAST_FILE" 2>/dev/null || CURRENT_SRC=""
+            fi
+        fi
 
         TARGET_THUMB=""
         if [ -n "$CURRENT_SRC" ]; then

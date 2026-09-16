@@ -865,10 +865,15 @@ Variants {
                             id: centerMouse
                             anchors.fill: parent
                             hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             enabled: !centerBox.notifActive || NotifTicker.tickerNotif.actionsJson === "[]"
                             onClicked: (event) => {
                                 if (centerBox.notifActive) {
-                                    NotifTicker.invokeDefault();
+                                    if (event.button === Qt.RightButton) {
+                                        if (NotifTicker.tickerNotif) NotifTicker.dismiss(NotifTicker.tickerNotif.uid);
+                                    } else {
+                                        NotifTicker.invokeDefault();
+                                    }
                                 } else {
                                     Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle calendar"])
                                 }

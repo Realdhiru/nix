@@ -9,22 +9,33 @@ CACHE_DIR="$HOME/.cache/quickshell/wallpaper_picker"
 THUMB="$CACHE_DIR/thumbs"
 COLOR_DIR="$CACHE_DIR/colors_markers"
 FLAT_DIR="$CACHE_DIR/flat"
+GIF_DIR="$HOME/.cache/converted_gifs"
 
 # Ensure target directories exist before processing
-GIF_DIR="$HOME/.cache/converted_gifs"
 mkdir -p "$THUMB" "$COLOR_DIR" "$FLAT_DIR" "$GIF_DIR"
 
-# 1. Clean broken symlinks in flat/ and their associated cache
+# Ensure single-instance execution via non-blocking file lock
+LOCK_FILE="$CACHE_DIR/thumbnail_generator.lock"
+exec 200>"$LOCK_FILE"
+# Wait up to 30s to acquire lock, ensuring queued change events don't get dropped
+if ! flock -w 30 200; then
+    exit 0
+fi
+
+# 1. Clean broken symlinks and invalid links (e.g. pointing to previews or scripts) in flat/
 if [ -d "$FLAT_DIR" ]; then
     while IFS= read -r -d '' link; do
-        base=$(basename "$link")
-        raw_name="${base#*_}"
-        
-        rm -f "$THUMB/$base" "$THUMB/$base.jpg" "$THUMB/$raw_name" "$THUMB/$raw_name.jpg" 2>/dev/null || true
-        rm -f "$COLOR_DIR/${base}_HEX_"* "$COLOR_DIR/${raw_name}_HEX_"* 2>/dev/null || true
-        rm -f "$GIF_DIR/${base}.mp4" "$GIF_DIR/${raw_name}.mp4" 2>/dev/null || true
-        rm -f "$link" 2>/dev/null || true
-    done < <(find "$FLAT_DIR" -xtype l -print0 2>/dev/null)
+        target=$(readlink -f "$link" 2>/dev/null || true)
+        if [ ! -e "$link" ] || [[ "$target" == *"/previews/"* ]] || [[ "$target" == *"/scripts/"* ]]; then
+            base=$(basename "$link")
+            raw_name="${base#*_}"
+            
+            rm -f "$THUMB/$base" "$THUMB/$base.jpg" "$THUMB/$raw_name" "$THUMB/$raw_name.jpg" 2>/dev/null || true
+            rm -f "$COLOR_DIR/${base}_"* "$COLOR_DIR/${raw_name}_"* 2>/dev/null || true
+            rm -f "$GIF_DIR/${base}.mp4" "$GIF_DIR/${raw_name}.mp4" 2>/dev/null || true
+            rm -f "$link" 2>/dev/null || true
+        fi
+    done < <(find "$FLAT_DIR" -type l -print0 2>/dev/null)
 fi
 
 # 2. Sweep thumbs directory for orphaned thumbnails
@@ -53,6 +64,7 @@ if [ -d "$COLOR_DIR" ] && [ -d "$FLAT_DIR" ]; then
         [ -f "$m" ] || continue
         m_name=$(basename "$m")
         wall_name="${m_name%_HEX_*}"
+        wall_name="${wall_name%_CAT_*}"
         clean_wall="${wall_name#*_}"
         clean_no_jpg="${clean_wall%.jpg}"
         wall_no_jpg="${wall_name%.jpg}"
@@ -90,8 +102,8 @@ if [ -d "$GIF_DIR" ] && [ -d "$FLAT_DIR" ]; then
     done
 fi
 
-# Export the variables so they are accessible by the xargs subshells
-export THUMB COLOR_DIR FLAT_DIR GIF_DIR
+# Export variables so they are accessible by the xargs subshells
+export SRC THUMB COLOR_DIR FLAT_DIR GIF_DIR
 
 # Define the processing logic as an exported function.
 process_wallpaper() {
@@ -101,6 +113,14 @@ process_wallpaper() {
     local hash
     hash=$(md5sum <<< "$file" | cut -d' ' -f1)
     local name="${hash}_${raw_name}"
+
+    # Extract repository category from relative path if present
+    local rel="${file#$SRC/}"
+    local category=""
+    if [[ "$rel" == *"/"* ]]; then
+        category="${rel%%/*}"
+        category="${category,,}"
+    fi
 
     ln -sf "$file" "$FLAT_DIR/$name"
 
@@ -124,20 +144,26 @@ process_wallpaper() {
         fi
     fi
 
-    # Dominant color extraction block
-    # Check if a hex marker already exists for this specific file
+    # Dominant color & category marker extraction block
     local marker
-    marker=$(find "$COLOR_DIR" -name "${name}_HEX_*" -print -quit)
+    if [ -n "$category" ]; then
+        marker=$(find "$COLOR_DIR" -name "${name}_CAT_${category}_HEX_*" -print -quit 2>/dev/null)
+    else
+        marker=$(find "$COLOR_DIR" -name "${name}_HEX_*" -print -quit 2>/dev/null)
+    fi
 
     if [ -z "$marker" ] && [ -f "$target" ]; then
+        rm -f "$COLOR_DIR/${name}_"* 2>/dev/null || true
+
         local hex
-        # Extract average color by scaling to 1x1 pixel.
-        # Extract exactly 6 characters to prevent carriage return pollution
         hex=$(magick "$target" -resize 1x1 -format "%[hex:p{0,0}]" info: 2>/dev/null | cut -c 1-6)
 
-        # Only touch the marker file if the hex string is perfectly 6 characters long
         if [ -n "$hex" ] && [ "${#hex}" -eq 6 ]; then
-            touch "$COLOR_DIR/${name}_HEX_${hex}"
+            if [ -n "$category" ]; then
+                touch "$COLOR_DIR/${name}_CAT_${category}_HEX_${hex}"
+            else
+                touch "$COLOR_DIR/${name}_HEX_${hex}"
+            fi
         fi
     fi
 }
@@ -148,5 +174,9 @@ export -f process_wallpaper
 CORES=$(nproc)
 THREADS=$(( CORES > 2 ? CORES - 1 : 1 ))
 
-# Execute the pipeline. Skip hidden paths and process only valid media files.
-find "$SRC" -not -path '*/.*' -type f \(     -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o     -iname '*.gif' -o -iname '*.mp4' -o -iname '*.mkv' -o -iname '*.mov' -o     -iname '*.webm' \) -print0 | xargs -0 -P "$THREADS" -I {} bash -c 'process_wallpaper "$@"' _ {}
+# Execute the pipeline. Skip hidden paths, previews, and scripts.
+find "$SRC" -not -path '*/.*' -not -path '*/previews*' -not -path '*/scripts*' -type f \( \
+    -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o \
+    -iname '*.gif' -o -iname '*.mp4' -o -iname '*.mkv' -o -iname '*.mov' -o \
+    -iname '*.webm' \) -print0 | xargs -0 -P "$THREADS" -I {} bash -c 'process_wallpaper "$@"' _ {}
+

@@ -105,6 +105,60 @@
         sudo nix-collect-garbage --delete-older-than 14d
       }
 
+      pin-stable() {
+        local target
+        local gen_name
+        if [ -n "$1" ]; then
+          if [ -e "/nix/var/nix/profiles/system-$1-link" ]; then
+            target=$(readlink -f "/nix/var/nix/profiles/system-$1-link")
+            gen_name="system-$1-link"
+          else
+            echo "Generation $1 not found in /nix/var/nix/profiles/"
+            return 1
+          fi
+        else
+          target=$(readlink -f /nix/var/nix/profiles/system)
+          gen_name=$(basename "$(readlink /nix/var/nix/profiles/system)")
+        fi
+
+        sudo mkdir -p /nix/var/nix/gcroots
+        sudo ln -sf "$target" /nix/var/nix/gcroots/boot-stable
+        echo "✓ Pinned $gen_name as stable (/nix/var/nix/gcroots/boot-stable)"
+        echo "  This generation will never be deleted by nix-collect-garbage."
+        echo "  All other generations remain visible and bootable."
+      }
+
+      gens() {
+        local active
+        active=$(basename "$(readlink /nix/var/nix/profiles/system)")
+        local pinned=""
+        if [ -e /nix/var/nix/gcroots/boot-stable ]; then
+          local pinned_target
+          pinned_target=$(readlink -f /nix/var/nix/gcroots/boot-stable)
+          for link in /nix/var/nix/profiles/system-*-link; do
+            if [ "$(readlink -f "$link")" = "$pinned_target" ]; then
+              pinned=$(basename "$link")
+              break
+            fi
+          done
+        fi
+
+        echo "NixOS System Generations (all visible in boot menu):"
+        ls -d -v /nix/var/nix/profiles/system-*-link 2>/dev/null | while read -r link; do
+          [ -e "$link" ] || continue
+          local base
+          base=$(basename "$link")
+          local tag=""
+          [ "$base" = "$active" ] && tag="$tag [ACTIVE]"
+          [ "$base" = "$pinned" ] && tag="$tag [PINNED STABLE]"
+          if [ -n "$tag" ]; then
+            printf "  -> \033[1;32m%-22s%s\033[0m\n" "$base" "$tag"
+          else
+            printf "     %-22s\n" "$base"
+          fi
+        done
+      }
+
       ff() {
         fastfetch
       }

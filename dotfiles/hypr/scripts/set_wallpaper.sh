@@ -18,6 +18,7 @@ BASENAME=$(basename "$WALL")
 # 1. Update the wallpaper state cache file instantly
 mkdir -p "$HOME/.cache"
 echo "$WALL" > "$HOME/.cache/current_wallpaper.txt"
+echo "$WALL" > "$HOME/.cache/last_wallpaper.txt"
 
 # Serialize wallpaper switches to prevent overlapping process race conditions
 LOCKFILE="$HOME/.cache/set_wallpaper.lock"

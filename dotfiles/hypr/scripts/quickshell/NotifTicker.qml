@@ -163,24 +163,21 @@ Item {
                     // Incoming phone call: stays on ticker while ringing (with a 45s safety bound),
                     // but automatically disappears the exact millisecond the call is picked or hung up.
                     timeoutMs = 45000;
-                } else if (exp === 0) {
-                    timeoutMs = 0; // Explicitly sticky from sender
-                } else if (exp > 0) {
-                    timeoutMs = exp;
                 } else if (hasActions) {
-                    // Actions present: give 12 seconds so user can react, then expire from ticker
-                    // (persists safely in the Battery/Notification history panel).
-                    timeoutMs = 12000;
+                    // Actions present: give 10 seconds so user can react, then expire from ticker
+                    // (persists safely in the notification history).
+                    timeoutMs = 10000;
+                } else if (exp > 0) {
+                    timeoutMs = Math.min(exp, 12000);
+                } else if (exp === 0) {
+                    // Explicitly sticky from sender: show for 7 seconds on the ticker so clock is not hijacked
+                    timeoutMs = 7000;
                 } else {
                     timeoutMs = 4000;
                 }
 
-                let incomingIsSticky = (timeoutMs === 0 || isCall);
-                if (root.tickerIsSticky && !isSameAsShowing && !incomingIsSticky) {
-                    // dropped from the ticker, but it's still in history above
-                } else {
-                    root._showTicker(notifData, timeoutMs);
-                }
+                // Always display the newest notification on the ticker; never drop it
+                root._showTicker(notifData, timeoutMs);
             }
         }
     }

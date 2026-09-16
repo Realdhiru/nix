@@ -183,12 +183,18 @@ Item {
                 let prof = this.text ? this.text.trim() : "";
                 if (prof === "performance") {
                     root.powerProfile = "performance";
-                } else if (prof === "quiet" || prof === "low-power") {
-                    root.powerProfile = "power-saver";
                 } else if (prof === "balanced") {
                     root.powerProfile = "balanced";
+                } else if (prof === "quiet" || prof === "low-power") {
+                    // If user manually chose balanced or default battery profile is balanced,
+                    // keep balanced unless user explicitly requested power-saver
+                    if (root.requestedProfile === "balanced") {
+                        root.powerProfile = "balanced";
+                    } else {
+                        root.powerProfile = "power-saver";
+                    }
                 } else {
-                    root.powerProfile = "transitioning";
+                    root.powerProfile = root.requestedProfile || "balanced";
                 }
             }
         }
@@ -283,10 +289,15 @@ Item {
         if (isOnline) {
             root._manualOverride = false;
             root.requestedProfile = "performance";
-            Quickshell.execDetached(["sh", "-c", "rm -f /tmp/qs_requested_profile"]);
+            root.powerProfile = "performance";
+            Quickshell.execDetached(["sh", "-c", "rm -f /tmp/qs_requested_profile /tmp/qs_power_profile"]);
             root._applyVisualOverrides("performance");
         } else {
+            root._manualOverride = false;
             root.requestedProfile = "balanced";
+            root.powerProfile = "balanced";
+            Quickshell.execDetached(["sh", "-c", "echo 'balanced' > /tmp/qs_requested_profile; echo 'balanced' > /tmp/qs_power_profile"]);
+            root._applyVisualOverrides("balanced");
         }
     }
 
@@ -329,7 +340,7 @@ Item {
 
         root.requestedProfile = name;
         root.powerProfile = name;
-        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_requested_profile"]);
+        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_requested_profile; echo '" + name + "' > /tmp/qs_power_profile"]);
 
         root._applyVisualOverrides(name);
 

@@ -1,5 +1,48 @@
 # CHANGELOG
 
+## 2026-09-16 — Bootloader Visibility, Stable Generation Pinning, Filelight & Desktop Fixes
+
+- **Bootloader Menu Generation Visibility (`modules/system/boot.nix`)**:
+  - Configured `boot.loader.timeout = 3;` (was `0`). All available NixOS system generations (and Windows Boot Manager) are now directly visible and selectable on every system startup for 3 seconds instead of skipping immediately to the latest generation.
+- **Stable Pinning & Generation Management (`modules/home/shell.nix`)**:
+  - Added `pin-stable [gen]`: Creates a persistent Garbage Collection root at `/nix/var/nix/gcroots/boot-stable` pointing to the active (or specified) system generation. This guarantees that your known-good generation is NEVER pruned or lost during `nix-collect-garbage -d`.
+  - Added `gens`: Lists all existing system generations in natural numerical order, highlighting the `[ACTIVE]` and `[PINNED STABLE]` generations. Confirms all generations remain visible and bootable.
+- **GUI Disk Space Explorer (`modules/system/packages.nix`)**:
+  - Added `kdePackages.filelight` to system packages for visual, interactive pie-chart disk usage exploration without needing ad-hoc `nix-shell`.
+- **Dual-Boot Hardware Clock Fix (`hosts/nixos/default.nix`)**:
+  - Configured `time.hardwareClockInLocalTime = true;` to keep motherboard RTC synchronized with Windows, eliminating clock jumps when switching between operating systems.
+- **Notification Backlog Resolution (`dotfiles/hypr/scripts/quickshell/NotifTicker.qml`, `TopBar.qml`)**:
+  - Fixed notification center bug where persistent toasts blocked incoming notifications. Added a 7-second safety fallback timeout and right-click to dismiss.
+- **Wallpaper Recall Fix (`dotfiles/hypr/scripts/set_wallpaper.sh`, `kill_wallpaper.sh`, `qs_manager.sh`)**:
+  - Preserved `last_wallpaper.txt` during wallpaper toggle off so reopening the wallpaper widget re-applies the last chosen wallpaper instead of resetting to the first in the directory.
+- **Wallpaper Picker Online Search & Download Pipeline Fix (`WallpaperPicker.qml`, `ddg_search.sh`, `auto_organize.py`)**:
+  - **Incremental Search Streaming Without Reset**: Eliminated destructive `sortListModel()` invocations in `syncSearchModel()`. Replaced `model.clear()` / full re-append cycles with Set-based incremental deduplication, keeping delegate identity and scroll position stable as new preview thumbnails stream in.
+  - **Removed Scroll-Blocking Locks**: Disabled `isScrollingBlocked` restrictions so mouse wheel scrolling, arrow key navigation, touch/mouse dragging, and delegate clicks remain responsive throughout search.
+  - **Managed Download Process & Fallback**: Replaced detached bash download with managed `Process { id: downloadProc }` and timeout safeguards. Validates image MIME type, falls back to the verified thumbnail if full-res download fails, and triggers `wallpaper_thumbnail.sh` for instant local gallery indexing.
+  - **Auto-Organize Coordination**: Synchronized `~/.cache/current_wallpaper.txt` and `last_wallpaper.txt` in `auto_organize.py` when wallpapers are ingested into shade folders, preventing Hyprland's watcher from falsely detecting missing files and resetting to boot wallpaper.
+
+- **Wallpaper Picker Filter Overhaul & Ghost Item Elimination (`WallpaperPicker.qml`)**:
+  - **Removed Redundant Color Shades**: Removed 6 subjective color shade filters (`Dark`, `Blue`, `Warm`, `Green`, `Purple`, `Light`) in favor of 4 purposeful, high-utility tabs: **All**, **GIFs**, **Videos**, and **Search**.
+  - **Dedicated ListModels**: Implemented dedicated sub-models (`gifsProxyModel`, `videosProxyModel`, `localProxyModel`) populated cleanly in `syncLocalModel()`.
+  - **Eliminated Width:0 Ghost Items**: Replaced the previous `width: 0` / `opacity: 0` filtering hack in `ListView`. Every item in the active model is 100% visible, completely eliminating jittery scrolling, blank gaps, and navigation bugs when browsing GIFs or videos.
+  - **Cleaned State & Overhead**: Removed unnecessary color marker watchers (`markerModel`, `markerDebounce`) and hex parsing from QuickShell runtime.
+
+## 2026-09-16 — Power Profile Mode Fix: TLP Battery ACPI Profile & QuickShell State Reconciliation
+
+- **Context**: QuickShell battery widget/power profile selector was permanently stuck displaying `power-saver` ("Saver") mode on battery, and manually selecting `balanced` immediately reverted back to `power-saver` within 600ms.
+- **Root Cause**:
+  1. `modules/system/power.nix` had `PLATFORM_PROFILE_ON_BAT = "quiet";` (identical to `ON_SAV`). On battery, TLP configured ACPI sysfs `/sys/firmware/acpi/platform_profile` to `"quiet"`.
+  2. `dotfiles/hypr/scripts/quickshell/SysData.qml` sysfs poller mapped `"quiet"` directly to `"power-saver"`. Consequently, whenever on battery or whenever `tlp balanced` executed, the 600ms refresh poller read `"quiet"` from sysfs and forcefully overwrote `root.powerProfile` to `"power-saver"`.
+  3. `SysData.qml`'s `_reconcileStartupProfile` left offline (battery) startup in an uninitialized state, failing to set `root.powerProfile` or invoke visual overrides.
+- **Decision**:
+  1. **TLP Battery Platform Profile Alignment (`modules/system/power.nix`)**:
+     - Corrected `PLATFORM_PROFILE_ON_BAT = "balanced";` while retaining `PLATFORM_PROFILE_ON_AC = "performance";` and `PLATFORM_PROFILE_ON_SAV = "quiet"`, establishing 3 clean, distinct hardware tiers across AC, BAT, and SAV.
+  2. **QuickShell SysData State Resilience (`dotfiles/hypr/scripts/quickshell/SysData.qml`)**:
+     - Updated `platformProfileProc.stdout.onStreamFinished` to preserve `root.powerProfile = "balanced"` if `root.requestedProfile === "balanced"` even when the underlying kernel sysfs reads `"quiet"`.
+     - Properly initialized offline battery startup in `_reconcileStartupProfile` (`root._manualOverride = false; root.requestedProfile = "balanced"; root.powerProfile = "balanced"; _applyVisualOverrides("balanced");`).
+     - Synchronized `/tmp/qs_power_profile` and `/tmp/qs_requested_profile` on all profile transitions.
+- **Result**: Selecting "Balance", "Perform", or "Saver" in `BatteryPopup.qml` persists cleanly without reverting; battery mode reliably defaults to "Balance"; `nix flake check` passes with zero errors.
+
 ## 2026-09-16 — System Audit & Hardening: QuickShell Runtime Cleanup, Daemon Syscall Reduction & Security Fixes
 
 - **Context**: Comprehensive system diagnosis identified high-frequency background CPU churn, QML runtime errors/warnings, shell script bugs, Hyprland window rule duplication, and security/deprecation warnings in the Nix configuration.
