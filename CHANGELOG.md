@@ -10,6 +10,11 @@
   - Enhanced Hotspot toggle and header pill click handlers with instant visual feedback and responsive dual-pass refresh timers (300ms + 1000ms).
   - Cleaned up aesthetics: removed Wi-Fi icons from header pill and drawer, and swapped green/mauve outlines for neutral dark surface styling (`surface2`).
 
+- **System Tray Redundant Icon Suppression (`TopBar.qml`, `startup.lua`)**:
+  - Filtered out redundant Bluetooth (`blueman`, `bluetooth`) and KDE Connect (`kdeconnect`, `kde connect`) icons from the QuickShell system tray (`filteredTrayItems`). Bluetooth is already comprehensively managed by QuickShell's native `NetworkPopup.qml` and TopBar widget, making tray icons visual clutter.
+  - Dynamically recalculated `targetWidth` based on `filteredTrayItems.length` so the tray container pill collapses cleanly when only ignored icons exist.
+  - Removed redundant `kdeconnect-indicator` startup launch from `startup.lua` (`kdeconnectd` and `hypr-kdeconnect-portal` daemon services remain active for device sync and portal operations).
+
 - **Fuzzel Icon Theme Alignment (`fuzzel.ini`, `fuzzel_menu.sh`, `theme.nix`)**:
   - Identified and fixed why Fuzzel displayed default/Papirus icons instead of the system-wide custom hand-drawn icon theme (`buuf-nestort`): `fuzzel.ini` and `fuzzel_menu.sh` explicitly hardcoded `icon-theme = Papirus-Dark`.
   - Updated `fuzzel.ini` and `fuzzel_menu.sh` to specify `icon-theme = buuf-nestort`.

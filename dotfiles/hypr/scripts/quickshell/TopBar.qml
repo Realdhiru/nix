@@ -1174,8 +1174,26 @@ Variants {
                             color: barWindow.pillBg
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
+                            property var filteredTrayItems: {
+                                let raw = SystemTray.items.values || [];
+                                let res = [];
+                                for (let i = 0; i < raw.length; i++) {
+                                    let item = raw[i];
+                                    if (!item) continue;
+                                    let idStr = (item.id || "").toLowerCase();
+                                    let titleStr = (item.title || "").toLowerCase();
+                                    if (idStr.includes("blueman") || idStr.includes("bluetooth") ||
+                                        idStr.includes("kdeconnect") || idStr.includes("kde connect") ||
+                                        titleStr.includes("blueman") || titleStr.includes("bluetooth") ||
+                                        titleStr.includes("kdeconnect") || titleStr.includes("kde connect")) {
+                                        continue;
+                                    }
+                                    res.push(item);
+                                }
+                                return res;
+                            }
 
-                            property real targetWidth: trayRepeater.count > 0 ? trayLayout.width + barWindow.s(24) : 0
+                            property real targetWidth: filteredTrayItems.length > 0 ? trayLayout.width + barWindow.s(24) : 0
                             width: targetWidth
                             Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutExpo } }
 
@@ -1190,7 +1208,7 @@ Variants {
 
                                 Repeater {
                                     id: trayRepeater
-                                    model: SystemTray.items
+                                    model: filteredTrayItems
                                     delegate: Image {
                                         id: trayIcon
                                         source: modelData.icon || ""
