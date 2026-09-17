@@ -6,7 +6,16 @@
 #
 set -euo pipefail
 
-if [ -d "/sys/class/net/ap0" ]; then
+# Detect active Wi-Fi station (client) interface so Hotspot never hijacks the active internet connection
+ACTIVE_STA=$(nmcli -t -f DEVICE,TYPE,STATE d 2>/dev/null | awk -F: '$2=="wifi" && $3=="connected"{print $1; exit}')
+
+if [ "$ACTIVE_STA" = "ap0" ]; then
+    # ap0 is currently the internet client; use wlo1 for hotspot
+    IFACE="wlo1"
+elif [ "$ACTIVE_STA" = "wlo1" ]; then
+    # wlo1 is the internet client; use ap0 for hotspot
+    IFACE="ap0"
+elif [ -d "/sys/class/net/ap0" ]; then
     IFACE="ap0"
 else
     IFACE="${HOTSPOT_IFACE:-wlo1}"
@@ -111,9 +120,14 @@ EOF
             nmcli connection down "$active_conn" >/dev/null 2>&1
             notify-send -a "Hotspot" -i "network-wireless-offline" "Hotspot" "Hotspot disabled"
         else
+            if [ -n "$ACTIVE_STA" ] && [ "$IFACE" = "$ACTIVE_STA" ]; then
+                notify-send -u critical -a "Hotspot" -i "dialog-error" "Cannot Start Hotspot" "Secondary AP interface not ready. Wi-Fi client active on $IFACE."
+                exit 1
+            fi
             existing_conn=$(get_hotspot_conn)
             if [ -n "$existing_conn" ]; then
-                nmcli connection up "$existing_conn" >/dev/null 2>&1
+                nmcli connection modify "$existing_conn" connection.interface-name "$IFACE" 2>/dev/null || true
+                nmcli connection up "$existing_conn" ifname "$IFACE" >/dev/null 2>&1
             else
                 nmcli device wifi hotspot ifname "$IFACE" ssid "NixOS-Hotspot" >/dev/null 2>&1
             fi
@@ -122,9 +136,14 @@ EOF
         ;;
         
     --start)
+        if [ -n "$ACTIVE_STA" ] && [ "$IFACE" = "$ACTIVE_STA" ]; then
+            notify-send -u critical -a "Hotspot" -i "dialog-error" "Cannot Start Hotspot" "Secondary AP interface not ready. Wi-Fi client active on $IFACE."
+            exit 1
+        fi
         existing_conn=$(get_hotspot_conn)
         if [ -n "$existing_conn" ]; then
-            nmcli connection up "$existing_conn" >/dev/null 2>&1
+            nmcli connection modify "$existing_conn" connection.interface-name "$IFACE" 2>/dev/null || true
+            nmcli connection up "$existing_conn" ifname "$IFACE" >/dev/null 2>&1
         else
             nmcli device wifi hotspot ifname "$IFACE" ssid "NixOS-Hotspot" >/dev/null 2>&1
         fi

@@ -58,6 +58,18 @@
           command = "/run/current-system/sw/bin/tlp start";
           options = [ "NOPASSWD" ];
         }
+        {
+          command = "/run/current-system/sw/bin/iw phy phy0 interface add ap0 type __ap";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/iw dev ap0 del";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "/run/current-system/sw/bin/ip link set ap0 up";
+          options = [ "NOPASSWD" ];
+        }
       ];
     }
   ];

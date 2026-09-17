@@ -390,7 +390,7 @@ Item {
     // widgetCache after close, so a bare running:true kept spawning bash
     // every 1.5s forever while hidden.
     Timer {
-        interval: 1500; running: window.visible; repeat: true; triggeredOnStart: true;
+        interval: 8000; running: window.visible; repeat: true; triggeredOnStart: true;
         onTriggered: {
             sysPoller.running = false;
             sysPoller.running = true;
@@ -524,15 +524,14 @@ Item {
 
                             Rectangle {
                                 id: hotspotBtn
-                                Layout.preferredWidth: hotspotMa.containsMouse || window.showHotspotMenu ? window.s(38) + hotspotText.implicitWidth + window.s(10) : window.s(38)
+                                Layout.preferredWidth: window.s(104)
                                 Layout.preferredHeight: window.s(38)
                                 radius: window.s(12)
-                                color: window.hotspotActive ? Qt.alpha(window.mauve, 0.2) : (hotspotMa.containsMouse || window.showHotspotMenu ? window.surface1 : "transparent")
-                                border.color: window.hotspotActive ? window.mauve : (hotspotMa.containsMouse || window.showHotspotMenu ? window.surface2 : "transparent")
+                                color: window.hotspotActive ? Qt.alpha(window.mauve, 0.25) : (hotspotMa.containsMouse || window.showHotspotMenu ? window.surface1 : window.surface0)
+                                border.color: window.hotspotActive ? window.mauve : (hotspotMa.containsMouse || window.showHotspotMenu ? window.surface2 : window.surface1)
                                 border.width: 1
                                 clip: true
 
-                                Behavior on Layout.preferredWidth { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
                                 Behavior on color { ColorAnimation { duration: 150 } }
                                 Behavior on border.color { ColorAnimation { duration: 150 } }
 
@@ -542,8 +541,8 @@ Item {
 
                                     Text {
                                         font.family: "Iosevka Nerd Font"
-                                        font.pixelSize: window.s(18)
-                                        color: window.hotspotActive ? window.mauve : (hotspotMa.containsMouse ? window.text : window.overlay0)
+                                        font.pixelSize: window.s(17)
+                                        color: window.hotspotActive ? window.mauve : (hotspotMa.containsMouse ? window.mauve : window.text)
                                         text: window.hotspotActive ? "󰤨" : "󰤧"
                                         anchors.verticalCenter: parent.verticalCenter
                                         Behavior on color { ColorAnimation { duration: 150 } }
@@ -554,11 +553,9 @@ Item {
                                         text: window.hotspotActive ? ("Hotspot (" + window.hotspotClients + ")") : "Hotspot"
                                         font.family: "JetBrains Mono"
                                         font.weight: Font.Bold
-                                        font.pixelSize: window.s(12)
-                                        color: window.hotspotActive ? window.mauve : window.text
+                                        font.pixelSize: window.s(11)
+                                        color: window.hotspotActive ? window.mauve : (hotspotMa.containsMouse ? window.text : window.subtext1)
                                         anchors.verticalCenter: parent.verticalCenter
-                                        opacity: hotspotMa.containsMouse || window.showHotspotMenu ? 1.0 : 0.0
-                                        Behavior on opacity { NumberAnimation { duration: 200 } }
                                     }
                                 }
 
@@ -620,37 +617,34 @@ Item {
                                 Layout.preferredWidth: dndMa.containsMouse ? window.s(38) + dndText.implicitWidth + window.s(8) : window.s(38)
                                 Layout.preferredHeight: window.s(38)
                                 radius: window.s(12)
-                                color: window.dndEnabled ? Qt.alpha(window.red, 0.15) : (dndMa.containsMouse ? window.surface1 : "transparent")
-                                border.color: window.dndEnabled ? window.red : (dndMa.containsMouse ? window.surface2 : "transparent")
+                                color: window.dndEnabled ? Qt.alpha(window.red, 0.2) : (dndMa.containsMouse ? window.surface1 : window.surface0)
+                                border.color: window.dndEnabled ? window.red : (dndMa.containsMouse ? window.surface2 : window.surface1)
                                 border.width: 1
                                 clip: true
 
-                                Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
+                                Behavior on Layout.preferredWidth { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
                                 Behavior on color { ColorAnimation { duration: 150 } }
                                 Behavior on border.color { ColorAnimation { duration: 150 } }
 
                                 Row {
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: window.s(10)
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    spacing: window.s(8)
+                                    anchors.centerIn: parent
+                                    spacing: window.s(6)
 
                                     Text {
                                         id: dndText
                                         text: window.dndEnabled ? "Silent" : "Mute"
                                         font.family: "JetBrains Mono"
                                         font.weight: Font.Bold
-                                        font.pixelSize: window.s(13)
+                                        font.pixelSize: window.s(12)
                                         color: window.dndEnabled ? window.red : window.text
                                         anchors.verticalCenter: parent.verticalCenter
-                                        opacity: dndMa.containsMouse ? 1.0 : 0.0
-                                        Behavior on opacity { NumberAnimation { duration: 250 } }
+                                        visible: dndMa.containsMouse
                                     }
 
                                     Text {
                                         font.family: "Iosevka Nerd Font"
-                                        font.pixelSize: window.s(18)
-                                        color: window.dndEnabled ? window.red : (dndMa.containsMouse ? window.text : window.overlay0)
+                                        font.pixelSize: window.s(17)
+                                        color: window.dndEnabled ? window.red : (dndMa.containsMouse ? window.text : window.subtext0)
                                         text: window.dndEnabled ? "󰂛" : "󰂚"
                                         anchors.verticalCenter: parent.verticalCenter
                                         Behavior on color { ColorAnimation { duration: 150 } }
@@ -1952,6 +1946,16 @@ Item {
                                                     drainAnim.start(); 
                                                 }
                                             }
+                                            onClicked: {
+                                                if (index === 0) {
+                                                    // Instant reliable logoff
+                                                    Quickshell.execDetached(["hyprctl", "dispatch", "exit"]);
+                                                } else if (index === 1) {
+                                                    // Instant sleep
+                                                    Quickshell.execDetached(["systemctl", "suspend"]);
+                                                    Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
+                                                }
+                                            }
                                         }
 
                                         NumberAnimation {
@@ -1971,8 +1975,12 @@ Item {
                                         Timer {
                                             id: exitTimer; interval: 500 
                                             onTriggered: { 
-                                                Quickshell.execDetached(["bash", "-c", cmd]); 
-                                                Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
+                                                if (index === 0) {
+                                                    Quickshell.execDetached(["hyprctl", "dispatch", "exit"]);
+                                                } else {
+                                                    Quickshell.execDetached(["bash", "-c", cmd]); 
+                                                    Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
+                                                }
                                             }
                                         }
                                     }

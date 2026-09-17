@@ -29,7 +29,15 @@ get_icon() {
 CACHE_DIR="$QS_CACHE_NETWORK"
 mkdir -p "$CACHE_DIR"
 
-CURRENT_RAW=$(LC_ALL=C nmcli -t -f active,ssid,signal,security device wifi | awk -F: '$1=="yes"{print; exit}')
+# Detect active Hotspot SSID so it is never presented as an external Wi-Fi network
+HOTSPOT_SSID=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$2=="802-11-wireless"{print $1}' | while read -r n; do
+    if [ "$(nmcli -s -g 802-11-wireless.mode connection show "$n" 2>/dev/null)" = "ap" ]; then
+        nmcli -s -g 802-11-wireless.ssid connection show "$n" 2>/dev/null
+        break
+    fi
+done)
+
+CURRENT_RAW=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wifi | awk -F: -v hs="$HOTSPOT_SSID" '$1=="yes" && $2=="Infra" && (hs == "" || $3 != hs){print $1":"$3":"$4":"$5; exit}')
 
 if [[ -n "$CURRENT_RAW" ]]; then
     IFS=':' read -r active ssid signal security <<< "$CURRENT_RAW"
@@ -43,7 +51,8 @@ if [[ -n "$CURRENT_RAW" ]]; then
     fi
     
     if [ -z "$IP" ] || [ "$IP" == "No IP" ] || [ -z "$FREQ" ]; then
-        IFACE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE d | awk -F: '$2=="wifi"{print $1;exit}')
+        IFACE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE,STATE d | awk -F: '$2=="wifi" && $3=="connected"{print $1;exit}')
+        [ -z "$IFACE" ] && IFACE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE d | awk -F: '$2=="wifi"{print $1;exit}')
         IP=$(ip -4 addr show dev "$IFACE" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1)
         [ -z "$IP" ] && IP="No IP"
         
@@ -68,10 +77,10 @@ else
 fi
 
 # AWK processes the entire network list natively, zero sub-shells
-# Reverted back to SSID-only deduplication, but passing conn="$ssid" to cleanly exclude the connected network
-NETWORKS_JSON=$(LC_ALL=C nmcli -t -f active,ssid,signal,security device wifi list --rescan auto | awk -F: -v conn="$ssid" '
-    $2 != "" && $2 != conn && !seen[$2]++ {
-        ssid=$2; signal=$3; security=$4;
+# Excludes both connected SSID and the active hotspot SSID
+NETWORKS_JSON=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wifi list --rescan auto | awk -F: -v conn="$ssid" -v hs="$HOTSPOT_SSID" '
+    $2 == "Infra" && $3 != "" && $3 != conn && (hs == "" || $3 != hs) && !seen[$3]++ {
+        ssid=$3; signal=$4; security=$5;
         
         # Escape quotes and backslashes inside strings
         gsub(/\\/, "\\\\", ssid);

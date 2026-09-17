@@ -208,26 +208,25 @@ PanelWindow {
         onTriggered: masterWindow.isStartup = false
     }
 
-    Process {
-        id: settingsReader
-        command: ["bash", "-c", "$HOME/.config/hypr/scripts/quickshell/watchers/settings_wait.sh && cat $HOME/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    if (this.text && this.text.trim().length > 0) {
-                        let parsed = JSON.parse(this.text);
-                        if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
-                            masterWindow.globalUiScale = parsed.uiScale;
-                        }
+    FileView {
+        id: settingsView
+        path: Quickshell.env("HOME") + "/.config/hypr/settings.json"
+        watchChanges: true
+        function parseSettings() {
+            try {
+                let txt = text();
+                if (txt && txt.trim().length > 0) {
+                    let parsed = JSON.parse(txt);
+                    if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
+                        masterWindow.globalUiScale = parsed.uiScale;
                     }
-                } catch (e) {
-                    console.log("Error parsing settings.json in main.qml:", e);
                 }
-                settingsReader.running = false;
-                settingsReader.running = true;
+            } catch (e) {
+                console.log("Error parsing settings.json in Main.qml:", e);
             }
         }
+        onLoaded: parseSettings()
+        onFileChanged: parseSettings()
     }
 
     property var    _layoutCache:    ({})
