@@ -21,17 +21,19 @@
 <div align="center">
 
 ### Desktop & Interface
-<img src="docs/assets/hero_desktop.gif" alt="Desktop Overview" width="850" />
+<video src="https://github.com/Realdhiru/nix/raw/main/docs/assets/hero_desktop.mp4" poster="docs/assets/hero_poster.jpg" autoplay loop muted playsinline width="850">
+  <img src="docs/assets/hero_desktop.gif" alt="Desktop Overview" width="850" />
+</video>
 
 <br/>
 
 | Control Center | Network Panel |
 | :---: | :---: |
-| <img src="docs/assets/battery_control_center.png" alt="Control Center" width="410" /> | <img src="docs/assets/wifi_network_panel.png" alt="Network Panel" width="410" /> |
+| <img src="docs/assets/battery_control_center.svg" alt="Control Center" width="410" /> | <img src="docs/assets/wifi_network_panel.svg" alt="Network Panel" width="410" /> |
 
 | Fuzzel Launcher | Fast File Search |
 | :---: | :---: |
-| <img src="docs/assets/fuzzel_launcher.png" alt="Fuzzel Launcher" width="410" /> | <img src="docs/assets/fuzzel_file_search.png" alt="Fuzzel File Search" width="410" /> |
+| <img src="docs/assets/fuzzel_launcher.svg" alt="Fuzzel Launcher" width="410" /> | <img src="docs/assets/fuzzel_file_search.svg" alt="Fuzzel File Search" width="410" /> |
 
 <sub>Wallpapers used in this setup are available in [Realdhiru/wallps](https://github.com/Realdhiru/wallps). Base desktop widgets are adapted from [ilyamiro/serpantinum](https://github.com/ilyamiro/serpantinum).</sub>
 
