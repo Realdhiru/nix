@@ -256,7 +256,8 @@ Item {
                     hyprctl -j getoption decoration:shadow:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null
                     hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
 
-                    hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, screen_shader = '' } })" 2>/dev/null && touch /tmp/qs_saver_visuals_ok
+                    hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '' }, animations = { enabled = false } })" 2>/dev/null
+                    hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null && touch /tmp/qs_saver_visuals_ok
                 `;
                 Quickshell.execDetached(["bash", "-c", cmd]);
                 // Set state to saver-applied once transaction completes
@@ -278,11 +279,13 @@ Item {
                     [ "$PREV_SHADOW" = "true" ] && SHADOW_VAL="true" || SHADOW_VAL="false"
 
                     if [ -f "$HOME/.cache/wallpaper_killed" ]; then
-                        BLUR_VAL="false"
-                        SHADOW_VAL="false"
+                        hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = false } })" 2>/dev/null
+                        hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
+                    else
+                        hyprctl eval "hl.config({ decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
+                        hyprctl reload 2>/dev/null || true
                     fi
-
-                    hyprctl eval "hl.config({ decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' } })" 2>/dev/null && touch /tmp/qs_normal_visuals_ok
+                    touch /tmp/qs_normal_visuals_ok
                 `;
                 Quickshell.execDetached(["bash", "-c", cmd]);
                 root.saverVisualState = "normal";

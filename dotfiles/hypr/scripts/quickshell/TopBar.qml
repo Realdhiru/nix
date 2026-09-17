@@ -124,25 +124,10 @@ Variants {
             Timer { interval: 10; running: true; onTriggered: barWindow.isStartupReady = true }
 
             property bool startupCascadeFinished: false
-            Timer { interval: 1000; running: true; onTriggered: barWindow.startupCascadeFinished = true }
+            Timer { interval: 300; running: true; onTriggered: barWindow.startupCascadeFinished = true }
 
-            // isDataReady gates the startup reveal on real data arriving.
-            // The audio/network/bt poller chains were deleted (their state
-            // was never rendered); battery now comes from the SysData
-            // singleton's event watcher, so the only live flag left is
-            // batteryLoaded — set on SysData's first battery event.
-            property bool batteryLoaded: false
-            property bool dataReadyFallbackTriggered: false
-            property bool isDataReady: batteryLoaded || dataReadyFallbackTriggered
-
-            Connections {
-                target: SysData
-                function onBatCapacityChanged(cap) { barWindow.batteryLoaded = true; }
-            }
-
-            // Safety net only, in case a poller script is ever broken/slow —
-            // guarantees the bar never hangs forever waiting on one flag.
-            Timer { interval: 800; running: true; onTriggered: barWindow.dataReadyFallbackTriggered = true }
+            // Render rightContent immediately; live telemetry is bound reactively to SysData
+            property bool isDataReady: true
 
             property string timeStr: ""
             property string fullDateStr: ""

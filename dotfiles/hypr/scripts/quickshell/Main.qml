@@ -152,15 +152,22 @@ PanelWindow {
     Component.onCompleted: {
         Config.masterWidth = masterWindow.width;
         Config.masterHeight = masterWindow.height;
-        preloadStaggerTimer.start();
     }
 
     property var _preloadQueue: ["battery", "network", "music", "clipboard", "monitors", "focustime", "weather_setup", "calendar", "wallpaper"]
     property int _preloadIndex: 0
 
+    // Defer preloading until 6 seconds after boot so startup is 100% instantaneous with 0ms hitching
+    Timer {
+        id: preloadIdleTimer
+        interval: 6000
+        running: true
+        onTriggered: preloadStaggerTimer.start()
+    }
+
     Timer {
         id: preloadStaggerTimer
-        interval: 150
+        interval: 350
         repeat: true
         running: false
         onTriggered: {

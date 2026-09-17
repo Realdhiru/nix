@@ -21,6 +21,7 @@ touch "$HOME/.cache/current_wallpaper.txt"
 # 3. Reset Matugen colors to clean pure neutral dark grey default theme (zero green/blue tint)
 matugen color hex "#444444" --config "$HOME/nix/dotfiles/matugen/config.toml" --type scheme-monochrome -m dark >/dev/null 2>&1 || true
 
-# 4. Disable battery-draining GPU blur and shadow shaders in Hyprland
-hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } } })" >/dev/null 2>&1 || true
+# 4. Disable battery-draining GPU blur, shadows, animations and transparent alpha blending
+hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0 }, animations = { enabled = false } })" >/dev/null 2>&1 || true
+hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" >/dev/null 2>&1 || true
 touch "$HOME/.cache/wallpaper_killed"
