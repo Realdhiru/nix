@@ -21,9 +21,7 @@
 <div align="center">
 
 ### Desktop & Interface
-<a href="docs/assets/hero_desktop.mp4" title="Click to view raw 60fps video">
-  <img src="docs/assets/hero_desktop.webp" alt="Desktop Overview" width="850" />
-</a>
+<img src="docs/assets/hero_desktop.webp" alt="Desktop Overview" width="850" />
 
 <br/>
 
