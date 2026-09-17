@@ -2,10 +2,10 @@
 
 ## 2026-09-17 — Fuzzel HiDPI Rescaling, Outside-Click Dismissal, Zero-Blink Reloads & Hotspot Reliability
 
-- **README Showcase, Full Architecture & Technical Comparison (`README.md`)**:
-  - Overhauled repository presentation: added clean badge layout, showcase media grid, full directory/module architecture map, and realistic setup instructions replacing premature `nh os switch` commands.
-  - Added comparative analysis detailing why this declarative setup outperforms generic bash install scripts (native C++ zero-polling IPC vs. busy-loop polling, firmware-level TLP battery ceiling, dynamic GPU shader bypass on power-saver, and frame-0 non-destructive compositor reloads).
-  - Explicitly attributed adapted QuickShell foundation to `ilyamiro/serpantinum`.
+- **README Showcase, Full Architecture & Technical Highlights (`README.md`)**:
+  - Restructured repository presentation into clean, humble, architectural sections: Hardware-Aligned Power Management, Compositor & Desktop Workflow, and Declarative System Infrastructure.
+  - Linked wallpapers repository (`Realdhiru/wallps`) and attributed base widget foundation to `ilyamiro/serpantinum`.
+  - Maintained complete architecture tree and realistic setup/reproduction instructions.
 
 - **Fuzzel HiDPI Proportion Rescaling & Outside-Click Dismissal (`fuzzel.ini`, `fuzzel_menu.sh`)**:
   - Compacted Fuzzel UI to align with QuickShell's 2x HiDPI proportions: reduced font size to `10pt` (file finder `9.5pt`), line height to `22px`, width to `32` characters, padding to `14px/10px/6px`, and corner radius to `12px`.

@@ -9,7 +9,7 @@
 [![Flakes](https://img.shields.io/badge/Config-Nix_Flakes-52B788?style=for-the-badge&logo=nixos)](https://wiki.nixos.org/wiki/Flakes)
 
 <p align="center">
-  <b>A fully declarative, mathematically reproducible desktop engineered for sub-millisecond IPC responsiveness, hardware-enforced battery efficiency, and zero-flicker HiDPI Wayland compositing.</b>
+  A declarative, reproducible personal desktop environment configured with Nix Flakes, Hyprland, and QuickShell.
 </p>
 
 </div>
@@ -33,34 +33,35 @@
 | :---: | :---: |
 | <img src="docs/assets/fuzzel_launcher.png" alt="Fuzzel Launcher" width="410" /> | <img src="docs/assets/fuzzel_file_search.png" alt="Fuzzel File Search" width="410" /> |
 
+<sub>Wallpapers used in this setup are available in [Realdhiru/wallps](https://github.com/Realdhiru/wallps). Base desktop widgets are adapted from [ilyamiro/serpantinum](https://github.com/ilyamiro/serpantinum).</sub>
+
 </div>
 
 ---
 
-## Why This Over Automated Install Scripts / Generic Dotfiles?
+## Design & Technical Highlights
 
-Most popular rice repositories and automated install scripts (e.g. Hyprdots, end-4, Arch scripts) rely on dirty `curl | bash` pipelines that install unpinned packages, pollute your home directory, and silently break on subsequent system updates. This setup is built from first principles on NixOS:
+### 🔋 Power & Thermal Management
+- **Hardware-Level Power Authority**: TLP coordinates CPU energy-performance preferences (EPP), ASPM, and platform profiles, while enforcing an 80% battery charge ceiling (`charge_control_end_threshold = 80`) directly at the firmware level to preserve cell health.
+- **Dynamic GPU Shader Bypass**: On battery-saver profiles or solid black wallpapers, compositor dual-kawase blur shaders and drop shadows are automatically bypassed with 100% opaque window rendering, eliminating multi-pass GPU alpha-blending.
+- **Event-Driven Telemetry (Zero Polling Loops)**: System telemetry reads directly from Linux kernel uevents and sysfs watchers rather than periodic shell polling timers. In-process `/proc` inspection in background daemons eliminates unnecessary subprocess forks, allowing CPU package states to settle into deep C-state sleep.
+- **Transient Spike Control**: Disables aggressive dynamic frequency boost on battery to eliminate thermal spikes from background Chromium and Electron processes.
 
-- **100% Declarative & Bitrot-Proof**:
-  - Zero ad-hoc packages or untracked state. Every package, driver, daemon, user permission, font, and config file is locked deterministically via Nix Flakes.
-  - Generational rollbacks (`sudo nixos-rebuild --rollback`): If an upstream package ever misbehaves, you can boot back into your previous known-good state with zero downtime.
-- **Native Event-Driven IPC (Eliminating Polling Wakeups)**:
-  - Generic rice configurations often run periodic `while true; do sleep 1; ... done` bash loops to poll volume, brightness, battery, and workspaces.
-  - This setup uses direct event-driven IPC inside QuickShell: Hyprland socket events (~6ms response), PipeWire D-Bus signals (~8ms audio reactivity), and Linux kernel uevents via `udevadm`. UI state updates reactively without unnecessary background timer wakeups.
-- **Hardware-Enforced Battery & Power Policy**:
-  - **TLP 1.9.1 Hardware Authority**: Governs CPU EPP scaling, platform profiles, ASPM, and enforces an 80% battery charging ceiling (`charge_control_end_threshold = 80`) directly at the firmware level to extend battery health.
-  - **Dynamic GPU Shader Bypass**: On `power-saver` mode or black wallpapers, Hyprland automatically bypasses dual-kawase blur shaders, drop shadows, and forces 100% opaque window rendering. This eliminates multi-pass alpha-blending and saves ~1.2W–2.0W of GPU package power during typing and scrolling.
-  - **Instant Gaming / Low-Latency Mode (`SUPER + SHIFT + G`)**: Direct scanout (`render:direct_scanout = 2`), Adaptive Sync (VRR), and asynchronous tearing without compositor lag.
-- **Zero-Blink Compositor Hot-Reloads**:
-  - Reloading Hyprland (`SUPER + R`) evaluates configuration state synchronously at Frame-0. It does not unmap Wayland surfaces or cold-restart the desktop shell, eliminating black screen flashes and dropping reload time to ~15ms.
-- **Dynamic Material You Theming**:
-  - Instant palette extraction via Matugen on wallpaper changes with inotify synchronization, updating QuickShell widgets, terminal, and launcher without daemon overhead.
+### 🪟 Compositor & Desktop Workflow
+- **Modular Lua Configuration**: Hyprland configuration is organized cleanly in native Lua modules (`hyprland.lua`), decoupling keybinds, rules, window animations, and environment variables.
+- **Frame-0 Hot Reloading**: Synchronously evaluates cached power and visual states at startup and reload (`SUPER + R`), applying compositor rules in ~15ms without unmapping Wayland surfaces or cold-restarting desktop shell widgets.
+- **Low-Latency Compositing Mode**: A dedicated keybind (`SUPER + SHIFT + G`) toggles Direct Scanout (`render:direct_scanout = 2`), Adaptive Sync (VRR), and asynchronous tearing for latency-sensitive full-screen workloads.
+- **Pure Wayland Pipeline**: All Chromium and Electron apps run with native Wayland flags (`NIXOS_OZONE_WL = "1"`), providing kinetic touchpad gestures and subpixel scrolling.
+- **Fuzzy File Navigation & Theming**: Centered interactive file search (`SUPER + SPACE`) with instant parent directory navigation in `pcmanfm-qt`, paired with in-place Matugen palette syncing across widgets, terminal, and launcher.
+
+### ❄️ Declarative System Infrastructure
+- **Safety-Gated Rebuild Workflow**: A custom rebuild pipeline validates builds before activation, runs a post-switch health gate with automated rollbacks, and retains a 14-day garbage collection safety window while tracking floating `nixos-unstable`.
+- **Integrated System Packaging**: Declarative custom derivations (including `hypr-kdeconnect-portal` for remote input over `/dev/uinput`), native AppImage execution via Linux kernel `binfmt_misc`, and declarative Flathub integration.
+- **Clean Display Authentication**: Lightweight TTY display manager (`ly`) with PAM authentication, cleanly decoupling graphical login from session startup.
 
 ---
 
 ## Architecture & System Structure
-
-The repository separates hardware topology, declarative system modules, user environment, and standalone dotfiles:
 
 ```text
 nix/
@@ -121,7 +122,7 @@ nix/
 
 ---
 
-## Installation & Setup
+## Setup & Reproduction
 
 ### 1. Prerequisites (Fresh Machine)
 Ensure NixOS is installed and Flakes are enabled in `/etc/nixos/configuration.nix`:
@@ -134,37 +135,18 @@ nix.settings.experimental-features = [ "nix-command" "flakes" ];
 git clone https://github.com/Realdhiru/nix.git ~/nix
 cd ~/nix
 
-# Generate hardware configuration for your target machine
+# Generate hardware configuration for the target machine
 nixos-generate-config --show-hardware-config > hosts/nixos/hardware-configuration.nix
 ```
 
 ### 3. Initial Build & Activation
 ```bash
-# Build and activate the flake configuration
+# Build and activate the configuration
 sudo nixos-rebuild switch --flake .#nixos
 ```
 
-### 4. Workflow After Activation
-Once active, the built-in protected rebuild wrapper handles git commits, safety builds, activation gates, and rollback tagging automatically:
+### 4. Ongoing Maintenance
+Once active, day-to-day updates can be managed with the included safety-gated wrapper:
 ```bash
-rebuild "your commit message"
+rebuild "commit message"
 ```
-
----
-
-## Credits & Built With
-
-This desktop experience is built upon an incredible ecosystem of open-source tools:
-
-- **[NixOS](https://nixos.org)** — Declarative system foundations & package reproducibility.
-- **[Hyprland](https://hyprland.org)** by Vaxry — Smooth, dynamic Wayland tiling compositor.
-- **[QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell)** by Outfoxxed — High-performance QML Wayland layer-shell framework.
-- **[serpantinum](https://github.com/ilyamiro/serpantinum)** by ilyamiro — Base QuickShell widget foundation, adapted and optimized with native IPC for personal daily driving.
-- **[Matugen](https://github.com/InioX/matugen)** by InioX — Material You dynamic color palette generation.
-- **[Fuzzel](https://codeberg.org/dnkl/fuzzel)** by Daniel Eklöf — Minimal, lightweight Wayland application launcher.
-- **[WezTerm](https://wezfurlong.org/wezterm/)** by Wez Furlong — GPU-accelerated terminal emulator.
-- **[Starship](https://starship.rs)** — Fast, customizable cross-shell prompt.
-- **[PipeWire & WirePlumber](https://pipewire.org)** — Low-latency audio architecture.
-- **[TLP](https://linrunner.de/tlp/)** — Advanced Linux power management and battery charge control.
-- **[gpu-screen-recorder](https://git.dec05eba.com/gpu-screen-recorder/about/)** by decman — High-performance hardware video recording.
-- **[Fastfetch](https://github.com/fastfetch-cli/fastfetch)** by LinusDierheimer — Neofetch-compatible system information tool.
