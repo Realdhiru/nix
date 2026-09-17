@@ -248,17 +248,6 @@ Item {
                 window.failedId = targetId;
                 failClearTimer.restart();
                 window.playSfx("disconnect.wav");
-
-                if (window.activeMode === "wifi" && targetSsid !== "") {
-                    Quickshell.execDetached(["bash", "-c", "nmcli connection delete '" + targetSsid + "' 2>/dev/null"]);
-                    let newSaved = [];
-                    for(let i = 0; i < window.savedWifiNetworks.length; i++) {
-                        if(window.savedWifiNetworks[i] !== targetSsid) {
-                            newSaved.push(window.savedWifiNetworks[i]);
-                        }
-                    }
-                    window.savedWifiNetworks = newSaved;
-                }
             }
             window.connectingId = "";
             if (window.activeMode === "eth") ethPoller.running = true;

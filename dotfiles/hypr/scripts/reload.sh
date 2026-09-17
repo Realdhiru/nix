@@ -49,9 +49,13 @@ fi
 if [ "$QS_RUNNING" = false ]; then
     QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
     if command -v hyprctl >/dev/null 2>&1; then
-        hyprctl dispatch exec "quickshell -p $QS_TARGET" >/dev/null 2>&1
+        hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('quickshell -p $QS_TARGET'))" >/dev/null 2>&1
     else
         nohup quickshell -p "$QS_TARGET" >/dev/null 2>&1 &
         disown
     fi
+else
+    # In-place seamless QML reload without unmapping Wayland surfaces or blinking screen
+    QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
+    quickshell -p "$QS_TARGET" ipc call topbar queueReload >/dev/null 2>&1 &
 fi

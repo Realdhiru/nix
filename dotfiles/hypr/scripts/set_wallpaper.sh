@@ -205,5 +205,6 @@ else:
     # Ensure isLight and topLuminance are preserved in the fresh qs_colors.json via sub-3ms jq
     jq --argjson il "$is_light" --arg tl "${top_lum:-50}" '. + {isLight: $il, topLuminance: ($tl|tonumber)}' \
         "$HOME/.cache/matugen/qs_colors.json" > "$HOME/.cache/matugen/qs_colors.json.tmp" 2>/dev/null && \
-    mv "$HOME/.cache/matugen/qs_colors.json.tmp" "$HOME/.cache/matugen/qs_colors.json"
+    cp -f "$HOME/.cache/matugen/qs_colors.json.tmp" "$HOME/.cache/matugen/qs_colors.json" 2>/dev/null && \
+    rm -f "$HOME/.cache/matugen/qs_colors.json.tmp"
 ) &

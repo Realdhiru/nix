@@ -43,25 +43,13 @@ if [[ -n "$CURRENT_RAW" ]]; then
     IFS=':' read -r active ssid signal security <<< "$CURRENT_RAW"
     icon=$(get_icon "$signal")
     
-    SAFE_SSID="${ssid//[^a-zA-Z0-9]/_}"
-    CACHE_FILE="$CACHE_DIR/wifi_$SAFE_SSID"
+    IFACE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE,STATE d 2>/dev/null | awk -F: '$2=="wifi" && $3=="connected"{print $1;exit}')
+    [ -z "$IFACE" ] && IFACE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE d 2>/dev/null | awk -F: '$2=="wifi"{print $1;exit}')
+    IP=$(ip -4 addr show dev "$IFACE" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1)
+    [ -z "$IP" ] && IP="No IP"
     
-    if [ -f "$CACHE_FILE" ]; then
-        source "$CACHE_FILE"
-    fi
-    
-    if [ -z "$IP" ] || [ "$IP" == "No IP" ] || [ -z "$FREQ" ]; then
-        IFACE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE,STATE d | awk -F: '$2=="wifi" && $3=="connected"{print $1;exit}')
-        [ -z "$IFACE" ] && IFACE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE d | awk -F: '$2=="wifi"{print $1;exit}')
-        IP=$(ip -4 addr show dev "$IFACE" 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1)
-        [ -z "$IP" ] && IP="No IP"
-        
-        FREQ=$(iw dev "$IFACE" link 2>/dev/null | awk '/freq:/ {print $2}')
-        [ -n "$FREQ" ] && FREQ="${FREQ} MHz" || FREQ="Unknown"
-        
-        echo "IP=\"$IP\"" > "$CACHE_FILE"
-        echo "FREQ=\"$FREQ\"" >> "$CACHE_FILE"
-    fi
+    FREQ=$(iw dev "$IFACE" link 2>/dev/null | awk '/freq:/ {print $2}')
+    [ -n "$FREQ" ] && FREQ="${FREQ} MHz" || FREQ="Unknown"
 
     # Native Bash JSON generation
     ssid_esc="${ssid//\\/\\\\}"
@@ -78,7 +66,7 @@ fi
 
 # AWK processes the entire network list natively, zero sub-shells
 # Excludes both connected SSID and the active hotspot SSID
-NETWORKS_JSON=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wifi list --rescan auto | awk -F: -v conn="$ssid" -v hs="$HOTSPOT_SSID" '
+NETWORKS_JSON=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wifi list --rescan auto 2>/dev/null | awk -F: -v conn="$ssid" -v hs="$HOTSPOT_SSID" '
     $2 == "Infra" && $3 != "" && $3 != conn && (hs == "" || $3 != hs) && !seen[$3]++ {
         ssid=$3; signal=$4; security=$5;
         
@@ -96,7 +84,7 @@ NETWORKS_JSON=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wif
         
         printf "{\"id\":\"%s\",\"ssid\":\"%s\",\"icon\":\"%s\",\"signal\":\"%s\",\"security\":\"%s\"}\n", ssid, ssid, icon, signal, security
     }
-' | head -n 24 | paste -sd, -)
+' | paste -sd, -)
 
 if [ -z "$NETWORKS_JSON" ]; then
     NETWORKS_JSON="[]"
