@@ -44,11 +44,11 @@ Most popular rice repositories and automated install scripts (e.g. Hyprdots, end
 - **100% Declarative & Bitrot-Proof**:
   - Zero ad-hoc packages or untracked state. Every package, driver, daemon, user permission, font, and config file is locked deterministically via Nix Flakes.
   - Generational rollbacks (`sudo nixos-rebuild --rollback`): If an upstream package ever misbehaves, you can boot back into your previous known-good state with zero downtime.
-- **Native Event-Driven IPC (0% CPU at Idle)**:
-  - Generic rices run heavy `while true; do sleep 1; ... done` bash scripts to poll volume, brightness, battery, and workspaces.
-  - This setup uses direct C++ event-driven IPC inside QuickShell: Hyprland socket events (~6ms response), PipeWire D-Bus signals (~8ms audio reactivity), and Linux kernel uevents via `udevadm`. No periodic timer polling wakes your CPU.
+- **Native Event-Driven IPC (Eliminating Polling Wakeups)**:
+  - Generic rice configurations often run periodic `while true; do sleep 1; ... done` bash loops to poll volume, brightness, battery, and workspaces.
+  - This setup uses direct event-driven IPC inside QuickShell: Hyprland socket events (~6ms response), PipeWire D-Bus signals (~8ms audio reactivity), and Linux kernel uevents via `udevadm`. UI state updates reactively without unnecessary background timer wakeups.
 - **Hardware-Enforced Battery & Power Policy**:
-  - **TLP 1.9.1 Hardware Authority**: Governs CPU EPP scaling, platform profiles, ASPM, and enforces an 80% battery charging ceiling (`charge_control_end_threshold = 80`) directly at the firmware level.
+  - **TLP 1.9.1 Hardware Authority**: Governs CPU EPP scaling, platform profiles, ASPM, and enforces an 80% battery charging ceiling (`charge_control_end_threshold = 80`) directly at the firmware level to extend battery health.
   - **Dynamic GPU Shader Bypass**: On `power-saver` mode or black wallpapers, Hyprland automatically bypasses dual-kawase blur shaders, drop shadows, and forces 100% opaque window rendering. This eliminates multi-pass alpha-blending and saves ~1.2W–2.0W of GPU package power during typing and scrolling.
   - **Instant Gaming / Low-Latency Mode (`SUPER + SHIFT + G`)**: Direct scanout (`render:direct_scanout = 2`), Adaptive Sync (VRR), and asynchronous tearing without compositor lag.
 - **Zero-Blink Compositor Hot-Reloads**:
@@ -152,9 +152,19 @@ rebuild "your commit message"
 
 ---
 
-## Credits & Acknowledgments
+## Credits & Built With
 
-- **[QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell)** by Outfoxxed for the QML Wayland desktop shell framework.
-- This project uses some QuickShell widgets adapted from **[ilyamiro/serpantinum](https://github.com/ilyamiro/serpantinum)**, optimized and rewritten with native event-driven IPC for personal daily driving.
-- **[Matugen](https://github.com/InioX/matugen)** for dynamic Material You color extraction.
-- **[Hyprland](https://hyprland.org)** for the Wayland compositor.
+This desktop experience is built upon an incredible ecosystem of open-source tools:
+
+- **[NixOS](https://nixos.org)** — Declarative system foundations & package reproducibility.
+- **[Hyprland](https://hyprland.org)** by Vaxry — Smooth, dynamic Wayland tiling compositor.
+- **[QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell)** by Outfoxxed — High-performance QML Wayland layer-shell framework.
+- **[serpantinum](https://github.com/ilyamiro/serpantinum)** by ilyamiro — Base QuickShell widget foundation, adapted and optimized with native IPC for personal daily driving.
+- **[Matugen](https://github.com/InioX/matugen)** by InioX — Material You dynamic color palette generation.
+- **[Fuzzel](https://codeberg.org/dnkl/fuzzel)** by Daniel Eklöf — Minimal, lightweight Wayland application launcher.
+- **[WezTerm](https://wezfurlong.org/wezterm/)** by Wez Furlong — GPU-accelerated terminal emulator.
+- **[Starship](https://starship.rs)** — Fast, customizable cross-shell prompt.
+- **[PipeWire & WirePlumber](https://pipewire.org)** — Low-latency audio architecture.
+- **[TLP](https://linrunner.de/tlp/)** — Advanced Linux power management and battery charge control.
+- **[gpu-screen-recorder](https://git.dec05eba.com/gpu-screen-recorder/about/)** by decman — High-performance hardware video recording.
+- **[Fastfetch](https://github.com/fastfetch-cli/fastfetch)** by LinusDierheimer — Neofetch-compatible system information tool.
