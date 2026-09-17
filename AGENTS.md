@@ -1,12 +1,13 @@
 # Antigravity Persistent Rules & System Memory
 
-## 1. Automatic Post-Fix Documentation Requirement
+## 1. Automatic Post-Fix Documentation & Git Sync Requirement
 
 After successfully resolving any issue, bug, or feature implementation:
 - **Automatically update `~/nix/CHANGELOG.md`** under the current date section with a concise summary of changes.
 - **Automatically update `~/nix/docs/decisions.md`** if an architectural or technical decision was made or superseded.
 - **Automatically update `~/.gemini/config/skills/nixos-hyprland/SKILL.md`** if new systemic rules or workflow constraints were established.
 - **Keep all documentation updates concise, practical, and bloat-free.**
+- **Automatically stage, commit, and push (`git commit` and `git push origin main`)** all changes after completing a feature update, fix, or documentation update.
 
 ---
 
