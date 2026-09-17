@@ -50,6 +50,7 @@ case "$MODE" in
 
         FUZZEL_ARGS=(
             --dmenu
+            --match-mode=fzf
             --hide-before-typing
             --anchor=center
             --width=38
@@ -63,8 +64,8 @@ case "$MODE" in
             --border-radius=12
             --keyboard-focus=on-demand
             --with-nth=1
-            --match-nth=1
-            --accept-nth=2
+            --match-nth=2
+            --accept-nth=3
             --nth-delimiter=$'\t'
             --prompt="  "
             --placeholder="Type to search files..."
@@ -108,7 +109,7 @@ case "$MODE" in
                 else if (ext ~ /^(zip|tar|gz|bz2|xz|7z|rar)$/) { icon = "package-x-generic"; glyph = "󰛫"; }
                 else if (ext ~ /^(nix|lua|sh|bash|py|js|ts|rs|go|c|cpp|h|hpp)$/) { icon = "text-x-script"; glyph = "󰅩"; }
                 else if (ext ~ /^(md|txt|org|json|yaml|yml|toml|conf|ini)$/) { icon = "text-x-generic"; glyph = "󰈙"; }
-                printf "%s %-28s  %s\0icon\x1f%s\t%s\n", glyph, fname, dir, icon, $0;
+                printf "%s %-28s  %s\0icon\x1f%s\t%s %s\t%s\n", glyph, fname, dir, icon, fname, dir, $0;
             }' | \
             fuzzel "${FUZZEL_ARGS[@]}" 2>/dev/null || true
         )

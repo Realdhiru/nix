@@ -10,10 +10,14 @@
   - Enhanced Hotspot toggle and header pill click handlers with instant visual feedback and responsive dual-pass refresh timers (300ms + 1000ms).
   - Cleaned up aesthetics: removed Wi-Fi icons from header pill and drawer, and swapped green/mauve outlines for neutral dark surface styling (`surface2`).
 
-- **System Tray Redundant Icon Suppression (`TopBar.qml`, `startup.lua`)**:
-  - Filtered out redundant Bluetooth (`blueman`, `bluetooth`) and KDE Connect (`kdeconnect`, `kde connect`) icons from the QuickShell system tray (`filteredTrayItems`). Bluetooth is already comprehensively managed by QuickShell's native `NetworkPopup.qml` and TopBar widget, making tray icons visual clutter.
-  - Dynamically recalculated `targetWidth` based on `filteredTrayItems.length` so the tray container pill collapses cleanly when only ignored icons exist.
-  - Removed redundant `kdeconnect-indicator` startup launch from `startup.lua` (`kdeconnectd` and `hypr-kdeconnect-portal` daemon services remain active for device sync and portal operations).
+- **System Tray Scope Resolution & Explicit Target Width (`TopBar.qml`, `startup.lua`)**:
+  - Resolved `ReferenceError: filteredTrayItems is not defined` inside `TopBar.qml` by assigning an explicit `id: trayBox` to the tray container Rectangle.
+  - Replaced ambiguous `trayLayout.width` binding with an exact geometric formula (`trayRepeater.count * s(18) + (trayRepeater.count - 1) * s(10) + s(24)`), ensuring active non-blacklisted tray icons (e.g. EasyEffects, Spotify) render at the exact required width without clipping while completely suppressing Bluetooth and KDE Connect.
+  - Removed redundant `kdeconnect-indicator` startup launch from `startup.lua`.
+
+- **Fuzzel Search Algorithm Upgrade to FZF Subsequence Matching (`fuzzel.ini`, `fuzzel_menu.sh`)**:
+  - Resolved the search false-positive issue where loose Levenshtein edit distance (`match-mode = fuzzy`) caused unrelated files to match almost any keystroke: configured `match-mode = fzf` across `fuzzel.ini` and `fuzzel_menu.sh`.
+  - Upgraded file search pipeline in `fuzzel_menu.sh` to structured 3-column output: Column 1 for rich glyph/path rendering (`--with-nth=1`), Column 2 for exact `fname dir` subsequence matching (`--match-nth=2`), and Column 3 for clean absolute path execution (`--accept-nth=3`). Typing non-matching queries now yields zero results instead of spurious Levenshtein matches.
 
 - **Fuzzel Icon Theme Alignment (`fuzzel.ini`, `fuzzel_menu.sh`, `theme.nix`)**:
   - Identified and fixed why Fuzzel displayed default/Papirus icons instead of the system-wide custom hand-drawn icon theme (`buuf-nestort`): `fuzzel.ini` and `fuzzel_menu.sh` explicitly hardcoded `icon-theme = Papirus-Dark`.

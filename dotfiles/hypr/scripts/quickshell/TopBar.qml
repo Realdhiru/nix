@@ -1167,6 +1167,7 @@ Variants {
                         Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
 
                         Rectangle {
+                            id: trayBox
                             height: barWindow.barHeight
                             radius: barWindow.s(14)
                             border.color: barWindow.pillBorder
@@ -1193,7 +1194,7 @@ Variants {
                                 return res;
                             }
 
-                            property real targetWidth: filteredTrayItems.length > 0 ? trayLayout.width + barWindow.s(24) : 0
+                            property real targetWidth: trayRepeater.count > 0 ? (trayRepeater.count * barWindow.s(18) + (trayRepeater.count - 1) * barWindow.s(10) + barWindow.s(24)) : 0
                             width: targetWidth
                             Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutExpo } }
 
@@ -1208,7 +1209,7 @@ Variants {
 
                                 Repeater {
                                     id: trayRepeater
-                                    model: filteredTrayItems
+                                    model: trayBox.filteredTrayItems
                                     delegate: Image {
                                         id: trayIcon
                                         source: modelData.icon || ""
