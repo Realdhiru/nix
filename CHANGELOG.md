@@ -6,7 +6,7 @@
   - Extracted and computed a seamless 10.800s (648 frames @ 60fps) loop incorporating live Cava visualizer and TopBar music marquee text (`Grand Escape`).
   - Matched exactly 3 full wallpaper animation cycles ($3 \times 3.600$s) alongside the marquee cycle and bottom cava energy dip for zero seam stutter.
   - Seamlessly stabilized TopBar clock pill at `17:44` across the loop seam.
-  - Deployed 24-bit TrueColor animated WebP (`hero_desktop.webp`) linked directly to full 2880×1620 60fps MP4 (`hero_desktop.mp4`).
+  - Deployed 24-bit TrueColor animated WebP (`hero_desktop.webp`) as primary showcase media.
   - Streamlined showcase section and updated widget attribution phrasing.
 
 - **Hotspot Backend UUID Hardening & UI Drawer Lifecycle (`hotspot_control.sh`, `BatteryPopup.qml`)**:
