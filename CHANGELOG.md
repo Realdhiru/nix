@@ -7,15 +7,12 @@
   - Configured `keyboard-focus = on-demand` alongside `exit-on-keyboard-focus-loss = yes`. When clicking anywhere outside the Fuzzel window, keyboard focus switches instantly to the clicked surface and dismisses Fuzzel without requiring Escape.
 - **Unified Fuzzel Runner Consolidation (`fuzzel_menu.sh`, `keybinds.lua`)**:
   - Consolidated redundant application launcher and file finder scripts into a single, clean `fuzzel_menu.sh {app|file}` runner with built-in power-profile background adaptation. Preserved backwards-compatible stubs.
-- **Zero-Blink Compositor & QuickShell Reload (`reload.sh`)**:
-  - Replaced the hard-kill / sleep / cold-boot cycle in `reload.sh` with non-destructive Hyprland reloading. QuickShell is no longer killed when reloading configs, eliminating screen blinking and saving CPU cycles. QuickShell is only launched via `hyprctl dispatch exec` if not already running, or if `--quickshell` is explicitly passed.
-- **Zero-Bloat Notifications (`toggle_gaming_mode.sh`, `hotspot_control.sh`)**:
-  - Replaced multi-line verbose notifications in gaming mode and hotspot scripts with ultra-compact `"ON"` and `"OFF"` alerts (`notify-send -a "Game Mode" "ON"`), preventing TopBar notification ticker overflow.
-- **Hotspot Reliability & Automatic Wi-Fi Restoration (`hotspot_control.sh`, `BatteryPopup.qml`)**:
-  - Fixed Hotspot toggle in `BatteryPopup.qml` so that left-clicking the Hotspot button toggles the state directly, while right-clicking toggles the configuration drawer.
-  - In `hotspot_control.sh`, recorded the active Wi-Fi SSID prior to enabling Hotspot, and wired automatic background Wi-Fi re-association (`nmcli connection up "$PREV_SSID"`) upon disabling Hotspot. Fixed NetworkManager AP profile parsing by replacing subshell pipelines with process substitution.
-- **Native C++ Matugen Color Watching (`MatugenColors.qml`)**:
-  - Replaced looped background `colors_wait.sh` bash processes and polling timers with native `Quickshell.Io.FileView` (`watchChanges: true`), eliminating all background bash forks.
+- **Zero-Flicker Synchronous Opacity in Hyprland (`rules.lua`, `reload.sh`)**:
+  - Implemented synchronous frame-0 state detection (`wallpaper_killed`, `gaming_mode`, `power-saver`) directly inside `rules.lua`. Completely eliminated the 15ms translucent-to-opaque window flicker on `SUPER + R` config reloads.
+  - Streamlined `reload.sh` to avoid redundant full QML rebuilds during standard compositor reloads, dropping reload execution time to ~15ms.
+- **Package & Launcher Cleanup (`packages.nix`, `applications`)**:
+  - Removed `linux-wifi-hotspot` from system packages.
+  - Removed orphaned Bottles FL Studio desktop entry and suppressed unused helper entries (`Desktop`, `Bluetooth Adapters`, `Wifi Hotspot`).
   - In `kill_wallpaper.sh`, automatically disables Hyprland's dual-kawase blur, drop shadow shaders, animations (`animations:enabled = false`), and forces 100% opaque window rendering (`active_opacity = 1.0`, `inactive_opacity = 1.0`, `hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })`) via `hyprctl eval` whenever wallpapers are killed. This completely eliminates multi-pass GPU alpha-blending and allows hardware occlusion culling over black backgrounds (saving ~1.2W–2.0W GPU package power).
   - In `set_wallpaper.sh`, restores blur, shadows, animations, and reloads window rules (`hyprctl reload`) to restore window translucency (unless the system is actively in the `power-saver` profile).
   - Synchronized with `SysData.qml` power profile automation so that `power-saver` profile applies the same full opacity, animation, blur, and shadow bypass, and leaving `power-saver` respects the wallpaper killed state.

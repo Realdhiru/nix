@@ -49,7 +49,7 @@ in
     kdePackages.okular onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic
 
     # Audio & Networking
-    pwvucontrol networkmanagerapplet blueman linux-wifi-hotspot
+    pwvucontrol networkmanagerapplet blueman
 
     # Power & Sensors
     acpi iw lm_sensors

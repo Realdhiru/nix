@@ -1,21 +1,42 @@
--- ======================================================
--- Opacity
--- ======================================================
+local home = os.getenv("HOME") or ""
+local is_opaque = false
 
-hl.window_rule({ match = { class = "^codium$" }, opacity = "0.65" })
-hl.window_rule({ match = { class = "^spotify$" }, opacity = "0.92" })
-hl.window_rule({ match = { class = "^antigravity-ide$" }, opacity = "0.7" })
-hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.67" })
+local function check_file(path)
+    local f = io.open(path, "r")
+    if f then
+        local content = f:read("*a")
+        f:close()
+        return true, content
+    end
+    return false, nil
+end
 
--- Brave Apps
-hl.window_rule({ match = { class = "^brave-chat\\.openai\\.com__-Default$" }, opacity = "0.57" })                        -- ChatGPT
-hl.window_rule({ match = { class = "^brave-gemini\\.google\\.com__app-Default$" }, opacity = "0.57" })                   -- Gemini
-hl.window_rule({ match = { class = "^brave-claude\\.ai__new-Default$" }, opacity = "0.57" })                              -- Claude
-hl.window_rule({ match = { class = "^brave-monkeytype\\.com__-Default$" }, opacity = "0.57" })                            -- Monkeytype
-hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab25a38c938de4f8-Default$" }, opacity = "0.57" }) -- Notion
+local killed_ok, _ = check_file(home .. "/.cache/wallpaper_killed")
+local game_ok, _ = check_file(home .. "/.cache/gaming_mode")
+local prof_ok, prof_val = check_file(home .. "/.cache/qs_power_profile")
 
--- Spotify Lyrics (Chromium)
-hl.window_rule({ match = { class = "^Chromium-browser$" }, opacity = "0.57" })
+if killed_ok or game_ok or (prof_ok and prof_val and prof_val:match("power%-saver")) then
+    is_opaque = true
+end
+
+if not is_opaque then
+    hl.window_rule({ match = { class = "^codium$" }, opacity = "0.65" })
+    hl.window_rule({ match = { class = "^spotify$" }, opacity = "0.92" })
+    hl.window_rule({ match = { class = "^antigravity-ide$" }, opacity = "0.7" })
+    hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.67" })
+
+    -- Brave Apps
+    hl.window_rule({ match = { class = "^brave-chat\\.openai\\.com__-Default$" }, opacity = "0.57" })                        -- ChatGPT
+    hl.window_rule({ match = { class = "^brave-gemini\\.google\\.com__app-Default$" }, opacity = "0.57" })                   -- Gemini
+    hl.window_rule({ match = { class = "^brave-claude\\.ai__new-Default$" }, opacity = "0.57" })                              -- Claude
+    hl.window_rule({ match = { class = "^brave-monkeytype\\.com__-Default$" }, opacity = "0.57" })                            -- Monkeytype
+    hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab25a38c938de4f8-Default$" }, opacity = "0.57" }) -- Notion
+
+    -- Spotify Lyrics (Chromium)
+    hl.window_rule({ match = { class = "^Chromium-browser$" }, opacity = "0.57" })
+else
+    hl.window_rule({ match = { class = ".*" }, opacity = "1.0 override 1.0 override" })
+end
 
 -- ======================================================
 -- Global Rules
