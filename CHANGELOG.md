@@ -8,6 +8,7 @@
   - Fixed `showWidget()` in `BatteryPopup.qml` to reset `window.showHotspotMenu = false`, preventing the drawer from persistently sticking open on widget launch.
   - Converted card height from rigid hardcoded pixel bounds to dynamic `hotspotContentCol.implicitHeight + window.s(28)`, eliminating text and button clipping across HiDPI scaling.
   - Enhanced Hotspot toggle and header pill click handlers with instant visual feedback and responsive dual-pass refresh timers (300ms + 1000ms).
+  - Cleaned up aesthetics: removed Wi-Fi icons from header pill and drawer, and swapped green/mauve outlines for neutral dark surface styling (`surface2`).
 
 - **Fuzzel HiDPI Proportion Rescaling & Outside-Click Dismissal (`fuzzel.ini`, `fuzzel_menu.sh`)**:
   - Compacted Fuzzel UI to align with QuickShell's 2x HiDPI proportions: reduced font size to `10pt` (file finder `9.5pt`), line height to `22px`, width to `32` characters, padding to `14px/10px/6px`, and corner radius to `12px`.

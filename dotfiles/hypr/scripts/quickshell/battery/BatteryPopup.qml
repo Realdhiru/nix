@@ -537,39 +537,25 @@ Item {
 
                             Rectangle {
                                 id: hotspotBtn
-                                Layout.preferredWidth: window.s(104)
+                                Layout.preferredWidth: window.s(96)
                                 Layout.preferredHeight: window.s(38)
                                 radius: window.s(12)
-                                color: window.hotspotActive ? Qt.alpha(window.mauve, 0.25) : (hotspotMa.containsMouse || window.showHotspotMenu ? window.surface1 : window.surface0)
-                                border.color: window.hotspotActive ? window.mauve : (hotspotMa.containsMouse || window.showHotspotMenu ? window.surface2 : window.surface1)
+                                color: hotspotMa.containsMouse || window.showHotspotMenu ? window.surface1 : window.surface0
+                                border.color: hotspotMa.containsMouse || window.showHotspotMenu ? window.surface2 : window.surface1
                                 border.width: 1
                                 clip: true
 
                                 Behavior on color { ColorAnimation { duration: 150 } }
                                 Behavior on border.color { ColorAnimation { duration: 150 } }
 
-                                Row {
+                                Text {
+                                    id: hotspotText
                                     anchors.centerIn: parent
-                                    spacing: window.s(6)
-
-                                    Text {
-                                        font.family: "Iosevka Nerd Font"
-                                        font.pixelSize: window.s(17)
-                                        color: window.hotspotActive ? window.mauve : (hotspotMa.containsMouse ? window.mauve : window.text)
-                                        text: window.hotspotActive ? "󰤨" : "󰤧"
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-                                    }
-
-                                    Text {
-                                        id: hotspotText
-                                        text: window.hotspotActive ? ("Hotspot (" + window.hotspotClients + ")") : "Hotspot"
-                                        font.family: "JetBrains Mono"
-                                        font.weight: Font.Bold
-                                        font.pixelSize: window.s(11)
-                                        color: window.hotspotActive ? window.mauve : window.text
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
+                                    text: window.hotspotActive ? ("Hotspot (" + window.hotspotClients + ")") : "Hotspot"
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Bold
+                                    font.pixelSize: window.s(11)
+                                    color: window.text
                                 }
 
                                 MouseArea {
@@ -686,7 +672,7 @@ Item {
                             clip: true
                             radius: window.s(14)
                             color: window.surface0
-                            border.color: window.hotspotActive ? window.mauve : window.surface2
+                            border.color: window.surface2
                             border.width: 1
 
                             Behavior on Layout.preferredHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
@@ -701,24 +687,13 @@ Item {
                                 RowLayout {
                                     Layout.fillWidth: true
 
-                                    Row {
-                                        spacing: window.s(6)
+                                    Text {
+                                        text: "Wi-Fi Hotspot"
+                                        font.family: "JetBrains Mono"
+                                        font.weight: Font.Bold
+                                        font.pixelSize: window.s(13)
+                                        color: window.text
                                         anchors.verticalCenter: parent.verticalCenter
-                                        Text {
-                                            font.family: "Iosevka Nerd Font"
-                                            font.pixelSize: window.s(16)
-                                            color: window.hotspotActive ? window.mauve : window.text
-                                            text: "󰤨"
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
-                                        Text {
-                                            text: "Wi-Fi Hotspot"
-                                            font.family: "JetBrains Mono"
-                                            font.weight: Font.Bold
-                                            font.pixelSize: window.s(13)
-                                            color: window.text
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
                                     }
 
                                     Item { Layout.fillWidth: true }
@@ -727,8 +702,8 @@ Item {
                                         Layout.preferredWidth: window.s(76)
                                         Layout.preferredHeight: window.s(26)
                                         radius: window.s(13)
-                                        color: window.hotspotActive ? window.mauve : (hotspotToggleMa.containsMouse ? window.surface2 : window.surface1)
-                                        border.color: window.hotspotActive ? Qt.lighter(window.mauve, 1.2) : (hotspotToggleMa.containsMouse ? window.text : window.surface2)
+                                        color: window.hotspotActive ? window.surface2 : (hotspotToggleMa.containsMouse ? window.surface2 : window.surface1)
+                                        border.color: window.surface2
                                         border.width: 1
                                         opacity: hotspotToggleMa.pressed ? 0.7 : 1.0
 
@@ -740,7 +715,7 @@ Item {
                                             font.family: "JetBrains Mono"
                                             font.weight: Font.Black
                                             font.pixelSize: window.s(10)
-                                            color: window.hotspotActive ? window.base : window.text
+                                            color: window.text
                                         }
 
                                         MouseArea {
