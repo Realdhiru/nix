@@ -41,20 +41,20 @@
 
 ## Design & Technical Highlights
 
-### 🔋 Power & Thermal Management
+### Power & Thermal Management
 - **Hardware-Level Power Authority**: TLP coordinates CPU energy-performance preferences (EPP), ASPM, and platform profiles, while enforcing an 80% battery charge ceiling (`charge_control_end_threshold = 80`) directly at the firmware level to preserve cell health.
 - **Dynamic GPU Shader Bypass**: On battery-saver profiles or solid black wallpapers, compositor dual-kawase blur shaders and drop shadows are automatically bypassed with 100% opaque window rendering, eliminating multi-pass GPU alpha-blending.
 - **Event-Driven Telemetry (Zero Polling Loops)**: System telemetry reads directly from Linux kernel uevents and sysfs watchers rather than periodic shell polling timers. In-process `/proc` inspection in background daemons eliminates unnecessary subprocess forks, allowing CPU package states to settle into deep C-state sleep.
 - **Transient Spike Control**: Disables aggressive dynamic frequency boost on battery to eliminate thermal spikes from background Chromium and Electron processes.
 
-### 🪟 Compositor & Desktop Workflow
+### Compositor & Desktop Workflow
 - **Modular Lua Configuration**: Hyprland configuration is organized cleanly in native Lua modules (`hyprland.lua`), decoupling keybinds, rules, window animations, and environment variables.
 - **Frame-0 Hot Reloading**: Synchronously evaluates cached power and visual states at startup and reload (`SUPER + R`), applying compositor rules in ~15ms without unmapping Wayland surfaces or cold-restarting desktop shell widgets.
 - **Low-Latency Compositing Mode**: A dedicated keybind (`SUPER + SHIFT + G`) toggles Direct Scanout (`render:direct_scanout = 2`), Adaptive Sync (VRR), and asynchronous tearing for latency-sensitive full-screen workloads.
 - **Pure Wayland Pipeline**: All Chromium and Electron apps run with native Wayland flags (`NIXOS_OZONE_WL = "1"`), providing kinetic touchpad gestures and subpixel scrolling.
 - **Fuzzy File Navigation & Theming**: Centered interactive file search (`SUPER + SPACE`) with instant parent directory navigation in `pcmanfm-qt`, paired with in-place Matugen palette syncing across widgets, terminal, and launcher.
 
-### ❄️ Declarative System Infrastructure
+### Declarative System Infrastructure
 - **Safety-Gated Rebuild Workflow**: A custom rebuild pipeline validates builds before activation, runs a post-switch health gate with automated rollbacks, and retains a 14-day garbage collection safety window while tracking floating `nixos-unstable`.
 - **Integrated System Packaging**: Declarative custom derivations (including `hypr-kdeconnect-portal` for remote input over `/dev/uinput`), native AppImage execution via Linux kernel `binfmt_misc`, and declarative Flathub integration.
 - **Clean Display Authentication**: Lightweight TTY display manager (`ly`) with PAM authentication, cleanly decoupling graphical login from session startup.
@@ -145,8 +145,51 @@ nixos-generate-config --show-hardware-config > hosts/nixos/hardware-configuratio
 sudo nixos-rebuild switch --flake .#nixos
 ```
 
-### 4. Ongoing Maintenance
-Once active, day-to-day updates can be managed with the included safety-gated wrapper:
+### 4. Custom Management Commands
+
+The shell environment (`modules/home/shell.nix`) provides a dedicated suite of workflow functions to manage, inspect, and maintain the system safely:
+
+#### `rebuild [commit message]`
+The primary command for applying configuration changes. It implements an automated health-gated safety pipeline:
+1. Records the previous known-good system generation and git revision to `~/.cache/nix_rebuild_log`.
+2. Creates an atomic `known-good` git tag and automatically stages/commits all modified files.
+3. Executes `sudo nixos-rebuild build --flake .#nixos`. If compilation fails, execution aborts immediately without activating anything.
+4. Switches to the new generation and executes `scripts/health-check.sh` (validating Hyprland session integrity and GPU-hang probes).
+5. If a critical failure is detected, it **automatically rolls back** to the previous generation, preserves the failed generation in the bootloader for debugging, and generates a diagnostic log.
+
 ```bash
-rebuild "commit message"
+# Example: Apply changes with an automated commit & health check
+rebuild "feat: adjust hyprland window rules"
 ```
+
+#### `update`
+Pulls the latest git changes, updates flake inputs to the latest `nixos-unstable` revision, and executes a verified rebuild:
+```bash
+update
+```
+
+#### `gens`
+Displays an annotated, color-coded list of all system generations present in `/nix/var/nix/profiles/`, highlighting the currently `[ACTIVE]` generation and any `[PINNED STABLE]` generations:
+```bash
+gens
+```
+
+#### `pin-stable [generation_number]`
+Pins a specific generation (or the currently active generation if no argument is passed) as a permanent GC root (`/nix/var/nix/gcroots/boot-stable`). Pinned generations are permanently protected from garbage collection:
+```bash
+# Pin current generation
+pin-stable
+
+# Pin specific generation (e.g. generation 835)
+pin-stable 835
+```
+
+#### `clean`
+Safely purges unpinned Nix store paths older than 14 days (`--delete-older-than 14d`), ensuring that rollback targets and recent known-good generations remain fully bootable:
+```bash
+clean
+```
+
+#### `ff` & `af`
+- **`ff`**: Quick alias for `fastfetch`.
+- **`af`**: Interactive animated terminal fetcher that cycles through GIFs/MP4s in `~/Pictures/fastfetch` using `anifetch`, dynamically calculating terminal cell aspect ratios (`ffprobe`) to prevent image distortion.

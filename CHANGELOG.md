@@ -2,10 +2,9 @@
 
 ## 2026-09-17 — Fuzzel HiDPI Rescaling, Outside-Click Dismissal, Zero-Blink Reloads & Hotspot Reliability
 
-- **README Showcase, Full Architecture & Technical Highlights (`README.md`)**:
-  - Restructured repository presentation into clean, humble, architectural sections: Hardware-Aligned Power Management, Compositor & Desktop Workflow, and Declarative System Infrastructure.
-  - Linked wallpapers repository (`Realdhiru/wallps`) and attributed base widget foundation to `ilyamiro/serpantinum`.
-  - Maintained complete architecture tree and realistic setup/reproduction instructions.
+- **README Custom Commands Guide & Header Polish (`README.md`)**:
+  - Replaced the single-line maintenance placeholder with a complete guide detailing all custom shell workflow functions: `rebuild` (safety pipeline, health gate, auto-rollback), `update` (flake update & rebuild), `gens` (generation listing with active/pinned states), `pin-stable` (GC root pin), `clean` (14-day garbage collection), and `ff`/`af` (fastfetch and animated fetchers).
+  - Removed remaining emojis from all section headings for a clean, minimal look.
 
 - **Fuzzel HiDPI Proportion Rescaling & Outside-Click Dismissal (`fuzzel.ini`, `fuzzel_menu.sh`)**:
   - Compacted Fuzzel UI to align with QuickShell's 2x HiDPI proportions: reduced font size to `10pt` (file finder `9.5pt`), line height to `22px`, width to `32` characters, padding to `14px/10px/6px`, and corner radius to `12px`.
