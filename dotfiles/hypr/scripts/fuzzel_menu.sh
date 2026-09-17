@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+#
+# fuzzel_menu.sh -- Unified Fuzzel runner for Applications & File Search
+# Consolidates application launcher and spotlight file finder with adaptive
+# opacity and compact 2x HiDPI scaling matching QuickShell.
+#
+set -euo pipefail
+
+# If fuzzel is already open, toggle it closed immediately
+if pkill -x fuzzel; then
+    exit 0
+fi
+
+# Detect power & compositor state for solid background fallback
+CURRENT_PROFILE="$(cat "$HOME/.cache/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
+SOLID_BG=false
+if [ -f "$HOME/.cache/wallpaper_killed" ] || \
+   [ -f "$HOME/.cache/gaming_mode" ] || \
+   [ "$CURRENT_PROFILE" = "power-saver" ]; then
+    SOLID_BG=true
+fi
+
+MODE="${1:-app}"
+
+case "$MODE" in
+    app|apps)
+        EXTRA_ARGS=()
+        if [ "$SOLID_BG" = true ]; then
+            EXTRA_ARGS+=(--background-color=111111ff)
+        fi
+        exec fuzzel "${EXTRA_ARGS[@]}"
+        ;;
+
+    file|files)
+        SEARCH_DIRS=(
+            "$HOME/Downloads"
+            "$HOME/Pictures"
+            "$HOME/Videos"
+            "$HOME/Desktop"
+            "$HOME/Documents"
+            "$HOME/Music"
+            "$HOME/nix"
+        )
+
+        VALID_DIRS=()
+        for d in "${SEARCH_DIRS[@]}"; do
+            [ -d "$d" ] && VALID_DIRS+=("$d")
+        done
+        [ ${#VALID_DIRS[@]} -eq 0 ] && VALID_DIRS=("$HOME")
+
+        FUZZEL_ARGS=(
+            --dmenu
+            --hide-before-typing
+            --anchor=center
+            --width=38
+            --lines=6
+            --line-height=22
+            --font="JetBrainsMono Nerd Font:size=9.5"
+            --icon-theme=Papirus-Dark
+            --horizontal-pad=14
+            --vertical-pad=10
+            --inner-pad=6
+            --border-radius=12
+            --keyboard-focus=on-demand
+            --with-nth=1
+            --match-nth=1
+            --accept-nth=2
+            --nth-delimiter=$'\t'
+            --prompt="  "
+            --placeholder="Type to search files..."
+        )
+
+        if [ "$SOLID_BG" = true ]; then
+            FUZZEL_ARGS+=(--background-color=111111ff)
+        fi
+
+        SELECTED_FILE=$(
+            fd -H --max-depth 7 \
+               --exclude .git \
+               --exclude node_modules \
+               --exclude .cache \
+               --exclude .cargo \
+               --exclude .rustup \
+               --exclude .local/share \
+               --exclude .mozilla \
+               --exclude .direnv \
+               --type f . \
+               "${VALID_DIRS[@]}" 2>/dev/null | \
+            awk -v home="$HOME" '{
+                full = $0;
+                sub(home "/?", "~/", full);
+                n = split(full, parts, "/");
+                fname = parts[n];
+                dir = "";
+                for (i = 1; i < n; i++) {
+                    dir = (i == 1 ? parts[i] : dir "/" parts[i]);
+                }
+                ext = "";
+                if (match(fname, /\.[a-zA-Z0-9]+$/)) {
+                    ext = tolower(substr(fname, RSTART + 1));
+                }
+                icon = "text-x-generic";
+                glyph = "󰈔";
+                if (ext ~ /^(png|jpg|jpeg|webp|gif|svg|bmp)$/) { icon = "image-x-generic"; glyph = "󰋩"; }
+                else if (ext ~ /^(mp4|mkv|avi|mov|webm|flv)$/) { icon = "video-x-generic"; glyph = "󰕧"; }
+                else if (ext ~ /^(mp3|flac|wav|ogg|m4a|opus)$/) { icon = "audio-x-generic"; glyph = "󰎈"; }
+                else if (ext ~ /^(pdf|djvu|epub)$/) { icon = "application-pdf"; glyph = "󰈦"; }
+                else if (ext ~ /^(zip|tar|gz|bz2|xz|7z|rar)$/) { icon = "package-x-generic"; glyph = "󰛫"; }
+                else if (ext ~ /^(nix|lua|sh|bash|py|js|ts|rs|go|c|cpp|h|hpp)$/) { icon = "text-x-script"; glyph = "󰅩"; }
+                else if (ext ~ /^(md|txt|org|json|yaml|yml|toml|conf|ini)$/) { icon = "text-x-generic"; glyph = "󰈙"; }
+                printf "%s %-28s  %s\0icon\x1f%s\t%s\n", glyph, fname, dir, icon, $0;
+            }' | \
+            fuzzel "${FUZZEL_ARGS[@]}" 2>/dev/null || true
+        )
+
+        if [ -n "$SELECTED_FILE" ] && [ -e "$SELECTED_FILE" ]; then
+            DIR_PATH=$(dirname "$SELECTED_FILE")
+            pcmanfm-qt "$DIR_PATH" >/dev/null 2>&1 &
+        fi
+        ;;
+
+    *)
+        echo "Usage: $0 {app|file}"
+        exit 1
+        ;;
+esac

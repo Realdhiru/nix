@@ -10,7 +10,7 @@ IFACE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE d 2>/dev/null | awk -F: '$2=="wifi"{pri
 [ -z "$IFACE" ] && IFACE="${HOTSPOT_IFACE:-wlo1}"
 
 get_hotspot_conn() {
-    nmcli -t -f NAME,TYPE connection show | while IFS=: read -r name type; do
+    while IFS=: read -r name type; do
         if [ "$type" = "802-11-wireless" ]; then
             mode=$(nmcli -s -g 802-11-wireless.mode connection show "$name" 2>/dev/null || true)
             if [ "$mode" = "ap" ]; then
@@ -18,11 +18,11 @@ get_hotspot_conn() {
                 return 0
             fi
         fi
-    done
+    done < <(nmcli -t -f NAME,TYPE connection show 2>/dev/null)
 }
 
 get_active_hotspot_conn() {
-    nmcli -t -f NAME,TYPE connection show --active | while IFS=: read -r name type; do
+    while IFS=: read -r name type; do
         if [ "$type" = "802-11-wireless" ]; then
             mode=$(nmcli -s -g 802-11-wireless.mode connection show "$name" 2>/dev/null || true)
             if [ "$mode" = "ap" ]; then
@@ -30,7 +30,39 @@ get_active_hotspot_conn() {
                 return 0
             fi
         fi
-    done
+    done < <(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null)
+}
+
+start_hotspot() {
+    # Save current connected wifi SSID so we can cleanly reconnect when Hotspot is stopped
+    CURRENT_WIFI=$(nmcli -t -f active,ssid dev wifi 2>/dev/null | awk -F: '$1=="yes"{print $2; exit}')
+    if [ -n "$CURRENT_WIFI" ]; then
+        echo "$CURRENT_WIFI" > "$HOME/.cache/wifi_pre_hotspot_ssid"
+    fi
+
+    existing_conn=$(get_hotspot_conn)
+    if [ -n "$existing_conn" ]; then
+        nmcli connection up "$existing_conn" >/dev/null 2>&1
+    else
+        nmcli device wifi hotspot ifname "$IFACE" ssid "NixOS-Hotspot" password "12345678" >/dev/null 2>&1
+    fi
+    notify-send -a "Hotspot" -i "network-wireless-hotspot" "Hotspot" "ON"
+}
+
+stop_hotspot() {
+    active_conn=$(get_active_hotspot_conn)
+    if [ -n "$active_conn" ]; then
+        nmcli connection down "$active_conn" >/dev/null 2>&1
+    fi
+    # Instantly restore Wi-Fi station
+    PREV_SSID=$(cat "$HOME/.cache/wifi_pre_hotspot_ssid" 2>/dev/null || echo "")
+    rm -f "$HOME/.cache/wifi_pre_hotspot_ssid"
+    if [ -n "$PREV_SSID" ] && nmcli connection show "$PREV_SSID" >/dev/null 2>&1; then
+        nmcli connection up "$PREV_SSID" >/dev/null 2>&1 &
+    else
+        nmcli device connect "$IFACE" >/dev/null 2>&1 &
+    fi
+    notify-send -a "Hotspot" -i "network-wireless-offline" "Hotspot" "OFF"
 }
 
 get_clients_count() {
@@ -105,33 +137,18 @@ EOF
     --toggle)
         active_conn=$(get_active_hotspot_conn)
         if [ -n "$active_conn" ]; then
-            nmcli connection down "$active_conn" >/dev/null 2>&1
-            notify-send -a "Hotspot" -i "network-wireless-offline" "Hotspot" "Hotspot disabled"
+            stop_hotspot
         else
-            existing_conn=$(get_hotspot_conn)
-            if [ -n "$existing_conn" ]; then
-                nmcli connection up "$existing_conn" >/dev/null 2>&1
-            else
-                nmcli device wifi hotspot ifname "$IFACE" ssid "NixOS-Hotspot" >/dev/null 2>&1
-            fi
-            notify-send -a "Hotspot" -i "network-wireless-hotspot" "Hotspot" "Hotspot enabled"
+            start_hotspot
         fi
         ;;
         
     --start)
-        existing_conn=$(get_hotspot_conn)
-        if [ -n "$existing_conn" ]; then
-            nmcli connection up "$existing_conn" >/dev/null 2>&1
-        else
-            nmcli device wifi hotspot ifname "$IFACE" ssid "NixOS-Hotspot" >/dev/null 2>&1
-        fi
+        start_hotspot
         ;;
         
     --stop)
-        active_conn=$(get_active_hotspot_conn)
-        if [ -n "$active_conn" ]; then
-            nmcli connection down "$active_conn" >/dev/null 2>&1
-        fi
+        stop_hotspot
         ;;
         
     --set-ssid)

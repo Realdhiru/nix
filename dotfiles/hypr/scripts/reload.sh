@@ -21,29 +21,37 @@ if command -v hyprctl >/dev/null 2>&1; then
     fi
 fi
 
-# 2. Hard-kill all Quickshell processes. 
-# Using -f catches NixOS wrapped binaries that bypass strict name checks.
-# This wipes the original instance AND any instance just spawned by hyprctl reload.
-pkill -f "Shell.qml" 2>/dev/null || true
-pkill -x qs 2>/dev/null || true
-pkill -x quickshell 2>/dev/null || true
+# 2. Quickshell lifecycle management
+# Avoid killing and restarting Quickshell on standard config reload to prevent
+# screen blinking and wasted CPU/battery power. Only cold boot if not running
+# or if explicitly requested via --quickshell.
+FORCE_QS=false
+for arg in "$@"; do
+    if [ "$arg" = "--quickshell" ] || [ "$arg" = "-q" ] || [ "$arg" = "--force" ]; then
+        FORCE_QS=true
+        break
+    fi
+done
 
-# 3. Give Wayland a fraction of a second to unmap the old surfaces
-sleep 0.3
-
-# 4. Resolve the correct NixOS binary dynamically
-QS_BIN=""
-if command -v quickshell >/dev/null 2>&1; then
-    QS_BIN="quickshell"
-elif command -v qs >/dev/null 2>&1; then
-    QS_BIN="qs"
-else
-    # Failsafe abort if the binary isn't in PATH
-    exit 1
+QS_RUNNING=false
+if pgrep -f "Shell.qml" >/dev/null || pgrep -x qs >/dev/null || pgrep -x quickshell >/dev/null; then
+    QS_RUNNING=true
 fi
 
-QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
+if [ "$FORCE_QS" = true ]; then
+    pkill -f "Shell.qml" 2>/dev/null || true
+    pkill -x qs 2>/dev/null || true
+    pkill -x quickshell 2>/dev/null || true
+    sleep 0.2
+    QS_RUNNING=false
+fi
 
-# 5. Cold boot exactly ONE fresh instance in the background
-nohup "$QS_BIN" -p "$QS_TARGET" >/dev/null 2>&1 &
-disown
+if [ "$QS_RUNNING" = false ]; then
+    QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
+    if command -v hyprctl >/dev/null 2>&1; then
+        hyprctl dispatch exec "quickshell -p $QS_TARGET" >/dev/null 2>&1
+    else
+        nohup quickshell -p "$QS_TARGET" >/dev/null 2>&1 &
+        disown
+    fi
+fi

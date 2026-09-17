@@ -60,8 +60,8 @@ hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("wezterm"))
 hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd('wezterm start -- zsh -c "fastfetch; exec zsh"'))
 
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("pcmanfm-qt"))
-hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_app_launcher.sh"))
-hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_file_search.sh"))
+hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_menu.sh app"))
+hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_menu.sh file"))
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("codium"))
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("brave"))
 

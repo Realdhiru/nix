@@ -564,8 +564,17 @@ Item {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        window.showHotspotMenu = !window.showHotspotMenu;
+                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                    onClicked: (mouse) => {
+                                        if (mouse.button === Qt.RightButton) {
+                                            window.showHotspotMenu = !window.showHotspotMenu;
+                                        } else {
+                                            Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/hotspot_control.sh", "--toggle"]);
+                                            hotspotRefreshTimer.restart();
+                                            if (!window.hotspotActive) {
+                                                window.showHotspotMenu = true;
+                                            }
+                                        }
                                     }
                                 }
                             }

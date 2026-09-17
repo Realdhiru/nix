@@ -1,17 +1,21 @@
 # CHANGELOG
 
-## 2026-09-17 — Clean Two-Stage File Search & Direct Hardware A/V Slider Wiring
+## 2026-09-17 — Fuzzel HiDPI Rescaling, Outside-Click Dismissal, Zero-Blink Reloads & Hotspot Reliability
 
-- **Interactive Dismissal & Dynamic Solid Background for Fuzzel (`fuzzel.ini`, `fuzzel_app_launcher.sh`, `fuzzel_file_search.sh`)**:
-  - Restored `exit-on-keyboard-focus-loss = yes` in `fuzzel.ini` and created `fuzzel_app_launcher.sh` toggle wrapper, allowing users to click anywhere outside the launcher or file finder to dismiss it instantly.
-  - Added dynamic `--background-color=111111ff` solid rendering when in power-saver, gaming mode, or when wallpapers are killed. Completely eliminates transparency and unreadable text when blur shaders are disabled.
-- **Persistent State Across Hyprland & QuickShell Reloads (`SysData.qml`, `reload.sh`, `set_wallpaper.sh`)**:
-  - Wired `FileView` on `~/.cache/qs_power_profile` in `SysData.qml`. QuickShell reloads now preserve the user's active power profile (`power-saver`, `performance`, or `balanced`) without resetting to balanced on battery.
-  - In `reload.sh`, automatically re-applies visual overrides (opaque window rules, blur bypass, shadow bypass, animation bypass) immediately after `hyprctl reload` if in power-saver, gaming mode, or wallpaper killed state.
-- **Dedicated Efficiency / Gaming Mode Toggle (`toggle_gaming_mode.sh`, `keybinds.lua`)**:
-  - Bound `SUPER + SHIFT + G` to `toggle_gaming_mode.sh`.
-  - Toggles zero-latency compositing flags: forces 100% opaque windows (`active_opacity = 1.0`, `inactive_opacity = 1.0`, `1.0 override 1.0 override`), disables dual-kawase blur, disables drop shadows, enables Direct Scanout (`render:direct_scanout = 2`), enables Adaptive Sync (`misc:vrr = 1`), and enables asynchronous tearing (`general:allow_tearing = true`).
-  - Animations and wallpapers remain fully enabled (`not animations`, `not wallpapers`). Avoids battery-draining CPU frequency locks when on battery.
+- **Fuzzel HiDPI Proportion Rescaling & Outside-Click Dismissal (`fuzzel.ini`, `fuzzel_menu.sh`)**:
+  - Compacted Fuzzel UI to align with QuickShell's 2x HiDPI proportions: reduced font size to `10pt` (file finder `9.5pt`), line height to `22px`, width to `32` characters, padding to `14px/10px/6px`, and corner radius to `12px`.
+  - Configured `keyboard-focus = on-demand` alongside `exit-on-keyboard-focus-loss = yes`. When clicking anywhere outside the Fuzzel window, keyboard focus switches instantly to the clicked surface and dismisses Fuzzel without requiring Escape.
+- **Unified Fuzzel Runner Consolidation (`fuzzel_menu.sh`, `keybinds.lua`)**:
+  - Consolidated redundant application launcher and file finder scripts into a single, clean `fuzzel_menu.sh {app|file}` runner with built-in power-profile background adaptation. Preserved backwards-compatible stubs.
+- **Zero-Blink Compositor & QuickShell Reload (`reload.sh`)**:
+  - Replaced the hard-kill / sleep / cold-boot cycle in `reload.sh` with non-destructive Hyprland reloading. QuickShell is no longer killed when reloading configs, eliminating screen blinking and saving CPU cycles. QuickShell is only launched via `hyprctl dispatch exec` if not already running, or if `--quickshell` is explicitly passed.
+- **Zero-Bloat Notifications (`toggle_gaming_mode.sh`, `hotspot_control.sh`)**:
+  - Replaced multi-line verbose notifications in gaming mode and hotspot scripts with ultra-compact `"ON"` and `"OFF"` alerts (`notify-send -a "Game Mode" "ON"`), preventing TopBar notification ticker overflow.
+- **Hotspot Reliability & Automatic Wi-Fi Restoration (`hotspot_control.sh`, `BatteryPopup.qml`)**:
+  - Fixed Hotspot toggle in `BatteryPopup.qml` so that left-clicking the Hotspot button toggles the state directly, while right-clicking toggles the configuration drawer.
+  - In `hotspot_control.sh`, recorded the active Wi-Fi SSID prior to enabling Hotspot, and wired automatic background Wi-Fi re-association (`nmcli connection up "$PREV_SSID"`) upon disabling Hotspot. Fixed NetworkManager AP profile parsing by replacing subshell pipelines with process substitution.
+- **Native C++ Matugen Color Watching (`MatugenColors.qml`)**:
+  - Replaced looped background `colors_wait.sh` bash processes and polling timers with native `Quickshell.Io.FileView` (`watchChanges: true`), eliminating all background bash forks.
   - In `kill_wallpaper.sh`, automatically disables Hyprland's dual-kawase blur, drop shadow shaders, animations (`animations:enabled = false`), and forces 100% opaque window rendering (`active_opacity = 1.0`, `inactive_opacity = 1.0`, `hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })`) via `hyprctl eval` whenever wallpapers are killed. This completely eliminates multi-pass GPU alpha-blending and allows hardware occlusion culling over black backgrounds (saving ~1.2W–2.0W GPU package power).
   - In `set_wallpaper.sh`, restores blur, shadows, animations, and reloads window rules (`hyprctl reload`) to restore window translucency (unless the system is actively in the `power-saver` profile).
   - Synchronized with `SysData.qml` power profile automation so that `power-saver` profile applies the same full opacity, animation, blur, and shadow bypass, and leaving `power-saver` respects the wallpaper killed state.

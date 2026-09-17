@@ -51,42 +51,20 @@ Item {
         } catch(e) {}
     }
 
-    // Event-driven watcher: unblocks in <10ms whenever qs_colors.json is updated
-    Process {
-        id: colorWatcher
-        command: ["bash", "-c", "$HOME/.config/hypr/scripts/quickshell/watchers/colors_wait.sh && cat $HOME/.cache/matugen/qs_colors.json 2>/dev/null || echo '{}'"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.applyJson(this.text ? this.text.trim() : "");
-                colorWatcher.running = false;
-                colorWatcher.running = true;
-            }
-        }
+    // Native C++ inotify FileView: instant frame-0 read and zero-latency reactive updates
+    // Eliminates all background bash processes and polling timers.
+    FileView {
+        id: colorFileView
+        path: root.colorsFile
+        watchChanges: true
+        onLoaded: root._readColors()
+        onFileChanged: root._readColors()
     }
 
-    // Instant load on startup (Frame 0)
-    Process {
-        id: initialLoader
-        command: ["cat", root.colorsFile]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.applyJson(this.text ? this.text.trim() : "");
-            }
-        }
-    }
-
-    // Safety fallback timer (checks every 3s in case inotify missed)
-    Timer {
-        id: colorPollTimer
-        interval: 3000
-        running: true
-        repeat: true
-        onTriggered: {
-            if (!colorWatcher.running) {
-                colorWatcher.running = true;
-            }
+    function _readColors() {
+        let content = colorFileView.text();
+        if (content) {
+            root.applyJson(content.trim());
         }
     }
 }

@@ -18,7 +18,7 @@ if [ -f "$STATE_FILE" ]; then
         hyprctl reload >/dev/null 2>&1 || true
     fi
 
-    notify-send -a "Hyprland" -u low "$NOTIF_TITLE" "Disabled — Translucency & compositor defaults restored"
+    notify-send -a "Game Mode" -u low "OFF"
 else
     # Enable Gaming Mode
     touch "$STATE_FILE"
@@ -33,5 +33,5 @@ else
     # 4. Zero-latency compositor flags: Direct Scanout (bypasses composition latency), VRR (adaptive sync), tearing
     hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = true } })" >/dev/null 2>&1 || true
 
-    notify-send -a "Hyprland" -u normal "$NOTIF_TITLE" "Enabled — Blur & transparency disabled (zero GPU compositing overhead), direct scanout & VRR active"
+    notify-send -a "Game Mode" -u normal "ON"
 fi
