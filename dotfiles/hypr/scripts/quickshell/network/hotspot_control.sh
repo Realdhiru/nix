@@ -1,48 +1,52 @@
 #!/usr/bin/env bash
 #
 # hotspot_control.sh -- NetworkManager Hotspot manager for QuickShell
-# Supports virtual ap0 for simultaneous STA/AP concurrency, editing SSID/password,
-# and detailed connected device tracking.
+# Fully robust against duplicate profile names using unique UUID matching,
+# supports editing SSID/password live, client tracking, and clean Wi-Fi restore.
 #
 set -euo pipefail
 
 IFACE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE d 2>/dev/null | awk -F: '$2=="wifi"{print $1; exit}')
 [ -z "$IFACE" ] && IFACE="${HOTSPOT_IFACE:-wlo1}"
 
-get_hotspot_conn() {
-    while IFS=: read -r name type; do
+# Return the UUID of an active AP connection, or empty
+get_active_hotspot_conn() {
+    while IFS=: read -r uuid type; do
+        [ -z "$uuid" ] && continue
         if [ "$type" = "802-11-wireless" ]; then
-            mode=$(nmcli -s -g 802-11-wireless.mode connection show "$name" 2>/dev/null || true)
+            mode=$(nmcli -s -g 802-11-wireless.mode connection show "$uuid" 2>/dev/null || true)
             if [ "$mode" = "ap" ]; then
-                echo "$name"
+                echo "$uuid"
                 return 0
             fi
         fi
-    done < <(nmcli -t -f NAME,TYPE connection show 2>/dev/null)
+    done < <(nmcli -t -f UUID,TYPE connection show --active 2>/dev/null)
 }
 
-get_active_hotspot_conn() {
-    while IFS=: read -r name type; do
+# Return the UUID of any existing AP connection, or empty
+get_hotspot_conn() {
+    while IFS=: read -r uuid type; do
+        [ -z "$uuid" ] && continue
         if [ "$type" = "802-11-wireless" ]; then
-            mode=$(nmcli -s -g 802-11-wireless.mode connection show "$name" 2>/dev/null || true)
+            mode=$(nmcli -s -g 802-11-wireless.mode connection show "$uuid" 2>/dev/null || true)
             if [ "$mode" = "ap" ]; then
-                echo "$name"
+                echo "$uuid"
                 return 0
             fi
         fi
-    done < <(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null)
+    done < <(nmcli -t -f UUID,TYPE connection show 2>/dev/null)
 }
 
 start_hotspot() {
-    # Save current connected wifi SSID so we can cleanly reconnect when Hotspot is stopped
+    # Save currently connected Wi-Fi SSID to restore it when Hotspot stops
     CURRENT_WIFI=$(nmcli -t -f active,ssid dev wifi 2>/dev/null | awk -F: '$1=="yes"{print $2; exit}')
     if [ -n "$CURRENT_WIFI" ]; then
         echo "$CURRENT_WIFI" > "$HOME/.cache/wifi_pre_hotspot_ssid"
     fi
 
-    existing_conn=$(get_hotspot_conn)
-    if [ -n "$existing_conn" ]; then
-        nmcli connection up "$existing_conn" >/dev/null 2>&1
+    existing_uuid=$(get_hotspot_conn)
+    if [ -n "$existing_uuid" ]; then
+        nmcli connection up uuid "$existing_uuid" >/dev/null 2>&1
     else
         nmcli device wifi hotspot ifname "$IFACE" ssid "NixOS-Hotspot" password "12345678" >/dev/null 2>&1
     fi
@@ -50,11 +54,11 @@ start_hotspot() {
 }
 
 stop_hotspot() {
-    active_conn=$(get_active_hotspot_conn)
-    if [ -n "$active_conn" ]; then
-        nmcli connection down "$active_conn" >/dev/null 2>&1
+    active_uuid=$(get_active_hotspot_conn)
+    if [ -n "$active_uuid" ]; then
+        nmcli connection down uuid "$active_uuid" >/dev/null 2>&1
     fi
-    # Instantly restore Wi-Fi station
+    # Restore previous Wi-Fi connection
     PREV_SSID=$(cat "$HOME/.cache/wifi_pre_hotspot_ssid" 2>/dev/null || echo "")
     rm -f "$HOME/.cache/wifi_pre_hotspot_ssid"
     if [ -n "$PREV_SSID" ] && nmcli connection show "$PREV_SSID" >/dev/null 2>&1; then
@@ -105,8 +109,8 @@ cmd="${1:---json}"
 
 case "$cmd" in
     --json)
-        active_conn=$(get_active_hotspot_conn)
-        existing_conn=$(get_hotspot_conn)
+        active_uuid=$(get_active_hotspot_conn)
+        existing_uuid=$(get_hotspot_conn)
         
         is_active="false"
         ssid=""
@@ -114,17 +118,17 @@ case "$cmd" in
         clients=0
         devices_json="[]"
         
-        target_conn="${active_conn:-$existing_conn}"
+        target_uuid="${active_uuid:-$existing_uuid}"
         
-        if [ -n "$active_conn" ]; then
+        if [ -n "$active_uuid" ]; then
             is_active="true"
             clients=$(get_clients_count)
             devices_json=$(get_devices_json)
         fi
         
-        if [ -n "$target_conn" ]; then
-            ssid=$(nmcli -s -g 802-11-wireless.ssid connection show "$target_conn" 2>/dev/null || true)
-            password=$(nmcli -s -g 802-11-wireless-security.psk connection show "$target_conn" 2>/dev/null || true)
+        if [ -n "$target_uuid" ]; then
+            ssid=$(nmcli -s -g 802-11-wireless.ssid connection show "$target_uuid" 2>/dev/null || true)
+            password=$(nmcli -s -g 802-11-wireless-security.psk connection show "$target_uuid" 2>/dev/null || true)
         fi
         
         [ -z "$ssid" ] && ssid="NixOS-Hotspot"
@@ -135,8 +139,8 @@ EOF
         ;;
         
     --toggle)
-        active_conn=$(get_active_hotspot_conn)
-        if [ -n "$active_conn" ]; then
+        active_uuid=$(get_active_hotspot_conn)
+        if [ -n "$active_uuid" ]; then
             stop_hotspot
         else
             start_hotspot
@@ -153,10 +157,14 @@ EOF
         
     --set-ssid)
         new_ssid="${2:-}"
-        existing_conn=$(get_hotspot_conn)
+        existing_uuid=$(get_hotspot_conn)
         if [ -n "$new_ssid" ]; then
-            if [ -n "$existing_conn" ]; then
-                nmcli connection modify "$existing_conn" 802-11-wireless.ssid "$new_ssid"
+            if [ -n "$existing_uuid" ]; then
+                nmcli connection modify uuid "$existing_uuid" 802-11-wireless.ssid "$new_ssid"
+                # If currently active, re-up connection to apply SSID live
+                if [ -n "$(get_active_hotspot_conn)" ]; then
+                    nmcli connection up uuid "$existing_uuid" >/dev/null 2>&1 &
+                fi
             else
                 nmcli device wifi hotspot ifname "$IFACE" ssid "$new_ssid" >/dev/null 2>&1
             fi
@@ -166,10 +174,14 @@ EOF
         
     --set-password)
         new_pass="${2:-}"
-        existing_conn=$(get_hotspot_conn)
+        existing_uuid=$(get_hotspot_conn)
         if [ -n "$new_pass" ]; then
-            if [ -n "$existing_conn" ]; then
-                nmcli connection modify "$existing_conn" 802-11-wireless-security.psk "$new_pass"
+            if [ -n "$existing_uuid" ]; then
+                nmcli connection modify uuid "$existing_uuid" 802-11-wireless-security.psk "$new_pass"
+                # If currently active, re-up connection to apply password live
+                if [ -n "$(get_active_hotspot_conn)" ]; then
+                    nmcli connection up uuid "$existing_uuid" >/dev/null 2>&1 &
+                fi
             fi
             notify-send -a "Hotspot" -i "dialog-information" "Hotspot Security" "Password updated"
         fi

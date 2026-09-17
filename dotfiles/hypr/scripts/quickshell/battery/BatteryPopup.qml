@@ -166,6 +166,9 @@ Item {
         introSliders = 1;
         introActions = 1;
         introProfiles = 1;
+        window.showHotspotMenu = false;
+        window.editingHotspotSsid = false;
+        window.editingHotspotPass = false;
         avStatePoller.running = false;
         avStatePoller.running = true;
         for (var i = 0; i < actionRowRepeater.count; i++) {
@@ -378,7 +381,17 @@ Item {
 
     Timer {
         id: hotspotRefreshTimer
-        interval: 600
+        interval: 300
+        onTriggered: {
+            hotspotPoller.running = false;
+            hotspotPoller.running = true;
+            hotspotRefreshFollowupTimer.restart();
+        }
+    }
+
+    Timer {
+        id: hotspotRefreshFollowupTimer
+        interval: 1000
         onTriggered: {
             hotspotPoller.running = false;
             hotspotPoller.running = true;
@@ -564,16 +577,11 @@ Item {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                    onClicked: (mouse) => {
-                                        if (mouse.button === Qt.RightButton) {
-                                            window.showHotspotMenu = !window.showHotspotMenu;
-                                        } else {
-                                            Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/hotspot_control.sh", "--toggle"]);
-                                            hotspotRefreshTimer.restart();
-                                            if (!window.hotspotActive) {
-                                                window.showHotspotMenu = true;
-                                            }
+                                    onClicked: {
+                                        window.showHotspotMenu = !window.showHotspotMenu;
+                                        if (window.showHotspotMenu) {
+                                            hotspotPoller.running = false;
+                                            hotspotPoller.running = true;
                                         }
                                     }
                                 }
@@ -673,7 +681,7 @@ Item {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: window.showHotspotMenu ? (window.showConnectedDevices ? window.s(260) : (window.editingHotspotSsid || window.editingHotspotPass ? window.s(210) : window.s(170))) : 0
+                            Layout.preferredHeight: window.showHotspotMenu ? (hotspotContentCol.implicitHeight + window.s(28)) : 0
                             visible: Layout.preferredHeight > 0
                             clip: true
                             radius: window.s(14)
@@ -681,9 +689,10 @@ Item {
                             border.color: window.hotspotActive ? window.mauve : window.surface2
                             border.width: 1
 
-                            Behavior on Layout.preferredHeight { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
+                            Behavior on Layout.preferredHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
                             ColumnLayout {
+                                id: hotspotContentCol
                                 anchors.fill: parent
                                 anchors.margins: window.s(14)
                                 spacing: window.s(8)
@@ -718,11 +727,12 @@ Item {
                                         Layout.preferredWidth: window.s(76)
                                         Layout.preferredHeight: window.s(26)
                                         radius: window.s(13)
-                                        color: window.hotspotActive ? window.mauve : window.surface1
-                                        border.color: window.hotspotActive ? Qt.lighter(window.mauve, 1.2) : window.surface2
+                                        color: window.hotspotActive ? window.mauve : (hotspotToggleMa.containsMouse ? window.surface2 : window.surface1)
+                                        border.color: window.hotspotActive ? Qt.lighter(window.mauve, 1.2) : (hotspotToggleMa.containsMouse ? window.text : window.surface2)
                                         border.width: 1
+                                        opacity: hotspotToggleMa.pressed ? 0.7 : 1.0
 
-                                        Behavior on color { ColorAnimation { duration: 200 } }
+                                        Behavior on color { ColorAnimation { duration: 150 } }
 
                                         Text {
                                             anchors.centerIn: parent
@@ -734,7 +744,9 @@ Item {
                                         }
 
                                         MouseArea {
+                                            id: hotspotToggleMa
                                             anchors.fill: parent
+                                            hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
                                             onClicked: {
                                                 Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/hotspot_control.sh", "--toggle"]);

@@ -2,9 +2,12 @@
 
 ## 2026-09-17 — Fuzzel HiDPI Rescaling, Outside-Click Dismissal, Zero-Blink Reloads & Hotspot Reliability
 
-- **README Custom Commands Guide & Header Polish (`README.md`)**:
-  - Replaced the single-line maintenance placeholder with a complete guide detailing all custom shell workflow functions: `rebuild` (safety pipeline, health gate, auto-rollback), `update` (flake update & rebuild), `gens` (generation listing with active/pinned states), `pin-stable` (GC root pin), `clean` (14-day garbage collection), and `ff`/`af` (fastfetch and animated fetchers).
-  - Removed remaining emojis from all section headings for a clean, minimal look.
+- **Hotspot Backend UUID Hardening & UI Drawer Lifecycle (`hotspot_control.sh`, `BatteryPopup.qml`)**:
+  - Resolved root-cause failure where duplicate NetworkManager "Hotspot" profiles output multi-line modes (`mode=$'ap\n\nap\n\nap'`), causing string equality tests to fail and falsely reporting `active: false`. Rewrote `hotspot_control.sh` to query and operate strictly on unique connection UUIDs.
+  - Purged orphaned duplicate Hotspot profiles in NetworkManager.
+  - Fixed `showWidget()` in `BatteryPopup.qml` to reset `window.showHotspotMenu = false`, preventing the drawer from persistently sticking open on widget launch.
+  - Converted card height from rigid hardcoded pixel bounds to dynamic `hotspotContentCol.implicitHeight + window.s(28)`, eliminating text and button clipping across HiDPI scaling.
+  - Enhanced Hotspot toggle and header pill click handlers with instant visual feedback and responsive dual-pass refresh timers (300ms + 1000ms).
 
 - **Fuzzel HiDPI Proportion Rescaling & Outside-Click Dismissal (`fuzzel.ini`, `fuzzel_menu.sh`)**:
   - Compacted Fuzzel UI to align with QuickShell's 2x HiDPI proportions: reduced font size to `10pt` (file finder `9.5pt`), line height to `22px`, width to `32` characters, padding to `14px/10px/6px`, and corner radius to `12px`.
