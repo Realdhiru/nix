@@ -23,6 +23,14 @@ if [ ${#VALID_DIRS[@]} -eq 0 ]; then
     VALID_DIRS=("$HOME")
 fi
 
+FUZZEL_EXTRA_ARGS=()
+CURRENT_PROFILE="$(cat "$HOME/.cache/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
+if [ -f "$HOME/.cache/wallpaper_killed" ] || \
+   [ -f "$HOME/.cache/gaming_mode" ] || \
+   [ "$CURRENT_PROFILE" = "power-saver" ]; then
+    FUZZEL_EXTRA_ARGS+=(--background-color=111111ff)
+fi
+
 SELECTED_FILE=$(
     fd -H --max-depth 7 \
        --exclude .git \
@@ -60,6 +68,7 @@ SELECTED_FILE=$(
         printf "%s %-32s  %s\0icon\x1f%s\t%s\n", glyph, fname, dir, icon, $0;
     }' | \
     fuzzel --dmenu \
+           "${FUZZEL_EXTRA_ARGS[@]}" \
            --hide-before-typing \
            --anchor=center \
            --width=46 \

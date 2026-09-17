@@ -243,6 +243,12 @@ Item {
     property bool _manualOverride: false
     property bool _acInitialized: false
 
+    FileView {
+        id: profileCacheFile
+        path: Quickshell.env("HOME") + "/.cache/qs_power_profile"
+        watchChanges: true
+    }
+
     function _applyVisualOverrides(targetProfile) {
         if (targetProfile === "power-saver") {
             if (root.saverVisualState !== "saver-applied" && root.saverVisualState !== "applying-saver") {
@@ -281,6 +287,9 @@ Item {
                     if [ -f "$HOME/.cache/wallpaper_killed" ]; then
                         hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = false } })" 2>/dev/null
                         hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
+                    elif [ -f "$HOME/.cache/gaming_mode" ]; then
+                        hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
+                        hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
                     else
                         hyprctl eval "hl.config({ decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
                         hyprctl reload 2>/dev/null || true
@@ -294,17 +303,28 @@ Item {
     }
 
     function _reconcileStartupProfile(isOnline) {
+        let raw = (typeof profileCacheFile.text === "function") ? profileCacheFile.text() : profileCacheFile.text;
+        let cached = raw ? raw.trim() : "";
+        if (cached === "power-saver" || cached === "performance" || cached === "balanced") {
+            root._manualOverride = (cached === "power-saver");
+            root.requestedProfile = cached;
+            root.powerProfile = cached;
+            Quickshell.execDetached(["sh", "-c", "echo '" + cached + "' > /tmp/qs_requested_profile; echo '" + cached + "' > /tmp/qs_power_profile"]);
+            root._applyVisualOverrides(cached);
+            return;
+        }
+
         if (isOnline) {
             root._manualOverride = false;
             root.requestedProfile = "performance";
             root.powerProfile = "performance";
-            Quickshell.execDetached(["sh", "-c", "rm -f /tmp/qs_requested_profile /tmp/qs_power_profile"]);
+            Quickshell.execDetached(["sh", "-c", "echo 'performance' > $HOME/.cache/qs_power_profile; echo 'performance' > /tmp/qs_requested_profile; echo 'performance' > /tmp/qs_power_profile"]);
             root._applyVisualOverrides("performance");
         } else {
             root._manualOverride = false;
             root.requestedProfile = "balanced";
             root.powerProfile = "balanced";
-            Quickshell.execDetached(["sh", "-c", "echo 'balanced' > /tmp/qs_requested_profile; echo 'balanced' > /tmp/qs_power_profile"]);
+            Quickshell.execDetached(["sh", "-c", "echo 'balanced' > $HOME/.cache/qs_power_profile; echo 'balanced' > /tmp/qs_requested_profile; echo 'balanced' > /tmp/qs_power_profile"]);
             root._applyVisualOverrides("balanced");
         }
     }
@@ -348,7 +368,7 @@ Item {
 
         root.requestedProfile = name;
         root.powerProfile = name;
-        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_requested_profile; echo '" + name + "' > /tmp/qs_power_profile"]);
+        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_requested_profile; echo '" + name + "' > /tmp/qs_power_profile; echo '" + name + "' > $HOME/.cache/qs_power_profile"]);
 
         root._applyVisualOverrides(name);
 

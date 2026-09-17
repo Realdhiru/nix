@@ -60,8 +60,8 @@ hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("wezterm"))
 hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd('wezterm start -- zsh -c "fastfetch; exec zsh"'))
 
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("pcmanfm-qt"))
-hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("pkill fuzzel || fuzzel"))
-hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("pkill fuzzel || ~/.config/hypr/scripts/fuzzel_file_search.sh"))
+hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_app_launcher.sh"))
+hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_file_search.sh"))
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("codium"))
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("brave"))
 
@@ -120,7 +120,7 @@ hl.bind(mainMod .. " + SHIFT + D", hl.dsp.window.move({ workspace = "special:mus
 hl.bind(mainMod .. " + F", hl.dsp.workspace.toggle_special("notes"))
 -- hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.move({ workspace = "special:notes" }))
 hl.bind(mainMod .. " + G", hl.dsp.workspace.toggle_special("misc"))
--- hl.bind(mainMod .. " + SHIFT + G", hl.dsp.window.move({ workspace = "special:misc" }))
+hl.bind(mainMod .. " + SHIFT + G", hl.dsp.exec_cmd("~/.config/hypr/scripts/toggle_gaming_mode.sh"))
 
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
