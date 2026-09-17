@@ -15,9 +15,9 @@
   - Replaced ambiguous `trayLayout.width` binding with an exact geometric formula (`trayRepeater.count * s(18) + (trayRepeater.count - 1) * s(10) + s(24)`), ensuring active non-blacklisted tray icons (e.g. EasyEffects, Spotify) render at the exact required width without clipping while completely suppressing Bluetooth and KDE Connect.
   - Removed redundant `kdeconnect-indicator` startup launch from `startup.lua`.
 
-- **Fuzzel Search Algorithm Upgrade to FZF Subsequence Matching (`fuzzel.ini`, `fuzzel_menu.sh`)**:
+- **Fuzzel Search Algorithm & Pipeline Streamlining (`fuzzel.ini`, `fuzzel_menu.sh`)**:
   - Resolved the search false-positive issue where loose Levenshtein edit distance (`match-mode = fuzzy`) caused unrelated files to match almost any keystroke: configured `match-mode = fzf` across `fuzzel.ini` and `fuzzel_menu.sh`.
-  - Upgraded file search pipeline in `fuzzel_menu.sh` to structured 3-column output: Column 1 for rich glyph/path rendering (`--with-nth=1`), Column 2 for exact `fname dir` subsequence matching (`--match-nth=2`), and Column 3 for clean absolute path execution (`--accept-nth=3`). Typing non-matching queries now yields zero results instead of spurious Levenshtein matches.
+  - Streamlined `fuzzel_menu.sh` into a clean 2-column pipeline: Column 1 for Nerd Font glyph + filename + relative path display and FZF matching (`--with-nth=1`, `--match-nth=1`), and Column 2 for clean absolute path execution (`--accept-nth=2`). Eliminated embedded NUL byte corruption that prevented file matching.
 
 - **Fuzzel Icon Theme Alignment (`fuzzel.ini`, `fuzzel_menu.sh`, `theme.nix`)**:
   - Identified and fixed why Fuzzel displayed default/Papirus icons instead of the system-wide custom hand-drawn icon theme (`buuf-nestort`): `fuzzel.ini` and `fuzzel_menu.sh` explicitly hardcoded `icon-theme = Papirus-Dark`.

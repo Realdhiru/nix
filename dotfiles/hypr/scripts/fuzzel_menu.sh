@@ -64,8 +64,8 @@ case "$MODE" in
             --border-radius=12
             --keyboard-focus=on-demand
             --with-nth=1
-            --match-nth=2
-            --accept-nth=3
+            --match-nth=1
+            --accept-nth=2
             --nth-delimiter=$'\t'
             --prompt="  "
             --placeholder="Type to search files..."
@@ -100,16 +100,15 @@ case "$MODE" in
                 if (match(fname, /\.[a-zA-Z0-9]+$/)) {
                     ext = tolower(substr(fname, RSTART + 1));
                 }
-                icon = "text-x-generic";
                 glyph = "󰈔";
-                if (ext ~ /^(png|jpg|jpeg|webp|gif|svg|bmp)$/) { icon = "image-x-generic"; glyph = "󰋩"; }
-                else if (ext ~ /^(mp4|mkv|avi|mov|webm|flv)$/) { icon = "video-x-generic"; glyph = "󰕧"; }
-                else if (ext ~ /^(mp3|flac|wav|ogg|m4a|opus)$/) { icon = "audio-x-generic"; glyph = "󰎈"; }
-                else if (ext ~ /^(pdf|djvu|epub)$/) { icon = "application-pdf"; glyph = "󰈦"; }
-                else if (ext ~ /^(zip|tar|gz|bz2|xz|7z|rar)$/) { icon = "package-x-generic"; glyph = "󰛫"; }
-                else if (ext ~ /^(nix|lua|sh|bash|py|js|ts|rs|go|c|cpp|h|hpp)$/) { icon = "text-x-script"; glyph = "󰅩"; }
-                else if (ext ~ /^(md|txt|org|json|yaml|yml|toml|conf|ini)$/) { icon = "text-x-generic"; glyph = "󰈙"; }
-                printf "%s %-28s  %s\0icon\x1f%s\t%s %s\t%s\n", glyph, fname, dir, icon, fname, dir, $0;
+                if (ext ~ /^(png|jpg|jpeg|webp|gif|svg|bmp)$/) { glyph = "󰋩"; }
+                else if (ext ~ /^(mp4|mkv|avi|mov|webm|flv)$/) { glyph = "󰕧"; }
+                else if (ext ~ /^(mp3|flac|wav|ogg|m4a|opus)$/) { glyph = "󰎈"; }
+                else if (ext ~ /^(pdf|djvu|epub)$/) { glyph = "󰈦"; }
+                else if (ext ~ /^(zip|tar|gz|bz2|xz|7z|rar)$/) { glyph = "󰛫"; }
+                else if (ext ~ /^(nix|lua|sh|bash|py|js|ts|rs|go|c|cpp|h|hpp)$/) { glyph = "󰅩"; }
+                else if (ext ~ /^(md|txt|org|json|yaml|yml|toml|conf|ini)$/) { glyph = "󰈙"; }
+                printf "%s %-28s  %s\t%s\n", glyph, fname, dir, $0;
             }' | \
             fuzzel "${FUZZEL_ARGS[@]}" 2>/dev/null || true
         )
