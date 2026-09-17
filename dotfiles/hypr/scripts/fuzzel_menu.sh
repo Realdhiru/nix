@@ -56,7 +56,7 @@ case "$MODE" in
             --lines=6
             --line-height=22
             --font="JetBrainsMono Nerd Font:size=9.5"
-            --icon-theme=Papirus-Dark
+            --icon-theme=buuf-nestort
             --horizontal-pad=14
             --vertical-pad=10
             --inner-pad=6

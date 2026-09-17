@@ -16,6 +16,9 @@
     gtk4.extraConfig.gtk-application-prefer-dark-theme = true;
   };
 
+  xdg.dataFile."icons/buuf-nestort".source =
+    "${pkgs.buuf-nestort-icon-theme}/share/icons/buuf-nestort";
+
   xdg.configFile."gtk-3.0/gtk.css".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.cache/matugen/gtk.css";
   xdg.configFile."gtk-4.0/gtk.css".source =

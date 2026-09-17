@@ -10,6 +10,11 @@
   - Enhanced Hotspot toggle and header pill click handlers with instant visual feedback and responsive dual-pass refresh timers (300ms + 1000ms).
   - Cleaned up aesthetics: removed Wi-Fi icons from header pill and drawer, and swapped green/mauve outlines for neutral dark surface styling (`surface2`).
 
+- **Fuzzel Icon Theme Alignment (`fuzzel.ini`, `fuzzel_menu.sh`, `theme.nix`)**:
+  - Identified and fixed why Fuzzel displayed default/Papirus icons instead of the system-wide custom hand-drawn icon theme (`buuf-nestort`): `fuzzel.ini` and `fuzzel_menu.sh` explicitly hardcoded `icon-theme = Papirus-Dark`.
+  - Updated `fuzzel.ini` and `fuzzel_menu.sh` to specify `icon-theme = buuf-nestort`.
+  - Declaratively linked `xdg.dataFile."icons/buuf-nestort"` in `modules/home/theme.nix` so that Fuzzel and all standalone Wayland clients deterministically locate the theme across rebuilds and fresh installs.
+
 - **Fuzzel HiDPI Proportion Rescaling & Outside-Click Dismissal (`fuzzel.ini`, `fuzzel_menu.sh`)**:
   - Compacted Fuzzel UI to align with QuickShell's 2x HiDPI proportions: reduced font size to `10pt` (file finder `9.5pt`), line height to `22px`, width to `32` characters, padding to `14px/10px/6px`, and corner radius to `12px`.
   - Configured `keyboard-focus = on-demand` alongside `exit-on-keyboard-focus-loss = yes`. When clicking anywhere outside the Fuzzel window, keyboard focus switches instantly to the clicked surface and dismisses Fuzzel without requiring Escape.
