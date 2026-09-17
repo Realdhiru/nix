@@ -2,6 +2,10 @@
 
 ## 2026-09-17 — Fuzzel HiDPI Rescaling, Outside-Click Dismissal, Zero-Blink Reloads & Hotspot Reliability
 
+- **Showcase Looping Media (`README.md`, `docs/assets/hero_desktop.gif`)**:
+  - Extracted and computed a mathematically seamless, frame-perfect looping GIF from desktop screen recording matched to the 3.6s (120-frame @ 33.33fps) wallpaper animation cycle with zero seam stutter.
+  - Linked `docs/assets/hero_desktop.gif` as the primary hero media in `README.md`.
+
 - **Hotspot Backend UUID Hardening & UI Drawer Lifecycle (`hotspot_control.sh`, `BatteryPopup.qml`)**:
   - Resolved root-cause failure where duplicate NetworkManager "Hotspot" profiles output multi-line modes (`mode=$'ap\n\nap\n\nap'`), causing string equality tests to fail and falsely reporting `active: false`. Rewrote `hotspot_control.sh` to query and operate strictly on unique connection UUIDs.
   - Purged orphaned duplicate Hotspot profiles in NetworkManager.

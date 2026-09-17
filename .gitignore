@@ -32,4 +32,5 @@ repomix.json
 *~
 *.swp
 *.swo
-docs/
+docs/*
+!docs/assets/

@@ -21,7 +21,7 @@
 <div align="center">
 
 ### Desktop & Interface
-<img src="docs/assets/hero_desktop.png" alt="Desktop Overview" width="850" />
+<img src="docs/assets/hero_desktop.gif" alt="Desktop Overview" width="850" />
 
 <br/>
 
