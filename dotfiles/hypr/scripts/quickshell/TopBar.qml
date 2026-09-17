@@ -562,18 +562,18 @@ Variants {
                                     color: isHovered ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.1) : (stateLabel === "occupied" ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.15) : "transparent")
 
                                     scale: isHovered && stateLabel !== "active" ? 1.08 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
                                     property bool initAnimTrigger: false
                                     opacity: initAnimTrigger && isItemVisible ? 1 : 0
                                     transform: Translate {
-                                        y: wsPill.initAnimTrigger ? 0 : barWindow.s(15)
-                                        Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } }
+                                        y: wsPill.initAnimTrigger ? 0 : barWindow.s(10)
+                                        Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                                     }
 
                                     Component.onCompleted: {
                                         if (!barWindow.startupCascadeFinished) {
-                                            animTimer.interval = index * 60;
+                                            animTimer.interval = index * 25;
                                             animTimer.start();
                                         } else {
                                             initAnimTrigger = true;
@@ -587,8 +587,8 @@ Variants {
                                         onTriggered: wsPill.initAnimTrigger = true
                                     }
 
-                                    Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
-                                    Behavior on color { ColorAnimation { duration: 250 } }
+                                    Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                                    Behavior on color { ColorAnimation { duration: 180 } }
 
                                     Text {
                                         anchors.centerIn: parent
@@ -1208,7 +1208,7 @@ Variants {
 
                                         Component.onCompleted: {
                                             if (!barWindow.startupCascadeFinished) {
-                                                trayAnimTimer.interval = index * 50;
+                                                trayAnimTimer.interval = index * 25;
                                                 trayAnimTimer.start();
                                             } else {
                                                 initAnimTrigger = true;
@@ -1221,8 +1221,8 @@ Variants {
                                             onTriggered: trayIcon.initAnimTrigger = true
                                         }
 
-                                        Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                        Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                                        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
 
                                         QsMenuAnchor {
                                             id: menuAnchor
@@ -1309,8 +1309,8 @@ Variants {
                                     // Now triggers the instant rightContent itself is shown.
                                     property bool initAnimTrigger: rightContent.showLayout
                                     opacity: initAnimTrigger ? 1 : 0
-                                    transform: Translate { y: sysBatPill.initAnimTrigger ? 0 : barWindow.s(15); Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } } }
-                                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+                                    transform: Translate { y: sysBatPill.initAnimTrigger ? 0 : barWindow.s(10); Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } } }
+                                    Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
                                     Row {
                                         id: batLayoutRow

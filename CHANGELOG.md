@@ -6,6 +6,11 @@
   - In `kill_wallpaper.sh`, automatically disables Hyprland's dual-kawase blur, drop shadow shaders, animations (`animations:enabled = false`), and forces 100% opaque window rendering (`active_opacity = 1.0`, `inactive_opacity = 1.0`, `hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })`) via `hyprctl eval` whenever wallpapers are killed. This completely eliminates multi-pass GPU alpha-blending and allows hardware occlusion culling over black backgrounds (saving ~1.2W–2.0W GPU package power).
   - In `set_wallpaper.sh`, restores blur, shadows, animations, and reloads window rules (`hyprctl reload`) to restore window translucency (unless the system is actively in the `power-saver` profile).
   - Synchronized with `SysData.qml` power profile automation so that `power-saver` profile applies the same full opacity, animation, blur, and shadow bypass, and leaving `power-saver` respects the wallpaper killed state.
+- **Keybind Collision Resolution (`keybinds.lua`)**:
+  - Rebound the interactive Fuzzel file finder from `SUPER + SHIFT + F` to `SUPER + SPACE`, eliminating the keybind collision with Hyprland's native window pinning dispatch (`hl.dsp.window.pin()`).
+- **Snappy TopBar Cascades & Instant Widget Transitions (`TopBar.qml`, `Main.qml`)**:
+  - Replaced the heavy 500ms `OutBack` bounce and 60ms stagger in `TopBar.qml` with an ultra-smooth, linear-deceleration 220ms `OutCubic` curve and a uniform 25ms stagger across workspace pills, tray icons, and the battery badge.
+  - Accelerated `Main.qml` popup morph animations from 230ms to 160ms (`morphDuration`, `morphDurationShift`), making popup triggers feel instant.
 - **QuickShell Startup Hitch Elimination (`TopBar.qml`, `Main.qml`)**:
   - Removed the 800ms artificial fallback timer and battery capacity wait gate (`isDataReady = true` immediately, cascade interval reduced from 1000ms to 300ms) in `TopBar.qml`, allowing the right bar elements to render instantly on session start or restart.
   - Eliminated the eager startup preload storm in `Main.qml` that was instantiating 9 heavy popup widgets every 150ms on launch (freezing the QML thread for 1.35s). Deferred widget preloading to a low-priority 6000ms idle timer.

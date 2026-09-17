@@ -191,8 +191,8 @@ PanelWindow {
     property bool disableMorph: false
 
     property int morphDuration: 160
-    property int morphDurationShift: 210
-    property int exitDuration: 160
+    property int morphDurationShift: 160
+    property int exitDuration: 130
 
     property real animW: 1
     property real animH: 1
@@ -416,7 +416,7 @@ PanelWindow {
 
         if (newWidget === "hidden") {
             if (currentActive !== "hidden") {
-                masterWindow.morphDuration = 230;
+                masterWindow.morphDuration = 160;
                 masterWindow.disableMorph = false;
                 masterWindow.isVisible = false;
 
@@ -424,7 +424,7 @@ PanelWindow {
             }
         } else {
             if (currentActive === "hidden" || !masterWindow.isVisible) {
-                masterWindow.morphDuration = 230;
+                masterWindow.morphDuration = 160;
                 masterWindow.disableMorph = false;
 
                 let t = getLayout(newWidget);
