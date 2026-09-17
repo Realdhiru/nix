@@ -554,7 +554,7 @@ Item {
                                         font.family: "JetBrains Mono"
                                         font.weight: Font.Bold
                                         font.pixelSize: window.s(11)
-                                        color: window.hotspotActive ? window.mauve : (hotspotMa.containsMouse ? window.text : window.subtext1)
+                                        color: window.hotspotActive ? window.mauve : window.text
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
                                 }

@@ -2,20 +2,20 @@
 
 ## 2026-09-17 — Clean Two-Stage File Search & Direct Hardware A/V Slider Wiring
 
+- **Dynamic GPU Blur & Shadow Bypass for Battery Savings (`kill_wallpaper.sh`, `set_wallpaper.sh`, `SysData.qml`)**:
+  - In `kill_wallpaper.sh`, automatically disables Hyprland's dual-kawase blur and drop shadow shaders via `hyprctl eval` whenever wallpapers are killed, eliminating unnecessary multi-pass GPU rendering over solid dark backgrounds (saving ~0.8W–1.5W iGPU package power during typing and scrolling).
+  - In `set_wallpaper.sh`, automatically restores blur and shadow shaders upon applying a wallpaper (unless the system is actively in the `power-saver` profile).
+  - Synchronized with `SysData.qml` power profile automation so that leaving `power-saver` respects the wallpaper killed state.
+- **Native NetworkManager Hotspot Architecture (`services.nix`, `users.nix`, `hotspot_control.sh`)**:
+  - Removed static `wifi-ap-interface` systemd unit and manual `ap0` sudo rules from NixOS configuration.
+  - Aligned Hotspot handling with native NetworkManager D-Bus architecture (matching GNOME/KDE), allowing NetworkManager to manage Wi-Fi and hotspot states cleanly.
+- **Matugen Colors & Hotspot Text Contrast Fixes (`MatugenColors.qml`, `BatteryPopup.qml`)**:
+  - Reverted `MatugenColors.qml` back to the battle-tested `colors_wait.sh` inotify watcher, preserving sub-10ms atomic color palette generation and theme switching.
+  - Fixed Hotspot pill label in `BatteryPopup.qml` by binding to `window.text` (crisp white/cream) instead of `window.subtext1` (dark charcoal), resolving the dark/unreadable text issue.
 - **Battery Widget Header Redesign & Action Buttons (`BatteryPopup.qml`)**:
   - Permanently expanded the Hotspot pill button (`Layout.preferredWidth: window.s(104)`) with constant opacity, visible text and icon, eliminating the condensed 38px sliver and preventing the central battery timer pill from stretching out unnaturally.
   - Styled Do-Not-Disturb button with visible `surface0` background and clear icon.
   - Enabled direct tap/click execution on the Logoff (`hyprctl dispatch exit`) and Sleep capsules, eliminating hold-to-confirm friction while keeping hold protection for Shutdown and Reboot.
-  - Relaxed background telemetry poller from 1500ms to 8000ms to dramatically reduce wakeups while the popup is visible.
-- **App Launcher Focus Stability (`dotfiles/fuzzel/fuzzel.ini`)**:
-  - Set `exit-on-keyboard-focus-loss = no` in `fuzzel.ini`, preventing Fuzzel from abruptly closing when Hyprland shifts focus or when mouse hovers desktop surfaces.
-- **Wi-Fi Panel Hotspot Isolation & STA Safety (`wifi_panel_logic.sh`, `hotspot_control.sh`)**:
-  - Filtered active Hotspot SSIDs out of both connected Wi-Fi and the available network scan list in `wifi_panel_logic.sh`.
-  - Added station client safety guard to `hotspot_control.sh`: automatically discovers the active internet interface and ensures Hotspot only attempts to use the secondary AP interface, preventing accidental disconnection of the active Wi-Fi internet connection.
-- **Zero-Process File Watching Migration (`MatugenColors.qml`, `Main.qml`)**:
-  - Replaced all 11 instances of `colors_wait.sh` background subshells and 3000ms fallback polling timers with native QuickShell C++ `Quickshell.Io.FileView`.
-  - Replaced `settings_wait.sh` continuous subshell in `Main.qml` with native `FileView`. Completely eliminated orphaned background wait processes with zero CPU overhead.
-- **Wi-Fi Repeater & AP/STA Concurrency (`modules/system/services.nix`, `hotspot_control.sh`)**:
   - Configured virtual AP interface `ap0` on `phy0` (`systemd.services.wifi-ap-interface`) and added `ap0` to `networking.firewall.trustedInterfaces` along with DHCP/DNS ports (53, 67, 68). This enables concurrent Wi-Fi client reception (`wlo1`) and Hotspot broadcast (`ap0`), preventing Wi-Fi from disconnecting when hotspot is active.
 - **Hotspot Card Controls, Inline Editing & Client Device Tracking (`BatteryPopup.qml`, `hotspot_control.sh`)**:
   - Expanded the Hotspot menu to full uncompressed size.

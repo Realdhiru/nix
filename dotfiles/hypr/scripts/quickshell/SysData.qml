@@ -277,6 +277,11 @@ Item {
                     [ "$PREV_BLUR" = "true" ] && BLUR_VAL="true" || BLUR_VAL="false"
                     [ "$PREV_SHADOW" = "true" ] && SHADOW_VAL="true" || SHADOW_VAL="false"
 
+                    if [ -f "$HOME/.cache/wallpaper_killed" ]; then
+                        BLUR_VAL="false"
+                        SHADOW_VAL="false"
+                    fi
+
                     hyprctl eval "hl.config({ decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' } })" 2>/dev/null && touch /tmp/qs_normal_visuals_ok
                 `;
                 Quickshell.execDetached(["bash", "-c", cmd]);

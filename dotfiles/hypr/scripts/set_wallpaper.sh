@@ -25,6 +25,12 @@ if [ -f "$HOME/.cache/current_wallpaper.txt" ]; then
 fi
 echo "$WALL" > "$HOME/.cache/current_wallpaper.txt"
 echo "$WALL" > "$HOME/.cache/last_wallpaper.txt"
+rm -f "$HOME/.cache/wallpaper_killed"
+
+# Restore blur and shadow unless system is currently in power-saver profile
+if [ "$(cat /tmp/qs_power_profile 2>/dev/null)" != "power-saver" ]; then
+    hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } } })" >/dev/null 2>&1 || true
+fi
 
 # Serialize wallpaper switches to prevent overlapping process race conditions
 LOCKFILE="$HOME/.cache/set_wallpaper.lock"
