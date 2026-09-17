@@ -1,15 +1,49 @@
 # CHANGELOG
 
+## 2026-09-17 — Clean Two-Stage File Search & Direct Hardware A/V Slider Wiring
+
+- **Wi-Fi Repeater & AP/STA Concurrency (`modules/system/services.nix`, `hotspot_control.sh`)**:
+  - Configured virtual AP interface `ap0` on `phy0` (`systemd.services.wifi-ap-interface`) and added `ap0` to `networking.firewall.trustedInterfaces` along with DHCP/DNS ports (53, 67, 68). This enables concurrent Wi-Fi client reception (`wlo1`) and Hotspot broadcast (`ap0`), preventing Wi-Fi from disconnecting when hotspot is active.
+- **Hotspot Card Controls, Inline Editing & Client Device Tracking (`BatteryPopup.qml`, `hotspot_control.sh`)**:
+  - Expanded the Hotspot menu to full uncompressed size.
+  - Added inline SSID and WPA2 password editing with pen edit toggles (`󰏫`), inline inputs, and Save (`󰄬`)/Cancel (`󰅖`) buttons.
+  - Added expandable connected devices drawer: displays client hostname, assigned IP (`10.42.0.x`), and MAC address parsed from `dnsmasq.leases` and `ip neigh`.
+- **File Finder Visual Thumbnails & Icons (`dotfiles/hypr/scripts/fuzzel_file_search.sh`)**:
+  - Integrated high-contrast Nerd Font glyph thumbnails (`󰋩` images, `󰕧` videos, `󰎈` audio, `󰈦` pdfs, `󰅩` scripts/code, `󰈙` text/configs, `󰛫` archives) paired with Rofi extended dmenu icon protocol for 100% reliable icon rendering.
+- **Zero-Polling Event-Driven A/V Hardware Watcher (`dotfiles/hypr/scripts/quickshell/watchers/av_event_stream.sh`, `BatteryPopup.qml`)**:
+  - Replaced the 200ms periodic timer process loop with an event-driven `SplitParser` streamer. Watches kernel backlight uevents via `udevadm monitor` and PipeWire volume/mute via `pw-mon` with a 50ms burst debounce. Consumes 0% CPU and zero background polling cycles while the widget is open, and terminates when hidden.
+- **Snappy Layer Exit Animations (`dotfiles/hypr/appearance.lua`)**:
+  - Accelerated `fadeLayersOut` from speed 4.5 to speed 2 (`menu_decel`), making the exit animation of Fuzzel and the file finder just as fast and responsive as their opening.
+- **Quickshell Reload Mechanism (`dotfiles/hypr/scripts/qs_manager.sh`)**:
+  - Added dedicated `reload` action to `qs_manager.sh` using Hyprland dispatch, ensuring quickshell restarts cleanly in the user session without being prematurely killed.
+
+## 2026-09-16 — Complete Rofi Decommissioning, Centered Fuzzel UI, and QuickShell Battery Overhaul
+
+- **Complete Rofi Decommissioning (`modules/system/packages.nix`, `home.nix`, `dotfiles/hypr/keybinds.lua`, `dotfiles/hypr/rules.lua`)**:
+  - Removed `rofi` from NixOS system packages and retired the `xdg.configFile."rofi"` Home Manager symlink.
+  - Removed obsolete Rofi window and layer rules. Bound `Super + A` exclusively to Fuzzel (`pkill fuzzel || fuzzel`).
+- **Centered Fuzzel App Launcher & File Finder (`dotfiles/fuzzel/fuzzel.ini`, `dotfiles/hypr/scripts/fuzzel_file_search.sh`, `dotfiles/hypr/rules.lua`)**:
+  - Configured `anchor = center` on both the main Fuzzel launcher and interactive file search.
+  - Set layer animation rule to `animation = fade` for smooth fade-in/fade-out transitions to/from screen center.
+  - Compacted file finder dimensions (`--width=46`, `--lines=8`) and updated file selection action: pressing Enter now extracts `dirname "$SELECTED_FILE"` and opens the parent directory in `pcmanfm-qt` instead of launching the file.
+- **QuickShell Battery Widget UI & System Telemetry Overhaul (`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`, `WindowRegistry.js`)**:
+  - **Live Reactive Audio & Brightness**: Added native declarative `Pipewire.defaultAudioSink.audio` property bindings (`pipewireVol`, `pipewireMuted`) to dynamically update volume when adjusted via keyboard keys. Added high-speed 300ms `briLivePoller` (`brightnessctl -m`) while popup is visible.
+  - **Numerical Value Presenters**: Added bold percentage (`%`) readouts to the right of both brightness and volume slider bars.
+  - **Button Cleanup & Action Reordering**: Removed obsolete Wifi and rotate-display buttons. Fixed logout execution by replacing brittle `~` expansion with `bash $HOME/.config/hypr/scripts/exit.sh`. Reordered bottom action row capsules to exact order: Logoff (`󰍃`), Sleep (`ᶻ 𝗓 𝗓`), Shutdown (``), Reboot (`󰑓`).
+  - **Relocated Battery Time Remaining**: Moved remaining battery runtime capsule (`󰂄/󱐋 2h 45m LEFT/FULL`) to the left-side notification header row beside the DND toggle.
+  - **Condensed Vertical Geometry**: Removed the empty top row on the right column, shifted the central battery ring upward (`anchors.verticalCenterOffset: window.s(-140)`), and condensed popup height in `WindowRegistry.js` from `760` to `660`.
+
 ## 2026-09-16 — Fuzzel Application Launcher & Fast File Search Coexistence Trial
 
-- **Fuzzel & fd System Packages (`modules/system/packages.nix`)**:
-  - Added `fuzzel` (ultra-lightweight Wayland launcher) and `fd` (fast file crawler) to system packages alongside Rofi.
-- **Matching Glass Aesthetic (`dotfiles/fuzzel/fuzzel.ini`, `dotfiles/hypr/rules.lua`)**:
-  - Recreated the dark frosted glass aesthetic from `rofi/theme.rasi`: 14px JetBrains Mono font, 16px corner radius, left screen offset, `#00000073` translucent background, and Hyprland layer-shell blur (`blur = true`, `ignore_alpha = 0.1`, `animation = slide left`).
+- **Fuzzel, fd & Papirus Icon Packages (`modules/system/packages.nix`)**:
+  - Added `fuzzel` (ultra-lightweight Wayland launcher), `fd` (fast file crawler), and `papirus-icon-theme` to system packages alongside Rofi.
+- **Matching Glass Aesthetic & Roomy Layout (`dotfiles/fuzzel/fuzzel.ini`, `dotfiles/hypr/rules.lua`)**:
+  - Fixed Hyprland layer blur by setting `namespace = fuzzel` in `fuzzel.ini` and matching `^(fuzzel|launcher)$` with `blur = true`, `ignore_alpha = 0.1`, and `animation = slide left`.
+  - Removed cramped/condensed feeling by widening window (`width = 48`), increasing item line height (`line-height = 36`), adding `selection-radius = 12` rounded pills, disabling awkward giant images (`image-size-ratio = 0.0`), and adding generous padding (`horizontal-pad = 24`, `vertical-pad = 20`, `inner-pad = 16`).
 - **Dual Vertical & Horizontal Navigation**:
   - Configured vertical navigation (`Up`/`Down`, `Ctrl+N`/`Ctrl+P`, `Ctrl+J`/`Ctrl+K`) and horizontal navigation (`Left`/`Right` for paging).
 - **Interactive File Search (`dotfiles/hypr/scripts/fuzzel_file_search.sh`)**:
-  - Added an interactive file finder using `fd` to stream user directories (`~/Documents`, `~/Downloads`, `~/Pictures`, `~/Videos`, `~/Music`, `~/nix`, `~/Desktop`) into Fuzzel dmenu mode and open selections via `xdg-open`.
+  - Fixed search crash caused by `--strip-cwd-prefix` parameter collision. Built clean two-column display with filename aligned on left and directory path on right, extracting the canonical path via tab delimiter on Enter and launching with `xdg-open`.
 - **Keybindings (`dotfiles/hypr/keybinds.lua`)**:
   - `Super + Space`: Launch Fuzzel application launcher.
   - `Super + Shift + F`: Launch Fuzzel interactive file search.

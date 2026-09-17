@@ -101,6 +101,19 @@ Item {
     property string currentUserName: ""
     property bool dndEnabled: false
 
+    property bool hotspotActive: false
+    property string hotspotSsid: "NixOS-Hotspot"
+    property string hotspotPassword: ""
+    property int hotspotClients: 0
+    property bool showHotspotMenu: false
+    property bool hotspotPassVisible: false
+    property bool editingHotspotSsid: false
+    property bool editingHotspotPass: false
+    property string tempHotspotSsid: ""
+    property string tempHotspotPass: ""
+    property bool showConnectedDevices: false
+    property var hotspotDeviceList: []
+
     property var collapsedGroups: ({})
 
     // Keyboard navigation for the action row only. `selectedActionIndex`
@@ -153,6 +166,8 @@ Item {
         introSliders = 1;
         introActions = 1;
         introProfiles = 1;
+        avStatePoller.running = false;
+        avStatePoller.running = true;
         for (var i = 0; i < actionRowRepeater.count; i++) {
             let cap = actionRowRepeater.itemAt(i);
             if (cap) {
@@ -176,8 +191,8 @@ Item {
     property bool isDraggingVol: false
     property bool isDraggingBri: false
 
-    Timer { id: volSyncDelay; interval: 800; onTriggered: window.isDraggingVol = false; triggeredOnStart: true; }
-    Timer { id: briSyncDelay; interval: 800; onTriggered: window.isDraggingBri = false; triggeredOnStart: true; }
+    Timer { id: volSyncDelay; interval: 600; onTriggered: window.isDraggingVol = false; }
+    Timer { id: briSyncDelay; interval: 600; onTriggered: window.isDraggingBri = false; }
 
     // Keyed off real AC-online state (SysData.acOnline), not the status
     // string -- a charge-threshold-capped battery reports "Not charging"
@@ -220,7 +235,10 @@ Item {
         target: SysData
         function onBatCapacityChanged() { window.animCapacity = SysData.batCapacity; }
     }
-    Component.onCompleted: window.animCapacity = SysData.batCapacity;
+    Component.onCompleted: {
+        window.animCapacity = SysData.batCapacity;
+        avStatePoller.running = true;
+    }
 
     // =========================================================================
     // POWER PROFILE AUTOMATION (DYNAMIC ARCHITECTURE)
@@ -307,35 +325,67 @@ Item {
                     let remSeconds = parseInt(lines[3]) || 0;
                     window.upHours = Math.floor(remSeconds / 3600);
                     window.upMins = Math.floor((remSeconds % 3600) / 60);
+                }
+            }
+        }
+    }
 
-                    if (!window.isDraggingVol && Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
-                        window.sysVolume = Math.round(Pipewire.defaultAudioSink.audio.volume * 100);
-                        window.sysMuted = Pipewire.defaultAudioSink.audio.muted;
+    Process {
+        id: avStatePoller
+        command: ["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/av_event_stream.sh"]
+        running: window.visible
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: (line) => {
+                let txt = line.trim();
+                if (!txt) return;
+                let p = txt.split("|");
+                if (p.length >= 3) {
+                    let v = parseInt(p[0]);
+                    let m = (p[1] === "1");
+                    let b = parseInt(p[2]);
+                    if (!window.isDraggingVol && !isNaN(v)) {
+                        window.sysVolume = v;
+                        window.sysMuted = m;
                     }
-
-                    if (!window.isDraggingBri) {
-                        window.sysBrightness = parseInt(lines[5]) || 0;
+                    if (!window.isDraggingBri && !isNaN(b)) {
+                        window.sysBrightness = b;
                     }
                 }
             }
         }
     }
 
-    Connections {
-        target: Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null
-        function onVolumeChanged() {
-            if (!window.isDraggingVol && Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
-                window.sysVolume = Math.round(Pipewire.defaultAudioSink.audio.volume * 100);
-            }
-        }
-        function onMutedChanged() {
-            if (!window.isDraggingVol && Pipewire.defaultAudioSink && Pipewire.defaultAudioSink.audio) {
-                window.sysMuted = Pipewire.defaultAudioSink.audio.muted;
+    Process {
+        id: hotspotPoller
+        command: ["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/hotspot_control.sh", "--json"]
+        running: window.visible
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let txt = this.text ? this.text.trim() : "";
+                if (!txt) return;
+                try {
+                    let d = JSON.parse(txt);
+                    window.hotspotActive = d.active;
+                    window.hotspotSsid = d.ssid || "NixOS-Hotspot";
+                    window.hotspotPassword = d.password || "";
+                    window.hotspotClients = d.clients || 0;
+                    window.hotspotDeviceList = d.devices || [];
+                } catch(e) {}
             }
         }
     }
 
-    // Popup-local telemetry refresh (cap/profile/time-remaining/vol/bri).
+    Timer {
+        id: hotspotRefreshTimer
+        interval: 600
+        onTriggered: {
+            hotspotPoller.running = false;
+            hotspotPoller.running = true;
+        }
+    }
+
+    // Popup-local telemetry refresh (cap/profile/time-remaining/vol/bri/hotspot).
     // Gated to visibility: this popup stays cached in Main.qml's
     // widgetCache after close, so a bare running:true kept spawning bash
     // every 1.5s forever while hidden.
@@ -344,6 +394,9 @@ Item {
         onTriggered: {
             sysPoller.running = false;
             sysPoller.running = true;
+            if (!hotspotPoller.running) {
+                hotspotPoller.running = true;
+            }
         }
     }
 
@@ -464,20 +517,104 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             Layout.preferredHeight: window.s(38)
-                            spacing: window.s(12)
+                            spacing: window.s(8)
                             
                             transform: Translate { y: window.s(-20) * (1.0 - introTop) }
                             opacity: introTop
 
-                            Text {
-                                text: "Notifications"
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Black
-                                font.pixelSize: window.s(18)
-                                color: window.text
+                            Rectangle {
+                                id: hotspotBtn
+                                Layout.preferredWidth: hotspotMa.containsMouse || window.showHotspotMenu ? window.s(38) + hotspotText.implicitWidth + window.s(10) : window.s(38)
+                                Layout.preferredHeight: window.s(38)
+                                radius: window.s(12)
+                                color: window.hotspotActive ? Qt.alpha(window.mauve, 0.2) : (hotspotMa.containsMouse || window.showHotspotMenu ? window.surface1 : "transparent")
+                                border.color: window.hotspotActive ? window.mauve : (hotspotMa.containsMouse || window.showHotspotMenu ? window.surface2 : "transparent")
+                                border.width: 1
+                                clip: true
+
+                                Behavior on Layout.preferredWidth { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: window.s(6)
+
+                                    Text {
+                                        font.family: "Iosevka Nerd Font"
+                                        font.pixelSize: window.s(18)
+                                        color: window.hotspotActive ? window.mauve : (hotspotMa.containsMouse ? window.text : window.overlay0)
+                                        text: window.hotspotActive ? "󰤨" : "󰤧"
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        Behavior on color { ColorAnimation { duration: 150 } }
+                                    }
+
+                                    Text {
+                                        id: hotspotText
+                                        text: window.hotspotActive ? ("Hotspot (" + window.hotspotClients + ")") : "Hotspot"
+                                        font.family: "JetBrains Mono"
+                                        font.weight: Font.Bold
+                                        font.pixelSize: window.s(12)
+                                        color: window.hotspotActive ? window.mauve : window.text
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        opacity: hotspotMa.containsMouse || window.showHotspotMenu ? 1.0 : 0.0
+                                        Behavior on opacity { NumberAnimation { duration: 200 } }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: hotspotMa
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        window.showHotspotMenu = !window.showHotspotMenu;
+                                    }
+                                }
                             }
 
-                            Item { Layout.fillWidth: true }
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: window.s(38)
+                                radius: window.s(12)
+                                color: window.surface0
+                                border.color: window.surface1
+                                border.width: 1
+
+                                Row {
+                                    id: batTimeRow
+                                    anchors.centerIn: parent
+                                    spacing: window.s(8)
+
+                                    Text {
+                                        font.family: "Iosevka Nerd Font"
+                                        font.pixelSize: window.s(16)
+                                        color: window.batColorStart
+                                        text: window.isCharging ? "󰂄" : (window.batCapacity > 20 ? "󰁹" : "󰂃")
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+
+                                    Text {
+                                        text: (window.upHours > 0 || window.upMins > 0)
+                                              ? (window.upHours > 0 ? (window.upHours + "h " + window.upMins + "m") : (window.upMins + "m"))
+                                              : "--"
+                                        font.pixelSize: window.s(13)
+                                        font.family: "JetBrains Mono"
+                                        font.weight: Font.Black
+                                        color: window.text
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+
+                                    Text {
+                                        text: window.batStatus === "Charging" ? "FULL" : "LEFT"
+                                        font.pixelSize: window.s(10)
+                                        font.family: "JetBrains Mono"
+                                        font.weight: Font.Bold
+                                        color: window.subtext0
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                            }
 
                             Rectangle {
                                 Layout.preferredWidth: dndMa.containsMouse ? window.s(38) + dndText.implicitWidth + window.s(8) : window.s(38)
@@ -526,6 +663,321 @@ Item {
                                     onClicked: {
                                         window.dndEnabled = !window.dndEnabled;
                                         Quickshell.execDetached(["sh", "-c", "echo '" + (window.dndEnabled ? "1" : "0") + "' > '" + Caching.getCacheDir("dnd") + "/state'"]);
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: window.showHotspotMenu ? (window.showConnectedDevices ? window.s(260) : (window.editingHotspotSsid || window.editingHotspotPass ? window.s(210) : window.s(170))) : 0
+                            visible: Layout.preferredHeight > 0
+                            clip: true
+                            radius: window.s(14)
+                            color: window.surface0
+                            border.color: window.hotspotActive ? window.mauve : window.surface2
+                            border.width: 1
+
+                            Behavior on Layout.preferredHeight { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: window.s(14)
+                                spacing: window.s(8)
+
+                                // Header row
+                                RowLayout {
+                                    Layout.fillWidth: true
+
+                                    Row {
+                                        spacing: window.s(6)
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        Text {
+                                            font.family: "Iosevka Nerd Font"
+                                            font.pixelSize: window.s(16)
+                                            color: window.hotspotActive ? window.mauve : window.text
+                                            text: "󰤨"
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                        Text {
+                                            text: "Wi-Fi Hotspot"
+                                            font.family: "JetBrains Mono"
+                                            font.weight: Font.Bold
+                                            font.pixelSize: window.s(13)
+                                            color: window.text
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    Rectangle {
+                                        Layout.preferredWidth: window.s(76)
+                                        Layout.preferredHeight: window.s(26)
+                                        radius: window.s(13)
+                                        color: window.hotspotActive ? window.mauve : window.surface1
+                                        border.color: window.hotspotActive ? Qt.lighter(window.mauve, 1.2) : window.surface2
+                                        border.width: 1
+
+                                        Behavior on color { ColorAnimation { duration: 200 } }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: window.hotspotActive ? "ACTIVE" : "OFF"
+                                            font.family: "JetBrains Mono"
+                                            font.weight: Font.Black
+                                            font.pixelSize: window.s(10)
+                                            color: window.hotspotActive ? window.base : window.text
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/hotspot_control.sh", "--toggle"]);
+                                                hotspotRefreshTimer.restart();
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 1
+                                    color: window.surface1
+                                }
+
+                                // SSID Editor / Display
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: window.s(6)
+
+                                    Text {
+                                        text: "SSID:"
+                                        font.family: "JetBrains Mono"
+                                        font.pixelSize: window.s(11)
+                                        color: window.subtext0
+                                    }
+
+                                    Loader {
+                                        Layout.fillWidth: true
+                                        sourceComponent: window.editingHotspotSsid ? ssidEditComp : ssidDisplayComp
+                                    }
+
+                                    Component {
+                                        id: ssidDisplayComp
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: window.s(6)
+                                            Text {
+                                                text: window.hotspotSsid
+                                                font.family: "JetBrains Mono"
+                                                font.weight: Font.Bold
+                                                font.pixelSize: window.s(11)
+                                                color: window.text
+                                            }
+                                            Item { Layout.fillWidth: true }
+                                            Rectangle {
+                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11)
+                                                color: editSsidMa.containsMouse ? window.surface2 : window.surface1
+                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰏫"; color: window.text }
+                                                MouseArea {
+                                                    id: editSsidMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                    onClicked: { window.tempHotspotSsid = window.hotspotSsid; window.editingHotspotSsid = true; }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Component {
+                                        id: ssidEditComp
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: window.s(6)
+                                            Rectangle {
+                                                Layout.fillWidth: true; Layout.preferredHeight: window.s(24); radius: window.s(6)
+                                                color: window.surface1; border.color: window.mauve; border.width: 1; clip: true
+                                                TextInput {
+                                                    anchors.fill: parent; anchors.margins: window.s(4); font.family: "JetBrains Mono"; font.pixelSize: window.s(11); color: window.text
+                                                    text: window.tempHotspotSsid; onTextChanged: window.tempHotspotSsid = text; verticalAlignment: TextInput.AlignVCenter
+                                                }
+                                            }
+                                            Rectangle {
+                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11); color: window.green
+                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰄬"; color: window.base }
+                                                MouseArea {
+                                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/hotspot_control.sh", "--set-ssid", window.tempHotspotSsid]);
+                                                        window.editingHotspotSsid = false; hotspotRefreshTimer.restart();
+                                                    }
+                                                }
+                                            }
+                                            Rectangle {
+                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11); color: window.surface2
+                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰅖"; color: window.text }
+                                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: window.editingHotspotSsid = false; }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Password Editor / Display
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: window.s(6)
+
+                                    Text {
+                                        text: "Pass:"
+                                        font.family: "JetBrains Mono"
+                                        font.pixelSize: window.s(11)
+                                        color: window.subtext0
+                                    }
+
+                                    Loader {
+                                        Layout.fillWidth: true
+                                        sourceComponent: window.editingHotspotPass ? passEditComp : passDisplayComp
+                                    }
+
+                                    Component {
+                                        id: passDisplayComp
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: window.s(6)
+                                            Text {
+                                                text: window.hotspotPassVisible ? (window.hotspotPassword || "(None)") : "••••••••••••"
+                                                font.family: "JetBrains Mono"
+                                                font.weight: Font.Bold
+                                                font.pixelSize: window.s(11)
+                                                color: window.text
+                                            }
+                                            Item { Layout.fillWidth: true }
+                                            Rectangle {
+                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11)
+                                                color: passEyeMa.containsMouse ? window.surface2 : window.surface1
+                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(12); text: window.hotspotPassVisible ? "󰈈" : "󰈉"; color: window.text }
+                                                MouseArea {
+                                                    id: passEyeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                    onClicked: window.hotspotPassVisible = !window.hotspotPassVisible
+                                                }
+                                            }
+                                            Rectangle {
+                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11)
+                                                color: editPassMa.containsMouse ? window.surface2 : window.surface1
+                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰏫"; color: window.text }
+                                                MouseArea {
+                                                    id: editPassMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                    onClicked: { window.tempHotspotPass = window.hotspotPassword; window.editingHotspotPass = true; }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Component {
+                                        id: passEditComp
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: window.s(6)
+                                            Rectangle {
+                                                Layout.fillWidth: true; Layout.preferredHeight: window.s(24); radius: window.s(6)
+                                                color: window.surface1; border.color: window.mauve; border.width: 1; clip: true
+                                                TextInput {
+                                                    anchors.fill: parent; anchors.margins: window.s(4); font.family: "JetBrains Mono"; font.pixelSize: window.s(11); color: window.text
+                                                    text: window.tempHotspotPass; onTextChanged: window.tempHotspotPass = text; verticalAlignment: TextInput.AlignVCenter
+                                                }
+                                            }
+                                            Rectangle {
+                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11); color: window.green
+                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰄬"; color: window.base }
+                                                MouseArea {
+                                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/hotspot_control.sh", "--set-password", window.tempHotspotPass]);
+                                                        window.editingHotspotPass = false; hotspotRefreshTimer.restart();
+                                                    }
+                                                }
+                                            }
+                                            Rectangle {
+                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11); color: window.surface2
+                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰅖"; color: window.text }
+                                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: window.editingHotspotPass = false; }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Connected Devices Drawer Toggle Row
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: window.s(26)
+                                    radius: window.s(8)
+                                    color: devDrawerMa.containsMouse ? window.surface1 : "transparent"
+                                    border.color: devDrawerMa.containsMouse ? window.surface2 : "transparent"
+                                    border.width: 1
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: window.s(4)
+                                        Text {
+                                            font.family: "Iosevka Nerd Font"
+                                            font.pixelSize: window.s(13)
+                                            color: window.hotspotClients > 0 ? window.green : window.subtext0
+                                            text: "󰄬"
+                                        }
+                                        Text {
+                                            text: "Connected Devices: " + window.hotspotClients
+                                            font.family: "JetBrains Mono"
+                                            font.weight: Font.Bold
+                                            font.pixelSize: window.s(11)
+                                            color: window.hotspotClients > 0 ? window.green : window.subtext0
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                        Text {
+                                            font.family: "Iosevka Nerd Font"
+                                            font.pixelSize: window.s(12)
+                                            color: window.subtext0
+                                            text: window.showConnectedDevices ? "󰅀" : "󰅂"
+                                        }
+                                    }
+                                    MouseArea {
+                                        id: devDrawerMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: window.showConnectedDevices = !window.showConnectedDevices
+                                    }
+                                }
+
+                                // Connected Devices List (visible when expanded)
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    visible: window.showConnectedDevices
+                                    spacing: window.s(4)
+
+                                    Text {
+                                        visible: !window.hotspotDeviceList || window.hotspotDeviceList.length === 0
+                                        text: "No client devices connected."
+                                        font.family: "JetBrains Mono"
+                                        font.pixelSize: window.s(10)
+                                        color: window.overlay0
+                                    }
+
+                                    Repeater {
+                                        model: window.hotspotDeviceList || []
+                                        delegate: Rectangle {
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: window.s(22)
+                                            radius: window.s(6)
+                                            color: window.surface1
+                                            RowLayout {
+                                                anchors.fill: parent
+                                                anchors.margins: window.s(4)
+                                                Text { text: modelData.name || "Client"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(10); color: window.text }
+                                                Item { Layout.fillWidth: true }
+                                                Text { text: modelData.ip || ""; font.family: "JetBrains Mono"; font.pixelSize: window.s(9); color: window.green }
+                                                Text { text: modelData.mac || ""; font.family: "JetBrains Mono"; font.pixelSize: window.s(9); color: window.subtext0 }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -890,7 +1342,7 @@ Item {
                             model: 3
                             Rectangle {
                                 anchors.centerIn: parent
-                                anchors.verticalCenterOffset: window.s(-70)
+                                anchors.verticalCenterOffset: window.s(-140)
                                 width: window.s(320) + (index * window.s(170))
                                 height: width
                                 radius: width / 2
@@ -899,194 +1351,6 @@ Item {
                                 border.width: 1
                                 Behavior on border.color { ColorAnimation { duration: 1000 } }
                                 opacity: 0.06 - (index * 0.02)
-                            }
-                        }
-                    }
-
-                    Row {
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                        anchors.margins: window.s(25)
-                        spacing: window.s(6)
-                        
-                        transform: Translate { y: window.s(-20) * (1.0 - introTop) }
-                        opacity: introTop
-                        
-                        Rectangle {
-                            width: window.s(44); height: window.s(48); radius: window.s(10)
-                            color: window.surface0; border.color: window.surface1; border.width: 1
-                            
-                            Rectangle { anchors.fill: parent; radius: window.s(10); color: window.ambientPrimary; opacity: 0.05; Behavior on color { ColorAnimation { duration: 1000 } } }
-                            Column {
-                                anchors.centerIn: parent
-                                Text { 
-                                    text: window.upHours > 0 || window.upMins > 0 ? window.upHours.toString().padStart(2, '0') : "--"
-                                    font.pixelSize: window.s(18); font.family: "JetBrains Mono"; font.weight: Font.Black
-                                    color: window.ambientPrimary
-                                    Behavior on color { ColorAnimation { duration: 1000 } }
-                                    anchors.horizontalCenter: parent.horizontalCenter 
-                                }
-                                Text { 
-                                    text: window.batStatus === "Charging" ? "TO FULL" : "LEFT"; font.pixelSize: window.s(8); font.family: "JetBrains Mono"; font.weight: Font.Bold
-                                    color: window.subtext0; anchors.horizontalCenter: parent.horizontalCenter 
-                                }
-                            }
-                        }
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: ":"
-                            font.pixelSize: window.s(22); font.family: "JetBrains Mono"; font.weight: Font.Black
-                            color: window.ambientPrimary
-                            Behavior on color { ColorAnimation { duration: 1000 } }
-                            
-                            opacity: uptimePulse
-                            property real uptimePulse: 1.0
-                            SequentialAnimation on uptimePulse {
-                                loops: Animation.Infinite; running: window.visible
-                                NumberAnimation { to: 0.2; duration: 800; easing.type: Easing.InOutSine }
-                                NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
-                            }
-                        }
-
-                        Rectangle {
-                            width: window.s(44); height: window.s(48); radius: window.s(10)
-                            color: window.surface0; border.color: window.surface1; border.width: 1
-                            
-                            Rectangle { anchors.fill: parent; radius: window.s(10); color: window.ambientSecondary; opacity: 0.05; Behavior on color { ColorAnimation { duration: 1000 } } }
-                            Column {
-                                anchors.centerIn: parent
-                                Text { 
-                                    text: window.upHours > 0 || window.upMins > 0 ? window.upMins.toString().padStart(2, '0') : "--"
-                                    font.pixelSize: window.s(18); font.family: "JetBrains Mono"; font.weight: Font.Black
-                                    color: window.ambientSecondary
-                                    Behavior on color { ColorAnimation { duration: 1000 } }
-                                    anchors.horizontalCenter: parent.horizontalCenter 
-                                }
-                                Text { 
-                                    text: "MIN"; font.pixelSize: window.s(8); font.family: "JetBrains Mono"; font.weight: Font.Bold
-                                    color: window.subtext0; anchors.horizontalCenter: parent.horizontalCenter 
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            width: window.s(44); height: window.s(48); radius: window.s(10)
-                            color: netBtnMa.containsMouse ? window.surface1 : window.surface0
-                            border.color: netBtnMa.containsMouse ? window.surface2 : window.surface1
-                            border.width: 1
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Behavior on border.color { ColorAnimation { duration: 150 } }
-
-                            Rectangle { anchors.fill: parent; radius: window.s(10); color: window.sapphire; opacity: 0.05; Behavior on color { ColorAnimation { duration: 200 } } }
-
-                            Text {
-                                anchors.centerIn: parent
-                                font.family: "Iosevka Nerd Font"
-                                font.pixelSize: window.s(20)
-                                color: netBtnMa.containsMouse ? window.text : window.sapphire
-                                text: "󰤨"
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                            }
-
-                            // Same open mechanism as the TopBar network button:
-                            // qs_manager.sh handles prep (wifi rescan / bt scan)
-                            // and IPC -> Main.qml switchWidget("network").
-                            MouseArea {
-                                id: netBtnMa
-                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle network"])
-                            }
-                        }
-
-                        Rectangle {
-                            id: rotateBtn
-                            width: window.s(44); height: window.s(48); radius: window.s(10)
-                            color: rotateBtnMa.containsMouse ? window.surface1 : (SysData.isRotated ? Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, 0.2) : window.surface0)
-                            border.color: rotateBtnMa.containsMouse ? window.surface2 : (SysData.isRotated ? window.mauve : window.surface1)
-                            border.width: 1
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Behavior on border.color { ColorAnimation { duration: 150 } }
-
-                            Rectangle {
-                                anchors.fill: parent; radius: window.s(10)
-                                color: SysData.isRotated ? window.mauve : window.text
-                                opacity: SysData.isRotated ? 0.15 : 0.05
-                                Behavior on color { ColorAnimation { duration: 200 } }
-                            }
-
-                            Text {
-                                anchors.centerIn: parent
-                                font.family: "Iosevka Nerd Font"
-                                font.pixelSize: window.s(20)
-                                color: rotateBtnMa.containsMouse ? window.text : (SysData.isRotated ? window.mauve : window.overlay1)
-                                text: "󰑮"
-                                rotation: SysData.isRotated ? 180 : 0
-                                Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                            }
-
-                            MouseArea {
-                                id: rotateBtnMa
-                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/rotate_display.sh"]);
-                                }
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        id: logoutBtn
-                        anchors.top: parent.top; anchors.right: parent.right
-                        anchors.margins: window.s(25)
-                        width: logoutMa.containsMouse ? window.s(44) + usernameText.implicitWidth + window.s(12) : window.s(44)
-                        height: window.s(44); radius: window.s(14)
-                        color: logoutMa.containsMouse ? window.surface1 : "transparent"
-                        border.color: logoutMa.containsMouse ? window.surface2 : "transparent"
-                        clip: true
-                        
-                        transform: Translate { y: window.s(-20) * (1.0 - introTop) }
-                        opacity: introTop
-
-                        Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
-                        Behavior on color { ColorAnimation { duration: 150 } }
-                        Behavior on border.color { ColorAnimation { duration: 150 } }
-
-                        Row {
-                            anchors.right: parent.right
-                            anchors.rightMargin: window.s(13)
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: window.s(12)
-
-                            Text {
-                                id: usernameText
-                                text: window.currentUserName
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Bold
-                                font.pixelSize: window.s(14)
-                                color: window.text
-                                anchors.verticalCenter: parent.verticalCenter
-                                opacity: logoutMa.containsMouse ? 1.0 : 0.0
-                                Behavior on opacity { NumberAnimation { duration: 250 } }
-                            }
-
-                            Text {
-                                font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(18)
-                                color: logoutMa.containsMouse ? window.red : window.overlay0
-                                text: "󰍃"
-                                anchors.verticalCenter: parent.verticalCenter
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                            }
-                        }
-
-                        MouseArea {
-                            id: logoutMa
-                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: { 
-                                exitAnim.start(); 
-                                Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/exit.sh"]); 
-                                Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
                             }
                         }
                     }
@@ -1120,7 +1384,7 @@ Item {
                             width: window.s(260)
                             height: width
                             anchors.centerIn: parent
-                            anchors.verticalCenterOffset: window.s(-70)
+                            anchors.verticalCenterOffset: window.s(-140)
                             radius: width / 2
                             z: 1
                             
@@ -1425,6 +1689,7 @@ Item {
                                                 }
                                             }
                                         }
+
                                     }
 
                                     RowLayout {
@@ -1536,10 +1801,10 @@ Item {
                                     id: actionRowRepeater
 
                                     model: ListModel {
-                                        ListElement { cmd: "bash ~/.config/hypr/scripts/lock.sh"; icon: ""; baseColor: "mauve"; weight: 1.0 }
-                                        ListElement { cmd: "bash ~/.config/hypr/scripts/suspend.sh suspend"; icon: "ᶻ 𝗓 𝗓"; baseColor: "blue"; weight: 1.0 }
-                                        ListElement { cmd: "systemctl reboot"; icon: "󰑓"; baseColor: "yellow"; weight: 2.5 }
+                                        ListElement { cmd: "bash $HOME/.config/hypr/scripts/exit.sh"; icon: "󰍃"; baseColor: "mauve"; weight: 1.0 }
+                                        ListElement { cmd: "bash $HOME/.config/hypr/scripts/suspend.sh suspend"; icon: "ᶻ 𝗓 𝗓"; baseColor: "blue"; weight: 1.0 }
                                         ListElement { cmd: "systemctl poweroff -i"; icon: ""; baseColor: "red"; weight: 3.5 }
+                                        ListElement { cmd: "systemctl reboot"; icon: "󰑓"; baseColor: "yellow"; weight: 2.5 }
                                     }
                                     
                                     delegate: Rectangle {

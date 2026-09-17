@@ -1,7 +1,24 @@
 { pkgs, lib, ... }:
-
 {
-  networking.firewall.enable = true;
+  networking.firewall = {
+    enable = true;
+    trustedInterfaces = [ "ap0" ];
+    allowedUDPPorts = [ 53 67 68 ]; # Allow DHCP & DNS for hotspot clients
+  };
+
+  # Virtual AP interface for simultaneous Wi-Fi client + Hotspot (AP/STA concurrency)
+  systemd.services.wifi-ap-interface = {
+    description = "Create virtual wireless AP interface for concurrent STA/AP hotspot";
+    after = [ "network-pre.target" ];
+    before = [ "NetworkManager.service" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.iw}/bin/iw phy phy0 interface add ap0 type __ap";
+      ExecStop = "${pkgs.iw}/bin/iw dev ap0 del";
+    };
+  };
 
   security.apparmor.enable = true;
 

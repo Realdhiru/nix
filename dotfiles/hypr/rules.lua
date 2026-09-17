@@ -2,9 +2,9 @@
 -- Opacity
 -- ======================================================
 
-hl.window_rule({ match = { class = "^codium$" }, opacity = "0.57" })
-hl.window_rule({ match = { class = "^spotify$" }, opacity = "0.74" })
-hl.window_rule({ match = { class = "^antigravity-ide$" }, opacity = "0.64" })
+hl.window_rule({ match = { class = "^codium$" }, opacity = "0.65" })
+hl.window_rule({ match = { class = "^spotify$" }, opacity = "0.92" })
+hl.window_rule({ match = { class = "^antigravity-ide$" }, opacity = "0.7" })
 hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.67" })
 
 -- Brave Apps
@@ -73,15 +73,10 @@ hl.window_rule({ match = { title = "^app-launcher$" }, float = true, center = tr
 -- Layer Rules
 -- ======================================================
 
--- Rofi
-hl.layer_rule({ match = { namespace = "^rofi$" }, blur = true })
-hl.layer_rule({ match = { namespace = "^rofi$" }, ignore_alpha = 0.1 })
-hl.layer_rule({ match = { namespace = "^rofi$" }, animation = "slide left" })
-
 -- Fuzzel (Native Wayland launcher)
-hl.layer_rule({ match = { namespace = "^fuzzel$" }, blur = true })
-hl.layer_rule({ match = { namespace = "^fuzzel$" }, ignore_alpha = 0.1 })
-hl.layer_rule({ match = { namespace = "^fuzzel$" }, animation = "slide left" })
+hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, blur = true })
+hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, ignore_alpha = 0.1 })
+hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, animation = "fade" })
 
 -- Quickshell (Glassmorphism)
 -- hl.layer_rule({ match = { namespace = "quickshell" }, blur = true })

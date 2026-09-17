@@ -34,12 +34,6 @@
     force = true;
   };
 
-  xdg.configFile."rofi" = {
-    source = config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/rofi";
-    force = true;
-  };
-
   xdg.configFile."fuzzel" = {
     source = config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/fuzzel";

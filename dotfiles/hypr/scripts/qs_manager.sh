@@ -28,6 +28,14 @@ ACTION="${1:-}"
 TARGET="${2:-}"
 SUBTARGET="${3:-}"
 
+if [[ "$ACTION" == "reload" ]]; then
+    pkill -9 quickshell 2>/dev/null || true
+    pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
+    sleep 0.3
+    hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('$QS_BIN -p $SHELL_QML_PATH'))" >/dev/null 2>&1
+    exit 0
+fi
+
 if [[ "$ACTION" != "close" && "$ACTION" != "open" && "$ACTION" != "toggle" && "$ACTION" =~ ^[0-9a-zA-Z:-]+$ ]]; then
     # Send IPC command directly to Main.qml via Quickshell's native IPC handler
     "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
