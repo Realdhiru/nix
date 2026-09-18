@@ -10,4 +10,9 @@ hl.config({
         vfr              = true, -- POWER OPTIMIZATION: Only render when the screen changes
         damage_tracking  = 1,
     },
+
+    -- Layout
+    dwindle = {
+        preserve_split = true,
+    },
 })

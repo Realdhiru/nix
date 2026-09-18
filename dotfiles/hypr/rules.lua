@@ -76,13 +76,32 @@ hl.window_rule({ match = { class = "^(com\\.github\\.wwmm\\.easyeffects)$" }, fl
 -- Picture-in-Picture
 -- ======================================================
 
-hl.window_rule({ match = { title = "^(.*[Pp][Ii][Cc][Tt][Uu][Rr][Ee].*)$" }, float = true, pin = true, size = { "10%", "10%" } })
+hl.window_rule({ match = { title = "^(.*[Pp][Ii][Cc][Tt][Uu][Rr][Ee].*)$" }, float = true, pin = true, size = { "25%", "25%" }, move = { "73%", "72%" } })
+hl.window_rule({ match = { title = "^(Picture-in-Picture|Picture in picture)$" }, float = true, pin = true, size = { "25%", "25%" }, move = { "73%", "72%" } })
 
--- More generic PiP matcher
--- hl.window_rule({ match = { float = true, title = "^(.*[Pp]icture.*[Pp]icture.*)$" } })
--- hl.window_rule({ match = { pin = true, title = "^(.*[Pp]icture.*[Pp]icture.*)$" } })
--- hl.window_rule({ match = { title = "^(.*[Pp]icture.*[Pp]icture.*)$" }, size = { "25%", "25%" } })
--- hl.window_rule({ match = { title = "^(.*[Pp]icture.*[Pp]icture.*)$" }, move = { "73%", "72%" } })
+-- ======================================================
+-- System Dialogs, Portals & Authentication
+-- ======================================================
+
+hl.window_rule({ match = { class = "^(polkit-gnome-authentication-agent-1)$" }, float = true, center = true, pin = true })
+hl.window_rule({ match = { class = "^(nm-connection-editor)$" }, float = true, center = true, size = { 700, 500 } })
+hl.window_rule({ match = { class = "^(xdg-desktop-portal-gtk|org\\.freedesktop\\.impl\\.portal\\.desktop\\.kde)$" }, float = true, center = true, size = { 900, 600 } })
+hl.window_rule({ match = { class = "^(org\\.kde\\.kcalc|gnome-calculator)$" }, float = true, center = true })
+hl.window_rule({ match = { class = "^(filelight)$" }, float = true, center = true, size = { 950, 650 } })
+hl.window_rule({ match = { class = "^(lxqt-archiver)$" }, float = true, center = true, size = { 850, 550 } })
+
+-- ======================================================
+-- Steam & Gaming Dialogs
+-- ======================================================
+
+hl.window_rule({ match = { class = "^(steam)$", title = "^(Friends List|Special Offers|Music Player|Screenshot Uploader)$" }, float = true, center = true })
+hl.window_rule({ match = { class = "^(steam)$", title = "^(Steam Settings)$" }, float = true, center = true, size = { 900, 700 } })
+
+-- ======================================================
+-- Idle Inhibit (Fullscreen Video / Games)
+-- ======================================================
+
+hl.window_rule({ match = { class = "^(mpv)$" }, idle_inhibit = "focus" })
 
 -- ======================================================
 -- Quickshell

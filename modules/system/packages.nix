@@ -24,7 +24,6 @@ in
 
     # Development & Terminal
     tmux
-    vscodium
     wezterm
     fastfetch
 
@@ -57,7 +56,7 @@ in
     # Desktop Integration
     libnotify polkit_gnome hypridle hyprlock quickshellWrapped qt6Packages.qtmultimedia matugen
 
-    powertop psmisc hyprsunset nodejs usbutils opencode repomix
+    powertop psmisc hyprsunset usbutils opencode repomix
 
     # System / Desktop Integration
     file gsettings-desktop-schemas

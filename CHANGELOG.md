@@ -2,6 +2,13 @@
 
 ## 2026-09-18 — Browser Camera Fix, License & README Polish
 
+- **Cleanup & Bloat Removal**:
+  - Removed `nodejs`, `vscodium`, `modules/home/vscodium.nix`, `dotfiles/vscodium/`, and sync services.
+  - Purged obsolete `dotfiles/rofi/` and empty `.gitkeep`.
+  - Merged `layout.lua` directly into `misc.lua` and removed redundant file.
+- **Hyprland Window Rules Expansion (`dotfiles/hypr/rules.lua`)**:
+  - Added comprehensive window rules for `polkit-gnome`, `nm-connection-editor`, XDG portals, `filelight`, `lxqt-archiver`, calculators, and Steam sub-windows.
+  - Added idle inhibit rule for `mpv` video playback and standardized Picture-in-Picture window geometry.
 - **Hardware Quirks Modularization & Generic Module Purification (`hosts/nixos/hardware/`, `boot.nix`, `services.nix`, `power.nix`)**:
   - Moved Sonix webcam quirk (`v4l2loopback`, modprobe config, and `camera-loopback` service) out of generic `boot.nix`/`services.nix` into isolated host module `hosts/nixos/hardware/sonix-webcam.nix`.
   - Moved machine-specific root disk UUID (`d0a20f82...`), `resume_offset`, and Intel GPU early KMS (`i915`) out of generic `boot.nix` into `hosts/nixos/default.nix`.

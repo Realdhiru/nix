@@ -4,9 +4,7 @@
   imports = [
     ./modules/home/shell.nix
     ./modules/home/spicetify.nix
-    ./modules/home/theme.nix
-      ./modules/home/desktop-entries.nix
-      ./modules/home/vscodium.nix
+    ./modules/home/desktop-entries.nix
   ];
 
   # Ensure dynamic state files exist before Hyprland boots

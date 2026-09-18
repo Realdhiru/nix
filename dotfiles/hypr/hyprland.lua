@@ -5,7 +5,6 @@ require("keybinds")
 require("rules")
 require("input")
 require("appearance")
-require("layout")
 require("misc")
 
 -- 1. Dynamically generated internal monitor power state (bypasses DRM modeset)
