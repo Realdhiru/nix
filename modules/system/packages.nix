@@ -20,12 +20,15 @@ in
 {
   environment.systemPackages = with pkgs; [
     # CLI & Core Utilities
-    vim git curl wget tree jq yq-go bc socat python3 btop weathr util-linux
+    vim git curl wget tree jq yq-go bc socat python3 weathr util-linux
 
     # Development & Terminal
     tmux
     wezterm
     fastfetch
+    neovim
+    htop
+    neovim
 
     # Browsers
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
