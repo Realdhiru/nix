@@ -24,11 +24,12 @@
     "resume_offset=39880704"
     "rd.systemd.show_status=auto"
     "rd.udev.log_level=3"
+    "usbcore.autosuspend=-1"
   ];
 
-  # Fix Sonix USB FHD UVC webcam bandwidth allocation bug (UVC_QUIRK_FIX_BANDWIDTH = 128)
+  # Prevent UVC frame drops on stream start
   boot.extraModprobeConfig = ''
-    options uvcvideo quirks=128
+    options uvcvideo nodrop=1
   '';
 
   boot.kernelPackages = pkgs.linuxPackages_latest;

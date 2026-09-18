@@ -21,9 +21,9 @@
 - **BatteryPopup Dial Contrast & Background Depth (`BatteryPopup.qml`)**:
   - Replaced washed-out, milky white `window.text` (14%/6%) gradient on `centralCore` with a rich, dark recessed glassmorphic gradient (`window.crust` at 85% to `window.mantle` at 65%) and subtle `window.surface1` border.
   - Subdued the circular background capacity track (`batCanvas`) from bright 22% white text to a sleek, recessed `window.surface1` (35%) groove, providing deep contrast that makes the battery percentage and active charging/drain arc vivid.
-- **WebCam UVC Bandwidth Quirk & TLP Autosuspend Exclusion (`power.nix`, `boot.nix`, `users.nix`)**:
-  - Appended Sonix FHD Webcam vendor/product ID `3277:0022` to TLP's `USB_DENYLIST`, preventing aggressive USB power autosuspend from dropping the bus interface on stream start.
-  - Injected `boot.extraModprobeConfig = "options uvcvideo quirks=128"` (`UVC_QUIRK_FIX_BANDWIDTH`), resolving the Sonix UVC endpoint bandwidth calculation error that triggered `ioctl(VIDIOC_DQBUF): No such device` and USB bus resets.
+- **WebCam UVC Stability & Complete USB Autosuspend Deactivation (`power.nix`, `boot.nix`, `users.nix`)**:
+  - Disabled `USB_AUTOSUSPEND = 0;` globally in TLP and appended `usbcore.autosuspend=-1` to kernel parameters to prevent internal USB root hubs and webcam interfaces from entering low-power states or resetting the USB bus during video streaming.
+  - Replaced the failing `quirks=128` bandwidth cap with `options uvcvideo nodrop=1` to prevent incomplete frame drops and eliminate buffer overflow resets.
   - Added `"video"` to `users.users.${user.username}.extraGroups` to ensure complete V4L2 device permissions across all native and sandboxed applications.
 
 ## 2026-09-18 — Script Consolidation, Rebuild Fix, Multi-User Portability & Installation Docs

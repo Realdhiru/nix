@@ -31,8 +31,8 @@ supersede it.
   7. **Battery Popup Visual Contrast Tuning (`BatteryPopup.qml`)**:
      - `centralCore` used a high-alpha text-tinted gradient (`window.text` at 14%/6%) and a 22% white circular track, making the circular battery power remaining dial look washed out and hazy. Replaced with a recessed glassmorphic gradient (`crust` at 85% to `mantle` at 65%) with a `surface1` 35% groove track for dark-mode contrast.
   8. **WebCam UVC Bandwidth & Autosuspend Stability (`power.nix`, `boot.nix`, `users.nix`)**:
-     - The integrated Sonix USB FHD webcam (`3277:0022`) disconnected on stream open with `ioctl(VIDIOC_DQBUF): No such device` due to two overlapping issues: (a) TLP placing the USB device into `auto` low-power autosuspend, and (b) the Sonix firmware requesting invalid endpoint bandwidth under standard UVC probing.
-     - Resolved by adding `3277:0022` to TLP `USB_DENYLIST`, applying `boot.extraModprobeConfig = "options uvcvideo quirks=128"` (`UVC_QUIRK_FIX_BANDWIDTH`), and ensuring `"video"` membership in user `extraGroups`.
+     - The integrated Sonix USB FHD webcam (`3277:0022`) disconnected on stream open with `ioctl(VIDIOC_DQBUF): No such device` due to two overlapping issues: (a) TLP placing the USB internal root hub and device into `auto` low-power autosuspend, and (b) initial incomplete frame drops.
+     - Resolved by disabling `USB_AUTOSUSPEND = 0;` globally in TLP, injecting `usbcore.autosuspend=-1` to kernel parameters, applying `boot.extraModprobeConfig = "options uvcvideo nodrop=1"`, and ensuring `"video"` membership in user `extraGroups`.
 
 ## 2026-09-18 — Multi-User Parameterization & Domain Script Consolidation (Omarchy Architecture)
 
