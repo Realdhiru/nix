@@ -10,10 +10,10 @@ supersede it.
   1. The physical Sonix webcam (`3277:0022`) works at YUYV 640x480@30fps via `mpv`/`pw-record`, but browsers (Brave/Chromium WebRTC) requesting MJPEG or non-native resolutions trigger the firmware's oversized-payload bug, causing `ioctl(VIDIOC_DQBUF): Invalid argument` followed by USB bus disconnects and `No such device`.
   2. The repository had no LICENSE file and no software stack documentation for GitHub visitors.
 - **Decisions:**
-  1. **v4l2loopback Virtual Webcam (`boot.nix`, `services.nix`, `camera-loopback.sh`)**:
+  1. **v4l2loopback Virtual Webcam (`boot.nix`, `services.nix`, `camera-loopback.sh`, `webcam.sh`)**:
      - Configured `v4l2loopback` with `video_nr=10` and default `exclusive_caps=0`. Removing `exclusive_caps=1` is critical: `exclusive_caps=1` causes `VIDIOC_QUERYCAP` to return `0x85200002` (OUTPUT) before format negotiation, making browsers and media players reject the device with `Not a video capture device`. With `exclusive_caps=0`, capture capabilities are advertised immediately and multiple apps can consume the stream concurrently.
      - Created `dotfiles/hypr/scripts/camera-loopback.sh` which streams the Sonix webcam's native default (1080p@5fps YUYV) into `/dev/video10` via `ffmpeg -codec copy` (zero CPU overhead). Input `-video_size` and `-framerate` are omitted because hardware register reconfiguration triggers the Sonix USB babble protection reset.
-     - Configured `camera-loopback.service` with `wantedBy = [ "graphical-session.target" ];` so the virtual webcam is active upon login without manual intervention.
+     - **Strictly On-Demand Activation**: The service is intentionally NOT enabled to run continuously at boot (`wantedBy` omitted), preventing the hardware webcam sensor and privacy LED from glowing 24/7. Users activate it on demand via `webcam` / `cam-on` before video calls and turn it off via `cam-off` immediately after. Instant previews are handled directly by `cam` via MPV without persistent background processes.
   2. **MIT License**: Standard permissive license for dotfiles/rice repos — allows forking and adaptation while disclaiming warranty.
   3. **Software Stack Table in README**: Comprehensive categorized table of all 25+ programs used, with hyperlinks to upstream projects, providing at-a-glance visibility for GitHub visitors.
 

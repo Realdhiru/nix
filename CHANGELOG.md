@@ -2,11 +2,12 @@
 
 ## 2026-09-18 — Browser Camera Fix, License & README Polish
 
-- **v4l2loopback Virtual Webcam for Browser/WebRTC (`boot.nix`, `services.nix`, `camera-loopback.sh`, `shell.nix`)**:
+- **v4l2loopback Virtual Webcam for Browser/WebRTC (`boot.nix`, `services.nix`, `webcam.sh`, `shell.nix`)**:
   - Re-introduced `v4l2loopback` kernel module (`video_nr=10`, default `exclusive_caps=0`) exposing `/dev/video10` as a virtual webcam. Removing `exclusive_caps=1` ensures standard V4L2 consumers (Chromium/Brave, WebRTC, MPV, FFmpeg) see `V4L2_CAP_VIDEO_CAPTURE` immediately on query instead of being falsely rejected.
-  - Created persistent feeder script `dotfiles/hypr/scripts/camera-loopback.sh` feeding native 1080p@5fps YUYV pass-through (`-codec copy`, zero CPU load) into `/dev/video10` without forcing input `-video_size`/`-framerate` which crashes the Sonix USB firmware. Auto-reconnects on device disconnect.
-  - Enabled `camera-loopback` user systemd service to start automatically with `graphical-session.target`.
-  - Updated `cam` alias in `shell.nix` to prioritize `/dev/video10`.
+  - Feeder script `dotfiles/hypr/scripts/camera-loopback.sh` feeds native 1080p@5fps YUYV pass-through (`-codec copy`, zero CPU load) into `/dev/video10` without forcing input `-video_size`/`-framerate` which crashes the Sonix USB firmware.
+  - **Strictly On-Demand Activation**: The loopback feeder is NOT auto-started on boot/session, ensuring the camera sensor and hardware privacy LED remain completely OFF by default.
+  - Created controller script `dotfiles/hypr/scripts/webcam.sh` with commands `cam-on`, `cam-off`, and `webcam` (toggle) with desktop notifications for instant manual activation before/after video calls.
+  - Preserved `cam` alias for instant camera preview via MPV (closes and powers off hardware LED on window close).
 - **MIT License & GitHub Professional Polish (`LICENSE`, `README.md`)**:
   - Added MIT License file.
   - Added License shield badge to README header.

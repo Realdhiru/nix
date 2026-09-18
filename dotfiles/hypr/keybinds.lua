@@ -214,10 +214,7 @@ hl.bind(mainMod .. " + mouse_up", hl.dsp.exec_cmd("hyprctl eval \"hl.config({cur
 
 hl.bind(mainMod .. " + mouse_down", hl.dsp.exec_cmd("hyprctl eval \"hl.config({cursor={zoom_factor=1.0}})\""), { non_consuming = true })
 
--- hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd("pkill -x rofi || $menu f"))
--- hl.bind(mainMod .. " + TAB", hl.dsp.exec_cmd("pkill -x rofi || $menu w"))
+
 -- hl.bind(mainMod .. " + comma", hl.dsp.exec_cmd("pkill -x rofi || hyde-shell emoji-picker"))
 -- hl.bind(mainMod .. " + period", hl.dsp.exec_cmd("pkill -x rofi || hyde-shell glyph-picker"))
--- hl.bind(mainMod .. " + ALT + G", hl.dsp.exec_cmd("hyde-shell gamemode"))
 -- hl.bind(mainMod .. " + SHIFT + P", hl.dsp.exec_cmd("hyprpicker -an"))
--- hl.bind("Print", hl.dsp.exec_cmd("hyde-shell screenshot p"), { locked = true, repeating = true })
