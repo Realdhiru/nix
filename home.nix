@@ -4,7 +4,7 @@
   imports = [
     ./modules/home/shell.nix
     ./modules/home/spicetify.nix
-    ./modules/home/desktop-entries.nix
+    ./modules/home/theme.nix
   ];
 
   # Ensure dynamic state files exist before Hyprland boots
@@ -64,8 +64,6 @@
       "${config.home.homeDirectory}/nix/dotfiles/opencode/opencode.jsonc";
     force = true;
   };
-
-  # VSCodium: settings + sync live in modules/home/vscodium.nix.
 
   # WirePlumber: Disable conflicting libcamera monitor so UVC cameras are exclusively handled by V4L2
   xdg.configFile."wireplumber/wireplumber.conf.d/50-disable-libcamera.conf" = {

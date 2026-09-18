@@ -42,7 +42,7 @@ in
     grim slurp grimblast gpu-screen-recorder-gtk
 
     # Media & Display
-    (mpv.override { scripts = [ mpvScripts.mpris ]; }) mpvpaper awww playerctl brightnessctl cava loupe ffmpeg imagemagick zbar
+    (mpv.override { scripts = [ mpvScripts.mpris ]; }) mpvpaper awww playerctl brightnessctl cava loupe ffmpeg imagemagick
 
     # Documents & Creative
     kdePackages.okular onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic

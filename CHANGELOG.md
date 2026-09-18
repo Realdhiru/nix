@@ -2,6 +2,17 @@
 
 ## 2026-09-18 — Browser Camera Fix, License & README Polish
 
+- **Fix: Restore Dark Theme (`home.nix`, `modules/home/theme.nix`)**:
+  - The `theme.nix` import was accidentally dropped during the vscodium cleanup, breaking GTK/Qt dark theme and PCManFM dark appearance. Restored the import.
+- **Cleanup Round 2**:
+  - Removed `modules/home/desktop-entries.nix` (only had one unused OpenCode entry).
+  - Removed `zbar` from system packages (barcode scanning not needed).
+  - Removed stale VSCodium comment from `home.nix`.
+- **Optimize `scripts/health-check.sh`**:
+  - Replaced BFS `ps` table walk with direct `pgrep -P` ancestor walk (avoids parsing full process table 40×).
+  - Reduced probe poll interval from 0.5s×40 to 0.25s×20 (halved worst-case wait).
+  - Batched `systemctl` service checks into a single loop instead of separate blocks.
+  - Simplified exit logic.
 - **Cleanup & Bloat Removal**:
   - Removed `nodejs`, `vscodium`, `modules/home/vscodium.nix`, `dotfiles/vscodium/`, and sync services.
   - Purged obsolete `dotfiles/rofi/` and empty `.gitkeep`.

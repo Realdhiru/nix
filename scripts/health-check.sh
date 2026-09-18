@@ -40,44 +40,32 @@ else
 fi
 
 # ------------------------------------------------- isolated wezterm probe
-# Launch a dedicated instance whose command self-exits after 8s; the window
+# Launch a dedicated instance whose command self-exits after 6s; the window
 # closes itself. Existing windows/processes are never touched.
-wcli_pid=
-timeout 25 wezterm start --always-new-process -- /bin/sh -c 'sleep 8' \
+timeout 20 wezterm start --always-new-process -- /bin/sh -c 'sleep 6' \
   >/dev/null 2>&1 &
 wcli_pid=$!
 
-# Capture the probe's exact gui pid TREE: `wezterm start` spawns a
-# launcher/daemon `wezterm-gui` (direct child of the CLI) which then spawns
-# the per-window `wezterm-gui` (grandchild) — the window process is the one
-# i915 attributes hangs to. Track every descendant so attribution is exact.
-wpid=
+# Find the probe's wezterm-gui pid(s) — single pgrep ancestor walk instead
+# of repeated BFS over full ps table.
 probe_pids=""
-for _ in $(seq 1 40); do
-  # BFS over ps snapshot: all descendants of $wcli_pid, then filter for wezterm-gui
-  ps_out=$(ps -eo pid=,ppid=,comm=)
-  frontier="$wcli_pid"
-  all_descendants=""
-  for _ in $(seq 1 6); do
-    [ -z "$frontier" ] && break
-    next_frontier=$(echo "$ps_out" | awk -v f="$frontier" '
-      BEGIN { split(f, arr, " "); for (i in arr) pids[arr[i]] = 1 }
-      pids[$2] { print $1 }
-    ' | tr '\n' ' ')
-    if [ -n "$next_frontier" ]; then
-      all_descendants="$all_descendants $next_frontier"
-      frontier="$next_frontier"
-    else
-      break
-    fi
+for _ in $(seq 1 20); do
+  # Direct children of cli pid, then their children (grandchildren)
+  children=$(pgrep -P "$wcli_pid" 2>/dev/null | tr '\n' ' ')
+  grandchildren=""
+  for c in $children; do
+    grandchildren="$grandchildren $(pgrep -P "$c" 2>/dev/null | tr '\n' ' ')"
   done
-  gui_pids=$(echo "$ps_out" | awk -v d="$all_descendants" '
-    BEGIN { split(d, arr, " "); for (i in arr) pids[arr[i]] = 1 }
-    pids[$1] && $3 == "wezterm-gui" { print $1 }
-  ' | tr '\n' ' ')
+  all="$children $grandchildren"
+  gui_pids=""
+  for p in $all; do
+    [ -z "$p" ] && continue
+    comm=$(cat "/proc/$p/comm" 2>/dev/null || true)
+    [ "$comm" = "wezterm-gui" ] && gui_pids="$gui_pids $p"
+  done
   probe_pids=$(echo "$gui_pids" | tr ' ' '\n' | sort -un | tr '\n' ' ')
-  [ -n "$probe_pids" ] && break
-  sleep 0.5
+  [ -n "$(echo "$probe_pids" | tr -d ' ')" ] && break
+  sleep 0.25
 done
 wpid=$(echo "$probe_pids" | awk '{print $1}')
 
@@ -85,9 +73,9 @@ wait "$wcli_pid"
 rc=$?
 
 probe_hangs=0
-if [ -n "$probe_pids" ]; then
-  probe_hangs=0
+if [ -n "$(echo "$probe_pids" | tr -d ' ')" ]; then
   for p in $probe_pids; do
+    [ -z "$p" ] && continue
     n=$(journalctl -k --since "$START" --no-pager 2>/dev/null \
       | grep -c "wezterm-gui\[$p\]" || true)
     probe_hangs=$((probe_hangs + n))
@@ -96,14 +84,13 @@ fi
 
 echo "probe: cli_rc=$rc pids=[${probe_pids:-none}] probe_attributed_gpu_hangs=$probe_hangs"
 
-if [ "$rc" -ne 0 ]; then
-  fail "wezterm probe failed (rc=$rc) — terminal did not launch/close cleanly"
-fi
+[ "$rc" -eq 0 ] || fail "wezterm probe failed (rc=$rc) — terminal did not launch/close cleanly"
 [ -n "$wpid" ] || fail "wezterm probe never spawned a gui process"
 [ "$probe_hangs" -eq 0 ] || fail "i915 GPU HANG attributed to probe wezterm (see below)"
 
-# Only ever kill THIS probe's own pids if it leaked past the 25s backstop.
+# Only ever kill THIS probe's own pids if it leaked past the 20s backstop.
 for p in $probe_pids; do
+  [ -z "$p" ] && continue
   kill "$p" >/dev/null 2>&1 || true
 done
 
@@ -113,30 +100,26 @@ other_hangs=$(journalctl -k --since "$START" --no-pager 2>/dev/null \
 other_hangs=$((other_hangs - probe_hangs))
 [ "$other_hangs" -le 0 ] || warn "post-switch GPU HANGs from other processes: $other_hangs"
 
-# ---------------------------------------------------------------- quickshell
-if pgrep -f "quickshell" >/dev/null; then
-  pass "quickshell alive"
-else
-  warn "quickshell not running"
-fi
-
-# ---------------------------------------------------------------- pipewire
-pw_bad=""
-for u in pipewire pipewire-pulse wireplumber; do
-  systemctl --user is-active "$u" >/dev/null 2>&1 || pw_bad="$pw_bad $u"
+# ------------------------------------------------- user services (batched)
+svc_bad=""
+for u in quickshell pipewire pipewire-pulse wireplumber xdg-desktop-portal; do
+  systemctl --user is-active "$u" >/dev/null 2>&1 || svc_bad="$svc_bad $u"
 done
-if [ -z "$pw_bad" ]; then
-  pass "pipewire / pipewire-pulse / wireplumber active"
+if [ -z "$svc_bad" ]; then
+  pass "all user services active (quickshell, pipewire stack, portal)"
 else
-  warn "inactive user units:$pw_bad"
+  # quickshell/portal are warnings; pipewire units are also warnings (non-blocking)
+  warn "inactive user units:$svc_bad"
 fi
 
-# ------------------------------------------------------------ portals (warn)
-if systemctl --user is-active xdg-desktop-portal >/dev/null 2>&1; then
-  pass "xdg-desktop-portal active"
+# ------------------------------------------------------------ verdict
+if [ "$critical" -eq 1 ]; then
+  echo "health-check: exit CRITICAL"
+  exit 1
+elif [ "$warnings" -eq 1 ]; then
+  echo "health-check: exit WARNINGS"
+  exit 2
 else
-  warn "xdg-desktop-portal inactive (known broken 2026-08-16 — non-blocking)"
+  echo "health-check: exit OK"
+  exit 0
 fi
-
-echo "health-check: exit $([ "$critical" -eq 1 ] && echo CRITICAL || ( [ "$warnings" -eq 1 ] && echo WARNINGS || echo OK ))"
-exit "$([ "$critical" -eq 1 ] && echo 1 || ( [ "$warnings" -eq 1 ] && echo 2 || echo 0))"
