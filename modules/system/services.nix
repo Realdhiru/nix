@@ -10,6 +10,12 @@
   # D-Bus implementation.
   services.dbus.implementation = "broker";
 
+  # Journal size limit (prevents flush delays on boot)
+  services.journald.settings.Journal = {
+    SystemMaxUse = "100M";
+    SystemMaxFileSize = "20M";
+  };
+
   # Nix store maintenance.
   nix.settings.auto-optimise-store = true;
   nix.gc = {

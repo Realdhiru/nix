@@ -20,6 +20,11 @@ supersede it.
      - Removed duplicate `wallpaper_watcher.sh` invocation in `startup.lua` since systemd manages it as a user service.
   3. **UDisks2 NTFS Dirty Bit Tolerance (`services.nix`)**:
      - Injected `/etc/udisks2/mount_options.conf` defining `ntfs_allow = ...,force`, allowing user-level file managers and `udisksctl` to mount dirty NTFS partitions safely.
+  4. **Early Kernel Mode Setting (KMS) & Fastboot (`boot.nix`)**:
+     - Added `i915` to `boot.initrd.kernelModules` to enable early modesetting for Intel Iris Xe graphics inside stage 1 initrd. Eliminates the display pipeline mode-switch delay between UEFI GOP and userspace display managers.
+     - Passed `i915.fastboot=1`, `quiet`, `rd.systemd.show_status=auto`, and `rd.udev.log_level=3` to avoid redundant hardware probing and silence verbose tty logging.
+  5. **Journal Flush Bounding (`services.nix`)**:
+     - Constrained `services.journald.settings.Journal` to `SystemMaxUse = "100M"` and `SystemMaxFileSize = "20M"`, keeping `systemd-journal-flush.service` consistently fast on every boot.
 
 ## 2026-09-18 — Multi-User Parameterization & Domain Script Consolidation (Omarchy Architecture)
 

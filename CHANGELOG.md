@@ -10,8 +10,11 @@
 - **Boot Target Decoupling (`modules/system/services.nix`)**:
   - Decoupled `systemd.services.flatpak-repo` from `multi-user.target`, making it trigger asynchronously upon `network-online.target` without blocking userspace boot.
   - Decoupled `systemd-user-sessions.service` from `network.target` (`lib.mkForce [ "remote-fs.target" "nss-user-lookup.target" ]`), allowing Ly Display Manager to present the login prompt immediately after local filesystems mount without waiting for network stack negotiation.
-- **UDisks2 NTFS Mount Options (`modules/system/services.nix`)**:
-  - Configured `/etc/udisks2/mount_options.conf` with `ntfs_allow = ...,force`, permitting user mounts via `udisksctl` and graphical file managers even when Windows leaves the NTFS dirty volume flag set.
+- **Early KMS & Kernel Parameter Acceleration (`modules/system/boot.nix`)**:
+  - Injected `i915` into `boot.initrd.kernelModules` to enable Early KMS (Kernel Mode Setting). Initializes Intel Iris Xe display modesetting inside stage 1 initrd rather than delaying to stage 2 userspace, eliminating the black screen stall and display mode-switch before Ly starts.
+  - Added kernel parameters `quiet`, `i915.fastboot=1`, `rd.systemd.show_status=auto`, and `rd.udev.log_level=3` to silence unnecessary console I/O and preserve UEFI GOP display states. Set `boot.initrd.verbose = false;`.
+- **Journald Log Bounding (`modules/system/services.nix`)**:
+  - Configured `services.journald.settings.Journal` with `SystemMaxUse = "100M"` and `SystemMaxFileSize = "20M"`, preventing journal flush bottlenecks during `systemd-journal-flush.service` on boot.
 
 ## 2026-09-18 — Script Consolidation, Rebuild Fix, Multi-User Portability & Installation Docs
 
