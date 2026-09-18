@@ -2,8 +2,10 @@
 
 ## 2026-09-18 — Script Consolidation, Rebuild Fix, Multi-User Portability & Installation Docs
 
-- **Spicetify-cli v2.45.1 Overlay (`flake.nix`)**:
-  - Overrode `spicetify-cli` to upstream release `v2.45.1` (`sha256-Mu97p0HlvmEMkPV/VvHztJ1VqocxXoAXRtDKLGYd9mk=`) via `nixpkgs.overlays`, bringing the package up to date ahead of upstream nixpkgs channel lag and eliminating the "New version available" banner.
+- **Email Elimination & Minimal Identity (`user.nix`, `docs/installation.md`)**:
+  - Removed unused `email` attribute from `user.nix` and system documentation. Identity is strictly scoped to `username`, `name`, and `hostname`.
+- **Pure Channel Tracking for Spicetify (`flake.nix`)**:
+  - Maintained pure `nixpkgs` tracking for `spicetify-cli` without manual pin overrides, ensuring seamless automatic upgrades with channel updates without maintenance debt.
 - **Hostname Parameterization & Migration (`user.nix`, `hosts/nixos/default.nix`, `docs/README.md`)**:
   - Migrated system hostname from `vivobook` to `NixOS` across the system configuration and documentation.
   - Connected `hosts/nixos/default.nix` dynamically to `user.hostname` (`networking.hostName = user.hostname;`), ensuring all future hostname updates are managed centrally from `user.nix`.
@@ -22,7 +24,7 @@
 - **Centralized QuickShell Base Styling (`PopupCard.qml`)**:
   - Created reusable base component `PopupCard.qml` centralizing background color, border width, border color, corner radius, and specular highlights across all QuickShell widgets driven by `settings.json`.
 - **Multi-User Portability (Omarchy Standard)**:
-  - Created [`user.nix`](file:///home/realdhiru/nix/user.nix) as the single source of truth for user credentials (`username`, `name`, `email`, `hostname`).
+  - Created [`user.nix`](file:///home/realdhiru/nix/user.nix) as the single source of truth for user credentials (`username`, `name`, `hostname`).
   - Parameterized `flake.nix`, `modules/system/users.nix`, and `home.nix` with dynamic `user.username` and `/home/${user.username}`, completely eliminating hardcoded user paths across Nix modules.
   - Updated `modules/home/vscodium.nix` to use `${config.home.profileDirectory}/bin`.
   - Replaced all hardcoded `/home/realdhiru` in `keybinds.lua`, `startup.lua`, and `matugen/config.toml` with dynamic `$HOME` and `~` references.

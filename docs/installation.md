@@ -21,7 +21,6 @@ Open [`user.nix`](file:///home/realdhiru/nix/user.nix) in your editor:
 {
   username = "yourusername";      # Your Linux account username
   name     = "Your Full Name";    # Display name
-  email    = "you@example.com";   # Git / contact email
   hostname = "yourhostname";      # System hostname
 }
 ```

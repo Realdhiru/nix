@@ -52,15 +52,6 @@
         ({ pkgs, ... }: {
           nixpkgs.overlays = [
             (final: prev: {
-              spicetify-cli = prev.spicetify-cli.overrideAttrs (old: rec {
-                version = "2.45.1";
-                src = prev.fetchFromGitHub {
-                  owner = "spicetify";
-                  repo = "cli";
-                  tag = "v${version}";
-                  hash = "sha256-Mu97p0HlvmEMkPV/VvHztJ1VqocxXoAXRtDKLGYd9mk=";
-                };
-              });
               buuf-nestort-icon-theme =
                 prev.callPackage ./pkgs/buuf-nestort.nix { };
               hypr-kdeconnect-portal =

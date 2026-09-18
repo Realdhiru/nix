@@ -12,7 +12,7 @@ supersede it.
   3. A rebuild failed during `home-manager` switch due to an unmanaged clobber collision on `~/.local/share/icons/buuf-nestort`.
 - **Decisions:**
   1. **Single Source User Parameterization (`user.nix`)**:
-     - Introduced `user.nix` at the root of the configuration defining `username`, `name`, `email`, and `hostname`.
+     - Introduced `user.nix` at the root of the configuration defining `username`, `name`, and `hostname`.
      - Injected `user` into `specialArgs` in `flake.nix`. All NixOS user accounts, sudoers rules, and Home Manager profiles derive strictly from `user.username`.
      - Completely banished `/home/username` from dotfiles: all Lua scripts use `os.getenv("HOME")`, Matugen uses `~` (natively supported by Matugen 4.2.0), and settings use dynamic path expansion in `Config.qml`.
   2. **Multi-Tool CLI Architecture**:
