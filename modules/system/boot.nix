@@ -42,4 +42,10 @@
     "fs.protected_regular" = 2;
     "fs.suid_dumpable" = 0;
   };
+
+  zramSwap = {
+    enable = true;
+    algorithm = "zstd";
+    memoryPercent = 50;
+  };
 }

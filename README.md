@@ -103,25 +103,24 @@ nix/
 │   └── pcmanfm-qt-appid.patch
 ├── hosts/
 │   └── nixos/
-│       ├── default.nix                # Host-level imports & machine metadata
-│       └── hardware-configuration.nix # Kernel modules, filesystems, and hardware drivers
+│       ├── default.nix                # Host-level imports, disk UUIDs & swap configuration
+│       ├── hardware-configuration.nix # Kernel modules, filesystems, and hardware drivers
+│       └── hardware/                  # Machine-specific hardware quirks
+│           ├── asus.nix               # ASUS ROG/TUF asusd & brightness hotkey handling
+│           └── sonix-webcam.nix       # Sonix USB webcam V4L2 loopback pipeline
 ├── modules/
-│   ├── system/                        # Declarative NixOS system services
-│   │   ├── asus-brightness-rebind.nix # Hardware brightness hotkey mapping
-│   │   ├── boot.nix                   # systemd-boot EFI & kernel parameter tuning
+│   ├── system/                        # Portable declarative NixOS system services
+│   │   ├── boot.nix                   # systemd-boot EFI, kernel tuning & ZRAM
 │   │   ├── fonts.nix                  # CJK, monospace, and Nerd Font typography
 │   │   ├── gaming.nix                 # Low-latency gaming kernel & graphics stack
-│   │   ├── memory.nix                 # ZRAM & memory pressure handling
 │   │   ├── packages.nix               # System-wide CLI & GUI package manifests
 │   │   ├── power.nix                  # TLP power management & battery charge thresholds
 │   │   ├── services.nix               # NetworkManager, PipeWire, udev, & D-Bus daemons
 │   │   └── users.nix                  # User account privileges & sudo rules
 │   └── home/                          # User-space Home Manager modules
-│       ├── desktop-entries.nix        # Curated application launcher overrides
 │       ├── shell.nix                  # Zsh environment, custom rebuild() gate & aliases
 │       ├── spicetify.nix              # Declarative Spotify theming
-│       ├── theme.nix                  # GTK, icon, and cursor theming
-│       └── vscodium.nix               # VSCodium configuration & extensions
+│       └── theme.nix                  # GTK, icon, and cursor theming
 ├── dotfiles/                          # Symlinked user configuration tree
 │   ├── fastfetch.jsonc                # System info presenter
 │   ├── starship.toml                  # Minimal shell prompt

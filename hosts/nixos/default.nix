@@ -9,7 +9,6 @@
     ../../modules/system/services.nix
     ../../modules/system/packages.nix
     ../../modules/system/fonts.nix
-    ../../modules/system/memory.nix
     ../../modules/system/power.nix
     ../../modules/system/gaming.nix
   ];
@@ -17,7 +16,13 @@
   # Host-specific Intel GPU Early KMS & fastboot
   boot.initrd.kernelModules = [ "i915" ];
 
-  # Host-specific hibernate resume device & swapfile offset
+  # Host-specific swapfile & hibernate resume device configuration
+  swapDevices = [
+    {
+      device = "/swapfile";
+      size = 16 * 1024;
+    }
+  ];
   boot.resumeDevice = "/dev/disk/by-uuid/d0a20f82-2287-41fd-b017-617b84e4d4b6";
   boot.kernelParams = [
     "i915.fastboot=1"

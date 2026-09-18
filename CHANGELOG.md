@@ -13,6 +13,10 @@
   - Reduced probe poll interval from 0.5s×40 to 0.25s×20 (halved worst-case wait).
   - Batched `systemctl` service checks into a single loop instead of separate blocks.
   - Simplified exit logic.
+- **Memory & Swap Modularization (`boot.nix`, `hosts/nixos/default.nix`, deleted `memory.nix`)**:
+  - Merged generic `zramSwap` configuration directly into portable [modules/system/boot.nix](file:///home/realdhiru/nix/modules/system/boot.nix).
+  - Moved machine-specific `swapDevices` (/swapfile 16GB) alongside `boot.resumeDevice` and `resume_offset` in [hosts/nixos/default.nix](file:///home/realdhiru/nix/hosts/nixos/default.nix).
+  - Deleted redundant single-purpose `modules/system/memory.nix`.
 - **Cleanup & Bloat Removal**:
   - Removed `nodejs`, `vscodium`, `modules/home/vscodium.nix`, `dotfiles/vscodium/`, and sync services.
   - Purged obsolete `dotfiles/rofi/` and empty `.gitkeep`.

@@ -30,21 +30,20 @@ what is safe to change.
 │   └── hardware-configuration.nix
 ├── modules/
 │   ├── system/
-│   │   ├── boot.nix           # bootloader, kernel params, (no tmpfiles charge rule anymore)
-│   │   ├── services.nix       # pipewire, bluetooth, printing, polkit, logind (lid=ignore)
-│   │   ├── packages.nix       # packages + quickshellWrapped (qtmultimedia QML wiring)
-│   │   ├── power.nix          # TLP config, ASUS udev rule (SOLE tlp ac/bat authority)
-│   │   ├── fonts.nix / memory.nix / gaming.nix / users.nix
-│   │   └── workarounds/asus-brightness-rebind.nix   # brightness keys after hibernate
+│   │   ├── boot.nix           # bootloader, kernel params, ZRAM
+│   │   ├── services.nix       # pipewire, bluetooth, printing, polkit, logind
+│   │   ├── packages.nix       # packages + quickshellWrapped
+│   │   ├── power.nix          # TLP config (SOLE tlp ac/bat authority)
+│   │   └── fonts.nix / gaming.nix / users.nix
 │   └── home/
-│       ├── shell.nix          # zsh, start-hyprland on VT1, rebuild() helper
-│       ├── theme.nix          # GTK_THEME env, matugen gtk.css symlink, dark mode
-│       └── spicetify.nix      # spicetify-nix flake + extensions (liquify, lyrics…)
+│       ├── shell.nix          # zsh, rebuild() helper
+│       ├── theme.nix          # GTK/Qt themes, matugen palette, dark mode
+│       └── spicetify.nix      # spicetify-nix flake + extensions
 ├── home.nix                   # dotfile symlinks, systemd user services, EasyEffects
 ├── pkgs/                      # local packages (buuf-nestort icon theme, pcmanfm patch)
 ├── dotfiles/                  # mkOutOfStoreSymlink'd live configs
-│   ├── hypr/                  # hyprland.conf, startup.conf, keybinds.conf, scripts/, shaders/
-│   ├── rofi/ wezterm/ fastfetch/ matugen/ vscodium/
+│   ├── hypr/                  # Lua hyprland configs, scripts/, shaders/
+│   ├── fuzzel/ wezterm/ fastfetch/ matugen/
 └── docs/                      # THIS directory (local-only)
 ```
 
