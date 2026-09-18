@@ -37,10 +37,10 @@
   # File manager integration.
   services.gvfs.enable = true;
 
-  # Flatpak application support & Flathub repository
+  # Flatpak application support & Flathub repository (runs asynchronously once network is online)
   services.flatpak.enable = true;
   systemd.services.flatpak-repo = {
-    wantedBy = [ "multi-user.target" ];
+    wantedBy = [ "network-online.target" ];
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
     path = [ pkgs.flatpak ];
@@ -54,6 +54,10 @@
       fi
     '';
   };
+
+  # Decouple local user sessions & display manager from network initialization
+  systemd.services.systemd-user-sessions.after =
+    lib.mkForce [ "remote-fs.target" "nss-user-lookup.target" ];
 
   # Printing.
   services.printing = {
@@ -86,8 +90,13 @@
     criticalPowerAction = "Hibernate";
   };
 
-  # Removable drives.
+  # Removable drives & UDisks2 NTFS mount options (allows user ownership and dirty bit recovery)
   services.udisks2.enable = true;
+  environment.etc."udisks2/mount_options.conf".text = ''
+    [defaults]
+    ntfs_defaults=uid=$UID,gid=$GID
+    ntfs_allow=uid=$UID,gid=$GID,umask,dmask,fmask,locale,norecover,ignore_case,windows_names,compression,nocompression,nocache,force
+  '';
 
   # Desktop settings.
   programs.dconf.enable = true;

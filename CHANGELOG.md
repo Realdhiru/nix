@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 2026-09-18 — Boot & Login Latency Optimization, NTFS Recovery Support
+
+- **Post-Password Desktop Loading Latency (`dotfiles/hypr/startup.lua`, `set_wallpaper.sh`)**:
+  - Eliminated redundant `hyprctl reload` fired by `set_wallpaper.sh` on cold boot, preventing an unnecessary second Hyprland Lua parsing cycle during startup.
+  - Repositioned QuickShell launch to the top of `startup.lua` to instantiate the TopBar and desktop shell concurrently while background daemons initialize.
+  - Purged duplicate `wallpaper_watcher.sh` invocation from `startup.lua` (already managed declaratively by systemd user service `wallpaper_watcher.service`).
+  - Removed dead `killall dunst/mako/swaync` calls from the startup critical path.
+- **Boot Target Decoupling (`modules/system/services.nix`)**:
+  - Decoupled `systemd.services.flatpak-repo` from `multi-user.target`, making it trigger asynchronously upon `network-online.target` without blocking userspace boot.
+  - Decoupled `systemd-user-sessions.service` from `network.target` (`lib.mkForce [ "remote-fs.target" "nss-user-lookup.target" ]`), allowing Ly Display Manager to present the login prompt immediately after local filesystems mount without waiting for network stack negotiation.
+- **UDisks2 NTFS Mount Options (`modules/system/services.nix`)**:
+  - Configured `/etc/udisks2/mount_options.conf` with `ntfs_allow = ...,force`, permitting user mounts via `udisksctl` and graphical file managers even when Windows leaves the NTFS dirty volume flag set.
+
 ## 2026-09-18 — Script Consolidation, Rebuild Fix, Multi-User Portability & Installation Docs
 
 - **Email Elimination & Minimal Identity (`user.nix`, `docs/installation.md`)**:

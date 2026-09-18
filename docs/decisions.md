@@ -4,6 +4,23 @@ Why things are the way they are. **Read before touching power, audio,
 wallpaper, or quickshell.** New entries go on top; never delete a decision —
 supersede it.
 
+## 2026-09-18 — Boot Critical Chain Decoupling, Post-Password Latency & NTFS UDisks2 Configuration
+
+- **Context:**
+  1. Boot time was analyzed via `systemd-analyze`. `display-manager.service` (Ly) was gated behind `systemd-user-sessions.service`, which was waiting for `network.target` and NetworkManager, adding unnecessary seconds before the login prompt appeared on a single-user offline-capable laptop.
+  2. Post-password desktop loading into Hyprland was delayed by an unneeded `hyprctl reload` fired during cold boot by `set_wallpaper.sh`, sequential startup of QuickShell behind wallpaper scripts, and a duplicate `wallpaper_watcher.sh` daemon invocation.
+  3. The Windows C: partition failed to mount with `volume is dirty and "force" flag is not set!`, and UDisks2 prevented passing `force` by default.
+- **Decisions:**
+  1. **Boot Target Decoupling (`services.nix`)**:
+     - Decoupled `systemd.services.flatpak-repo` from `multi-user.target` by setting `wantedBy = [ "network-online.target" ]`. Flathub repo checks run in the background after networking is active rather than holding up userspace boot.
+     - Overrode `systemd.services.systemd-user-sessions.after` to only wait on `remote-fs.target` and `nss-user-lookup.target`, decoupling local console sessions from `network.target`.
+  2. **Desktop Post-Password Latency (`dotfiles/hypr/startup.lua`, `set_wallpaper.sh`)**:
+     - Removed redundant `hyprctl reload` on cold boot in `set_wallpaper.sh`; dynamic evaluation is only triggered when explicitly recovering from a killed wallpaper state.
+     - Moved QuickShell initialization to the top of `startup.lua` to render the TopBar and UI concurrently.
+     - Removed duplicate `wallpaper_watcher.sh` invocation in `startup.lua` since systemd manages it as a user service.
+  3. **UDisks2 NTFS Dirty Bit Tolerance (`services.nix`)**:
+     - Injected `/etc/udisks2/mount_options.conf` defining `ntfs_allow = ...,force`, allowing user-level file managers and `udisksctl` to mount dirty NTFS partitions safely.
+
 ## 2026-09-18 — Multi-User Parameterization & Domain Script Consolidation (Omarchy Architecture)
 
 - **Context:**

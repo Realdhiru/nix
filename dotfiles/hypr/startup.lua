@@ -6,19 +6,16 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP")
     hl.exec_cmd("systemctl --user start hyprland-session.target")
 
-    -- 2. Critical: Kill competing legacy notification daemons to free the D-Bus namespace for Quickshell
-    hl.exec_cmd("killall -q dunst mako swaync hyprnotify || true")
+    -- 2. Quickshell: Launch immediately so TopBar & master window render concurrently
+    hl.exec_cmd("quickshell -p " .. scripts .. "quickshell/Shell.qml")
+    hl.exec_cmd("hyprctl setcursor Bibata-Modern-Ice 32")
 
+    -- 3. Wallpaper initialization in background
     hl.exec_cmd(scripts .. "boot_wallpaper.sh")
-    hl.exec_cmd(scripts .. "wallpaper_watcher.sh")
 
-    -- Idle
+    -- 4. Idle & Utilities
     hl.exec_cmd("hypridle")
-    -- Clipboard history
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
-    -- Quickshell
-    hl.exec_cmd("quickshell -p " .. scripts .. "quickshell/Shell.qml")
     hl.exec_cmd(scripts .. "quickshell/music/equalizer.sh --init")
-    hl.exec_cmd("hyprctl setcursor Bibata-Modern-Ice 32")
 end)
