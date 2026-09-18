@@ -46,11 +46,11 @@
       PCIE_ASPM_ON_BAT = "powersupersave";
       PCIE_ASPM_ON_SAV = "powersupersave";
 
-      # FIX: Prevent USB Bluetooth interface from dropping
+      # FIX: Prevent USB Bluetooth, mouse receiver, and webcam from dropping
       USB_AUTOSUSPEND = 1;
       USB_AUTOSUSPEND_DISABLE_ON_AC = 1;
       USB_EXCLUDE_BTUSB = 1;
-      USB_DENYLIST = "3554:fc00";
+      USB_DENYLIST = "3554:fc00 3277:0022";
 
       # Wi-Fi Power Save
       WIFI_PWR_ON_AC  = "off";

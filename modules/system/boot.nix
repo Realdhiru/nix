@@ -26,6 +26,11 @@
     "rd.udev.log_level=3"
   ];
 
+  # Fix Sonix USB FHD UVC webcam bandwidth allocation bug (UVC_QUIRK_FIX_BANDWIDTH = 128)
+  boot.extraModprobeConfig = ''
+    options uvcvideo quirks=128
+  '';
+
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernel.sysctl = {
     "kernel.kptr_restrict" = 2;
