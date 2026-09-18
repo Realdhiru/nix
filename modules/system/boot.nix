@@ -33,7 +33,7 @@
   # Prevent UVC frame drops on stream start and configure virtual webcam loopback
   boot.extraModprobeConfig = ''
     options uvcvideo nodrop=1
-    options v4l2loopback exclusive_caps=1 card_label="Virtual Webcam" video_nr=10
+    options v4l2loopback card_label="Virtual Webcam" video_nr=10
   '';
 
   boot.kernelPackages = pkgs.linuxPackages_latest;

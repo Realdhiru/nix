@@ -237,7 +237,7 @@
     '';
 
     shellAliases = {
-      cam = "mpv av://v4l2:$(ls -d /dev/v4l/by-id/*video-index0 2>/dev/null || echo /dev/video0) --profile=low-latency --untimed";
+      cam = "mpv av://v4l2:$(test -e /dev/video10 && echo /dev/video10 || (ls -d /dev/v4l/by-id/*video-index0 2>/dev/null || echo /dev/video0)) --profile=low-latency --untimed";
     };
   };
 
