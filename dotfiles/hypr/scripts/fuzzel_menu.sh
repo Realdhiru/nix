@@ -50,7 +50,7 @@ case "$MODE" in
 
         FUZZEL_ARGS=(
             --dmenu
-            --match-mode=fzf
+            --match-mode=exact
             --hide-before-typing
             --anchor=center
             --width=38
@@ -62,7 +62,8 @@ case "$MODE" in
             --vertical-pad=10
             --inner-pad=6
             --border-radius=12
-            --keyboard-focus=on-demand
+            --keyboard-focus=exclusive
+            --no-exit-on-keyboard-focus-loss
             --with-nth=1
             --match-nth=3
             --accept-nth=2

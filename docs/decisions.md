@@ -36,6 +36,9 @@ supersede it.
   9. **BatteryPopup Logoff Mechanism & Clean Exit Dispatcher (`BatteryPopup.qml`, `exit.sh`)**:
      - The Logoff capsule previously fired `Quickshell.execDetached(["hyprctl", "dispatch", "exit"])` directly. In NixOS, hyprctl dispatched without environment context can stall when user graphical sessions are running, and `pkill -u "$(id -u)" -x Hyprland` in `exit.sh` failed because the Nix wrapper renames the process to `.Hyprland-wrapp`.
      - Routed both tap (`onClicked`) and hold-to-fill (`exitTimer.onTriggered`) through `bash ~/.config/hypr/scripts/exit.sh`. Updated `exit.sh` to stop user graphical session targets and fall back to regex `([H]yprland|\.Hyprland-wrapp)` process matching.
+  10. **Fuzzel Contrast, Premature Focus Exit & File Matching Precision (`fuzzel.ini`, `fuzzel_menu.sh`)**:
+     - Fuzzel had two usability issues: (a) input search text had no explicit color definition and defaulted to dim cyan, which was washed out against translucent backgrounds, and `keyboard-focus = on-demand` with `exit-on-keyboard-focus-loss = yes` caused Fuzzel to close prematurely while typing; (b) loose `fzf` subsequence matching in file search allowed distant letters across unrelated files (e.g. PowerPoint slides) to score higher than exact prefix/keyword matches.
+     - Resolved by: (1) Setting high-opacity Catppuccin Mantle background (`181825f0`), pure white `input = ffffffff`, and sapphire `prompt = 89b4faff`; (2) Switching to `keyboard-focus = exclusive` and `exit-on-keyboard-focus-loss = no`; (3) Setting `--match-mode=exact` in `fuzzel_menu.sh` for exact substring file matching.
 
 ## 2026-09-18 — Multi-User Parameterization & Domain Script Consolidation (Omarchy Architecture)
 

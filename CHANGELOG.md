@@ -30,6 +30,11 @@
   - Fixed non-functional "Logoff" action in `BatteryPopup.qml` which was executing bare `["hyprctl", "dispatch", "exit"]` in detached subshells without environment synchronization or systemd graphical session cleanup.
   - Re-routed both tap (`onClicked`) and hold-to-fill (`exitTimer.onTriggered`) triggers to execute `bash ~/.config/hypr/scripts/exit.sh`.
   - Updated `exit.sh` to gracefully stop `graphical-session.target` and fall back to regex matching `([H]yprland|\.Hyprland-wrapp)` to cleanly terminate NixOS wrapped Hyprland binaries if IPC disconnects.
+- **Fuzzel Contrast, Premature Exit & Search Relevance Overhaul (`fuzzel.ini`, `fuzzel_menu.sh`)**:
+  - Replaced low-contrast 45% black background with high-opacity 94% dark Catppuccin Mantle (`#181825f0`), ensuring text is crisp and readable against both light documents and dark wallpapers.
+  - Added explicit high-contrast `input = ffffffff` (bright white) and `prompt = 89b4faff` to eliminate the default dim cyan input text that was unreadable in application and file searches.
+  - Fixed premature self-closing bug while typing (e.g. searching `cal` in app launcher) by setting `keyboard-focus = exclusive` and `exit-on-keyboard-focus-loss = no`.
+  - Switched file search match mode from loose subsequence `fzf` to strict `exact` substring matching (`--match-mode=exact`), preventing distant scattered characters in unrelated documents from overriding exact keyword matches (e.g. `aws` now strictly matches `aws-...` rather than distant letters in PowerPoint slides).
 
 ## 2026-09-18 — Script Consolidation, Rebuild Fix, Multi-User Portability & Installation Docs
 
