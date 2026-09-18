@@ -237,8 +237,10 @@
     '';
 
     shellAliases = {
+      cam = "mpv av://v4l2:$(ls -d /dev/v4l/by-id/*video-index0 2>/dev/null || echo /dev/video0) --profile=low-latency --untimed";
     };
   };
+
 
   programs.starship.enable = true;
 
