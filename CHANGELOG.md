@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-09-18 — Script Consolidation, Rebuild Fix, Multi-User Portability & Installation Docs
+
+- **Rebuild Clobber Resolution (`modules/home/theme.nix`)**:
+  - Resolved `home-manager` switch failure (`Existing file '~/.local/share/icons/buuf-nestort' would be clobbered`) by setting `force = true` on `xdg.dataFile."icons/buuf-nestort"`.
+- **Multi-Tool CLI Consolidation (`dotfiles/hypr/scripts/`)**:
+  - **Wallpaper Multi-Tool (`wallpaper.sh`)**: Consolidated 6 separate interdependent scripts (`boot_wallpaper.sh`, `ensure_awww.sh`, `kill_wallpaper.sh`, `set_wallpaper.sh`, `wallpaper_thumbnail.sh`, `wallpaper_watcher.sh`) into a single executable `wallpaper.sh` CLI (`set`, `boot`, `kill`, `ensure`, `thumb`, `watch`, `clean`). Preserved lightweight backward-compatible wrappers.
+  - **Power & Session Multi-Tool (`power.sh`)**: Consolidated 4 power/sleep/lock scripts (`lock.sh`, `suspend.sh`, `lid-monitor.sh`, `idle_inhibit.sh`) into a single `power.sh` CLI (`lock`, `suspend`, `resume`, `lid`, `inhibit`). Preserved lightweight backward-compatible wrappers.
+  - **Fuzzel Wrapper Elimination**: Deleted redundant 1-line wrappers (`fuzzel_app_launcher.sh`, `fuzzel_file_search.sh`); keybinds invoke `fuzzel_menu.sh app` and `fuzzel_menu.sh file` directly.
+- **Centralized QuickShell Base Styling (`PopupCard.qml`)**:
+  - Created reusable base component `PopupCard.qml` centralizing background color, border width, border color, corner radius, and specular highlights across all QuickShell widgets driven by `settings.json`.
+- **Multi-User Portability (Omarchy Standard)**:
+  - Created [`user.nix`](file:///home/realdhiru/nix/user.nix) as the single source of truth for user credentials (`username`, `name`, `email`, `hostname`).
+  - Parameterized `flake.nix`, `modules/system/users.nix`, and `home.nix` with dynamic `user.username` and `/home/${user.username}`, completely eliminating hardcoded user paths across Nix modules.
+  - Updated `modules/home/vscodium.nix` to use `${config.home.profileDirectory}/bin`.
+  - Replaced all hardcoded `/home/realdhiru` in `keybinds.lua`, `startup.lua`, and `matugen/config.toml` with dynamic `$HOME` and `~` references.
+  - Updated `settings.json` and `Config.qml` to dynamically expand `~/Pictures/Wallpapers`.
+- **Installation Documentation (`docs/installation.md`, `README.md`)**:
+  - Authored comprehensive guide detailing fresh installation steps, `user.nix` customization, hardware generation, and system architecture for external users.
+
 ## 2026-09-17 — Fuzzel HiDPI Rescaling, Outside-Click Dismissal, Zero-Blink Reloads & Hotspot Reliability
 
 - **Showcase Looping Media & Attribution (`README.md`, `docs/assets/`)**:

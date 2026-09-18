@@ -1,4 +1,6 @@
 local mainMod = "SUPER"
+local home = os.getenv("HOME") or ("/home/" .. (os.getenv("USER") or "user"))
+local scripts = home .. "/.config/hypr/scripts/"
 
 -- Lock all keybinds (except unlock)
 hl.bind("CTRL + ALT + SHIFT + Delete", function()
@@ -13,44 +15,44 @@ hl.define_submap("locked", function()
     end)
 end)
 
-hl.bind("SHIFT + escape", hl.dsp.exec_cmd("bash ~/.config/hypr/scripts/suspend.sh suspend"))
-hl.bind("CTRL + escape", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/rotate_display.sh"))
+hl.bind("SHIFT + escape", hl.dsp.exec_cmd("bash " .. scripts .. "suspend.sh suspend"))
+hl.bind("CTRL + escape", hl.dsp.exec_cmd(scripts .. "rotate_display.sh"))
 hl.bind("SHIFT + F1", hl.dsp.window.fullscreen({ action = "toggle", mode = "fullscreen" })) -- 1 for semi fullscreen
-hl.bind("SHIFT + F2", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/lock.sh"))
-hl.bind(mainMod .. " + CTRL + U", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/idle_inhibit.sh"))
+hl.bind("SHIFT + F2", hl.dsp.exec_cmd(scripts .. "lock.sh"))
+hl.bind(mainMod .. " + CTRL + U", hl.dsp.exec_cmd(scripts .. "idle_inhibit.sh"))
 
 -- Fault-isolated Lid Switch Events
 pcall(function()
-    hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/lid-monitor.sh close"), { locked = true })
-    hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/lid-monitor.sh open"), { locked = true })
+    hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd(scripts .. "lid-monitor.sh close"), { locked = true })
+    hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd(scripts .. "lid-monitor.sh open"), { locked = true })
 end)
 
 -- ======================================================
 -- Quickshell
 -- ======================================================
 
-hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle network"))
-hl.bind(mainMod .. " + CTRL + V", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle volume"))
-hl.bind(mainMod .. " + ALT + F", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle focustime"))
+hl.bind(mainMod .. " + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle network"))
+hl.bind(mainMod .. " + CTRL + V", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle volume"))
+hl.bind(mainMod .. " + ALT + F", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle focustime"))
 
-hl.bind(mainMod .. " + CTRL + M", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle monitors"))
-hl.bind(mainMod .. " + U", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle battery"))
-hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle wallpaper"))
-hl.bind(mainMod .. " + CTRL + SHIFT + W", hl.dsp.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/kill_wallpaper.sh"))
-hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle clipboard"))
-hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle music"))
-hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/qs_manager.sh toggle calendar"))
+hl.bind(mainMod .. " + CTRL + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle monitors"))
+hl.bind(mainMod .. " + U", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle battery"))
+hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle wallpaper"))
+hl.bind(mainMod .. " + CTRL + SHIFT + W", hl.dsp.exec_cmd(scripts .. "kill_wallpaper.sh"))
+hl.bind(mainMod .. " + V", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle clipboard"))
+hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle music"))
+hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle calendar"))
 
-hl.bind(mainMod .. " + CTRL + SHIFT + V", hl.dsp.exec_cmd("/home/realdhiru/nix/dotfiles/hypr/scripts/fix_audio.sh"))
+hl.bind(mainMod .. " + CTRL + SHIFT + V", hl.dsp.exec_cmd(scripts .. "fix_audio.sh"))
 
 -- Toggle UI Dark / Normal Mode (Opacity & Contrast)
-hl.bind(mainMod .. " + CTRL + D", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/toggle_dark_mode.sh"))
+hl.bind(mainMod .. " + CTRL + D", hl.dsp.exec_cmd(scripts .. "toggle_dark_mode.sh"))
 
 -- Reload Hyprland & Quickshell
-hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/reload.sh"))
+hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(scripts .. "reload.sh"))
 
 -- Disable/Enable Quickshell
-hl.bind(mainMod .. " + ALT + ALT_R", hl.dsp.exec_cmd('bash -c "if pidof quickshell >/dev/null || pidof .quickshell-wra >/dev/null; then killall -9 quickshell .quickshell-wra; else quickshell -p /home/realdhiru/.config/hypr/scripts/quickshell/Shell.qml & fi"'))
+hl.bind(mainMod .. " + ALT + ALT_R", hl.dsp.exec_cmd('bash -c "if pidof quickshell >/dev/null || pidof .quickshell-wra >/dev/null; then killall -9 quickshell .quickshell-wra; else quickshell -p ' .. scripts .. 'quickshell/Shell.qml & fi"'))
 
 -- ======================================================
 -- Applications
@@ -92,13 +94,13 @@ hl.bind(mainMod .. " + ALT + D", hl.dsp.exec_cmd('brave  --profile-directory="De
 -- Screenshots & Recording
 -- ======================================================
 
-hl.bind(mainMod .. " + CTRL + S", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/cycle-shader.sh"))
+hl.bind(mainMod .. " + CTRL + S", hl.dsp.exec_cmd(scripts .. "cycle-shader.sh"))
 
-hl.bind(mainMod .. " + SHIFT + Z", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/screenshot.sh area"))
-hl.bind(mainMod .. " + CTRL + SHIFT + Z", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/screenshot.sh freeze"))
-hl.bind("Print", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/screenshot.sh screen"))
+hl.bind(mainMod .. " + SHIFT + Z", hl.dsp.exec_cmd(scripts .. "screenshot.sh area"))
+hl.bind(mainMod .. " + CTRL + SHIFT + Z", hl.dsp.exec_cmd(scripts .. "screenshot.sh freeze"))
+hl.bind("Print", hl.dsp.exec_cmd(scripts .. "screenshot.sh screen"))
 
-hl.bind(mainMod .. " + CTRL + R", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/record.sh"))
+hl.bind(mainMod .. " + CTRL + R", hl.dsp.exec_cmd(scripts .. "record.sh"))
 
 -- ======================================================
 -- Window Management
@@ -121,7 +123,7 @@ hl.bind(mainMod .. " + SHIFT + D", hl.dsp.window.move({ workspace = "special:mus
 hl.bind(mainMod .. " + F", hl.dsp.workspace.toggle_special("notes"))
 -- hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.move({ workspace = "special:notes" }))
 hl.bind(mainMod .. " + G", hl.dsp.workspace.toggle_special("misc"))
-hl.bind(mainMod .. " + SHIFT + G", hl.dsp.exec_cmd("~/.config/hypr/scripts/toggle_gaming_mode.sh"))
+hl.bind(mainMod .. " + SHIFT + G", hl.dsp.exec_cmd(scripts .. "toggle_gaming_mode.sh"))
 
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
@@ -143,14 +145,14 @@ hl.bind("SHIFT + F5", hl.dsp.exec_cmd("playerctl next"), { locked = true, descri
 -- Audio & Brightness
 -- ======================================================
 
-hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/osd.sh vol-up"), { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/osd.sh vol-down"), { locked = true, repeating = true })
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(scripts .. "osd.sh vol-up"), { locked = true, repeating = true })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(scripts .. "osd.sh vol-down"), { locked = true, repeating = true })
 
-hl.bind("XF86AudioMute", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/osd.sh vol-mute"), { locked = true })
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/osd.sh mic-mute"), { locked = true })
+hl.bind("XF86AudioMute", hl.dsp.exec_cmd(scripts .. "osd.sh vol-mute"), { locked = true })
+hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(scripts .. "osd.sh mic-mute"), { locked = true })
 
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/osd.sh bright-up"), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/osd.sh bright-down"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(scripts .. "osd.sh bright-up"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(scripts .. "osd.sh bright-down"), { locked = true, repeating = true })
 
 -- ======================================================
 -- Focus

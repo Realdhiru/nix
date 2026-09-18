@@ -1,5 +1,5 @@
 {
-  description = "realdhiru's NixOS configuration";
+  description = "NixOS Hyprland Rice & Desktop Configuration";
 
   inputs = {
     # nixos-unstable: floating, no pins. 2026-08-16 the flake was pinned to
@@ -39,12 +39,13 @@
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
+      user = import ./user.nix;
     in {
     nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
       inherit system;
 
       specialArgs = {
-        inherit inputs;
+        inherit inputs user;
       };
 
       modules = [
@@ -72,12 +73,12 @@
           home-manager.backupFileExtension = "hm-backup";
 
           home-manager.extraSpecialArgs = {
-            inherit inputs;
+            inherit inputs user;
           };
 
           home-manager.sharedModules = [ ];
 
-          home-manager.users.realdhiru = import ./home.nix;
+          home-manager.users.${user.username} = import ./home.nix;
         }
       ];
     };

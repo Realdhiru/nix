@@ -1,4 +1,4 @@
-{ config, pkgs, inputs, ... }:
+{ config, pkgs, inputs, user, ... }:
 
 {
   imports = [
@@ -112,8 +112,8 @@
     };
   };
 
-  home.username = "realdhiru";
-  home.homeDirectory = "/home/realdhiru";
+  home.username = user.username;
+  home.homeDirectory = "/home/${user.username}";
   home.sessionPath = [ "$HOME/.local/bin" ];
 
   home.stateVersion = "26.11";

@@ -31,6 +31,14 @@
 
 ---
 
+## Installation & Deployment
+
+This configuration is built for **100% portability** (similar to the Omarchy distribution standard). You can fork and deploy it on any machine with zero hardcoded paths:
+- Complete guide: [`docs/installation.md`](file:///home/realdhiru/nix/docs/installation.md)
+- User identity is configured entirely in a single file: [`user.nix`](file:///home/realdhiru/nix/user.nix)
+
+---
+
 ## Design & Technical Highlights
 
 ### Power & Thermal Management

@@ -428,7 +428,11 @@ Item {
                         if (config.rawSettings.cardOpacity !== undefined) config.cardOpacity = config.rawSettings.cardOpacity;
                         if (config.rawSettings.borderWidth !== undefined) config.borderWidth = config.rawSettings.borderWidth;
                         if (config.rawSettings.topbarHelpIcon !== undefined) config.topbarHelpIcon = config.rawSettings.topbarHelpIcon;
-                        if (config.rawSettings.wallpaperDir !== undefined) config.wallpaperDir = config.rawSettings.wallpaperDir;
+                        if (config.rawSettings.wallpaperDir !== undefined) {
+                            let wp = config.rawSettings.wallpaperDir;
+                            if (wp.startsWith("~/")) wp = homeDir + wp.substring(1);
+                            config.wallpaperDir = wp;
+                        }
                         if (config.rawSettings.language !== undefined && config.rawSettings.language !== "") config.language = config.rawSettings.language;
                         if (config.rawSettings.kbOptions !== undefined) config.kbOptions = config.rawSettings.kbOptions;
                         if (config.rawSettings.workspaceCount !== undefined) {

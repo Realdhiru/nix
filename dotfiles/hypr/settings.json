@@ -3,7 +3,7 @@
   "popupOpacity": 0.2,
   "cardOpacity": 0.0,
   "borderWidth": 0,
-  "wallpaperDir": "/home/realdhiru/Pictures/Wallpapers",
+  "wallpaperDir": "~/Pictures/Wallpapers",
   "language": "",
   "kbOptions": "grp:alt_shift_toggle",
   "workspaceCount": 8,

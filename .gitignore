@@ -34,3 +34,4 @@ repomix.json
 *.swo
 docs/*
 !docs/assets/
+!docs/*.md

@@ -22,7 +22,7 @@
       Restart = "always";
       RestartSec = 3;
       Environment = [
-        "PATH=/etc/profiles/per-user/realdhiru/bin:/run/current-system/sw/bin"
+        "PATH=${config.home.profileDirectory}/bin:/run/current-system/sw/bin"
       ];
     };
     Install = {

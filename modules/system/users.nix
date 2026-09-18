@@ -1,7 +1,7 @@
-{ pkgs, ... }:
+{ pkgs, user, ... }:
 
 {
-  users.users.realdhiru = {
+  users.users.${user.username} = {
     isNormalUser = true;
 
     extraGroups = [
@@ -32,7 +32,7 @@
   # is the security boundary here, not the sudoers argument match.
   security.sudo.extraRules = [
     {
-      users = [ "realdhiru" ];
+      users = [ user.username ];
       commands = [
         {
           command = "/run/current-system/sw/bin/modprobe -r snd_hda_intel snd_soc_avs";
