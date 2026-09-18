@@ -23,6 +23,7 @@ supersede it.
   4. **Early Kernel Mode Setting (KMS) & Fastboot (`boot.nix`)**:
      - Added `i915` to `boot.initrd.kernelModules` to enable early modesetting for Intel Iris Xe graphics inside stage 1 initrd. Eliminates the display pipeline mode-switch delay between UEFI GOP and userspace display managers.
      - Passed `i915.fastboot=1`, `quiet`, `rd.systemd.show_status=auto`, and `rd.udev.log_level=3` to avoid redundant hardware probing and silence verbose tty logging.
+     - Added `bgrt_disable`, `video=efifb:nobgrt`, and `fbcon=nodefer` to suppress the ACPI Boot Graphics Resource Table (BGRT) OEM bitmap, completely preventing the Linux kernel from rendering the manufacturer ASUS splash screen a second time during kernel handover.
   5. **Journal Flush Bounding (`services.nix`)**:
      - Constrained `services.journald.settings.Journal` to `SystemMaxUse = "100M"` and `SystemMaxFileSize = "20M"`, keeping `systemd-journal-flush.service` consistently fast on every boot.
 

@@ -16,6 +16,9 @@
   boot.kernelParams = [
     "quiet"
     "i915.fastboot=1"
+    "bgrt_disable"
+    "video=efifb:nobgrt"
+    "fbcon=nodefer"
     "nmi_watchdog=0"
     "mem_sleep_default=deep"
     "resume_offset=39880704"

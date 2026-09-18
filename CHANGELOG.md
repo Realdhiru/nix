@@ -13,6 +13,7 @@
 - **Early KMS & Kernel Parameter Acceleration (`modules/system/boot.nix`)**:
   - Injected `i915` into `boot.initrd.kernelModules` to enable Early KMS (Kernel Mode Setting). Initializes Intel Iris Xe display modesetting inside stage 1 initrd rather than delaying to stage 2 userspace, eliminating the black screen stall and display mode-switch before Ly starts.
   - Added kernel parameters `quiet`, `i915.fastboot=1`, `rd.systemd.show_status=auto`, and `rd.udev.log_level=3` to silence unnecessary console I/O and preserve UEFI GOP display states. Set `boot.initrd.verbose = false;`.
+  - Added `bgrt_disable`, `video=efifb:nobgrt`, and `fbcon=nodefer` to completely suppress the ACPI Boot Graphics Resource Table (BGRT) OEM logo, preventing the Linux kernel from redrawing the manufacturer ASUS splash screen during stage 1/stage 2 boot.
 - **Journald Log Bounding (`modules/system/services.nix`)**:
   - Configured `services.journald.settings.Journal` with `SystemMaxUse = "100M"` and `SystemMaxFileSize = "20M"`, preventing journal flush bottlenecks during `systemd-journal-flush.service` on boot.
 
