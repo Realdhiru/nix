@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-09-18 — Browser Camera Fix, License & README Polish
+
+- **v4l2loopback Virtual Webcam for Browser/WebRTC (`boot.nix`, `services.nix`)**:
+  - Re-introduced `v4l2loopback` kernel module (`exclusive_caps=1`, `video_nr=10`) exposing `/dev/video10` as a virtual webcam that browsers can negotiate without triggering the Sonix MJPEG firmware babble-protection USB disconnect.
+  - Added `camera-loopback` user systemd service feeding the physical webcam's stable YUYV 640x480@30fps stream into the loopback device via `ffmpeg`. Start on demand: `systemctl --user start camera-loopback`.
+- **MIT License & GitHub Professional Polish (`LICENSE`, `README.md`)**:
+  - Added MIT License file.
+  - Added License shield badge to README header.
+  - Added comprehensive **Software Stack & Rice Components** table to README listing all 25+ programs used in the rice setup.
+
 ## 2026-09-18 — Boot & Login Latency Optimization, NTFS Recovery Support
 
 - **Post-Password Desktop Loading Latency (`dotfiles/hypr/startup.lua`, `set_wallpaper.sh`)**:

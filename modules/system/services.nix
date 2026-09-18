@@ -185,4 +185,18 @@
     };
   };
   services.displayManager.defaultSession = "hyprland";
+
+  # Virtual webcam loopback feeder: reads physical cam at stable YUYV 640x480@30fps
+  # and exposes /dev/video10 to browsers/WebRTC (bypasses Sonix MJPEG firmware bug).
+  # Manually start with: systemctl --user start camera-loopback
+  systemd.user.services.camera-loopback = {
+    description = "YUYV Camera Loopback Feeder → /dev/video10";
+    after = [ "graphical-session.target" ];
+
+    serviceConfig = {
+      ExecStart = "${pkgs.ffmpeg}/bin/ffmpeg -hide_banner -loglevel error -f v4l2 -input_format yuyv422 -video_size 640x480 -framerate 30 -i /dev/v4l/by-id/usb-Sonix_Technology_Co.__Ltd._USB2.0_FHD_UVC_WebCam-video-index0 -codec copy -f v4l2 /dev/video10";
+      Restart = "on-failure";
+      RestartSec = 3;
+    };
+  };
 }

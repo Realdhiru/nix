@@ -27,9 +27,13 @@
     "usbcore.autosuspend=-1"
   ];
 
-  # Prevent UVC frame drops on stream start
+  boot.extraModulePackages = [ pkgs.linuxPackages_latest.v4l2loopback ];
+  boot.kernelModules = [ "v4l2loopback" ];
+
+  # Prevent UVC frame drops on stream start and configure virtual webcam loopback
   boot.extraModprobeConfig = ''
     options uvcvideo nodrop=1
+    options v4l2loopback exclusive_caps=1 card_label="Virtual Webcam" video_nr=10
   '';
 
   boot.kernelPackages = pkgs.linuxPackages_latest;

@@ -7,6 +7,7 @@
 [![QuickShell](https://img.shields.io/badge/UI-QuickShell_(QML)-8338EC?style=for-the-badge)](https://git.outfoxxed.me/outfoxxed/quickshell)
 [![Theming](https://img.shields.io/badge/Theme-Matugen-FF006E?style=for-the-badge)](https://github.com/InioX/matugen)
 [![Flakes](https://img.shields.io/badge/Config-Nix_Flakes-52B788?style=for-the-badge&logo=nixos)](https://wiki.nixos.org/wiki/Flakes)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 <p align="center">
   A declarative, reproducible personal desktop environment configured with Nix Flakes, Hyprland, and QuickShell.
@@ -28,6 +29,34 @@
 <sub>Wallpapers used in this setup are available in [Realdhiru/wallps](https://github.com/Realdhiru/wallps). Base desktop widgets were adapted from [ilyamiro/serpantinum](https://github.com/ilyamiro/serpantinum).</sub>
 
 </div>
+
+---
+
+## 🛠️ Software Stack & Rice Components
+
+| Component | Software | Description |
+| :--- | :--- | :--- |
+| **OS & Package Manager** | [NixOS](https://nixos.org) (Unstable) + [Nix Flakes](https://wiki.nixos.org/wiki/Flakes) | Declarative, reproducible system with atomic generations |
+| **Compositor / WM** | [Hyprland](https://hyprland.org) | Wayland dynamic tiling compositor configured in native Lua |
+| **Desktop Shell & UI** | [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) (Qt6 / QML) | Event-driven topbar, circular battery dial, MPRIS music & power popups |
+| **Application Launcher** | [Fuzzel](https://codeberg.org/dnkl/fuzzel) | Wayland dmenu/rofi alternative with custom frosted glass styling |
+| **Terminal & Multiplexer** | [WezTerm](https://wezfurlong.org/wezterm/) + [Tmux](https://github.com/tmux/tmux) | GPU-accelerated terminal emulator & terminal session multiplexer |
+| **Shell & Prompt** | [Zsh](https://www.zsh.org/) + [Starship](https://starship.rs/) | Fast, modular shell prompt with automated safety-gated `rebuild()` |
+| **Theming Engine** | [Matugen](https://github.com/InioX/matugen) | Material You dynamic color generation from wallpapers |
+| **Color Scheme** | [Catppuccin Mocha](https://github.com/catppuccin/catppuccin) | Pastel dark theme applied across GTK, terminal, Spotify, and editor |
+| **Icon Theme** | Buuf-Nestort + Papirus | Classic skeuomorphic Buuf icons blended with modern Papirus glyphs |
+| **Typography** | JetBrains Mono Nerd Font | Monospace code font with comprehensive glyph and symbol support |
+| **Lockscreen & Idle** | [Hyprlock](https://github.com/hyprwm/hyprlock) + [Hypridle](https://github.com/hyprwm/hypridle) | Wayland lockscreen with live video background support (QtMultimedia) |
+| **Wallpaper Daemons** | [awww](https://github.com/AvengeMedia/awww) + [mpvpaper](https://github.com/GhostNaN/mpvpaper) | High-performance static and live video wallpaper renderers |
+| **Media Player** | [MPV](https://mpv.io) (with `mpvScripts.mpris`) | Hardware-accelerated player broadcasting D-Bus media tracking |
+| **Music Streaming** | Spotify + [Spicetify](https://spicetify.app/) | Customized Spotify with Catppuccin Mocha theme & extensions |
+| **Screen Recording** | [GPU Screen Recorder](https://git.dec05eba.com/gpu-screen-recorder-gtk/) | Low-overhead NVENC/VAAPI screen capture |
+| **Screenshots & Snips** | Grim + Slurp + Grimblast | Wayland screenshot suite with region selection & clipboard copy |
+| **Audio Server & FX** | [PipeWire](https://pipewire.org) + WirePlumber + [EasyEffects](https://github.com/wwmm/easyeffects) | Low-latency audio routing, DSP plugins & mic noise cancellation |
+| **Power Management** | [TLP](https://linrunner.de/tlp/) + [asusctl](https://asus-linux.org/) (`asusd`) | Hardware power profiles + 80% battery charge ceiling authority |
+| **File Management** | [PCManFM-Qt](https://github.com/lxqt/pcmanfm-qt) + Filelight | Lightweight Qt file manager & interactive disk usage map |
+| **Web Browsers** | [Brave](https://brave.com), [Zen Browser](https://zen-browser.app), [Helium](https://github.com/fennifith/helium) | Hardware-accelerated Wayland browsers |
+| **Code Editor** | [VSCodium](https://vscodium.com) | Community-driven, telemetry-free binary release of VS Code |
 
 ---
 

@@ -4,6 +4,16 @@ Why things are the way they are. **Read before touching power, audio,
 wallpaper, or quickshell.** New entries go on top; never delete a decision —
 supersede it.
 
+## 2026-09-18 — v4l2loopback Browser Camera Fix & Repository Licensing
+
+- **Context:**
+  1. The physical Sonix webcam (`3277:0022`) works at YUYV 640x480@30fps via `mpv`/`pw-record`, but browsers (Brave/Chromium WebRTC) requesting MJPEG or non-native resolutions trigger the firmware's oversized-payload bug, causing `ioctl(VIDIOC_DQBUF): Invalid argument` followed by USB bus disconnects and `No such device`.
+  2. The repository had no LICENSE file and no software stack documentation for GitHub visitors.
+- **Decisions:**
+  1. **v4l2loopback Virtual Webcam (`boot.nix`, `services.nix`)**: Re-introduced `v4l2loopback` kernel module with `exclusive_caps=1` (so browsers see the virtual device as a real camera) and `video_nr=10`. A user-level `camera-loopback` systemd service feeds YUYV 640x480@30fps from the physical device into `/dev/video10` via `ffmpeg -codec copy`. Not auto-started — user runs `systemctl --user start camera-loopback` before video calls.
+  2. **MIT License**: Standard permissive license for dotfiles/rice repos — allows forking and adaptation while disclaiming warranty.
+  3. **Software Stack Table in README**: Comprehensive categorized table of all 25+ programs used, with hyperlinks to upstream projects, providing at-a-glance visibility for GitHub visitors.
+
 ## 2026-09-18 — Boot Critical Chain Decoupling, Post-Password Latency & NTFS UDisks2 Configuration
 
 - **Context:**
