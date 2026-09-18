@@ -14,7 +14,7 @@ what is safe to change.
 
 ## System at a glance
 
-- Host: `nixos` (hostname `vivobook`), ASUS Vivobook K5504VA, x86_64
+- Host: `nixos` (hostname `NixOS`), ASUS Vivobook K5504VA, x86_64
 - NixOS unstable, flakes, Home Manager (user `realdhiru`)
 - WM: Hyprland + Quickshell (TopBar + popups), Hyprlock via in-tree lock.sh
 - Sole power manager: TLP + ASUS udev rule; lid NEVER suspends

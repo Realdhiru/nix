@@ -4,5 +4,5 @@
   username = "realdhiru";
   name = "Dhiru";
   email = "realdhiru@example.com";
-  hostname = "vivobook";
+  hostname = "NixOS";
 }

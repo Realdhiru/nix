@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, user, ... }:
 {
   imports = [
     ./hardware-configuration.nix
@@ -34,7 +34,7 @@
   "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}/glib-2.0/schemas";
 
   programs.zsh.enable = true;
-  networking.hostName = "vivobook";
+  networking.hostName = user.hostname;
   networking.networkmanager.enable = true;
   systemd.services.NetworkManager-wait-online.enable = false;
   time.timeZone = "Asia/Kolkata";

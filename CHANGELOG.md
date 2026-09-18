@@ -2,6 +2,15 @@
 
 ## 2026-09-18 — Script Consolidation, Rebuild Fix, Multi-User Portability & Installation Docs
 
+- **Hostname Parameterization & Migration (`user.nix`, `hosts/nixos/default.nix`, `docs/README.md`)**:
+  - Migrated system hostname from `vivobook` to `NixOS` across the system configuration and documentation.
+  - Connected `hosts/nixos/default.nix` dynamically to `user.hostname` (`networking.hostName = user.hostname;`), ensuring all future hostname updates are managed centrally from `user.nix`.
+- **Ly Session Log Suppression (`modules/system/services.nix`)**:
+  - Suppressed Ly display manager's legacy session log creation by configuring `services.displayManager.ly.settings.session_log = null;`. Modern Wayland sessions and systemd already cleanly capture compositor logs in `journalctl --user` and Hyprland's runtime directory, rendering the empty `~/ly-session.log` in `$HOME` obsolete.
+  - Purged the redundant `~/ly-session.log` file from the user's home directory.
+- **Seamless Video Looping Media (`rec_loop.mp4`, `rec_loop_steady.mp4`)**:
+  - Processed screen recording `rec_20260824_0240.mp4` into seamless, perfectly looping videos with synchronized audio/video crossfade transitions (`xfade` + `acrossfade`) in universally compatible `yuv420p` format.
+  - Produced both full-duration seamless loop (`rec_loop.mp4`) and steady-state loop (`rec_loop_steady.mp4`).
 - **Rebuild Clobber Resolution (`modules/home/theme.nix`)**:
   - Resolved `home-manager` switch failure (`Existing file '~/.local/share/icons/buuf-nestort' would be clobbered`) by setting `force = true` on `xdg.dataFile."icons/buuf-nestort"`.
 - **Multi-Tool CLI Consolidation (`dotfiles/hypr/scripts/`)**:

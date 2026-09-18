@@ -23,6 +23,10 @@ supersede it.
      - Extracted popup background rectangles, opacity, borders, and specular highlights into `PopupCard.qml`, enabling whole-shell styling adjustments from a single file.
   4. **Home Manager Link Force (`theme.nix`)**:
      - Set `xdg.dataFile."icons/buuf-nestort".force = true;` to guarantee idempotent declarative icon linking without clobber stops.
+  5. **Dynamic Hostname Centralization (`user.nix`, `hosts/nixos/default.nix`)**:
+     - Replaced hardcoded `networking.hostName = "vivobook";` with `networking.hostName = user.hostname;` wired directly to `user.nix`. Set default hostname to `NixOS`.
+  6. **Ly Display Manager Log Hygiene (`modules/system/services.nix`)**:
+     - Configured `services.displayManager.ly.settings.session_log = null;`. Ly's legacy behavior of creating empty `~/ly-session.log` in `$HOME` is completely disabled since systemd journal (`journalctl --user`) and Hyprland's instance runtime directory manage session logs natively.
 
 ## 2026-09-17 — NetworkManager Hotspot Backend UUID Hardening & Hardware Concurrency Boundaries
 

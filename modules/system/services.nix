@@ -165,6 +165,9 @@
   # Ly console display manager
   services.displayManager.ly = {
     enable = true;
+    settings = {
+      session_log = null;
+    };
   };
   services.displayManager.defaultSession = "hyprland";
 }
