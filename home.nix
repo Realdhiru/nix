@@ -69,6 +69,18 @@
 
   # VSCodium: settings + sync live in modules/home/vscodium.nix.
 
+  # WirePlumber: Disable conflicting libcamera monitor so UVC cameras are exclusively handled by V4L2
+  xdg.configFile."wireplumber/wireplumber.conf.d/50-disable-libcamera.conf" = {
+    force = true;
+    text = ''
+      wireplumber.profiles = {
+        main = {
+          monitor.libcamera = disabled
+        }
+      }
+    '';
+  };
+
   # PCManFM-Qt: file-based config (app reads/writes this INI directly, no
   # other mechanism), so the few mixed settings live inline here.
   xdg.configFile."pcmanfm-qt/default/settings.conf" = {

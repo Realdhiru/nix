@@ -30,9 +30,12 @@ supersede it.
      - The workspace algorithm previously kept empty workspaces visible if `ws.lastIpcObject.windows > 0` was present in the cached JSON snapshot from creation time. Replaced with live evaluation of `Hyprland.toplevels` and `ws.toplevels.count`, and wrapped `rawEvent` triggers in `Qt.callLater` to allow QuickShell C++ ObjectModels to settle before UI model re-indexing.
   7. **Battery Popup Visual Contrast Tuning (`BatteryPopup.qml`)**:
      - `centralCore` used a high-alpha text-tinted gradient (`window.text` at 14%/6%) and a 22% white circular track, making the circular battery power remaining dial look washed out and hazy. Replaced with a recessed glassmorphic gradient (`crust` at 85% to `mantle` at 65%) with a `surface1` 35% groove track for dark-mode contrast.
-  8. **WebCam UVC Bandwidth & Autosuspend Stability (`power.nix`, `boot.nix`, `users.nix`)**:
-     - The integrated Sonix USB FHD webcam (`3277:0022`) disconnected on stream open with `ioctl(VIDIOC_DQBUF): No such device` due to two overlapping issues: (a) TLP placing the USB internal root hub and device into `auto` low-power autosuspend, and (b) initial incomplete frame drops.
-     - Resolved by disabling `USB_AUTOSUSPEND = 0;` globally in TLP, injecting `usbcore.autosuspend=-1` to kernel parameters, applying `boot.extraModprobeConfig = "options uvcvideo nodrop=1"`, and ensuring `"video"` membership in user `extraGroups`.
+  8. **WebCam UVC Stability & Conflict Elimination (`power.nix`, `boot.nix`, `users.nix`, `home.nix`)**:
+     - The integrated Sonix USB FHD webcam (`3277:0022`) disconnected on stream open with `ioctl(VIDIOC_DQBUF): No such device` due to: (a) TLP placing the USB internal root hub and device into `auto` low-power autosuspend, and (b) WirePlumber simultaneously running `libcamera` and `v4l2` monitors, causing competing pipeline initialization on a single-client UVC sensor.
+     - Resolved by disabling `USB_AUTOSUSPEND = 0;` globally in TLP, injecting `usbcore.autosuspend=-1` to kernel parameters, disabling `monitor.libcamera` in WirePlumber (`~/.config/wireplumber/wireplumber.conf.d/50-disable-libcamera.conf`), applying `boot.extraModprobeConfig = "options uvcvideo nodrop=1"`, and ensuring `"video"` membership in user `extraGroups`.
+  9. **BatteryPopup Logoff Mechanism & Clean Exit Dispatcher (`BatteryPopup.qml`, `exit.sh`)**:
+     - The Logoff capsule previously fired `Quickshell.execDetached(["hyprctl", "dispatch", "exit"])` directly. In NixOS, hyprctl dispatched without environment context can stall when user graphical sessions are running, and `pkill -u "$(id -u)" -x Hyprland` in `exit.sh` failed because the Nix wrapper renames the process to `.Hyprland-wrapp`.
+     - Routed both tap (`onClicked`) and hold-to-fill (`exitTimer.onTriggered`) through `bash ~/.config/hypr/scripts/exit.sh`. Updated `exit.sh` to stop user graphical session targets and fall back to regex `([H]yprland|\.Hyprland-wrapp)` process matching.
 
 ## 2026-09-18 — Multi-User Parameterization & Domain Script Consolidation (Omarchy Architecture)
 

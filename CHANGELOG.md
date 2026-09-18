@@ -21,10 +21,15 @@
 - **BatteryPopup Dial Contrast & Background Depth (`BatteryPopup.qml`)**:
   - Replaced washed-out, milky white `window.text` (14%/6%) gradient on `centralCore` with a rich, dark recessed glassmorphic gradient (`window.crust` at 85% to `window.mantle` at 65%) and subtle `window.surface1` border.
   - Subdued the circular background capacity track (`batCanvas`) from bright 22% white text to a sleek, recessed `window.surface1` (35%) groove, providing deep contrast that makes the battery percentage and active charging/drain arc vivid.
-- **WebCam UVC Stability & Complete USB Autosuspend Deactivation (`power.nix`, `boot.nix`, `users.nix`)**:
+- **WebCam UVC Stability & Complete USB Autosuspend Deactivation (`power.nix`, `boot.nix`, `users.nix`, `home.nix`)**:
   - Disabled `USB_AUTOSUSPEND = 0;` globally in TLP and appended `usbcore.autosuspend=-1` to kernel parameters to prevent internal USB root hubs and webcam interfaces from entering low-power states or resetting the USB bus during video streaming.
   - Replaced the failing `quirks=128` bandwidth cap with `options uvcvideo nodrop=1` to prevent incomplete frame drops and eliminate buffer overflow resets.
   - Added `"video"` to `users.users.${user.username}.extraGroups` to ensure complete V4L2 device permissions across all native and sandboxed applications.
+  - Diagnosed webcam initialization failure where WirePlumber was registering both `libcamera` and `v4l2` monitors simultaneously for the internal Sonix FHD UVC WebCam (`3277:0022`), creating resource contention and device resets. Persisted `monitor.libcamera = disabled` in `home.nix` (`~/.config/wireplumber/wireplumber.conf.d/50-disable-libcamera.conf`).
+- **BatteryPopup Logoff Mechanism & Clean Exit Dispatcher (`BatteryPopup.qml`, `exit.sh`)**:
+  - Fixed non-functional "Logoff" action in `BatteryPopup.qml` which was executing bare `["hyprctl", "dispatch", "exit"]` in detached subshells without environment synchronization or systemd graphical session cleanup.
+  - Re-routed both tap (`onClicked`) and hold-to-fill (`exitTimer.onTriggered`) triggers to execute `bash ~/.config/hypr/scripts/exit.sh`.
+  - Updated `exit.sh` to gracefully stop `graphical-session.target` and fall back to regex matching `([H]yprland|\.Hyprland-wrapp)` to cleanly terminate NixOS wrapped Hyprland binaries if IPC disconnects.
 
 ## 2026-09-18 — Script Consolidation, Rebuild Fix, Multi-User Portability & Installation Docs
 

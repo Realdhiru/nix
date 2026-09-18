@@ -1948,7 +1948,7 @@ Item {
                                             onClicked: {
                                                 if (index === 0) {
                                                     // Instant reliable logoff
-                                                    Quickshell.execDetached(["hyprctl", "dispatch", "exit"]);
+                                                    Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/exit.sh"]);
                                                 } else if (index === 1) {
                                                     // Instant sleep
                                                     Quickshell.execDetached(["systemctl", "suspend"]);
@@ -1975,7 +1975,7 @@ Item {
                                             id: exitTimer; interval: 500 
                                             onTriggered: { 
                                                 if (index === 0) {
-                                                    Quickshell.execDetached(["hyprctl", "dispatch", "exit"]);
+                                                    Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/exit.sh"]);
                                                 } else {
                                                     Quickshell.execDetached(["bash", "-c", cmd]); 
                                                     Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);

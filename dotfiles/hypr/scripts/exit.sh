@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
-systemctl --user stop graphical-session.target graphical-session-pre.target || true
+systemctl --user stop graphical-session.target graphical-session-pre.target 2>/dev/null || true
 
-sleep 0.5
-
-hyprctl dispatch exit || pkill -u "$(id -u)" -x Hyprland
+# Try graceful Hyprland IPC exit dispatcher
+if ! hyprctl dispatch exit 2>/dev/null; then
+    sleep 0.2
+    # Fallback to terminating NixOS Hyprland wrapper process
+    pkill -u "$(id -u)" -f '([H]yprland|\.Hyprland-wrapp)' 2>/dev/null || true
+fi
