@@ -2,6 +2,8 @@
 
 ## 2026-09-18 — Script Consolidation, Rebuild Fix, Multi-User Portability & Installation Docs
 
+- **Spicetify-cli v2.45.1 Overlay (`flake.nix`)**:
+  - Overrode `spicetify-cli` to upstream release `v2.45.1` (`sha256-Mu97p0HlvmEMkPV/VvHztJ1VqocxXoAXRtDKLGYd9mk=`) via `nixpkgs.overlays`, bringing the package up to date ahead of upstream nixpkgs channel lag and eliminating the "New version available" banner.
 - **Hostname Parameterization & Migration (`user.nix`, `hosts/nixos/default.nix`, `docs/README.md`)**:
   - Migrated system hostname from `vivobook` to `NixOS` across the system configuration and documentation.
   - Connected `hosts/nixos/default.nix` dynamically to `user.hostname` (`networking.hostName = user.hostname;`), ensuring all future hostname updates are managed centrally from `user.nix`.
