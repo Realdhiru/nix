@@ -2,6 +2,8 @@
 {
   imports = [
     ./hardware-configuration.nix
+    ./hardware/asus.nix
+    ./hardware/sonix-webcam.nix
     ../../modules/system/boot.nix
     ../../modules/system/users.nix
     ../../modules/system/services.nix
@@ -10,7 +12,16 @@
     ../../modules/system/memory.nix
     ../../modules/system/power.nix
     ../../modules/system/gaming.nix
-    ../../modules/system/asus-brightness-rebind.nix
+  ];
+
+  # Host-specific Intel GPU Early KMS & fastboot
+  boot.initrd.kernelModules = [ "i915" ];
+
+  # Host-specific hibernate resume device & swapfile offset
+  boot.resumeDevice = "/dev/disk/by-uuid/d0a20f82-2287-41fd-b017-617b84e4d4b6";
+  boot.kernelParams = [
+    "i915.fastboot=1"
+    "resume_offset=39880704"
   ];
 
   # systemd.tmpfiles charge threshold rule removed —

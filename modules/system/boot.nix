@@ -10,31 +10,18 @@
 
   boot.consoleLogLevel = 3;
   boot.initrd.verbose = false;
-  boot.initrd.kernelModules = [ "i915" ];
 
-  boot.resumeDevice = "/dev/disk/by-uuid/d0a20f82-2287-41fd-b017-617b84e4d4b6";
   boot.kernelParams = [
     "quiet"
-    "i915.fastboot=1"
     "bgrt_disable"
     "video=efifb:nobgrt"
     "fbcon=nodefer"
     "nmi_watchdog=0"
     "mem_sleep_default=deep"
-    "resume_offset=39880704"
     "rd.systemd.show_status=auto"
     "rd.udev.log_level=3"
     "usbcore.autosuspend=-1"
   ];
-
-  boot.extraModulePackages = [ pkgs.linuxPackages_latest.v4l2loopback ];
-  boot.kernelModules = [ "v4l2loopback" ];
-
-  # Prevent UVC frame drops on stream start and configure virtual webcam loopback
-  boot.extraModprobeConfig = ''
-    options uvcvideo nodrop=1
-    options v4l2loopback card_label="Virtual Webcam" video_nr=10
-  '';
 
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernel.sysctl = {

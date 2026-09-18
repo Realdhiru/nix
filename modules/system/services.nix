@@ -185,21 +185,4 @@
     };
   };
   services.displayManager.defaultSession = "hyprland";
-
-  # Virtual webcam loopback feeder: feeds stable native 1080p@5fps YUYV pass-through
-  # into /dev/video10 for browsers/WebRTC on demand, bypassing Sonix MJPEG firmware crashes.
-  # On-demand: Start with `cam-on` (or `systemctl --user start camera-loopback`)
-  #            Stop with `cam-off` (or `systemctl --user stop camera-loopback`)
-  systemd.user.services.camera-loopback = {
-    description = "Webcam Pass-Through Loopback Feeder → /dev/video10";
-    after = [ "graphical-session.target" ];
-    partOf = [ "graphical-session.target" ];
-    path = [ pkgs.ffmpeg pkgs.coreutils pkgs.bash ];
-
-    serviceConfig = {
-      ExecStart = "${pkgs.bash}/bin/bash %h/nix/dotfiles/hypr/scripts/camera-loopback.sh";
-      Restart = "on-failure";
-      RestartSec = 3;
-    };
-  };
 }

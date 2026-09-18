@@ -2,12 +2,12 @@
 
 ## 2026-09-18 — Browser Camera Fix, License & README Polish
 
-- **v4l2loopback Virtual Webcam for Browser/WebRTC (`boot.nix`, `services.nix`, `webcam.sh`, `shell.nix`)**:
-  - Re-introduced `v4l2loopback` kernel module (`video_nr=10`, default `exclusive_caps=0`) exposing `/dev/video10` as a virtual webcam. Removing `exclusive_caps=1` ensures standard V4L2 consumers (Chromium/Brave, WebRTC, MPV, FFmpeg) see `V4L2_CAP_VIDEO_CAPTURE` immediately on query instead of being falsely rejected.
-  - Feeder script `dotfiles/hypr/scripts/camera-loopback.sh` feeds native 1080p@5fps YUYV pass-through (`-codec copy`, zero CPU load) into `/dev/video10` without forcing input `-video_size`/`-framerate` which crashes the Sonix USB firmware.
-  - **Strictly On-Demand Activation**: The loopback feeder is NOT auto-started on boot/session, ensuring the camera sensor and hardware privacy LED remain completely OFF by default.
-  - Created controller script `dotfiles/hypr/scripts/webcam.sh` with commands `cam-on`, `cam-off`, and `webcam` (toggle) with desktop notifications for instant manual activation before/after video calls.
-  - Preserved `cam` alias for instant camera preview via MPV (closes and powers off hardware LED on window close).
+- **Hardware Quirks Modularization & Generic Module Purification (`hosts/nixos/hardware/`, `boot.nix`, `services.nix`, `power.nix`)**:
+  - Moved Sonix webcam quirk (`v4l2loopback`, modprobe config, and `camera-loopback` service) out of generic `boot.nix`/`services.nix` into isolated host module `hosts/nixos/hardware/sonix-webcam.nix`.
+  - Moved machine-specific root disk UUID (`d0a20f82...`), `resume_offset`, and Intel GPU early KMS (`i915`) out of generic `boot.nix` into `hosts/nixos/default.nix`.
+  - Consolidated ASUS platform tools (`asusd`, `asusd.ron`, brightness rebind) out of generic `power.nix` and `modules/system/` into isolated host module `hosts/nixos/hardware/asus.nix`.
+  - Added hardware check (`lsusb -d 3277:0022`) to `dotfiles/hypr/scripts/webcam.sh` so other users with standard webcams are gracefully informed rather than having broken loopback processes.
+  - Generic modules (`modules/system/`) are now completely clean and portable across any PC/laptop brand.
 - **MIT License & GitHub Professional Polish (`LICENSE`, `README.md`)**:
   - Added MIT License file.
   - Added License shield badge to README header.
