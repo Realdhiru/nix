@@ -26,6 +26,10 @@ supersede it.
      - Added `bgrt_disable`, `video=efifb:nobgrt`, and `fbcon=nodefer` to suppress the ACPI Boot Graphics Resource Table (BGRT) OEM bitmap, completely preventing the Linux kernel from rendering the manufacturer ASUS splash screen a second time during kernel handover.
   5. **Journal Flush Bounding (`services.nix`)**:
      - Constrained `services.journald.settings.Journal` to `SystemMaxUse = "100M"` and `SystemMaxFileSize = "20M"`, keeping `systemd-journal-flush.service` consistently fast on every boot.
+  6. **QuickShell Ghost Workspace Pruning (`TopBar.qml`)**:
+     - The workspace algorithm previously kept empty workspaces visible if `ws.lastIpcObject.windows > 0` was present in the cached JSON snapshot from creation time. Replaced with live evaluation of `Hyprland.toplevels` and `ws.toplevels.count`, and wrapped `rawEvent` triggers in `Qt.callLater` to allow QuickShell C++ ObjectModels to settle before UI model re-indexing.
+  7. **Battery Popup Visual Contrast Tuning (`BatteryPopup.qml`)**:
+     - `centralCore` used a high-alpha text-tinted gradient (`window.text` at 14%/6%) and a 22% white circular track, making the circular battery power remaining dial look washed out and hazy. Replaced with a recessed glassmorphic gradient (`crust` at 85% to `mantle` at 65%) with a `surface1` 35% groove track for dark-mode contrast.
 
 ## 2026-09-18 — Multi-User Parameterization & Domain Script Consolidation (Omarchy Architecture)
 

@@ -1395,13 +1395,13 @@ Item {
                                 }
                             }
 
-                            border.color: Qt.alpha(window.text, 0.10)
+                            border.color: Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.40)
                             border.width: 1
 
                             gradient: Gradient {
                                 orientation: Gradient.Vertical
-                                GradientStop { position: 0.0; color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.14) }
-                                GradientStop { position: 1.0; color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.06) }
+                                GradientStop { position: 0.0; color: Qt.rgba(window.crust.r, window.crust.g, window.crust.b, 0.85) }
+                                GradientStop { position: 1.0; color: Qt.rgba(window.mantle.r, window.mantle.g, window.mantle.b, 0.65) }
                             }
 
                             Rectangle {
@@ -1467,7 +1467,7 @@ Item {
                                         ctx.lineWidth = window.s(10);
                                         ctx.beginPath();
                                         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-                                        ctx.strokeStyle = Qt.rgba(window.text.r, window.text.g, window.text.b, 0.22).toString();
+                                        ctx.strokeStyle = Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.35).toString();
                                         ctx.stroke();
                                         
                                         var fillGrad = ctx.createLinearGradient(0, height, width, 0);

@@ -215,14 +215,32 @@ Variants {
                 let maxWs = 6;
                 if (focusedId > maxWs) maxWs = focusedId;
 
+                // 1. Scan active toplevel windows
+                if (Hyprland.toplevels && Hyprland.toplevels.values) {
+                    let tls = Hyprland.toplevels.values;
+                    for (let i = 0; i < tls.length; i++) {
+                        let tl = tls[i];
+                        if (tl && tl.activeWorkspace && tl.activeWorkspace.id > 0) {
+                            occupiedMap[tl.activeWorkspace.id] = true;
+                            if (tl.activeWorkspace.id > maxWs) maxWs = tl.activeWorkspace.id;
+                        }
+                    }
+                }
+
+                // 2. Scan workspace models without relying on stale lastIpcObject
                 if (Hyprland.workspaces) {
                     let values = Hyprland.workspaces.values;
                     for (let i = 0; i < values.length; i++) {
                         let ws = values[i];
-                        if (ws && ws.id) {
-                            let isOcc = (ws.toplevels && ws.toplevels.count !== undefined && ws.toplevels.count > 0)
-                                     || (ws.lastIpcObject && ws.lastIpcObject.windows !== undefined && ws.lastIpcObject.windows > 0)
-                                     || (ws.windows !== undefined && ws.windows > 0);
+                        if (ws && ws.id > 0) {
+                            let isOcc = false;
+                            if (ws.toplevels && ws.toplevels.count !== undefined) {
+                                isOcc = (ws.toplevels.count > 0);
+                            } else if (ws.lastIpcObject && ws.lastIpcObject.windows !== undefined) {
+                                isOcc = (ws.lastIpcObject.windows > 0);
+                            } else if (ws.windows !== undefined) {
+                                isOcc = (ws.windows > 0);
+                            }
                             if (isOcc) {
                                 occupiedMap[ws.id] = true;
                                 if (ws.id > maxWs) maxWs = ws.id;
@@ -259,12 +277,13 @@ Variants {
             Connections {
                 target: Hyprland
                 function onFocusedWorkspaceChanged() { barWindow.updateNativeWorkspaces(); }
+                function onActiveToplevelChanged() { Qt.callLater(barWindow.updateNativeWorkspaces); }
                 function onRawEvent(name, data) {
                     if (name === "workspace" || name === "createworkspace" || name === "destroyworkspace"
                         || name === "focusedmon" || name === "moveworkspace" || name === "moveworkspacev2"
                         || name === "openwindow" || name === "closewindow" || name === "movewindow" || name === "movewindowv2"
                         || name === "renameworkspace") {
-                        barWindow.updateNativeWorkspaces();
+                        Qt.callLater(barWindow.updateNativeWorkspaces);
                     }
                 }
             }
