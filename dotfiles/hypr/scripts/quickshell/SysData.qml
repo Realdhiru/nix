@@ -262,7 +262,7 @@ Item {
                     hyprctl -j getoption decoration:shadow:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null
                     hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
 
-                    hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '' }, animations = { enabled = false } })" 2>/dev/null
+                    hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = false }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '' }, animations = { enabled = false } })" 2>/dev/null
                     hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null && touch /tmp/qs_saver_visuals_ok
                 `;
                 Quickshell.execDetached(["bash", "-c", cmd]);
@@ -285,13 +285,13 @@ Item {
                     [ "$PREV_SHADOW" = "true" ] && SHADOW_VAL="true" || SHADOW_VAL="false"
 
                     if [ -f "$HOME/.cache/wallpaper_killed" ]; then
-                        hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = false } })" 2>/dev/null
+                        hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
                         hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
                     elif [ -f "$HOME/.cache/gaming_mode" ]; then
-                        hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
+                        hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = true }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
                         hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
                     else
-                        hyprctl eval "hl.config({ decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
+                        hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, general = { allow_tearing = false }, decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
                         hyprctl reload 2>/dev/null || true
                     fi
                     touch /tmp/qs_normal_visuals_ok

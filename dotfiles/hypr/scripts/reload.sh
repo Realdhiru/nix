@@ -11,12 +11,14 @@ if command -v hyprctl >/dev/null 2>&1; then
     PROFILE="$(cat "$HOME/.cache/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
     if [ -f "$HOME/.cache/wallpaper_killed" ] || [ -f "$HOME/.cache/gaming_mode" ] || [ "$PROFILE" = "power-saver" ]; then
         hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } } })" >/dev/null 2>&1 || true
-        if [ -f "$HOME/.cache/wallpaper_killed" ] || [ "$PROFILE" = "power-saver" ]; then
+        if [ "$PROFILE" = "power-saver" ]; then
             hyprctl eval "hl.config({ animations = { enabled = false } })" >/dev/null 2>&1 || true
         fi
     fi
     if [ -f "$HOME/.cache/gaming_mode" ]; then
         hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = true } })" >/dev/null 2>&1 || true
+    elif [ "$PROFILE" = "power-saver" ]; then
+        hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = false } })" >/dev/null 2>&1 || true
     fi
 fi
 
