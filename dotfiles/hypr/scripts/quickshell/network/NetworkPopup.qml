@@ -935,9 +935,9 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: window.s(20)
-            color: window.base
+            color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
             border.color: window.surface0
-            border.width: 1
+            border.width: Config.borderWidth
             clip: true
 
             Rectangle {
@@ -1423,9 +1423,9 @@ Item {
                                         Layout.alignment: Qt.AlignHCenter
                                         Layout.preferredWidth: pwdLayer.width - window.s(40); height: window.s(36)
                                         radius: window.s(18)
-                                        color: window.surface0
+                                        color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
                                         border.color: wifiPasswordField.activeFocus ? window.crust : "transparent"
-                                        border.width: 1
+                                        border.width: Config.borderWidth
                                         Behavior on border.color { ColorAnimation { duration: 200 } }
 
                                         TextInput {
@@ -1832,7 +1832,7 @@ Item {
                                     anchors.fill: parent
                                     radius: window.s(14)
                                     color: "transparent"
-                                    border.width: 1
+                                    border.width: Config.borderWidth
                                     border.color: floatCard.isFailed ? window.red : window.surface2
                                     visible: !floatCard.isHighlighted && !floatCard.locksList
                                     Behavior on border.color { ColorAnimation { duration: 300 } }
@@ -2181,7 +2181,7 @@ Item {
                 radius: window.s(14)
                 color: "#1affffff"
                 border.color: "#1affffff"
-                border.width: 1
+                border.width: Config.borderWidth
                 visible: window.ethPresent || window.wifiPresent || window.btPresent
 
                 Rectangle {

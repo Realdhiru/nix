@@ -368,9 +368,9 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
 
         radius: window.s(16)
-        color: Qt.rgba(window.base.r, window.base.g, window.base.b, 1.0)
+        color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
         border.color: window.surface1
-        border.width: 1
+        border.width: Config.borderWidth
         clip: true
 
         transform: Translate { y: (window.introPhase - 1) * window.s(60) }

@@ -100,15 +100,11 @@ hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, ignore_alpha = 0.
 hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, animation = "fade" })
 
 -- Quickshell (Glassmorphism)
--- hl.layer_rule({ match = { namespace = "quickshell" }, blur = true })
+hl.layer_rule({ match = { namespace = "^(qs-master)$" }, blur = true })
+hl.layer_rule({ match = { namespace = "^(qs-master)$" }, ignore_alpha = 0.1 })
+hl.layer_rule({ match = { namespace = "^(qs-master)$" }, animation = "none" })
 hl.layer_rule({ match = { namespace = "quickshell" }, ignore_alpha = 0.0 })
 hl.layer_rule({ match = { namespace = "quickshell" }, animation = "none" })
-
--- hl.layer_rule({ match = { namespace = "quickshell-notifications" }, blur = true })
--- hl.layer_rule({ match = { namespace = "quickshell-notifications" }, ignore_alpha = 0 })
-
--- hl.layer_rule({ match = { namespace = "quickshell-control-center" }, blur = true })
--- hl.layer_rule({ match = { namespace = "quickshell-control-center" }, ignore_alpha = 0 })
 
 -- ======================================================
 -- Counter-Strike 2

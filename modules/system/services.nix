@@ -82,7 +82,7 @@
     usePercentageForPolicy = true;
     percentageLow = 15;
     percentageCritical = 8;
-    percentageAction = 4;
+    percentageAction = 3;
     criticalPowerAction = "Hibernate";
   };
 

@@ -94,8 +94,9 @@ hl.bind(mainMod .. " + ALT + D", hl.dsp.exec_cmd('brave  --profile-directory="De
 
 hl.bind(mainMod .. " + CTRL + S", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/cycle-shader.sh"))
 
-hl.bind(mainMod .. " + SHIFT + Z", hl.dsp.exec_cmd("grimblast copy area"))
-hl.bind(mainMod .. " + CTRL + SHIFT + Z", hl.dsp.exec_cmd("grimblast --freeze copy area"))
+hl.bind(mainMod .. " + SHIFT + Z", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/screenshot.sh area"))
+hl.bind(mainMod .. " + CTRL + SHIFT + Z", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/screenshot.sh freeze"))
+hl.bind("Print", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/screenshot.sh screen"))
 
 hl.bind(mainMod .. " + CTRL + R", hl.dsp.exec_cmd("/home/realdhiru/.config/hypr/scripts/record.sh"))
 

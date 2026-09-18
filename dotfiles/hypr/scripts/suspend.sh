@@ -26,7 +26,12 @@ case "${1:-}" in
         # 1. Wait momentarily for DRM, ACPI, and libinput state to settle after hardware wake
         sleep 1
         
-        # 2. Determine post-resume routing
+        # 2. Enforce lockscreen if session is not locked
+        if ! pgrep -f 'quickshell.*Lock\.qml' >/dev/null; then
+            "$LOCK_SH" >/dev/null 2>&1 &
+        fi
+        
+        # 3. Determine post-resume routing
         if grep -iq "closed" /proc/acpi/button/lid/*/state 2>/dev/null; then
             # The machine woke up, but the lid is STILL closed (e.g. bag-wake from RTC or USB).
             # Enforce the lid-closed state (CPU throttle + DPMS off) immediately.

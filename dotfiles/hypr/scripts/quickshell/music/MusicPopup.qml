@@ -338,6 +338,7 @@ Item {
 
         Item {
             anchors.fill: parent
+            visible: Config.borderWidth > 0
 
             Shape {
                 id: maskRectOuter
@@ -368,18 +369,9 @@ Item {
                 }
 
                 ShapePath {
+                    strokeColor: "#ffffff"
                     strokeWidth: maskRectOuter.sw
-                    strokeColor: "black"
                     fillColor: "transparent"
-                    capStyle: ShapePath.FlatCap
-
-                    dashPattern: [maskRectOuter.perimeter / maskRectOuter.sw, maskRectOuter.perimeter / maskRectOuter.sw]
-                    dashOffset: (maskRectOuter.perimeter - maskRectOuter.drawProgress) / maskRectOuter.sw
-
-                    startX: maskRectOuter.inset
-                    startY: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.r
-
-                    PathLine { x: maskRectOuter.inset; y: maskRectOuter.inset + maskRectOuter.r }
                     PathArc {
                         x: maskRectOuter.inset + maskRectOuter.r; y: maskRectOuter.inset
                         radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise
@@ -439,9 +431,11 @@ Item {
         Rectangle {
             id: innerBg
             anchors.fill: parent
-            anchors.margins: -root.s(1)
+            anchors.margins: Config.borderWidth > 0 ? -root.s(1) : 0
             clip: true
-            color: root.base
+            color: Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity)
+            border.width: Config.borderWidth
+            border.color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.5)
             radius: root.s(10)
 
             layer.enabled: true

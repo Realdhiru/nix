@@ -543,9 +543,9 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: window.s(20)
-            color: window.crust
-            border.color: Qt.alpha(window.surface1, 0.2)
-            border.width: 1
+            color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
+            border.color: window.surface1
+            border.width: Config.borderWidth
             clip: true
 
             Rectangle {
@@ -734,9 +734,9 @@ Item {
                                 Layout.fillHeight: true
                                 Layout.preferredWidth: window.s(200)
                                 radius: window.s(14)
-                                color: window.base
+                                color: Config.cardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.cardOpacity) : "transparent"
                                 border.color: Qt.alpha(window.surface1, 0.3)
-                                border.width: 1
+                                border.width: Config.borderWidth
 
                                 ColumnLayout {
                                     anchors.centerIn: parent
@@ -775,9 +775,9 @@ Item {
                                 Layout.fillHeight: true
                                 Layout.preferredWidth: window.s(300)
                                 radius: window.s(14)
-                                color: window.base
+                                color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : "transparent"
                                 border.color: Qt.alpha(window.surface1, 0.3)
-                                border.width: 1
+                                border.width: Config.borderWidth
 
                                 ColumnLayout {
                                     anchors.centerIn: parent
@@ -799,9 +799,9 @@ Item {
                                 Layout.fillHeight: true
                                 Layout.preferredWidth: window.s(200)
                                 radius: window.s(14)
-                                color: window.base
+                                color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : "transparent"
                                 border.color: Qt.alpha(window.surface1, 0.3)
-                                border.width: 1
+                                border.width: Config.borderWidth
 
                                 ColumnLayout {
                                     anchors.centerIn: parent
@@ -869,9 +869,9 @@ Item {
                                 Layout.fillHeight: true
                                 Layout.preferredWidth: window.s(400) 
                                 radius: window.s(14)
-                                color: window.base
+                                color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : "transparent"
                                 border.color: Qt.alpha(window.surface1, 0.3)
-                                border.width: 1
+                                border.width: Config.borderWidth
 
                                 opacity: introMidLeft
                                 transform: Translate { x: window.s(-30) * (1 - introMidLeft) }
@@ -913,7 +913,7 @@ Item {
                                                 Rectangle {
                                                     anchors.fill: parent
                                                     radius: window.s(4) 
-                                                    color: window.surface0
+                                                    color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
                                                     visible: !model.isTarget
                                                     opacity: barMa.containsMouse ? 0.7 : 1.0
                                                     Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutCubic } }
@@ -953,9 +953,9 @@ Item {
                                 Layout.fillHeight: true
                                 Layout.preferredWidth: window.s(300)
                                 radius: window.s(14)
-                                color: window.base
+                                color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : "transparent"
                                 border.color: Qt.alpha(window.surface1, 0.3)
-                                border.width: 1
+                                border.width: Config.borderWidth
 
                                 opacity: introMidRight
                                 transform: Translate { x: window.s(30) * (1 - introMidRight) }
@@ -986,7 +986,7 @@ Item {
                                                 width: window.s(18) 
                                                 height: window.s(18) 
                                                 radius: window.s(4)
-                                                color: model.total === -1 ? "transparent" : (model.total === 0 ? window.surface0 : Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, Math.min(1.0, 0.3 + 0.7 * (model.total / window.maxMonthTotal))))
+                                                color: model.total === -1 ? "transparent" : (model.total === 0 ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08) : Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, Math.min(1.0, 0.3 + 0.7 * (model.total / window.maxMonthTotal))))
                                                 Behavior on color { ColorAnimation { duration: 700; easing.type: Easing.OutQuint } }
 
                                                 border.color: model.isTarget ? window.text : "transparent"
@@ -1024,9 +1024,9 @@ Item {
                             Layout.fillWidth: true
                             Layout.fillHeight: true 
                             radius: window.s(14)
-                            color: window.base
+                            color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : "transparent"
                             border.color: Qt.alpha(window.surface1, 0.3)
-                            border.width: 1
+                            border.width: Config.borderWidth
 
                             opacity: introBottom
                             transform: Translate { y: window.s(30) * (1 - introBottom) }
@@ -1135,7 +1135,7 @@ Item {
                                             Item {
                                                 Layout.fillWidth: true
                                                 height: window.s(10)
-                                                Rectangle { anchors.fill: parent; radius: window.s(5); color: window.crust }
+                                                Rectangle { anchors.fill: parent; radius: window.s(5); color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08) }
                                                 Rectangle {
                                                     height: parent.height
                                                     // Tied to the synchronized app bars state
@@ -1251,9 +1251,9 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: window.s(260)
                             radius: window.s(14)
-                            color: window.base
+                            color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : "transparent"
                             border.color: Qt.alpha(window.surface1, 0.3)
-                            border.width: 1
+                            border.width: Config.borderWidth
 
                             opacity: introMidLeft
                             transform: Translate { y: window.s(20) * (1 - introMidLeft) }
@@ -1436,9 +1436,9 @@ Item {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             radius: window.s(14)
-                            color: window.base
+                            color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : "transparent"
                             border.color: Qt.alpha(window.surface1, 0.3)
-                            border.width: 1
+                            border.width: Config.borderWidth
 
                             opacity: introBottom
                             transform: Translate { y: window.s(30) * (1 - introBottom) }
@@ -1537,7 +1537,7 @@ Item {
                                         Item {
                                             Layout.fillWidth: true
                                             height: window.s(10)
-                                            Rectangle { anchors.fill: parent; radius: window.s(5); color: window.crust }
+                                            Rectangle { anchors.fill: parent; radius: window.s(5); color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08) }
                                             Rectangle {
                                                 height: parent.height
                                                 width: Math.max(window.s(10), parent.width * (model.percent / 100.0) * window.introAppBars)

@@ -442,9 +442,9 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: Math.round(20 * window.sf)
-            color: window.base
+            color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
             border.color: window.surface0
-            border.width: 1
+            border.width: Config.borderWidth
             clip: true
 
             // =======================================================
@@ -681,9 +681,9 @@ Item {
                             Rectangle {
                                 anchors.fill: parent
                                 radius: Math.round(28 * window.sf)
-                                color: isHighlighted ? window.textAccent : (hrMa.containsMouse ? window.surface2 : window.surface0)
-                                border.color: isHighlighted ? "transparent" : (hrMa.containsMouse ? window.textAccent : window.surface1)
-                                border.width: 1
+                                color: isHighlighted ? window.textAccent : (hrMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08))
+                                border.color: isHighlighted ? "transparent" : (hrMa.containsMouse ? window.textAccent : Qt.alpha(window.surface1, 0.3))
+                                border.width: Config.borderWidth
                                 
                                 Behavior on color { ColorAnimation { duration: 200 } }
                                 
@@ -733,10 +733,10 @@ Item {
                 anchors.margins: Math.round(40 * window.sf)
                 width: Math.round(320 * window.sf)
                 height: Math.round(420 * window.sf)
-                color: Qt.alpha(window.surface0, 0.2) 
+                color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.06) 
                 radius: Math.round(14 * window.sf)
-                border.color: Qt.alpha(window.surface1, 0.4)
-                border.width: 1
+                border.color: Qt.alpha(window.surface1, 0.3)
+                border.width: Config.borderWidth
                 z: 10 
 
                 opacity: introCalendar
@@ -773,7 +773,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: Math.round(4 * window.sf)
                             radius: Math.round(2 * window.sf)
-                            color: window.surface0
+                            color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
                             
                             Rectangle {
                                 width: parent.width * parent.parent.yearPct
@@ -875,8 +875,8 @@ Item {
                                 color: isToday ? window.textAccent : (dayMa.containsMouse ? Qt.alpha(window.surface2, 0.4) : "transparent")
                                 radius: Math.round(10 * window.sf)
                                 scale: dayMa.containsMouse ? 1.2 : 1.0
-                                border.color: isToday ? window.surface0 : (dayMa.containsMouse ? window.overlay0 : "transparent")
-                                border.width: isToday || dayMa.containsMouse ? 1 : 0
+                                border.color: isToday ? window.textAccent : (dayMa.containsMouse ? window.overlay0 : "transparent")
+                                border.width: dayMa.containsMouse ? Config.borderWidth : 0
                                 
                                 Behavior on color { ColorAnimation { duration: 150 } }
                                 Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
@@ -887,7 +887,7 @@ Item {
                                     font.family: "JetBrains Mono"
                                     font.weight: isToday ? Font.Black : Font.Bold
                                     font.pixelSize: Math.round(14 * window.sf)
-                                    color: isToday ? window.base : (isCurrentMonth ? window.text : window.surface0)
+                                    color: isToday ? window.base : (isCurrentMonth ? window.text : Qt.alpha(window.text, 0.25))
                                     Behavior on color { ColorAnimation { duration: 200 } }
                                 }
 
@@ -961,10 +961,10 @@ Item {
                             color: window.text
                             placeholderTextColor: window.overlay0
                             background: Rectangle {
-                                color: window.surface0
+                                color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
                                 radius: Math.round(18 * window.sf)
                                 border.color: citySearchInput.activeFocus ? window.textAccent : "transparent"
-                                border.width: 1
+                                border.width: Config.borderWidth
                             }
                             leftPadding: Math.round(15 * window.sf)
                             rightPadding: Math.round(15 * window.sf)
@@ -1016,7 +1016,7 @@ Item {
                                 width: searchResultsList.width
                                 height: Math.round(36 * window.sf)
                                 radius: Math.round(8 * window.sf)
-                                color: itemMa.containsMouse ? window.surface1 : window.surface0
+                                color: itemMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
                                 
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter

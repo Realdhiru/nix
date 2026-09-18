@@ -64,7 +64,7 @@ case "$MODE" in
             --border-radius=12
             --keyboard-focus=on-demand
             --with-nth=1
-            --match-nth=1
+            --match-nth=3
             --accept-nth=2
             --nth-delimiter=$'\t'
             --prompt="  "
@@ -108,7 +108,7 @@ case "$MODE" in
                 else if (ext ~ /^(zip|tar|gz|bz2|xz|7z|rar)$/) { glyph = "󰛫"; }
                 else if (ext ~ /^(nix|lua|sh|bash|py|js|ts|rs|go|c|cpp|h|hpp)$/) { glyph = "󰅩"; }
                 else if (ext ~ /^(md|txt|org|json|yaml|yml|toml|conf|ini)$/) { glyph = "󰈙"; }
-                printf "%s %-28s  %s\t%s\n", glyph, fname, dir, $0;
+                printf "%s %-28s  %s\t%s\t%s\n", glyph, fname, dir, $0, fname;
             }' | \
             fuzzel "${FUZZEL_ARGS[@]}" 2>/dev/null || true
         )

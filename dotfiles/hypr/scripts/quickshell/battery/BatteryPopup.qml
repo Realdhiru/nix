@@ -491,9 +491,9 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: window.s(20)
-            color: window.base
-            border.color: window.surface0 
-            border.width: 1
+            color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
+            border.color: window.surface0
+            border.width: Config.borderWidth
             clip: true
 
             Rectangle {
@@ -540,9 +540,9 @@ Item {
                                 Layout.preferredWidth: window.s(96)
                                 Layout.preferredHeight: window.s(38)
                                 radius: window.s(12)
-                                color: hotspotMa.containsMouse || window.showHotspotMenu ? window.surface1 : window.surface0
-                                border.color: hotspotMa.containsMouse || window.showHotspotMenu ? window.surface2 : window.surface1
-                                border.width: 1
+                                color: hotspotMa.containsMouse || window.showHotspotMenu ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
+                                border.color: hotspotMa.containsMouse || window.showHotspotMenu ? window.surface2 : Qt.alpha(window.surface1, 0.3)
+                                border.width: Config.borderWidth
                                 clip: true
 
                                 Behavior on color { ColorAnimation { duration: 150 } }
@@ -577,9 +577,9 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: window.s(38)
                                 radius: window.s(12)
-                                color: window.surface0
-                                border.color: window.surface1
-                                border.width: 1
+                                color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
+                                border.color: Qt.alpha(window.surface1, 0.3)
+                                border.width: Config.borderWidth
 
                                 Row {
                                     id: batTimeRow
@@ -620,9 +620,9 @@ Item {
                                 Layout.preferredWidth: dndMa.containsMouse ? window.s(38) + dndText.implicitWidth + window.s(8) : window.s(38)
                                 Layout.preferredHeight: window.s(38)
                                 radius: window.s(12)
-                                color: window.dndEnabled ? Qt.alpha(window.red, 0.2) : (dndMa.containsMouse ? window.surface1 : window.surface0)
-                                border.color: window.dndEnabled ? window.red : (dndMa.containsMouse ? window.surface2 : window.surface1)
-                                border.width: 1
+                                color: window.dndEnabled ? Qt.alpha(window.red, 0.2) : (dndMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08))
+                                border.color: window.dndEnabled ? window.red : (dndMa.containsMouse ? window.surface2 : Qt.alpha(window.surface1, 0.3))
+                                border.width: Config.borderWidth
                                 clip: true
 
                                 Behavior on Layout.preferredWidth { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
@@ -671,9 +671,9 @@ Item {
                             visible: Layout.preferredHeight > 0
                             clip: true
                             radius: window.s(14)
-                            color: window.surface0
-                            border.color: window.surface2
-                            border.width: 1
+                            color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
+                            border.color: Qt.alpha(window.surface1, 0.3)
+                            border.width: Config.borderWidth
 
                             Behavior on Layout.preferredHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
@@ -1032,7 +1032,7 @@ Item {
                                     anchors.fill: parent
                                     anchors.topMargin: window.s(10)
                                     anchors.bottomMargin: window.s(4)
-                                    color: headerMa.containsMouse ? window.surface1 : "transparent"
+                                    color: headerMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.10) : "transparent"
                                     radius: window.s(8)
                                     Behavior on color { ColorAnimation { duration: 150 } }
 
@@ -1155,9 +1155,9 @@ Item {
                                     width: parent.width
                                     height: cardContent.height + window.s(24)
                                     radius: window.s(14)
-                                    color: cardHover.containsMouse ? window.surface1 : window.surface0
-                                    border.color: cardHover.containsMouse ? window.surface2 : "transparent"
-                                    border.width: 1
+                                    color: cardHover.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.14) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
+                                    border.color: cardHover.containsMouse ? Qt.alpha(window.surface2, 0.4) : "transparent"
+                                    border.width: Config.borderWidth
                                     clip: true
                                     Behavior on color { ColorAnimation { duration: 200 } }
                                     Behavior on border.color { ColorAnimation { duration: 200 } }
@@ -1275,12 +1275,12 @@ Item {
                                                         if (isPrimary) {
                                                             return actionBtnMa.containsMouse ? window.blue : Qt.darker(window.blue, 1.2)
                                                         } else {
-                                                            return actionBtnMa.containsMouse ? window.surface2 : window.surface1
+                                                            return actionBtnMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
                                                         }
                                                     }
                                                     
-                                                    border.color: isPrimary ? window.blue : window.surface2
-                                                    border.width: 1
+                                                    border.color: isPrimary ? window.blue : Qt.alpha(window.surface2, 0.4)
+                                                    border.width: Config.borderWidth
                                                     
                                                     Behavior on color { ColorAnimation { duration: 150 } }
 
@@ -1395,10 +1395,13 @@ Item {
                                 }
                             }
 
+                            border.color: Qt.alpha(window.text, 0.10)
+                            border.width: 1
+
                             gradient: Gradient {
                                 orientation: Gradient.Vertical
-                                GradientStop { position: 0.0; color: window.surface0 }
-                                GradientStop { position: 1.0; color: window.base }
+                                GradientStop { position: 0.0; color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.14) }
+                                GradientStop { position: 1.0; color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.06) }
                             }
 
                             Rectangle {
@@ -1461,10 +1464,10 @@ Item {
                                         
                                         ctx.lineCap = "round";
                                         
-                                        ctx.lineWidth = window.s(8);
+                                        ctx.lineWidth = window.s(10);
                                         ctx.beginPath();
                                         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-                                        ctx.strokeStyle = window.surface1;
+                                        ctx.strokeStyle = Qt.rgba(window.text.r, window.text.g, window.text.b, 0.22).toString();
                                         ctx.stroke();
                                         
                                         var fillGrad = ctx.createLinearGradient(0, height, width, 0);
@@ -1594,9 +1597,9 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: window.s(96)
                                 radius: window.s(14)
-                                color: window.surface0
-                                border.color: window.surface1
-                                border.width: 1
+                                color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.06)
+                                border.color: Qt.alpha(window.surface1, 0.3)
+                                border.width: Config.borderWidth
 
                                 opacity: introSliders
                                 transform: Translate { y: window.s(20) * (1.0 - introSliders) }
@@ -1642,9 +1645,9 @@ Item {
                                             Rectangle {
                                                 anchors.fill: parent
                                                 radius: window.s(9)
-                                                color: window.surface1
-                                                border.color: window.surface2
-                                                border.width: 1
+                                                color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.10)
+                                                border.color: Qt.alpha(window.surface2, 0.3)
+                                                border.width: Config.borderWidth
                                                 clip: true
 
                                                 Rectangle {
@@ -1741,9 +1744,9 @@ Item {
                                             Rectangle {
                                                 anchors.fill: parent
                                                 radius: window.s(9)
-                                                color: window.surface1
-                                                border.color: window.surface2
-                                                border.width: 1
+                                                color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.10)
+                                                border.color: Qt.alpha(window.surface2, 0.3)
+                                                border.width: Config.borderWidth
                                                 clip: true
 
                                                 Rectangle {
@@ -1814,9 +1817,9 @@ Item {
                                         property color c1: window[baseColor] || window.surface1
                                         property color c2: Qt.lighter(c1, 1.2)
 
-                                        color: actionMa.containsMouse || actionCapsule.isSelected ? window.surface1 : window.surface0
-                                        border.color: actionMa.containsMouse || actionCapsule.isSelected ? c1 : window.surface2
-                                        border.width: actionMa.containsMouse || actionCapsule.isSelected ? 2 : 1
+                                        color: actionMa.containsMouse || actionCapsule.isSelected ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
+                                        border.color: actionMa.containsMouse || actionCapsule.isSelected ? c1 : "transparent"
+                                        border.width: actionMa.containsMouse || actionCapsule.isSelected ? Math.max(1, Config.borderWidth) : Config.borderWidth
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                         Behavior on border.color { ColorAnimation { duration: 200 } }
                                         
@@ -1987,9 +1990,9 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: window.s(54)
                                 radius: window.s(14)
-                                color: window.surface0 
-                                border.color: window.surface1
-                                border.width: 1
+                                color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.06)
+                                border.color: Qt.alpha(window.surface1, 0.3)
+                                border.width: Config.borderWidth
 
                                 opacity: introProfiles
                                 transform: Translate { y: window.s(20) * (1.0 - introProfiles) }

@@ -59,9 +59,9 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#d91e1e2e" // Translucent base
-        border.color: "#33ffffff"
-        border.width: 1
+        color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
+        border.color: window.surface0
+        border.width: Config.borderWidth
         radius: s(20)
 
         ColumnLayout {
@@ -113,10 +113,10 @@ Item {
                     color: window.text
                     placeholderTextColor: window.overlay0
                     background: Rectangle {
-                        color: window.surface0
+                        color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
                         radius: s(18)
                         border.color: apiKeyInput.activeFocus ? window.lavender : "transparent"
-                        border.width: 1
+                        border.width: Config.borderWidth
                     }
                     leftPadding: s(15)
                     rightPadding: s(15)
@@ -132,10 +132,10 @@ Item {
                     color: window.text
                     placeholderTextColor: window.overlay0
                     background: Rectangle {
-                        color: window.surface0
+                        color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
                         radius: s(18)
                         border.color: citySearchInput.activeFocus ? window.lavender : "transparent"
-                        border.width: 1
+                        border.width: Config.borderWidth
                     }
                     leftPadding: s(15)
                     rightPadding: s(15)
@@ -213,7 +213,7 @@ Item {
                     width: searchResultsList.width
                     height: s(36)
                     radius: s(8)
-                    color: itemMa.containsMouse ? window.surface1 : window.surface0
+                    color: itemMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter

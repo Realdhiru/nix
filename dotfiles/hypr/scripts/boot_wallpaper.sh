@@ -16,13 +16,13 @@ WALL=""
 
 if [ -f "$HOME/.cache/current_wallpaper.txt" ]; then
     CACHED="$(cat "$HOME/.cache/current_wallpaper.txt")"
-    if [ -n "$CACHED" ] && [ -f "$CACHED" ]; then
+    if [ -n "$CACHED" ] && [ -f "$CACHED" ] && [[ "$CACHED" != *"/previews/"* ]]; then
         WALL="$CACHED"
     fi
 fi
 
 if [ -z "$WALL" ]; then
-    WALL="$(find "$HOME/Pictures/Wallpapers" -not -path '*/.*' -type f \( \
+    WALL="$(find "$HOME/Pictures/Wallpapers" -not -path '*/.*' -not -path '*/previews/*' -not -path '*/scripts/*' -type f \( \
         -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o \
         -iname '*.gif' -o -iname '*.mp4' -o -iname '*.mkv' -o \
         -iname '*.mov' -o -iname '*.webm' \) -printf '%T@ %p\n' 2>/dev/null \

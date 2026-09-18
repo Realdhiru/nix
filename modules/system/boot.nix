@@ -3,7 +3,7 @@
 {
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.loader.timeout = 3;
+  boot.loader.timeout = 0;
   boot.loader.systemd-boot.consoleMode = "max";
 
   boot.plymouth.enable = false;

@@ -50,32 +50,42 @@ ShellRoot {
         property string statusText: "Locked"
     }
 
+    property string queuedPassword: ""
+
     Timer {
-        id: pamActionTimer
-        interval: 50
-        onTriggered: pam.start()
+        id: quitTimer
+        interval: 160
+        repeat: false
+        onTriggered: Qt.quit()
     }
 
     PamContext {
         id: pam
         
-        Component.onCompleted: pamActionTimer.start()
+        Component.onCompleted: pam.start()
 
         onCompleted: (result) => {
             lockUI.authenticating = false;
             if (result === PamResult.Success) {
-                exitSequence.start();
+                rootLock.locked = false;
+                quitTimer.start();
             } else {
                 lockUI.failed = true;
                 lockUI.statusText = "Access Denied";
-                if (typeof inputField !== "undefined") {
-                    inputField.text = "";
-                    inputField.oldText = "";
-                }
-                if (typeof passModel !== "undefined") {
+                if (typeof inputField !== "undefined" && inputField.text === "") {
                     passModel.clear();
                 }
-                pamActionTimer.start();
+                pam.start();
+            }
+        }
+    }
+
+    Connections {
+        target: pam
+        function onResponseRequiredChanged() {
+            if (pam.responseRequired && root.queuedPassword !== "") {
+                pam.respond(root.queuedPassword);
+                root.queuedPassword = "";
             }
         }
     }
@@ -373,53 +383,22 @@ ShellRoot {
                     onClicked: (event) => {
                         inputField.forceActiveFocus();
                     }
-                }
-
-                Item {
+                }                Item {
                     anchors.fill: parent
 
-                    // Top Dynamic Tech Telemetry / Hacker Status
-                    Text {
-                        anchors.top: parent.top
-                        anchors.topMargin: Math.max(36, Math.round(44 * screenRoot.sc))
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: screenRoot.techStatusText
-                        font.family: "JetBrains Mono"
-                        font.pixelSize: Math.max(14, Math.round(screenRoot.height * 0.020))
-                        font.weight: Font.SemiBold
-                        color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.80)
-                        horizontalAlignment: Text.AlignHCenter
-                        width: Math.min(implicitWidth, parent.width * 0.90)
-                        elide: Text.ElideRight
-
-                        opacity: screenRoot.introState
-                        transform: Translate { y: (-16 * screenRoot.sc) * (1.0 - screenRoot.introState) }
-                    }
-
-                    // Central Floating Capsule Card (~24% screen width, ~62% screen height)
+                    // Central Floating Clock Card (Clean Vertical Rectangle)
                     Rectangle {
                         id: centerCard
                         anchors.centerIn: parent
-                        width: Math.round(Math.min(screenRoot.width * 0.24, 460 * screenRoot.sc))
-                        height: Math.round(Math.min(screenRoot.height * 0.62, 640 * screenRoot.sc))
-                        radius: Math.round(centerCard.width * 0.12)
-                        color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.22)
-                        border.width: 1
-                        border.color: Qt.rgba(255, 255, 255, 0.18)
+                        width: Math.round(Math.min(screenRoot.width * 0.20, 210 * screenRoot.sc))
+                        height: Math.round(Math.min(screenRoot.height * 0.48, 350 * screenRoot.sc))
+                        radius: Math.round(26 * screenRoot.sc)
+                        color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.26)
+                        border.width: Config.borderWidth > 0 ? Config.borderWidth : 1
+                        border.color: Qt.rgba(255, 255, 255, 0.16)
 
-                        scale: 0.94 + 0.06 * screenRoot.introState
+                        scale: 0.96 + 0.04 * screenRoot.introState
                         opacity: screenRoot.introState
-                        transform: Translate { y: (28 * screenRoot.sc) * (1.0 - screenRoot.introState) }
-
-                        // Outer subtle ambient glow / depth border
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: -1
-                            radius: centerCard.radius + 1
-                            color: "transparent"
-                            border.width: 1
-                            border.color: Qt.rgba(255, 255, 255, 0.06)
-                        }
 
                         // Top frosted specular reflection highlight
                         Rectangle {
@@ -428,13 +407,13 @@ ShellRoot {
                             width: Math.max(0, parent.width - centerCard.radius * 2)
                             anchors.topMargin: 1
                             height: 1
-                            color: Qt.rgba(255, 255, 255, 0.24)
+                            color: Qt.rgba(255, 255, 255, 0.25)
                             radius: 1
                         }
 
                         Column {
                             anchors.centerIn: parent
-                            spacing: 0
+                            spacing: Math.round(2 * screenRoot.sc)
 
                             // Stacked Clock: Hours
                             Text {
@@ -442,7 +421,7 @@ ShellRoot {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: Qt.formatDateTime(new Date(), "hh")
                                 font.family: "JetBrains Mono"
-                                font.pixelSize: Math.round(centerCard.height * 0.22)
+                                font.pixelSize: Math.round(92 * screenRoot.sc)
                                 font.weight: Font.Black
                                 font.letterSpacing: 2 * screenRoot.sc
                                 color: root.blue
@@ -454,271 +433,23 @@ ShellRoot {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: Qt.formatDateTime(new Date(), "mm")
                                 font.family: "JetBrains Mono"
-                                font.pixelSize: Math.round(centerCard.height * 0.22)
+                                font.pixelSize: Math.round(92 * screenRoot.sc)
                                 font.weight: Font.Black
                                 font.letterSpacing: 2 * screenRoot.sc
                                 color: root.lockText
                             }
 
-                            Item { width: 1; height: Math.round(centerCard.height * 0.035) }
+                            Item { width: 1; height: Math.round(16 * screenRoot.sc) }
 
-                            // Date
+                            // Date Text (Clean, no pill background)
                             Text {
                                 id: dateText
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: Qt.formatDateTime(new Date(), "dd MMM dddd")
                                 font.family: "JetBrains Mono"
-                                font.pixelSize: Math.round(centerCard.height * 0.034)
-                                font.weight: Font.Bold
-                                color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.68)
-                            }
-
-                            Item { width: 1; height: Math.round(centerCard.height * 0.045) }
-
-                            // Interactive Unlock Pill
-                            Rectangle {
-                                id: pinPill
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: Math.round(centerCard.width * 0.62)
-                                height: Math.round(centerCard.height * 0.082)
-                                radius: height / 2
-                                clip: true
-
-                                color: lockUI.failed
-                                    ? Qt.rgba(root.red.r, root.red.g, root.red.b, 0.25)
-                                    : (lockUI.authenticating
-                                        ? Qt.rgba(root.peach.r, root.peach.g, root.peach.b, 0.20)
-                                        : (passModel.count > 0
-                                            ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.35)
-                                            : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.22)))
-                                border.width: 1
-                                border.color: lockUI.failed
-                                    ? root.red
-                                    : (lockUI.authenticating
-                                        ? root.peach
-                                        : (passModel.count > 0
-                                            ? Qt.rgba(root.mauve.r, root.mauve.g, root.mauve.b, 0.80)
-                                            : (pinMouse.containsMouse
-                                                ? Qt.rgba(255, 255, 255, 0.32)
-                                                : Qt.rgba(255, 255, 255, 0.18))))
-
-                                scale: pinMouse.containsMouse ? 1.02 : (lockUI.authenticating ? 0.98 : 1.0)
-                                Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                                Behavior on color { ColorAnimation { duration: 180 } }
-                                Behavior on border.color { ColorAnimation { duration: 180 } }
-
-                                // Top frosted specular highlight for pill
-                                Rectangle {
-                                    anchors.top: parent.top
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    width: Math.max(0, parent.width - pinPill.radius * 2)
-                                    anchors.topMargin: 1
-                                    height: 1
-                                    color: Qt.rgba(255, 255, 255, 0.20)
-                                    radius: 1
-                                }
-
-                                transform: Translate { id: shakeTranslate; x: 0 }
-
-                                SequentialAnimation {
-                                    id: shakeAnim
-                                    NumberAnimation { target: shakeTranslate; property: "x"; from: 0; to: -12 * screenRoot.sc; duration: 70; easing.type: Easing.InOutQuad }
-                                    NumberAnimation { target: shakeTranslate; property: "x"; from: -12 * screenRoot.sc; to: 12 * screenRoot.sc; duration: 70; easing.type: Easing.InOutQuad }
-                                    NumberAnimation { target: shakeTranslate; property: "x"; from: 12 * screenRoot.sc; to: -6 * screenRoot.sc; duration: 60; easing.type: Easing.InOutQuad }
-                                    NumberAnimation { target: shakeTranslate; property: "x"; from: -6 * screenRoot.sc; to: 6 * screenRoot.sc; duration: 60; easing.type: Easing.InOutQuad }
-                                    NumberAnimation { target: shakeTranslate; property: "x"; from: 6 * screenRoot.sc; to: 0; duration: 60; easing.type: Easing.InOutQuad }
-                                }
-
-                                Connections {
-                                    target: lockUI
-                                    function onFailedChanged() {
-                                        if (lockUI.failed) shakeAnim.restart();
-                                    }
-                                }
-
-                                // Placeholder when idle
-                                Text {
-                                    anchors.centerIn: parent
-                                    visible: opacity > 0.01
-                                    opacity: (passModel.count === 0 && !lockUI.authenticating && !lockUI.failed) ? 1.0 : 0.0
-                                    text: "Use Me ;)"
-                                    font.family: "JetBrains Mono"
-                                    font.italic: true
-                                    font.weight: Font.Medium
-                                    font.pixelSize: Math.round(pinPill.height * 0.34)
-                                    color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.45)
-                                    Behavior on opacity { NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
-                                }
-
-                                // Status when authenticating
-                                Text {
-                                    anchors.centerIn: parent
-                                    visible: lockUI.authenticating
-                                    text: "Verifying..."
-                                    font.family: "JetBrains Mono"
-                                    font.weight: Font.Bold
-                                    font.pixelSize: Math.round(pinPill.height * 0.32)
-                                    color: root.peach
-
-                                    SequentialAnimation on opacity {
-                                        running: lockUI.authenticating
-                                        loops: Animation.Infinite
-                                        NumberAnimation { from: 1.0; to: 0.5; duration: 350; easing.type: Easing.InOutSine }
-                                        NumberAnimation { from: 0.5; to: 1.0; duration: 350; easing.type: Easing.InOutSine }
-                                    }
-                                }
-
-                                // Status when failed
-                                Text {
-                                    anchors.centerIn: parent
-                                    visible: lockUI.failed && passModel.count === 0
-                                    text: "Access Denied"
-                                    font.family: "JetBrains Mono"
-                                    font.weight: Font.Bold
-                                    font.pixelSize: Math.round(pinPill.height * 0.32)
-                                    color: root.red
-                                }
-
-                                ListModel { id: passModel }
-
-                                // Password dots with fluid horizontal interpolation & soft blossoming
-                                Item {
-                                    id: dotsContainer
-                                    anchors.centerIn: parent
-                                    readonly property real dotWidth: Math.round(14 * screenRoot.sc)
-                                    readonly property real dotGap: Math.max(3, Math.round(4 * screenRoot.sc))
-                                    width: Math.min(pinPill.width - 24 * screenRoot.sc,
-                                                    Math.max(0, passModel.count > 0 ? (passModel.count * dotWidth + (passModel.count - 1) * dotGap) : 0))
-                                    height: pinPill.height
-                                    visible: passModel.count > 0 && !lockUI.authenticating
-
-                                    Behavior on width {
-                                        NumberAnimation { duration: 80; easing.type: Easing.OutQuad }
-                                    }
-
-                                    ListView {
-                                        id: dotsList
-                                        anchors.fill: parent
-                                        orientation: ListView.Horizontal
-                                        interactive: false
-                                        model: passModel
-                                        spacing: dotsContainer.dotGap
-
-                                        delegate: Item {
-                                            width: dotsContainer.dotWidth
-                                            height: pinPill.height
-
-                                            Rectangle {
-                                                anchors.centerIn: parent
-                                                width: Math.round(8 * screenRoot.sc)
-                                                height: width
-                                                radius: width / 2
-                                                color: lockUI.failed ? root.red : root.lockText
-                                                antialiasing: true
-                                            }
-                                        }
-
-                                        add: Transition {
-                                            ParallelAnimation {
-                                                NumberAnimation { property: "scale"; from: 0.1; to: 1.0; duration: 85; easing.type: Easing.OutCubic }
-                                                NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 65; easing.type: Easing.OutQuad }
-                                            }
-                                        }
-
-                                        displaced: Transition {
-                                            NumberAnimation { property: "x"; duration: 80; easing.type: Easing.OutQuad }
-                                        }
-
-                                        remove: Transition {
-                                            ParallelAnimation {
-                                                NumberAnimation { property: "scale"; to: 0.0; duration: 70; easing.type: Easing.InQuad }
-                                                NumberAnimation { property: "opacity"; to: 0.0; duration: 50 }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: pinMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    enabled: !screenRoot.isPlayingIntro
-                                    onClicked: {
-                                        inputField.forceActiveFocus();
-                                    }
-                                }
-
-                                TextInput {
-                                    id: inputField
-                                    anchors.fill: parent
-                                    opacity: 0
-                                    echoMode: TextInput.Normal
-                                    enabled: !screenRoot.isPlayingIntro
-
-                                    property string oldText: ""
-
-                                    Component.onCompleted: forceActiveFocus()
-
-                                    onActiveFocusChanged: {
-                                        if (!activeFocus && !screenRoot.isPlayingIntro) {
-                                            forceActiveFocus();
-                                        }
-                                    }
-
-                                    Keys.onPressed: (event) => {
-                                        if (event.key === Qt.Key_Escape) {
-                                            text = "";
-                                            oldText = "";
-                                            passModel.clear();
-                                            lockUI.failed = false;
-                                            event.accepted = true;
-                                        }
-                                    }
-
-                                    onAccepted: {
-                                        if (text.length > 0 && pam.responseRequired && !lockUI.authenticating) {
-                                            lockUI.authenticating = true;
-                                            lockUI.statusText = "Authenticating...";
-                                            lockUI.failed = false;
-                                            pam.respond(text);
-                                            text = "";
-                                            oldText = "";
-                                            passModel.clear();
-                                        }
-                                    }
-
-                                    onTextChanged: {
-                                        if (lockUI.authenticating) return;
-
-                                        if (text !== oldText) {
-                                            if (text.length > oldText.length) {
-                                                let addBatch = [];
-                                                for (let i = oldText.length; i < text.length; i++) {
-                                                    addBatch.push({ "isDot": true });
-                                                }
-                                                if (addBatch.length > 0) passModel.append(addBatch);
-                                            } else if (text.length < oldText.length) {
-                                                let diff = oldText.length - text.length;
-                                                for (let i = 0; i < diff; i++) {
-                                                    passModel.remove(passModel.count - 1);
-                                                }
-                                            } else {
-                                                passModel.clear();
-                                                let rebuildBatch = [];
-                                                for (let i = 0; i < text.length; i++) {
-                                                    rebuildBatch.push({ "isDot": true });
-                                                }
-                                                if (rebuildBatch.length > 0) passModel.append(rebuildBatch);
-                                            }
-                                            oldText = text;
-                                        }
-
-                                        if (text.length > 0) {
-                                            lockUI.failed = false;
-                                        }
-                                    }
-                                }
+                                font.pixelSize: Math.round(13 * screenRoot.sc)
+                                font.weight: Font.SemiBold
+                                color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.75)
                             }
                         }
 
@@ -733,28 +464,319 @@ ShellRoot {
                         }
                     }
 
-                    // Bottom Hyprland Daily Quote (Splash)
+                    // Center Bottom: Small, Nonchalant Password Input Pill
+                    Rectangle {
+                        id: pinPill
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: Math.max(16, Math.round(18 * screenRoot.sc))
+                        width: Math.round(220 * screenRoot.sc)
+                        height: Math.round(36 * screenRoot.sc)
+                        radius: height / 2
+                        clip: true
+
+                        color: lockUI.failed
+                            ? Qt.rgba(root.red.r, root.red.g, root.red.b, 0.25)
+                            : (lockUI.authenticating
+                                ? Qt.rgba(root.peach.r, root.peach.g, root.peach.b, 0.20)
+                                : (passModel.count > 0
+                                    ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.35)
+                                    : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.22)))
+                        border.width: Config.borderWidth > 0 ? Config.borderWidth : 1
+                        border.color: lockUI.failed
+                            ? root.red
+                            : (lockUI.authenticating
+                                ? root.peach
+                                : (passModel.count > 0
+                                    ? Qt.rgba(root.mauve.r, root.mauve.g, root.mauve.b, 0.80)
+                                    : (pinMouse.containsMouse
+                                        ? Qt.rgba(255, 255, 255, 0.32)
+                                        : Qt.rgba(255, 255, 255, 0.18))))
+
+                        scale: pinMouse.containsMouse ? 1.02 : (lockUI.authenticating ? 0.98 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on border.color { ColorAnimation { duration: 120 } }
+
+                        // Top specular highlight
+                        Rectangle {
+                            anchors.top: parent.top
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: Math.max(0, parent.width - pinPill.radius * 2)
+                            anchors.topMargin: 1
+                            height: 1
+                            color: Qt.rgba(255, 255, 255, 0.20)
+                            radius: 1
+                        }
+
+                        transform: Translate { id: shakeTranslate; x: 0 }
+
+                        SequentialAnimation {
+                            id: shakeAnim
+                            NumberAnimation { target: shakeTranslate; property: "x"; from: 0; to: -8 * screenRoot.sc; duration: 40; easing.type: Easing.InOutQuad }
+                            NumberAnimation { target: shakeTranslate; property: "x"; from: -8 * screenRoot.sc; to: 8 * screenRoot.sc; duration: 40; easing.type: Easing.InOutQuad }
+                            NumberAnimation { target: shakeTranslate; property: "x"; from: 8 * screenRoot.sc; to: -4 * screenRoot.sc; duration: 35; easing.type: Easing.InOutQuad }
+                            NumberAnimation { target: shakeTranslate; property: "x"; from: -4 * screenRoot.sc; to: 4 * screenRoot.sc; duration: 35; easing.type: Easing.InOutQuad }
+                            NumberAnimation { target: shakeTranslate; property: "x"; from: 4 * screenRoot.sc; to: 0; duration: 30; easing.type: Easing.InOutQuad }
+                        }
+
+                        Connections {
+                            target: lockUI
+                            function onFailedChanged() {
+                                if (lockUI.failed) shakeAnim.restart();
+                            }
+                        }
+
+                        // Placeholder when idle
+                        Text {
+                            id: placeholderText
+                            anchors.centerIn: parent
+                            visible: opacity > 0.01
+                            opacity: (passModel.count === 0 && !lockUI.authenticating && !lockUI.failed) ? 1.0 : 0.0
+                            text: "Password..."
+                            font.family: "JetBrains Mono"
+                            font.italic: true
+                            font.weight: Font.Medium
+                            font.pixelSize: Math.round(11 * screenRoot.sc)
+                            color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.45)
+                            Behavior on opacity { NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
+                        }
+
+                        // Status when authenticating
+                        Text {
+                            id: authenticatingText
+                            anchors.centerIn: parent
+                            visible: lockUI.authenticating
+                            text: "Verifying..."
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: Math.round(11 * screenRoot.sc)
+                            color: root.peach
+
+                            SequentialAnimation on opacity {
+                                running: lockUI.authenticating
+                                loops: Animation.Infinite
+                                NumberAnimation { from: 1.0; to: 0.5; duration: 250; easing.type: Easing.InOutSine }
+                                NumberAnimation { from: 0.5; to: 1.0; duration: 250; easing.type: Easing.InOutSine }
+                            }
+                        }
+
+                        // Status when failed
+                        Text {
+                            id: failedText
+                            anchors.centerIn: parent
+                            visible: lockUI.failed && passModel.count === 0
+                            text: "Access Denied"
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: Math.round(11 * screenRoot.sc)
+                            color: root.red
+                        }
+
+                        ListModel { id: passModel }
+
+                        // Password dots with smooth horizontal layout
+                        Item {
+                            id: dotsContainer
+                            anchors.centerIn: parent
+                            readonly property real dotWidth: Math.round(12 * screenRoot.sc)
+                            readonly property real dotGap: Math.max(2, Math.round(3 * screenRoot.sc))
+                            width: Math.min(pinPill.width - 20 * screenRoot.sc,
+                                            Math.max(0, passModel.count > 0 ? (passModel.count * dotWidth + (passModel.count - 1) * dotGap) : 0))
+                            height: pinPill.height
+                            visible: passModel.count > 0 && !lockUI.authenticating
+
+                            Behavior on width {
+                                NumberAnimation { duration: 60; easing.type: Easing.OutQuad }
+                            }
+
+                            ListView {
+                                id: dotsList
+                                anchors.fill: parent
+                                orientation: ListView.Horizontal
+                                interactive: false
+                                model: passModel
+                                spacing: dotsContainer.dotGap
+
+                                delegate: Item {
+                                    width: dotsContainer.dotWidth
+                                    height: pinPill.height
+
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: Math.round(6 * screenRoot.sc)
+                                        height: width
+                                        radius: width / 2
+                                        color: lockUI.failed ? root.red : root.lockText
+                                        antialiasing: true
+                                    }
+                                }
+
+                                add: Transition {
+                                    ParallelAnimation {
+                                        NumberAnimation { property: "scale"; from: 0.1; to: 1.0; duration: 60; easing.type: Easing.OutCubic }
+                                        NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 50; easing.type: Easing.OutQuad }
+                                    }
+                                }
+
+                                displaced: Transition {
+                                    NumberAnimation { property: "x"; duration: 60; easing.type: Easing.OutQuad }
+                                }
+
+                                remove: Transition {
+                                    ParallelAnimation {
+                                        NumberAnimation { property: "scale"; to: 0.0; duration: 50; easing.type: Easing.InQuad }
+                                        NumberAnimation { property: "opacity"; to: 0.0; duration: 40 }
+                                    }
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: pinMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            enabled: !screenRoot.isPlayingIntro
+                            onClicked: {
+                                inputField.forceActiveFocus();
+                            }
+                        }
+
+                        TextInput {
+                            id: inputField
+                            anchors.fill: parent
+                            opacity: 0
+                            echoMode: TextInput.Normal
+                            enabled: !screenRoot.isPlayingIntro
+
+                            property string oldText: ""
+
+                            Component.onCompleted: forceActiveFocus()
+
+                            onActiveFocusChanged: {
+                                if (!activeFocus && !screenRoot.isPlayingIntro) {
+                                    forceActiveFocus();
+                                }
+                            }
+
+                            Keys.onPressed: (event) => {
+                                if (event.key === Qt.Key_Escape) {
+                                    text = "";
+                                    oldText = "";
+                                    passModel.clear();
+                                    lockUI.failed = false;
+                                    event.accepted = true;
+                                }
+                            }
+
+                            onAccepted: {
+                                if (text.length > 0 && !lockUI.authenticating) {
+                                    let pwd = text;
+                                    text = "";
+                                    oldText = "";
+                                    passModel.clear();
+                                    lockUI.authenticating = true;
+                                    lockUI.statusText = "Authenticating...";
+                                    lockUI.failed = false;
+                                    if (pam.responseRequired) {
+                                        pam.respond(pwd);
+                                    } else {
+                                        root.queuedPassword = pwd;
+                                    }
+                                }
+                            }
+
+                            onTextChanged: {
+                                if (text.length > 0) {
+                                    lockUI.failed = false;
+                                }
+
+                                if (text !== oldText) {
+                                    if (text.length > oldText.length) {
+                                        let addBatch = [];
+                                        for (let i = oldText.length; i < text.length; i++) {
+                                            addBatch.push({ "isDot": true });
+                                        }
+                                        if (addBatch.length > 0) passModel.append(addBatch);
+                                    } else if (text.length < oldText.length) {
+                                        let diff = oldText.length - text.length;
+                                        for (let i = 0; i < diff; i++) {
+                                            passModel.remove(passModel.count - 1);
+                                        }
+                                    } else {
+                                        passModel.clear();
+                                        let rebuildBatch = [];
+                                        for (let i = 0; i < text.length; i++) {
+                                            rebuildBatch.push({ "isDot": true });
+                                        }
+                                        if (rebuildBatch.length > 0) passModel.append(rebuildBatch);
+                                    }
+                                    oldText = text;
+                                }
+                            }
+                        }
+                    }
+
+                    // Bottom Left: Daily Quote (Splash)
                     Text {
                         anchors.bottom: parent.bottom
-                        anchors.bottomMargin: Math.max(32, Math.round(44 * screenRoot.sc))
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottomMargin: Math.max(16, Math.round(18 * screenRoot.sc))
+                        anchors.left: parent.left
+                        anchors.leftMargin: Math.max(20, Math.round(24 * screenRoot.sc))
                         text: screenRoot.splashQuote !== "" ? screenRoot.splashQuote : "Have a nice day!"
                         font.family: "JetBrains Mono"
-                        font.pixelSize: Math.max(15, Math.round(screenRoot.height * 0.022))
-                        font.weight: Font.Bold
-                        color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.72)
-                        horizontalAlignment: Text.AlignHCenter
-                        width: Math.min(implicitWidth, parent.width * 0.85)
+                        font.pixelSize: Math.round(12 * screenRoot.sc)
+                        font.weight: Font.Medium
+                        color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.65)
+                        width: Math.min(implicitWidth, parent.width * 0.35)
                         elide: Text.ElideRight
 
                         opacity: screenRoot.introState
-                        transform: Translate { y: (16 * screenRoot.sc) * (1.0 - screenRoot.introState) }
+                    }
+
+                    // Bottom Right: Battery Telemetry Indicator
+                    Row {
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: Math.max(16, Math.round(18 * screenRoot.sc))
+                        anchors.right: parent.right
+                        anchors.rightMargin: Math.max(20, Math.round(24 * screenRoot.sc))
+                        spacing: Math.round(8 * screenRoot.sc)
+                        visible: !screenRoot.isDesktop
+                        opacity: screenRoot.introState
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            font.family: "Iosevka Nerd Font"
+                            font.pixelSize: Math.round(16 * screenRoot.sc)
+                            color: (screenRoot.batStatus === "Charging") ? root.green : (parseInt(screenRoot.batPct) < 20 ? root.red : root.blue)
+                            text: (screenRoot.batStatus === "Charging") ? "󰂄" : (parseInt(screenRoot.batPct) > 80 ? "󰁹" : (parseInt(screenRoot.batPct) > 50 ? "󰁾" : (parseInt(screenRoot.batPct) > 20 ? "󰁼" : "󰂃")))
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: screenRoot.batPct + "%"
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: Math.round(12 * screenRoot.sc)
+                            color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.85)
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: screenRoot.batStatus === "Charging" ? "CHARGING" : ""
+                            visible: screenRoot.batStatus === "Charging"
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: Math.round(9 * screenRoot.sc)
+                            color: root.green
+                        }
                     }
                 }
 
                 SequentialAnimation {
                     id: introSequence
-                    NumberAnimation { target: screenRoot; property: "introState"; from: 0.0; to: 1.0; duration: 240; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: screenRoot; property: "introState"; from: 0.0; to: 1.0; duration: 60; easing.type: Easing.OutCubic }
                     PropertyAction { target: screenRoot; property: "isPlayingIntro"; value: false }
                     ScriptAction { script: { inputField.text = ""; inputField.forceActiveFocus(); } }
                 }
@@ -762,18 +784,5 @@ ShellRoot {
         }
     }
 
-    SequentialAnimation {
-        id: exitSequence
-        ParallelAnimation {
-            NumberAnimation { target: screenRoot; property: "introState"; to: 0.0; duration: 180; easing.type: Easing.InCubic }
-            NumberAnimation { target: centerCard; property: "scale"; to: 0.94; duration: 180; easing.type: Easing.InCubic }
-        }
-        ScriptAction {
-            script: {
-                rootLock.locked = false;
-                Qt.quit();
-            }
-        }
-    }
 
 }

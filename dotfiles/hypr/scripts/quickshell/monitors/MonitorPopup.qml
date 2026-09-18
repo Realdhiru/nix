@@ -530,9 +530,9 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: window.s(30)
-            color: window.base
+            color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
             border.color: window.surface0
-            border.width: 1
+            border.width: Config.borderWidth
             clip: true
 
             Rectangle {
@@ -867,8 +867,8 @@ Item {
                                         height: (isPortrait ? model.resW : model.resH) / model.sysScale * window.uiScale
 
                                         radius: window.s(8)
-                                        color: isActive ? window.surface1 : window.crust
-                                        border.color: isActive ? window.selectedResAccent : window.surface2
+                                        color: isActive ? Qt.alpha(window.selectedResAccent, 0.2) : (Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08))
+                                        border.color: isActive ? window.selectedResAccent : Qt.alpha(window.surface2, 0.4)
                                         border.width: isActive ? window.s(2) : window.s(1)
                                         z: isActive ? 5 : 0
 
@@ -1091,8 +1091,8 @@ Item {
                                 }
                                 property color accentColor: modelData.accent
 
-                                color: isSel ? Qt.alpha(accentColor, 0.15) : (resMa.containsMouse ? window.surface0 : window.mantle)
-                                border.color: isSel ? accentColor : (resMa.containsMouse ? window.surface1 : "transparent")
+                                color: isSel ? Qt.alpha(accentColor, 0.15) : (resMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.12) : (Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)))
+                                border.color: isSel ? accentColor : (resMa.containsMouse ? Qt.alpha(window.text, 0.2) : Qt.alpha(window.surface1, 0.3))
                                 border.width: isSel ? window.s(2) : window.s(1)
 
                                 Behavior on color { ColorAnimation { duration: 200 } }
@@ -1163,9 +1163,9 @@ Item {
                             Layout.alignment: Qt.AlignCenter
 
                             radius: width / 2
-                            color: window.surface0
+                            color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
 
-                            border.color: window.activeFocusIndex === 1 ? window.selectedResAccent : window.surface1
+                            border.color: window.activeFocusIndex === 1 ? window.selectedResAccent : Qt.alpha(window.surface1, 0.3)
                             border.width: window.activeFocusIndex === 1 ? window.s(3) : window.s(2)
                             Behavior on border.color { ColorAnimation { duration: 200 } }
                             Behavior on border.width { NumberAnimation { duration: 200 } }
@@ -1259,8 +1259,8 @@ Item {
                             Layout.leftMargin: window.s(16)
                             radius: window.s(10)
                             property bool isCurrent180: monitorsModel.count > 0 && monitorsModel.get(window.activeEditIndex).transform === 2
-                            color: flip180Ma.containsMouse ? window.surface1 : (isCurrent180 ? Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, 0.2) : window.surface0)
-                            border.color: flip180Ma.containsMouse ? window.surface2 : (isCurrent180 ? window.mauve : window.surface1)
+                            color: flip180Ma.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.12) : (isCurrent180 ? Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, 0.2) : (Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)))
+                            border.color: flip180Ma.containsMouse ? Qt.alpha(window.text, 0.25) : (isCurrent180 ? window.mauve : Qt.alpha(window.surface1, 0.3))
                             border.width: 1
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -1352,9 +1352,9 @@ Item {
                             anchors.verticalCenterOffset: window.s(-10)
                             height: window.s(12)
                             radius: window.s(6)
-                            color: window.mantle
-                            border.color: window.crust
-                            border.width: 1
+                            color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.10)
+                            border.color: Qt.alpha(window.surface2, 0.3)
+                            border.width: Config.borderWidth
 
                             Rectangle {
                                 id: trackFill
@@ -1488,9 +1488,9 @@ Item {
                             anchors.verticalCenterOffset: window.s(-10)
                             height: window.s(12)
                             radius: window.s(6)
-                            color: window.mantle
-                            border.color: window.crust
-                            border.width: 1
+                            color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.10)
+                            border.color: Qt.alpha(window.surface2, 0.3)
+                            border.width: Config.borderWidth
 
                             Rectangle {
                                 id: scaleTrackFill

@@ -1,5 +1,8 @@
 {
   "uiScale": 1.0,
+  "popupOpacity": 0.2,
+  "cardOpacity": 0.0,
+  "borderWidth": 0,
   "wallpaperDir": "/home/realdhiru/Pictures/Wallpapers",
   "language": "",
   "kbOptions": "grp:alt_shift_toggle",
@@ -13,7 +16,7 @@
       "x": 0,
       "y": 0,
       "scale": 2,
-      "transform": 0
+      "transform": 2
     }
   ]
 }

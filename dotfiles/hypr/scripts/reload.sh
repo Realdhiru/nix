@@ -21,28 +21,18 @@ if command -v hyprctl >/dev/null 2>&1; then
 fi
 
 # 2. Quickshell lifecycle management
-FORCE_QS=false
-for arg in "$@"; do
-    if [ "$arg" = "--quickshell" ] || [ "$arg" = "-q" ] || [ "$arg" = "--force" ]; then
-        FORCE_QS=true
-        break
-    fi
-done
+QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
 
-QS_RUNNING=false
 if pgrep -f "Shell.qml" >/dev/null || pgrep -x qs >/dev/null || pgrep -x quickshell >/dev/null; then
-    QS_RUNNING=true
-fi
-
-if [ "$QS_RUNNING" = false ]; then
-    QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
-    if command -v hyprctl >/dev/null 2>&1; then
-        hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('quickshell -p $QS_TARGET'))" >/dev/null 2>&1
-    else
-        nohup quickshell -p "$QS_TARGET" >/dev/null 2>&1 &
-        disown
+    # Trigger instantaneous hot reload via native IPC handler
+    if ! quickshell -p "$QS_TARGET" ipc call topbar queueReload >/dev/null 2>&1; then
+        # Fallback if IPC didn't respond (e.g. process hung): restart cleanly
+        pkill -9 quickshell 2>/dev/null || true
+        pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
+        sleep 0.1
+        hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('quickshell -p $QS_TARGET'))" >/dev/null 2>&1 || (nohup quickshell -p "$QS_TARGET" >/dev/null 2>&1 & disown)
     fi
-elif [ "$FORCE_QS" = true ]; then
-    QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
-    quickshell -p "$QS_TARGET" ipc call topbar queueReload >/dev/null 2>&1 &
+else
+    # Not running: spawn cleanly
+    hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('quickshell -p $QS_TARGET'))" >/dev/null 2>&1 || (nohup quickshell -p "$QS_TARGET" >/dev/null 2>&1 & disown)
 fi

@@ -97,6 +97,13 @@ Item {
     // Legacy Specific Properties (Bound to Settings.qml)
     // =========================================================================
     property real uiScale: 1.0
+    property real popupOpacity: config.getSetting("popupOpacity", 0.2)
+    property real cardOpacity: config.getSetting("cardOpacity", 0.0)
+    property int borderWidth: config.getSetting("borderWidth", 0)
+
+    property bool isSolidMode: false
+    readonly property real effectivePopupOpacity: config.isSolidMode ? 1.0 : config.popupOpacity
+    readonly property real effectiveCardOpacity: config.isSolidMode ? 0.40 : config.cardOpacity
     property bool topbarHelpIcon: true
     property int workspaceCount: 8
     property int initialWorkspaceCount: 8
@@ -384,6 +391,28 @@ Item {
     }
 
     Process {
+        id: solidModeDetector
+        command: ["bash", "-c", "if [ -f \"$HOME/.cache/wallpaper_killed\" ] || [ -f \"$HOME/.cache/gaming_mode\" ] || [ \"$(cat \"$HOME/.cache/qs_power_profile\" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null)\" = \"power-saver\" ]; then echo '1'; else echo '0'; fi"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                config.isSolidMode = (this.text.trim() === "1");
+            }
+        }
+    }
+
+    Timer {
+        id: solidModeTimer
+        interval: 1000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            if (!solidModeDetector.running) solidModeDetector.running = true;
+        }
+    }
+
+    Process {
         id: settingsReader
         command: ["bash", "-c", `cat "${config.settingsJsonPath}" 2>/dev/null || echo '{}'`]
         running: false
@@ -395,6 +424,9 @@ Item {
 
                         // Map explicitly defined properties
                         if (config.rawSettings.uiScale !== undefined) config.uiScale = config.rawSettings.uiScale;
+                        if (config.rawSettings.popupOpacity !== undefined) config.popupOpacity = config.rawSettings.popupOpacity;
+                        if (config.rawSettings.cardOpacity !== undefined) config.cardOpacity = config.rawSettings.cardOpacity;
+                        if (config.rawSettings.borderWidth !== undefined) config.borderWidth = config.rawSettings.borderWidth;
                         if (config.rawSettings.topbarHelpIcon !== undefined) config.topbarHelpIcon = config.rawSettings.topbarHelpIcon;
                         if (config.rawSettings.wallpaperDir !== undefined) config.wallpaperDir = config.rawSettings.wallpaperDir;
                         if (config.rawSettings.language !== undefined && config.rawSettings.language !== "") config.language = config.rawSettings.language;

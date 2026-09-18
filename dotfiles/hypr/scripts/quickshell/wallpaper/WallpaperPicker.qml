@@ -464,13 +464,10 @@ Item {
             fi
 
             CUR_WALL="$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null || true)"
-            if [ "$CUR_WALL" = "$REAL_PATH" ] || [ "$CUR_WALL" = "$FLAT_PATH" ] || [[ "$CUR_WALL" == *"/$FILE_NAME" ]]; then
-                PREV="$(cat "$HOME/.cache/previous_wallpaper.txt" 2>/dev/null || true)"
-                if [ -n "$PREV" ] && [ -f "$PREV" ] && [ "$PREV" != "$CUR_WALL" ]; then
-                    ~/.config/hypr/scripts/set_wallpaper.sh "$PREV"
-                else
-                    ~/.config/hypr/scripts/boot_wallpaper.sh
-                fi
+            IS_ACTIVE=0
+            if [ "$CUR_WALL" = "$REAL_PATH" ] || [ "$CUR_WALL" = "$FLAT_PATH" ] || [[ "$CUR_WALL" == *"/$FILE_NAME" ]] || [[ "$CUR_WALL" == *"$FILE_NAME"* ]]; then
+                IS_ACTIVE=1
+                rm -f "$HOME/.cache/current_wallpaper.txt" "$HOME/.cache/last_wallpaper.txt"
             fi
 
             if [ -n "$REAL_PATH" ] && [ -f "$REAL_PATH" ]; then
@@ -481,6 +478,18 @@ Item {
             rm -f "$HOME/.cache/quickshell/wallpaper_picker/thumbs/\${FILE_NAME}"*
             rm -f "$HOME/.cache/quickshell/wallpaper_picker/colors_markers/\${FILE_NAME}"*
             rm -f "$HOME/.cache/converted_gifs/\${FILE_NAME}"*
+            rm -f "$HOME/Pictures/Wallpapers/previews/"*"/\${FILE_NAME}"*
+            rm -rf "$HOME/.cache/awww"/* 2>/dev/null || true
+
+            if [ "$IS_ACTIVE" -eq 1 ]; then
+                PREV="$(cat "$HOME/.cache/previous_wallpaper.txt" 2>/dev/null || true)"
+                if [ -n "$PREV" ] && [ -f "$PREV" ] && [[ "$PREV" != *"$FILE_NAME"* ]] && [[ "$PREV" != *"/previews/"* ]]; then
+                    ~/.config/hypr/scripts/set_wallpaper.sh "$PREV"
+                else
+                    rm -f "$HOME/.cache/previous_wallpaper.txt"
+                    ~/.config/hypr/scripts/boot_wallpaper.sh
+                fi
+            fi
         `;
         Quickshell.execDetached(["bash", "-c", deleteLocalScript]);
 

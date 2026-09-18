@@ -111,14 +111,29 @@ cleanup_residue() {
         done
     fi
 
-    # 5. Check if currently active wallpaper was deleted
+    # 5. Check if currently active wallpaper was deleted or points to previews
     if [ -f "$CURRENT_TXT" ]; then
         local cur_path
         cur_path="$(cat "$CURRENT_TXT" 2>/dev/null || echo "")"
-        if [ -n "$cur_path" ] && [ ! -f "$cur_path" ]; then
+        if [ -z "$cur_path" ] || [ ! -f "$cur_path" ] || [[ "$cur_path" == *"/previews/"* ]] || [[ "$cur_path" == *"/scripts/"* ]]; then
+            rm -f "$CURRENT_TXT"
+            rm -f "$HOME/.cache/last_wallpaper.txt"
+            rm -f "$HOME/.cache/previous_wallpaper.txt"
+            rm -rf "$HOME/.cache/awww"/* 2>/dev/null || true
             "$HOME/.config/hypr/scripts/boot_wallpaper.sh" &
         fi
     fi
+
+    # 6. Clean last and previous wallpaper caches if deleted
+    for f in "$HOME/.cache/last_wallpaper.txt" "$HOME/.cache/previous_wallpaper.txt"; do
+        if [ -f "$f" ]; then
+            local p
+            p="$(cat "$f" 2>/dev/null || echo "")"
+            if [ -z "$p" ] || [ ! -f "$p" ] || [[ "$p" == *"/previews/"* ]]; then
+                rm -f "$f"
+            fi
+        fi
+    done
 }
 
 # Run initial cleanup and sync on startup
