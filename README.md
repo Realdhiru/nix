@@ -23,7 +23,7 @@
 
 ### Desktop Tour
 
-<video src="https://github.com/user-attachments/assets/15bb75f7-ee3c-4942-99e7-63ec23de43ce" controls autoplay width="900"></video>
+<video src="https://github.com/user-attachments/assets/3ba514e8-7bc8-4353-bdab-dbad073716cc" controls autoplay muted width="900"></video>
 
 <br/>
 

@@ -15,6 +15,7 @@ venv/
 
 
 *.log
+*.log.mbtree
 *.tmp
 *.fifo
 *.pid
