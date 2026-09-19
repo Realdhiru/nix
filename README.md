@@ -23,7 +23,7 @@
 
 ### Desktop Tour
 
-<video src="https://github.com/Realdhiru/nix/raw/main/docs/assets/desktop_tour_web.mp4" controls autoplay muted width="900"></video>
+<video src="https://github.com/user-attachments/assets/15bb75f7-ee3c-4942-99e7-63ec23de43ce" controls autoplay width="900"></video>
 
 <br/>
 
