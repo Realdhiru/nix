@@ -21,14 +21,76 @@
 
 <div align="center">
 
-### Desktop & Interface
-<img src="docs/assets/hero_desktop.webp" alt="Desktop Overview" width="850" />
+### Desktop Overview
+<img src="docs/assets/hero_desktop.webp" alt="Desktop Overview" width="900" />
 
 <br/>
 
 <sub>Wallpapers used in this setup are available in [Realdhiru/wallps](https://github.com/Realdhiru/wallps). Base desktop widgets were adapted from [ilyamiro/serpantinum](https://github.com/ilyamiro/serpantinum).</sub>
 
 </div>
+
+### 🌟 QuickShell Desktop Widgets & Features
+
+Custom event-driven QML widgets built natively on [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) with zero polling overhead, Wayland IPC integration, and fluid micro-animations:
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <b>3D Parallax Wallpaper Carousel & Search</b><br/>
+      <img src="docs/assets/wallpaper_carousel.webp" alt="Wallpaper Carousel" width="100%" /><br/>
+      <sub>Interactive 3D angled carousel with real-time thumbnail rendering, search query filtering, and instant compositor wallpaper switching.</sub>
+    </td>
+    <td width="50%" align="center">
+      <b>Radial Bluetooth & Wi-Fi Network Center</b><br/>
+      <img src="docs/assets/radial_connectivity.webp" alt="Radial Connectivity" width="100%" /><br/>
+      <sub>Orbital device topology for paired Bluetooth peripherals and Wi-Fi networks with one-tap connecting, status dials, and power management.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <b>Media Player & 10-Band Audio Equalizer</b><br/>
+      <img src="docs/assets/media_equalizer.webp" alt="Media Player & Equalizer" width="100%" /><br/>
+      <sub>Rotating vinyl playback animation, live MPRIS timeline scrubbing, and interactive 10-band DSP frequency equalizer with preset curves.</sub>
+    </td>
+    <td width="50%" align="center">
+      <b>Display, Resolution & Refresh Rate Controller</b><br/>
+      <img src="docs/assets/display_manager.webp" alt="Display Manager" width="100%" /><br/>
+      <sub>Multi-resolution presets (4K / QHD / FHD), continuous UI scaling slider, display rotation dial, and 60Hz–360Hz refresh rate selector.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <b>Calendar, Clock & Weather Forecast</b><br/>
+      <img src="docs/assets/calendar_weather.webp" alt="Calendar & Weather" width="100%" /><br/>
+      <sub>TopBar clock expansion featuring live temperature telemetry, multi-day weather cards, interactive calendar grid, and fastfetch summary.</sub>
+    </td>
+    <td width="50%" align="center">
+      <b>Focus Time & App Screen Time Tracker</b><br/>
+      <img src="docs/assets/focus_timer.webp" alt="Focus Timer" width="100%" /><br/>
+      <sub>In-depth window and application usage analytics, daily average screen time bar charts, and Pomodoro focus session timer.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <b>Visual Clipboard Manager & History</b><br/>
+      <img src="docs/assets/clipboard_manager.webp" alt="Clipboard Manager" width="100%" /><br/>
+      <sub>Multi-entry clipboard timeline with image previews, formatted text snippets, search indexing, and instant buffer copying.</sub>
+    </td>
+    <td width="50%" align="center">
+      <b>QuickShell Fuzzy App Launcher</b><br/>
+      <img src="docs/assets/app_launcher.webp" alt="App Launcher" width="100%" /><br/>
+      <sub>Sleek, centered application launcher with fuzzy query matching, high-res application icons, and smooth entrance transitions.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <b>Wallpaper Quick Switcher & Live Preview</b><br/>
+      <img src="docs/assets/wallpaper_quick_switch.webp" alt="Wallpaper Quick Switch" width="60%" /><br/>
+      <sub>Instant search and live switcher for animated video, GIF, and static desktop wallpapers.</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 

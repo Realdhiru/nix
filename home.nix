@@ -77,6 +77,88 @@
     '';
   };
 
+  # WirePlumber: Prioritize external audio devices (Bluetooth, USB DAC/headsets, Headphones) over internal speaker
+  xdg.configFile."wireplumber/wireplumber.conf.d/51-device-autoswitch.conf" = {
+    force = true;
+    text = ''
+      monitor.bluez.rules = [
+        {
+          matches = [
+            {
+              node.name = "~bluez_output.*"
+            }
+          ]
+          actions = {
+            update-props = {
+              priority.session = 2000
+              priority.driver = 2000
+            }
+          }
+        }
+        {
+          matches = [
+            {
+              node.name = "~bluez_input.*"
+            }
+          ]
+          actions = {
+            update-props = {
+              priority.session = 2000
+              priority.driver = 2000
+            }
+          }
+        }
+      ]
+
+      monitor.alsa.rules = [
+        {
+          matches = [
+            {
+              node.name = "~alsa_output.*usb.*"
+            }
+          ]
+          actions = {
+            update-props = {
+              priority.session = 2000
+              priority.driver = 2000
+            }
+          }
+        }
+        {
+          matches = [
+            {
+              node.name = "~alsa_output.*Headphones.*"
+            }
+          ]
+          actions = {
+            update-props = {
+              priority.session = 2000
+              priority.driver = 2000
+            }
+          }
+        }
+        {
+          matches = [
+            {
+              node.name = "~alsa_output.*headset.*"
+            }
+          ]
+          actions = {
+            update-props = {
+              priority.session = 2000
+              priority.driver = 2000
+            }
+          }
+        }
+      ]
+
+      wireplumber.settings = {
+        "linking.allow-moving-streams" = true
+        "linking.follow-default-target" = true
+      }
+    '';
+  };
+
   # PCManFM-Qt: file-based config (app reads/writes this INI directly, no
   # other mechanism), so the few mixed settings live inline here.
   xdg.configFile."pcmanfm-qt/default/settings.conf" = {

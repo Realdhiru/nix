@@ -85,15 +85,17 @@ Variants {
 
             property int workspaceCount: 69
 
-            Process {
-                id: recPoller
-                running: true
-                command: ["bash", "-c", "if [ -s '" + Caching.getCacheDir('recording') + "/rec_pid' ] && kill -0 $(cat '" + Caching.getCacheDir('recording') + "/rec_pid') 2>/dev/null; then echo '1'; else echo '0'; fi"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        barWindow.isRecording = (this.text.trim() === "1");
-                    }
-                }
+            FileView {
+                id: recFileView
+                path: Quickshell.env("HOME") + "/.cache/quickshell/recording/rec_pid"
+                watchChanges: true
+                onLoadedChanged: barWindow.checkRecording()
+                onTextChanged: barWindow.checkRecording()
+            }
+
+            function checkRecording() {
+                let txt = (recFileView.text() || "").trim();
+                barWindow.isRecording = (txt.length > 0);
             }
 
             Process {
@@ -228,7 +230,7 @@ Variants {
                 }
 
                 // 2. Scan workspace models without relying on stale lastIpcObject
-                if (Hyprland.workspaces) {
+                if (Hyprland.workspaces && Hyprland.workspaces.values) {
                     let values = Hyprland.workspaces.values;
                     for (let i = 0; i < values.length; i++) {
                         let ws = values[i];
@@ -243,8 +245,8 @@ Variants {
                             }
                             if (isOcc) {
                                 occupiedMap[ws.id] = true;
-                                if (ws.id > maxWs) maxWs = ws.id;
                             }
+                            if (ws.id > maxWs) maxWs = ws.id;
                         }
                     }
                 }
@@ -278,6 +280,8 @@ Variants {
                 target: Hyprland
                 function onFocusedWorkspaceChanged() { barWindow.updateNativeWorkspaces(); }
                 function onActiveToplevelChanged() { Qt.callLater(barWindow.updateNativeWorkspaces); }
+                function onWorkspacesChanged() { Qt.callLater(barWindow.updateNativeWorkspaces); }
+                function onToplevelsChanged() { Qt.callLater(barWindow.updateNativeWorkspaces); }
                 function onRawEvent(name, data) {
                     if (name === "workspace" || name === "createworkspace" || name === "destroyworkspace"
                         || name === "focusedmon" || name === "moveworkspace" || name === "moveworkspacev2"
@@ -288,8 +292,19 @@ Variants {
                 }
             }
 
+            Timer {
+                id: wsStartupSyncTimer
+                interval: 100
+                running: false
+                repeat: false
+                onTriggered: barWindow.updateNativeWorkspaces()
+            }
+
             Component.onCompleted: {
                 barWindow.updateNativeWorkspaces();
+                Qt.callLater(barWindow.updateNativeWorkspaces);
+                wsStartupSyncTimer.start();
+                barWindow.checkRecording();
             }
 
             Process {

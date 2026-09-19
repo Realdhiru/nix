@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## 2026-09-19 — Audio Device Auto-Switching, QuickShell Sync & Showcase Gallery
+
+- **Audio Device Auto-Switching (`home.nix`)**:
+  - Configured `~/.config/wireplumber/wireplumber.conf.d/51-device-autoswitch.conf` giving high session priority (`priority.session = 2000`) to Bluetooth (`bluez_output.*`/`bluez_input.*`), USB Audio interfaces, and 3.5mm headphones.
+  - Newly plugged or connected external sound devices automatically route audio without requiring manual intervention in the volume manager GUI.
+- **QuickShell Workspace Synchronization & Dynamic Registration (`TopBar.qml`)**:
+  - Bound workspace tracking directly to `Hyprland.workspaces.values`, `onWorkspacesChanged`, and `onToplevelsChanged` with an immediate post-init pass (`Component.onCompleted`), ensuring that restarting QuickShell or switching workspaces accurately discovers all existing low-level workspaces.
+- **Event-Driven Screen Recording Indicator (`TopBar.qml`)**:
+  - Replaced one-shot bash `Process` probing with a reactive `FileView` watching `~/.cache/quickshell/recording/rec_pid` via kernel inotify (`watchChanges: true`), eliminating timer polling and instantly updating the recording icon.
+- **Seamless Video Looper Tooling (`scripts/make-loop.sh`)**:
+  - Created automated video looping utility using FFmpeg crossfade blending (`trim`, `setpts`, `blend=all_expr`, `concat`) with automatic fallback to seamless forwards-backwards mirroring when crossfading is not applicable. Symlinked to `~/.local/bin/make-loop`.
+- **Repository Showcase Gallery & Assets (`README.md`, `docs/assets/`)**:
+  - Generated web-optimized animated WebP loops and MP4 files for 9 QuickShell desktop features:
+    1. 3D Parallax Wallpaper Carousel & Search (`wallpaper_carousel.webp`)
+    2. Radial Bluetooth & Wi-Fi Network Center (`radial_connectivity.webp`)
+    3. Media Player & 10-Band Audio Equalizer (`media_equalizer.webp`)
+    4. Display, Resolution & Refresh Rate Controller (`display_manager.webp`)
+    5. Calendar, Clock & Weather Forecast Dashboard (`calendar_weather.webp`)
+    6. Focus Time & Screen Time Tracker (`focus_timer.webp`)
+    7. Visual Clipboard Manager & History (`clipboard_manager.webp`)
+    8. QuickShell Fuzzy App Launcher (`app_launcher.webp`)
+    9. Wallpaper Quick Switcher & Live Preview (`wallpaper_quick_switch.webp`)
+  - Updated `README.md` with an interactive 2-column showcase table highlighting each widget with live animations and feature breakdowns.
+
 ## 2026-09-18 — Browser Camera Fix, License & README Polish
 
 - **Fix: Restore Dark Theme (`home.nix`, `modules/home/theme.nix`)**:
