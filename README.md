@@ -28,6 +28,8 @@
 <br/>
 
 <sub>Wallpapers used in this setup are available in [Realdhiru/wallps](https://github.com/Realdhiru/wallps). Base desktop widgets were adapted from [ilyamiro/serpantinum](https://github.com/ilyamiro/serpantinum).</sub>
+<br/>
+<sub><b>Note:</b> The ~12 GB RAM shown in the video reflects a heavy workload (Kdenlive, Blender, Lutris, Brave tabs, Electron apps, coding agents). The desktop itself idles at <b>~2 GB</b> with compositor, blur, wallpaper, and QuickShell running.</sub>
 
 </div>
 

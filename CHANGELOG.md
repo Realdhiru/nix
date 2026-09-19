@@ -1,11 +1,14 @@
 # CHANGELOG
 
-## 2026-09-19 — README Hero Video Tour
+## 2026-09-20 — README Hero Video Tour & Repo Cleanup
 
 - **Replaced static hero screenshot with full desktop tour video**:
-  - Re-encoded original 2880×1620 60fps screen recording (`rec_20260919_1410.mp4`) to web-optimized 1920×1080 H.264 High + AAC stereo (20MB, CRF 23, `slow` preset, `film` tune, `faststart` atom) for GitHub compatibility.
-  - Embedded directly in README.md via `<video>` tag with `controls autoplay muted` attributes, replacing the static `hero_desktop.webp` screenshot.
-  - Video committed to `docs/assets/desktop_tour_web.mp4` and served via raw GitHub URL.
+  - Re-encoded original 2880×1620 60fps screen recording to 1920×1080 30fps H.264 High + AAC stereo (8.7MB, 2-pass 700kbps target, `slow` preset, `film` tune) for GitHub upload compatibility.
+  - Hosted on GitHub `user-attachments` CDN; embedded in README via `<video>` tag with `controls autoplay muted`.
+  - Removed repo-committed video files and old `hero_desktop.webp` (~37MB freed from tracked assets).
+  - Added RAM usage context note clarifying the ~12GB shown in video is from heavy multi-app workload (Kdenlive, Blender, Lutris, Brave, Electron apps), with actual desktop idle at ~2GB.
+- **Cleaned Wine/Lutris application menu leftovers**: Removed stale `.desktop` entries and `wine/` subdirectories from `~/.local/share/applications/` that were cluttering PCManFM-Qt's Applications view.
+- **Gitignore**: Added `*.log.mbtree` pattern to prevent ffmpeg 2-pass temp files from being tracked.
 
 ## 2026-09-19 — README Theme Correction
 
