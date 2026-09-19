@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-09-19 — README Cleanup & Caption Accuracy
+
+- **README Software Stack Cleanup**:
+  - Removed VSCodium (already uninstalled), web browsers, and terminal rows from the software stack table.
+  - Removed Papirus from icon theme listing (not used anywhere in config — only Buuf-Nestort).
+- **Showcase Caption Accuracy Pass**:
+  - Rewrote all 9 widget sub-descriptions to be minimal and factual. Removed overclaiming language (e.g. "live image previews" in file search, "preset curves" in equalizer).
+
 ## 2026-09-19 — Audio Device Auto-Switching, QuickShell Sync & Showcase Gallery
 
 - **Audio Device Auto-Switching (`home.nix`)**:

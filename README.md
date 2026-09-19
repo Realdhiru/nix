@@ -39,55 +39,55 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
     <td width="50%" align="center">
       <b>Wallpaper Picker & Downloader</b><br/>
       <img src="docs/assets/wallpaper_carousel.webp" alt="Wallpaper Picker" width="100%" /><br/>
-      <sub>3D parallax carousel with real-time thumbnails, online wallpaper search & download, and instant compositor switching.</sub>
+      <sub>3D parallax carousel with wallpaper browsing, online search & download, and instant switching.</sub>
     </td>
     <td width="50%" align="center">
       <b>Network Manager</b><br/>
       <img src="docs/assets/radial_connectivity.webp" alt="Network Manager" width="100%" /><br/>
-      <sub>Radial topology for Wi-Fi, Ethernet, Bluetooth, and hotspot with one-tap connecting and power management.</sub>
+      <sub>Radial interface for Wi-Fi, Ethernet, Bluetooth, and hotspot management.</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
       <b>Media Player & Equalizer</b><br/>
       <img src="docs/assets/media_equalizer.webp" alt="Media Player & Equalizer" width="100%" /><br/>
-      <sub>Vinyl playback animation, MPRIS timeline scrubbing, and 10-band DSP equalizer with preset curves.</sub>
+      <sub>Vinyl playback animation, MPRIS controls, and 10-band EasyEffects equalizer.</sub>
     </td>
     <td width="50%" align="center">
       <b>Monitor Control</b><br/>
       <img src="docs/assets/display_manager.webp" alt="Monitor Control" width="100%" /><br/>
-      <sub>Resolution presets (4K / QHD / FHD), UI scaling slider, display rotation, and 60–360Hz refresh rate selector.</sub>
+      <sub>Resolution, scaling, rotation, and refresh rate controls.</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
       <b>Calendar & Weather</b><br/>
       <img src="docs/assets/calendar_weather.webp" alt="Calendar & Weather" width="100%" /><br/>
-      <sub>TopBar clock expansion with live temperature, multi-day forecast cards, interactive calendar grid, and fastfetch.</sub>
+      <sub>TopBar clock expansion with weather, forecast, calendar, and fastfetch.</sub>
     </td>
     <td width="50%" align="center">
       <b>Screen Time</b><br/>
       <img src="docs/assets/focus_timer.webp" alt="Screen Time" width="100%" /><br/>
-      <sub>Per-app usage analytics, daily screen time charts, and Pomodoro focus session timer.</sub>
+      <sub>Per-app usage tracking, daily screen time charts, and focus timer.</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
       <b>Clipboard Manager</b><br/>
       <img src="docs/assets/clipboard_manager.webp" alt="Clipboard Manager" width="100%" /><br/>
-      <sub>Multi-entry clipboard timeline with image previews, text snippets, search indexing, and instant copying.</sub>
+      <sub>Clipboard history with image previews, text snippets, and search.</sub>
     </td>
     <td width="50%" align="center">
       <b>App Launcher</b><br/>
       <img src="docs/assets/app_launcher.webp" alt="App Launcher" width="100%" /><br/>
-      <sub>Centered Fuzzel launcher with fuzzy matching, high-res app icons, and smooth entrance transitions.</sub>
+      <sub>Fuzzel launcher with fuzzy matching and custom icon theme.</sub>
     </td>
   </tr>
   <tr>
     <td colspan="2" align="center">
       <b>Instant File Search</b><br/>
       <img src="docs/assets/file_search.webp" alt="File Search" width="60%" /><br/>
-      <sub>Fuzzel-powered instant file search with live image previews and one-click directory navigation.</sub>
+      <sub>Fuzzel-powered file search with directory navigation.</sub>
     </td>
   </tr>
 </table>
@@ -102,11 +102,10 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 | **Compositor / WM** | [Hyprland](https://hyprland.org) | Wayland dynamic tiling compositor configured in native Lua |
 | **Desktop Shell & UI** | [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) (Qt6 / QML) | Event-driven topbar, circular battery dial, MPRIS music & power popups |
 | **Application Launcher** | [Fuzzel](https://codeberg.org/dnkl/fuzzel) | Wayland dmenu/rofi alternative with custom frosted glass styling |
-| **Terminal & Multiplexer** | [WezTerm](https://wezfurlong.org/wezterm/) + [Tmux](https://github.com/tmux/tmux) | GPU-accelerated terminal emulator & terminal session multiplexer |
 | **Shell & Prompt** | [Zsh](https://www.zsh.org/) + [Starship](https://starship.rs/) | Fast, modular shell prompt with automated safety-gated `rebuild()` |
 | **Theming Engine** | [Matugen](https://github.com/InioX/matugen) | Material You dynamic color generation from wallpapers |
 | **Color Scheme** | [Catppuccin Mocha](https://github.com/catppuccin/catppuccin) | Pastel dark theme applied across GTK, terminal, Spotify, and editor |
-| **Icon Theme** | Buuf-Nestort + Papirus | Classic skeuomorphic Buuf icons blended with modern Papirus glyphs |
+| **Icon Theme** | Buuf-Nestort | Hand-drawn skeuomorphic icon theme |
 | **Typography** | JetBrains Mono Nerd Font | Monospace code font with comprehensive glyph and symbol support |
 | **Lockscreen & Idle** | [Hyprlock](https://github.com/hyprwm/hyprlock) + [Hypridle](https://github.com/hyprwm/hypridle) | Wayland lockscreen with live video background support (QtMultimedia) |
 | **Wallpaper Daemons** | [awww](https://github.com/AvengeMedia/awww) + [mpvpaper](https://github.com/GhostNaN/mpvpaper) | High-performance static and live video wallpaper renderers |
@@ -117,8 +116,6 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 | **Audio Server & FX** | [PipeWire](https://pipewire.org) + WirePlumber + [EasyEffects](https://github.com/wwmm/easyeffects) | Low-latency audio routing, DSP plugins & mic noise cancellation |
 | **Power Management** | [TLP](https://linrunner.de/tlp/) + [asusctl](https://asus-linux.org/) (`asusd`) | Hardware power profiles + 80% battery charge ceiling authority |
 | **File Management** | [PCManFM-Qt](https://github.com/lxqt/pcmanfm-qt) + Filelight | Lightweight Qt file manager & interactive disk usage map |
-| **Web Browsers** | [Brave](https://brave.com), [Zen Browser](https://zen-browser.app), [Helium](https://github.com/fennifith/helium) | Hardware-accelerated Wayland browsers |
-| **Code Editor** | [VSCodium](https://vscodium.com) | Community-driven, telemetry-free binary release of VS Code |
 
 ---
 
