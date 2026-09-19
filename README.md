@@ -1,4 +1,4 @@
-# ❄️ Declarative NixOS & Hyprland Rice
+# ❄️ NixOS + Hyprland Desktop
 
 <div align="center">
 
@@ -10,7 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 <p align="center">
-  A declarative, reproducible personal desktop environment configured with Nix Flakes, Hyprland, and QuickShell.
+  A fully declarative Wayland desktop environment built on NixOS, Hyprland, and custom QuickShell widgets. Portable to any machine from a single flake.
 </p>
 
 </div>
@@ -21,7 +21,7 @@
 
 <div align="center">
 
-### Desktop Tour
+### Desktop
 
 <video src="https://github.com/user-attachments/assets/3ba514e8-7bc8-4353-bdab-dbad073716cc" controls autoplay muted width="900"></video>
 
@@ -29,7 +29,7 @@
 
 <sub>Wallpapers used in this setup are available in [Realdhiru/wallps](https://github.com/Realdhiru/wallps). Base desktop widgets were adapted from [ilyamiro/serpantinum](https://github.com/ilyamiro/serpantinum).</sub>
 <br/>
-<sub><b>Note:</b> The ~12 GB RAM shown in the video reflects a heavy workload (Kdenlive, Blender, Lutris, Brave tabs, Electron apps, coding agents). The desktop itself idles at <b>~2 GB</b> with compositor, blur, wallpaper, and QuickShell running.</sub>
+<sub><b>Note:</b> The ~12 GB RAM shown in the video reflects a heavy workload (Kdenlive, Blender, Lutris, Brave tabs, Electron apps, coding agents). The desktop itself idles around <b>~2 GB</b> with compositor, blur, wallpaper, and QuickShell running.</sub>
 
 </div>
 
@@ -97,7 +97,7 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 
 ---
 
-## 🛠️ Software Stack & Rice Components
+## 🛠️ Software Stack
 
 | Component | Software | Description |
 | :--- | :--- | :--- |
@@ -123,9 +123,9 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 
 ## Installation & Deployment
 
-This configuration is built for **100% portability** (similar to the Omarchy distribution standard). You can fork and deploy it on any machine with zero hardcoded paths:
-- Complete guide: [`docs/installation.md`](file:///home/realdhiru/nix/docs/installation.md)
-- User identity is configured entirely in a single file: [`user.nix`](file:///home/realdhiru/nix/user.nix)
+Built for **100% portability** — fork it, edit one file, and deploy the entire desktop on any NixOS machine with zero hardcoded paths:
+- Complete guide: [`docs/installation.md`](docs/installation.md)
+- User identity is configured entirely in a single file: [`user.nix`](user.nix)
 
 ---
 
