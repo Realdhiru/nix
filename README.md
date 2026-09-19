@@ -103,14 +103,13 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 | **Desktop Shell & UI** | [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) (Qt6 / QML) | Event-driven topbar, circular battery dial, MPRIS music & power popups |
 | **Application Launcher** | [Fuzzel](https://codeberg.org/dnkl/fuzzel) | Wayland dmenu/rofi alternative with custom frosted glass styling |
 | **Shell & Prompt** | [Zsh](https://www.zsh.org/) + [Starship](https://starship.rs/) | Fast, modular shell prompt with automated safety-gated `rebuild()` |
-| **Theming Engine** | [Matugen](https://github.com/InioX/matugen) | Material You dynamic color generation from wallpapers |
-| **Color Scheme** | [Catppuccin Mocha](https://github.com/catppuccin/catppuccin) | Pastel dark theme applied across GTK, terminal, Spotify, and editor |
+| **Theming** | [Matugen](https://github.com/InioX/matugen) (Material You) | Wallpaper-derived dynamic color extraction across GTK, Qt, WezTerm, QuickShell, and Cava |
 | **Icon Theme** | Buuf-Nestort | Hand-drawn skeuomorphic icon theme |
 | **Typography** | JetBrains Mono Nerd Font | Monospace code font with comprehensive glyph and symbol support |
 | **Lockscreen & Idle** | [Hyprlock](https://github.com/hyprwm/hyprlock) + [Hypridle](https://github.com/hyprwm/hypridle) | Wayland lockscreen with live video background support (QtMultimedia) |
 | **Wallpaper Daemons** | [awww](https://github.com/AvengeMedia/awww) + [mpvpaper](https://github.com/GhostNaN/mpvpaper) | High-performance static and live video wallpaper renderers |
 | **Media Player** | [MPV](https://mpv.io) (with `mpvScripts.mpris`) | Hardware-accelerated player broadcasting D-Bus media tracking |
-| **Music Streaming** | Spotify + [Spicetify](https://spicetify.app/) | Customized Spotify with Catppuccin Mocha theme & extensions |
+| **Music Streaming** | Spotify + [Spicetify](https://spicetify.app/) | Customized Spotify with Marketplace themes & extensions |
 | **Screen Recording** | [GPU Screen Recorder](https://git.dec05eba.com/gpu-screen-recorder-gtk/) | Low-overhead NVENC/VAAPI screen capture |
 | **Screenshots & Snips** | Grim + Slurp + Grimblast | Wayland screenshot suite with region selection & clipboard copy |
 | **Audio Server & FX** | [PipeWire](https://pipewire.org) + WirePlumber + [EasyEffects](https://github.com/wwmm/easyeffects) | Low-latency audio routing, DSP plugins & mic noise cancellation |

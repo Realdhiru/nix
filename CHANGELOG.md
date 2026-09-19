@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-09-19 — README Theme Correction
+
+- **Removed incorrect Catppuccin Mocha references**: The Color Scheme row and Spotify description falsely claimed Catppuccin Mocha. The system uses Matugen Material You dynamic color extraction from wallpapers, propagated via templates into GTK, Qt, WezTerm, QuickShell, and Cava. Merged the redundant "Theming Engine" and "Color Scheme" rows into a single "Theming" row.
+
 ## 2026-09-19 — README Cleanup & Caption Accuracy
 
 - **README Software Stack Cleanup**:
