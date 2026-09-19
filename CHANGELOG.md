@@ -12,16 +12,16 @@
 - **Seamless Video Looper Tooling (`scripts/make-loop.sh`)**:
   - Created automated video looping utility using FFmpeg crossfade blending (`trim`, `setpts`, `blend=all_expr`, `concat`) with automatic fallback to seamless forwards-backwards mirroring when crossfading is not applicable. Symlinked to `~/.local/bin/make-loop`.
 - **Repository Showcase Gallery & Assets (`README.md`, `docs/assets/`)**:
-  - Generated web-optimized animated WebP loops and MP4 files for 9 QuickShell desktop features:
-    1. 3D Parallax Wallpaper Carousel & Search (`wallpaper_carousel.webp`)
-    2. Radial Bluetooth & Wi-Fi Network Center (`radial_connectivity.webp`)
-    3. Media Player & 10-Band Audio Equalizer (`media_equalizer.webp`)
-    4. Display, Resolution & Refresh Rate Controller (`display_manager.webp`)
-    5. Calendar, Clock & Weather Forecast Dashboard (`calendar_weather.webp`)
-    6. Focus Time & Screen Time Tracker (`focus_timer.webp`)
-    7. Visual Clipboard Manager & History (`clipboard_manager.webp`)
-    8. QuickShell Fuzzy App Launcher (`app_launcher.webp`)
-    9. Wallpaper Quick Switcher & Live Preview (`wallpaper_quick_switch.webp`)
+  - Generated web-optimized animated WebP loops for 9 QuickShell desktop features (MP4 duplicates removed to reduce clone size by ~93MB):
+    1. Wallpaper Picker & Downloader (`wallpaper_carousel.webp`) — trimmed initial idle desktop frames
+    2. Network Manager (`radial_connectivity.webp`)
+    3. Media Player & Equalizer (`media_equalizer.webp`)
+    4. Monitor Control (`display_manager.webp`)
+    5. Calendar & Weather (`calendar_weather.webp`)
+    6. Screen Time (`focus_timer.webp`)
+    7. Clipboard Manager (`clipboard_manager.webp`)
+    8. App Launcher (`app_launcher.webp`)
+    9. Instant File Search (`file_search.webp`)
   - Updated `README.md` with an interactive 2-column showcase table highlighting each widget with live animations and feature breakdowns.
 
 ## 2026-09-18 — Browser Camera Fix, License & README Polish

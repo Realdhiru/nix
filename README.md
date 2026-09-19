@@ -37,57 +37,57 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 <table>
   <tr>
     <td width="50%" align="center">
-      <b>3D Parallax Wallpaper Carousel & Search</b><br/>
-      <img src="docs/assets/wallpaper_carousel.webp" alt="Wallpaper Carousel" width="100%" /><br/>
-      <sub>Interactive 3D angled carousel with real-time thumbnail rendering, search query filtering, and instant compositor wallpaper switching.</sub>
+      <b>Wallpaper Picker & Downloader</b><br/>
+      <img src="docs/assets/wallpaper_carousel.webp" alt="Wallpaper Picker" width="100%" /><br/>
+      <sub>3D parallax carousel with real-time thumbnails, online wallpaper search & download, and instant compositor switching.</sub>
     </td>
     <td width="50%" align="center">
-      <b>Radial Bluetooth & Wi-Fi Network Center</b><br/>
-      <img src="docs/assets/radial_connectivity.webp" alt="Radial Connectivity" width="100%" /><br/>
-      <sub>Orbital device topology for paired Bluetooth peripherals and Wi-Fi networks with one-tap connecting, status dials, and power management.</sub>
+      <b>Network Manager</b><br/>
+      <img src="docs/assets/radial_connectivity.webp" alt="Network Manager" width="100%" /><br/>
+      <sub>Radial topology for Wi-Fi, Ethernet, Bluetooth, and hotspot with one-tap connecting and power management.</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <b>Media Player & 10-Band Audio Equalizer</b><br/>
+      <b>Media Player & Equalizer</b><br/>
       <img src="docs/assets/media_equalizer.webp" alt="Media Player & Equalizer" width="100%" /><br/>
-      <sub>Rotating vinyl playback animation, live MPRIS timeline scrubbing, and interactive 10-band DSP frequency equalizer with preset curves.</sub>
+      <sub>Vinyl playback animation, MPRIS timeline scrubbing, and 10-band DSP equalizer with preset curves.</sub>
     </td>
     <td width="50%" align="center">
-      <b>Display, Resolution & Refresh Rate Controller</b><br/>
-      <img src="docs/assets/display_manager.webp" alt="Display Manager" width="100%" /><br/>
-      <sub>Multi-resolution presets (4K / QHD / FHD), continuous UI scaling slider, display rotation dial, and 60Hz–360Hz refresh rate selector.</sub>
+      <b>Monitor Control</b><br/>
+      <img src="docs/assets/display_manager.webp" alt="Monitor Control" width="100%" /><br/>
+      <sub>Resolution presets (4K / QHD / FHD), UI scaling slider, display rotation, and 60–360Hz refresh rate selector.</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <b>Calendar, Clock & Weather Forecast</b><br/>
+      <b>Calendar & Weather</b><br/>
       <img src="docs/assets/calendar_weather.webp" alt="Calendar & Weather" width="100%" /><br/>
-      <sub>TopBar clock expansion featuring live temperature telemetry, multi-day weather cards, interactive calendar grid, and fastfetch summary.</sub>
+      <sub>TopBar clock expansion with live temperature, multi-day forecast cards, interactive calendar grid, and fastfetch.</sub>
     </td>
     <td width="50%" align="center">
-      <b>Focus Time & App Screen Time Tracker</b><br/>
-      <img src="docs/assets/focus_timer.webp" alt="Focus Timer" width="100%" /><br/>
-      <sub>In-depth window and application usage analytics, daily average screen time bar charts, and Pomodoro focus session timer.</sub>
+      <b>Screen Time</b><br/>
+      <img src="docs/assets/focus_timer.webp" alt="Screen Time" width="100%" /><br/>
+      <sub>Per-app usage analytics, daily screen time charts, and Pomodoro focus session timer.</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <b>Visual Clipboard Manager & History</b><br/>
+      <b>Clipboard Manager</b><br/>
       <img src="docs/assets/clipboard_manager.webp" alt="Clipboard Manager" width="100%" /><br/>
-      <sub>Multi-entry clipboard timeline with image previews, formatted text snippets, search indexing, and instant buffer copying.</sub>
+      <sub>Multi-entry clipboard timeline with image previews, text snippets, search indexing, and instant copying.</sub>
     </td>
     <td width="50%" align="center">
-      <b>QuickShell Fuzzy App Launcher</b><br/>
+      <b>App Launcher</b><br/>
       <img src="docs/assets/app_launcher.webp" alt="App Launcher" width="100%" /><br/>
-      <sub>Sleek, centered application launcher with fuzzy query matching, high-res application icons, and smooth entrance transitions.</sub>
+      <sub>Centered Fuzzel launcher with fuzzy matching, high-res app icons, and smooth entrance transitions.</sub>
     </td>
   </tr>
   <tr>
     <td colspan="2" align="center">
-      <b>Wallpaper Quick Switcher & Live Preview</b><br/>
-      <img src="docs/assets/wallpaper_quick_switch.webp" alt="Wallpaper Quick Switch" width="60%" /><br/>
-      <sub>Instant search and live switcher for animated video, GIF, and static desktop wallpapers.</sub>
+      <b>Instant File Search</b><br/>
+      <img src="docs/assets/file_search.webp" alt="File Search" width="60%" /><br/>
+      <sub>Fuzzel-powered instant file search with live image previews and one-click directory navigation.</sub>
     </td>
   </tr>
 </table>
