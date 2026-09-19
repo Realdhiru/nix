@@ -21,8 +21,9 @@
 
 <div align="center">
 
-### Desktop Overview
-<img src="docs/assets/hero_desktop.webp" alt="Desktop Overview" width="900" />
+### Desktop Tour
+
+<video src="https://github.com/Realdhiru/nix/raw/main/docs/assets/desktop_tour_web.mp4" controls autoplay muted width="900"></video>
 
 <br/>
 

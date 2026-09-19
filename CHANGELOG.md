@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-09-19 — README Hero Video Tour
+
+- **Replaced static hero screenshot with full desktop tour video**:
+  - Re-encoded original 2880×1620 60fps screen recording (`rec_20260919_1410.mp4`) to web-optimized 1920×1080 H.264 High + AAC stereo (20MB, CRF 23, `slow` preset, `film` tune, `faststart` atom) for GitHub compatibility.
+  - Embedded directly in README.md via `<video>` tag with `controls autoplay muted` attributes, replacing the static `hero_desktop.webp` screenshot.
+  - Video committed to `docs/assets/desktop_tour_web.mp4` and served via raw GitHub URL.
+
 ## 2026-09-19 — README Theme Correction
 
 - **Removed incorrect Catppuccin Mocha references**: The Color Scheme row and Spotify description falsely claimed Catppuccin Mocha. The system uses Matugen Material You dynamic color extraction from wallpapers, propagated via templates into GTK, Qt, WezTerm, QuickShell, and Cava. Merged the redundant "Theming Engine" and "Color Scheme" rows into a single "Theming" row.
