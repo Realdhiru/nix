@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-09-20 — Identity Display Name Update
+
+- **Updated display name identity from Dhiru to D**:
+  - Changed `name` to `"D"` in [`user.nix`](file:///home/realdhiru/nix/user.nix).
+  - Explicitly mapped `description = user.name;` in [`modules/system/users.nix`](file:///home/realdhiru/nix/modules/system/users.nix) to guarantee the system GECOS user display name is managed consistently.
+
 ## 2026-09-20 — dotfiles.lol Contribution & Static Screenshots
 
 - **Added static PNG screenshots** (`docs/assets/screenshots/`): Extracted first frames from all animated WebP showcases for use as preview/gallery images on external sites.
