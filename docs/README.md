@@ -3,9 +3,9 @@
 Read this first. It maps the configuration so you know where things live and
 what is safe to change.
 
-> **Scope note:** `docs/` is **local-only** — intentionally excluded from the
-> GitHub repo (`.gitignore` rule `docs/`). These docs describe the *current
-> disk state* (`~/nix`), which may lag or lead the pushed repo.
+> **Scope note:** Core architecture and installation guides in `docs/` are
+> tracked in version control for transparency and reproducibility. Ephemeral
+> debugging logs and local artifacts remain excluded via `.gitignore`.
 > **The code is always authoritative.** When a doc disagrees with code,
 > trust the code and mark the doc's contradiction (see
 > `AGENTS-DOCUMENTATION.md`).
@@ -156,6 +156,6 @@ Shell scripts: `workspaces.sh` (wsDaemon, flock contract: exit 7 = lost lock, do
 6. Quickshell `Repeater.model` compares arrays by identity — use canonical `readonly property var` constants.
 7. Lock wallpaper is drawn INSIDE Lock.qml (own quickshell instance), never a separate window.
 8. `caching.sh` **redefines `SCRIPT_DIR`** when sourced — paths in sourced scripts must be nested from the scripts root, not the script's own dir. (See the ddg_search regression in decisions.md.)
-9. `docs/` stays local-only. Never commit it.
+9. Ephemeral debug logs stay local-only; core guides and architecture docs in `docs/` remain tracked.
 
 See `decisions.md` for the reasoning behind each.

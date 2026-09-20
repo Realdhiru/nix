@@ -20,7 +20,6 @@ if killed_ok or game_ok or (prof_ok and prof_val and prof_val:match("power%-save
 end
 
 if not is_opaque then
-    hl.window_rule({ match = { class = "^codium$" }, opacity = "0.65" })
     hl.window_rule({ match = { class = "^spotify$" }, opacity = "0.92" })
     hl.window_rule({ match = { class = "^antigravity-ide$" }, opacity = "0.67" })
     hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.67" })

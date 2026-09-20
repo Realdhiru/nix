@@ -28,7 +28,6 @@ in
     fastfetch
     neovim
     htop
-    neovim
 
     # Browsers
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default

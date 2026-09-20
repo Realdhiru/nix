@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-09-20 — Repository & Desktop Optimization Suite
+
+- **Declarative MPV MPRIS Integration**: Added declarative `xdg.configFile."mpv/scripts/mpris.so"` symlink in [`home.nix`](file:///home/realdhiru/nix/home.nix) pointing to `${pkgs.mpvScripts.mpris}`, eliminating broken out-of-store symlinks after garbage collection.
+- **Keybind & Window Rules Cleanup**:
+  - Remapped `SUPER + C` in [`dotfiles/hypr/keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua) from dead `codium` to `antigravity-ide`.
+  - Removed obsolete `codium` window rule from [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua).
+- **Package Deduplication**: Removed duplicate `neovim` package declaration in [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix).
+- **Documentation Accuracy**:
+  - Corrected target hardware config path from `hardware.nix` to `hardware-configuration.nix` in [`docs/installation.md`](file:///home/realdhiru/nix/docs/installation.md).
+  - Clarified scope note and rule 9 in [`docs/README.md`](file:///home/realdhiru/nix/docs/README.md) to reflect tracked architecture guides versus untracked local debug logs.
+
 ## 2026-09-20 — Identity Display Name Update
 
 - **Updated display name identity from Dhiru to D**:

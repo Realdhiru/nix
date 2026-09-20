@@ -65,6 +65,12 @@
     force = true;
   };
 
+  # Declarative mpv MPRIS plugin symlink (auto-tracked across nix store generations)
+  xdg.configFile."mpv/scripts/mpris.so" = {
+    source = "${pkgs.mpvScripts.mpris}/share/mpv/scripts/mpris.so";
+    force = true;
+  };
+
   # WirePlumber: Disable conflicting libcamera monitor so UVC cameras are exclusively handled by V4L2
   xdg.configFile."wireplumber/wireplumber.conf.d/50-disable-libcamera.conf" = {
     force = true;

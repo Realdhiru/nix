@@ -30,7 +30,7 @@ Open [`user.nix`](file:///home/realdhiru/nix/user.nix) in your editor:
 ### Step 3: Generate Hardware Configuration
 Generate the hardware specification for your physical machine and save it to the host configuration:
 ```bash
-nixos-generate-config --show-hardware-config > ~/nix/hosts/nixos/hardware.nix
+nixos-generate-config --show-hardware-config > ~/nix/hosts/nixos/hardware-configuration.nix
 ```
 
 ### Step 4: Build and Activate
