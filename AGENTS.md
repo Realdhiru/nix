@@ -7,7 +7,7 @@ After successfully resolving any issue, bug, or feature implementation:
 - **Automatically update `~/nix/docs/decisions.md`** if an architectural or technical decision was made or superseded.
 - **Automatically update `~/.gemini/config/skills/nixos-hyprland/SKILL.md`** if new systemic rules or workflow constraints were established.
 - **Keep all documentation updates concise, practical, and bloat-free.**
-- **Automatically stage, commit, and push (`git commit` and `git push origin main`)** all changes after completing a feature update, fix, or documentation update.
+- **Do NOT stage, commit, or push automatically.** The user will review, stage, commit, and push all changes themselves.
 
 ---
 
@@ -38,3 +38,12 @@ After successfully resolving any issue, bug, or feature implementation:
 - **Read-Only First**: Always perform a read-only investigation and geometry/code trace before modifying files.
 - **Pre-Deletion Audit**: Document what information an old script provided and its native replacement before retiring it.
 - **Live Empirical Verification**: Editing a file does not equal completing a task. Always restart/rebuild and measure actual runtime behavior, latency, and power metrics.
+
+---
+
+## 4. Token Efficiency & Communication Policy (High-Density / Caveman Mode)
+
+- **Zero Conversational Filler**: No pleasantries, generic preambles, or conversational padding.
+- **High Semantic Density**: Minimal tokens during reasoning and responses; pure technical signal.
+- **Technical Rigor Preserved**: Code blocks, exact file paths, clickable markdown links, and diffs must remain 100% accurate.
+- **Brief Final Summaries**: Final turn response must be ultra-compact bullet points designed for instant parsing.

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-09-20 — Documentation Streamlining & Token Optimization
+
+- **Pruned ~70,000 Tokens of Stale Docs**: Removed `docs/debugging/` (3,090 lines of old postmortems) and `docs/AGENTS-DOCUMENTATION.md` (duplicate agent rules).
+- **Architecture Decision Record (ADR)**: Refactored [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md) from 760 lines down to 55 lines of pure, permanent architectural invariants.
+- **Agent Skill & Communication Policy**: Streamlined [`~/.gemini/config/skills/nixos-hyprland/SKILL.md`](file:///home/realdhiru/.gemini/config/skills/nixos-hyprland/SKILL.md) and established High-Density / Caveman communication guidelines in [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md).
+- **Workspace Hygiene**: Moved `awesome-dotfiles` into `~/Projects/awesome-dotfiles` and cleaned unused `~/Desktop`.
+
 ## 2026-09-20 — Repository & Desktop Optimization Suite
 
 - **Declarative MPV MPRIS Integration**: Added declarative `xdg.configFile."mpv/scripts/mpris.so"` symlink in [`home.nix`](file:///home/realdhiru/nix/home.nix) pointing to `${pkgs.mpvScripts.mpris}`, eliminating broken out-of-store symlinks after garbage collection.
