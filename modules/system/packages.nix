@@ -20,7 +20,7 @@ in
 {
   environment.systemPackages = with pkgs; [
     # CLI & Core Utilities
-    vim git curl wget tree jq yq-go bc socat python3 weathr util-linux
+    vim git curl wget tree jq yq-go bc socat python3 weathr util-linux distrobox
 
     # Development & Terminal
     tmux

@@ -204,8 +204,10 @@ nix/
 │           ├── music/                 # MPRIS media player drawer
 │           └── watchers/              # Event-driven udev and PipeWire stream watchers
 └── docs/
-    ├── decisions.md                   # Chronological architectural & engineering rationale
-    ├── flow.md                        # Emergency recovery & runtime flows
+    ├── decisions.md                   # Permanent architectural invariants & rationale
+    ├── debugging.md                   # Historical issues, root causes & verified fixes
+    ├── flow.md                        # Boot, startup sequencing & emergency recovery
+    ├── installation.md                # Fresh machine setup & deployment guide
     └── assets/                        # High-resolution showcase media
 ```
 
@@ -282,3 +284,14 @@ clean
 #### `ff` & `af`
 - **`ff`**: Quick alias for `fastfetch`.
 - **`af`**: Interactive animated terminal fetcher that cycles through GIFs/MP4s in `~/Pictures/fastfetch` using `anifetch`, dynamically calculating terminal cell aspect ratios (`ffprobe`) to prevent image distortion.
+
+---
+
+## Technical Documentation
+
+Deep-dive architecture and deployment guides are documented in [`docs/`](docs/):
+
+* **[Installation Guide](docs/installation.md)** — Step-by-step setup on a fresh machine.
+* **[Architecture Decisions (ADR)](docs/decisions.md)** — Core design principles, TLP authority, and system non-negotiables.
+* **[Debugging & Troubleshooting](docs/debugging.md)** — Complete historical catalog of solved hardware and desktop quirks.
+* **[Execution Flows](docs/flow.md)** — Boot pipeline, startup sequencing, and emergency recovery paths.

@@ -128,6 +128,40 @@ Item {
         }
     }
 
+    Process {
+        id: markersProc
+        command: ["bash", "-c", "ls -1 \"$HOME/.cache/quickshell/wallpaper_picker/colors_markers/\" 2>/dev/null || true"]
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let output = this.text;
+                if (!output || output.trim().length === 0) return;
+                let lines = output.trim().split("\n");
+                let map = {};
+                for (let i = 0; i < lines.length; i++) {
+                    let line = lines[i].trim();
+                    if (line.length === 0) continue;
+                    let catMatch = line.match(/_CAT_([a-z]+)_HEX_/);
+                    if (!catMatch) continue;
+                    let category = catMatch[1];
+                    // Extract wallpaper filename: everything between first _ and _CAT_
+                    let firstUnderscore = line.indexOf("_");
+                    let catIdx = line.indexOf("_CAT_");
+                    if (firstUnderscore < 0 || catIdx < 0) continue;
+                    let wallpaperName = line.substring(firstUnderscore + 1, catIdx);
+                    if (wallpaperName.length > 0) {
+                        map[wallpaperName] = category;
+                    }
+                }
+                window.wallpaperCategoryMap = map;
+            }
+        }
+    }
+
+    function processMarkers() {
+        markersProc.running = true;
+    }
+
     function loadMonitors() {
         monitorProc.running = true;
     }
@@ -336,6 +370,33 @@ Item {
         return clean;
     }
 
+    readonly property var categoryRankMap: ({
+        "gifs": 0,
+        "blue": 1,
+        "dark": 2,
+        "warm": 3,
+        "purple": 4,
+        "green": 5,
+        "light": 6,
+        "videos": 8
+    })
+
+    property var wallpaperCategoryMap: ({})
+
+    function getCategoryRank(fileName) {
+        if (!fileName) return 7;
+        let fn = String(fileName);
+        if (fn.toLowerCase().endsWith(".gif")) return 0;
+        if (window.isVideoFile(fn)) return 8;
+
+        if (window.wallpaperCategoryMap[fn] !== undefined) {
+            let cat = window.wallpaperCategoryMap[fn];
+            return window.categoryRankMap[cat] !== undefined ? window.categoryRankMap[cat] : 7;
+        }
+
+        return 7;
+    }
+
     function sortListModel(model) {
         if (!model || model.count === 0) return;
         let arr = [];
@@ -347,15 +408,10 @@ Item {
             }
         }
         arr.sort(function(a, b) {
-            let aIsVid = window.isVideoFile(a.fileName);
-            let bIsVid = window.isVideoFile(b.fileName);
-            let aIsGif = a.fileName.toLowerCase().endsWith(".gif");
-            let bIsGif = b.fileName.toLowerCase().endsWith(".gif");
-            
-            let aType = aIsVid ? 0 : (aIsGif ? 1 : 2);
-            let bType = bIsVid ? 0 : (bIsGif ? 1 : 2);
+            let aRank = window.getCategoryRank(a.fileName);
+            let bRank = window.getCategoryRank(b.fileName);
 
-            if (aType !== bType) return aType - bType;
+            if (aRank !== bRank) return aRank - bRank;
             
             let aName = window.getCleanName(a.fileName).toLowerCase();
             let bName = window.getCleanName(b.fileName).toLowerCase();

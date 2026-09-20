@@ -7,6 +7,13 @@
 
   security.apparmor.enable = true;
 
+  # Rootless Podman container engine (daemonless, on-demand for Distrobox)
+  virtualisation.podman = {
+    enable = true;
+    dockerCompat = false;
+    defaultNetwork.settings.dns_enabled = true;
+  };
+
   # D-Bus implementation.
   services.dbus.implementation = "broker";
 

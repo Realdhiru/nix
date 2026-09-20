@@ -71,6 +71,26 @@
     force = true;
   };
 
+  # Distrobox .deb installer helper and file manager integration
+  home.file.".local/bin/distrobox-install-deb" = {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/scripts/distrobox-install-deb.sh";
+    executable = true;
+  };
+
+  # Context menu action for .deb files
+  xdg.dataFile."file-manager/actions/distrobox-install.desktop".text = ''
+    [Desktop Entry]
+    Type=Action
+    Name=Install in Distrobox
+    Icon=application-x-deb
+    Profiles=install_deb;
+
+    [X-Action-Profile install_deb]
+    MimeTypes=application/vnd.debian.binary-package;application/x-deb;
+    Exec=${config.home.homeDirectory}/.local/bin/distrobox-install-deb %f
+  '';
+
   # WirePlumber: Disable conflicting libcamera monitor so UVC cameras are exclusively handled by V4L2
   xdg.configFile."wireplumber/wireplumber.conf.d/50-disable-libcamera.conf" = {
     force = true;
