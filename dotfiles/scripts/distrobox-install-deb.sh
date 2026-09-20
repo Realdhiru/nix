@@ -44,7 +44,7 @@ distrobox enter "$BOX_NAME" -- bash -c "
 # Detect desktop files provided by this package
 DEB_PKG_NAME="$(basename "$DEB_PATH" | cut -d'_' -f1)"
 
-# Export all desktop apps or binaries
+# Export all desktop apps or binaries and ensure zero-idle cleanup
 distrobox enter "$BOX_NAME" -- bash -c "
     DESKTOP_FILES=\$(dpkg -L '$DEB_PKG_NAME' 2>/dev/null | grep -E '/usr/share/applications/.*\.desktop\$' || true)
     if [ -n \"\$DESKTOP_FILES\" ]; then
@@ -53,9 +53,16 @@ distrobox enter "$BOX_NAME" -- bash -c "
             distrobox-export --app \"\$app_name\" || true
         done
     else
-        # Fallback export binary if no desktop file
         distrobox-export --bin \"/usr/bin/$DEB_PKG_NAME\" --export-path ~/.local/bin || true
     fi
 "
+
+# Patch exported .desktop to auto-stop container when closed if desired
+for df in ~/.local/share/applications/${BOX_NAME}-*.desktop; do
+    [ -f "$df" ] || continue
+    if ! grep -q "distrobox stop" "$df"; then
+        sed -i -E 's|Exec=(.*)|Exec=sh -c "\1; distrobox stop '"$BOX_NAME"' --yes >/dev/null 2>\&1 \&"|g' "$df"
+    fi
+done
 
 notify "Distrobox (.deb)" "Successfully installed '$DEB_PKG_NAME'! Added to app launcher."

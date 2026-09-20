@@ -77,17 +77,18 @@
       "${config.home.homeDirectory}/nix/dotfiles/scripts/distrobox-install-deb.sh";
   };
 
-  # Context menu action for .deb files
-  xdg.dataFile."file-manager/actions/distrobox-install.desktop".text = ''
+  # Application association for .deb packages (shows directly in PCManFM-Qt "Open With")
+  xdg.dataFile."applications/distrobox-install.desktop".text = ''
     [Desktop Entry]
-    Type=Action
+    Type=Application
     Name=Install in Distrobox
-    Icon=application-x-deb
-    Profiles=install_deb;
-
-    [X-Action-Profile install_deb]
-    MimeTypes=application/vnd.debian.binary-package;application/x-deb;
+    Comment=Install Debian package inside Distrobox deb-box container
     Exec=${config.home.homeDirectory}/.local/bin/distrobox-install-deb %f
+    Icon=system-software-install
+    Terminal=false
+    Categories=System;Utility;
+    MimeType=application/vnd.debian.binary-package;application/x-deb;
+    NoDisplay=false
   '';
 
   # WirePlumber: Disable conflicting libcamera monitor so UVC cameras are exclusively handled by V4L2

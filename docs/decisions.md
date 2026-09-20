@@ -39,3 +39,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### 6. Declarative Symlinks & Theming
 - **Decision:** Out-of-store symlinks (`mkOutOfStoreSymlink`) for `dotfiles/` to enable instant live reloading without rebuilds.
 - **Decision:** Matugen Material You dynamic theming extracted from wallpapers to GTK, Qt, WezTerm, QuickShell, and Cava.
+
+### 7. Containerized .deb Support (Distrobox + Rootless Podman)
+- **Decision:** Rootless Podman daemonless runtime (`virtualisation.podman.enable = true`, `dockerCompat = false`) combined with Distrobox (`deb-box`).
+- **Rationale:** Zero background daemons, zero battery/CPU idle drain, and no root escalation vectors. Applications install once and export native `.desktop` files into Fuzzel. When closed, processes exit completely.

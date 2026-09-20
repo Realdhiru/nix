@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-09-20 — Rootless Distrobox & .deb Integration
+
+- **Daemonless Podman & Distrobox**: Added rootless `virtualisation.podman` (`dockerCompat = false`) and `distrobox` to [`modules/system/services.nix`](file:///home/realdhiru/nix/modules/system/services.nix) and [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix) for battery-efficient, zero-background-overhead container execution.
+- **Automated .deb Installer & Launcher Export**: Added [`dotfiles/scripts/distrobox-install-deb.sh`](file:///home/realdhiru/nix/dotfiles/scripts/distrobox-install-deb.sh) and context action [`distrobox-install.desktop`](file:///home/realdhiru/nix/home.nix) to automatically install `.deb` packages in minimal `deb-box` container and export desktop entries directly into host application launchers (Fuzzel).
+- **Verified Package Installation**: Tested with `chatgpt_amd64.deb`; verified desktop entry creation (`~/.local/share/applications/deb-box-chatgpt.desktop`) and zero-idle resource teardown.
+
 ## 2026-09-20 — Documentation Streamlining & Token Optimization
 
 - **Pruned ~70,000 Tokens of Stale Docs**: Removed `docs/debugging/` (3,090 lines of old postmortems) and `docs/AGENTS-DOCUMENTATION.md` (duplicate agent rules).
