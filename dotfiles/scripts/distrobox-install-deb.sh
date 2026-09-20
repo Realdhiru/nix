@@ -30,6 +30,11 @@ notify "Distrobox (.deb)" "Preparing container '$BOX_NAME'..."
 if ! distrobox list --no-color 2>/dev/null | grep -q "[[:space:]]${BOX_NAME}[[:space:]]"; then
     notify "Distrobox (.deb)" "Initializing minimal Debian container (one-time setup)..."
     distrobox create --name "$BOX_NAME" --image "$CONTAINER_IMAGE" --yes
+    distrobox enter "$BOX_NAME" -- bash -c "
+        sudo apt-get update -qq && \
+        sudo apt-get install -y --no-install-recommends zenity xdg-utils libgl1-mesa-dri && \
+        echo 'ELECTRON_OZONE_PLATFORM_HINT=auto' | sudo tee -a /etc/environment
+    "
 fi
 
 # Ensure debian-side apt dependencies are available
@@ -57,11 +62,11 @@ distrobox enter "$BOX_NAME" -- bash -c "
     fi
 "
 
-# Patch exported .desktop to auto-stop container when closed if desired
+# Patch exported .desktop to run with native Wayland flags (for Electron/Chromium) and auto-stop container when closed
 for df in ~/.local/share/applications/${BOX_NAME}-*.desktop; do
     [ -f "$df" ] || continue
     if ! grep -q "distrobox stop" "$df"; then
-        sed -i -E 's|Exec=(.*)|Exec=sh -c "\1; distrobox stop '"$BOX_NAME"' --yes >/dev/null 2>\&1 \&"|g' "$df"
+        sed -i -E 's|Exec=(.*)|Exec=sh -c "ELECTRON_OZONE_PLATFORM_HINT=auto \1; distrobox stop '"$BOX_NAME"' --yes >/dev/null 2>\&1 \&"|g' "$df"
     fi
 done
 

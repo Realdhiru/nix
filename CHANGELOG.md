@@ -4,6 +4,8 @@
 
 - **Daemonless Podman & Distrobox**: Added rootless `virtualisation.podman` (`dockerCompat = false`) and `distrobox` to [`modules/system/services.nix`](file:///home/realdhiru/nix/modules/system/services.nix) and [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix) for battery-efficient, zero-background-overhead container execution.
 - **Automated .deb Installer & Launcher Export**: Added [`dotfiles/scripts/distrobox-install-deb.sh`](file:///home/realdhiru/nix/dotfiles/scripts/distrobox-install-deb.sh) and context action [`distrobox-install.desktop`](file:///home/realdhiru/nix/home.nix) to automatically install `.deb` packages in minimal `deb-box` container and export desktop entries directly into host application launchers (Fuzzel).
+- **Distrobox GUI & File-Picker Hardening**: Installed `zenity`, `xdg-utils`, and `libgl1-mesa-dri` into `deb-box`. Set `ELECTRON_OZONE_PLATFORM_HINT=auto` in container environment and updated launcher scripts to force native Wayland on Electron apps, eliminating Xwayland Mesa Glamor shader crashes during file/folder picker navigation.
+- **Ly Display Manager Session Pruning**: Cleaned up [`modules/system/services.nix`](file:///home/realdhiru/nix/modules/system/services.nix) by disabling unused built-ins (`shell = false`, `xinitrc = null`) and isolating `waylandsessions` exclusively to `hyprland.desktop`. Hides dead `hyprland-uwsm`, `shell`, and `xinitrc` options from the Ly login menu.
 - **Verified Package Installation**: Tested with `chatgpt_amd64.deb`; verified desktop entry creation (`~/.local/share/applications/deb-box-chatgpt.desktop`) and zero-idle resource teardown.
 
 ## 2026-09-20 — Documentation Streamlining & Token Optimization

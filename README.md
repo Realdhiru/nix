@@ -118,6 +118,7 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 | **Audio Server & FX** | [PipeWire](https://pipewire.org) + WirePlumber + [EasyEffects](https://github.com/wwmm/easyeffects) | Low-latency audio routing, DSP plugins & mic noise cancellation |
 | **Power Management** | [TLP](https://linrunner.de/tlp/) + [asusctl](https://asus-linux.org/) (`asusd`) | Hardware power profiles + 80% battery charge ceiling authority |
 | **File Management** | [PCManFM-Qt](https://github.com/lxqt/pcmanfm-qt) + Filelight | Lightweight Qt file manager & interactive disk usage map |
+| **Compatibility Layer** | [Distrobox](https://github.com/89luca89/distrobox) + [Podman](https://podman.io/) | On-demand rootless `.deb` execution with auto-export to app launcher & zero idle footprint |
 
 ---
 
@@ -147,6 +148,7 @@ Built for **100% portability** — fork it, edit one file, and deploy the entire
 ### Declarative System Infrastructure
 - **Safety-Gated Rebuild Workflow**: A custom rebuild pipeline validates builds before activation, runs a post-switch health gate with automated rollbacks, and retains a 14-day garbage collection safety window while tracking floating `nixos-unstable`.
 - **Integrated System Packaging**: Declarative custom derivations (including `hypr-kdeconnect-portal` for remote input over `/dev/uinput`), native AppImage execution via Linux kernel `binfmt_misc`, and declarative Flathub integration.
+- **On-Demand `.deb` Compatibility**: Zero-daemon rootless Podman + Distrobox integration for Debian/Ubuntu `.deb` packages. Right-click installs directly from PCManFM-Qt, auto-exports desktop entries into Fuzzel, and shuts down containers on app exit for zero idle power drain.
 - **Clean Display Authentication**: Lightweight TTY display manager (`ly`) with PAM authentication, cleanly decoupling graphical login from session startup.
 
 ---

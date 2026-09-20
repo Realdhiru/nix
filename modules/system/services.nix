@@ -189,6 +189,12 @@
     enable = true;
     settings = {
       session_log = null;
+      shell = false;
+      xinitrc = null;
+      waylandsessions = "${pkgs.runCommand "clean-wayland-sessions" {} ''
+        mkdir -p $out
+        cp ${pkgs.hyprland}/share/wayland-sessions/hyprland.desktop $out/
+      ''}";
     };
   };
   services.displayManager.defaultSession = "hyprland";
