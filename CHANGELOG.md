@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-09-20 — dotfiles.lol Contribution & Static Screenshots
+
+- **Added static PNG screenshots** (`docs/assets/screenshots/`): Extracted first frames from all animated WebP showcases for use as preview/gallery images on external sites.
+- **Submitted rice to [awesome-dotfiles](https://github.com/0xN1nja/awesome-dotfiles)**: Created `data/github/realdhiru.json` in fork (`Realdhiru/awesome-dotfiles`, branch `add-realdhiru-rice`). PR pending submission at [github.com/Realdhiru/awesome-dotfiles/pull/new/add-realdhiru-rice](https://github.com/Realdhiru/awesome-dotfiles/pull/new/add-realdhiru-rice).
+
 ## 2026-09-20 — README Hero Video Tour & Repo Cleanup
 
 - **Replaced static hero screenshot with full desktop tour video**:
