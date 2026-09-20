@@ -75,7 +75,6 @@
   home.file.".local/bin/distrobox-install-deb" = {
     source = config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/scripts/distrobox-install-deb.sh";
-    executable = true;
   };
 
   # Context menu action for .deb files
