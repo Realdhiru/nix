@@ -38,9 +38,18 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 
 ### 6. Declarative Symlinks & Theming
 - **Decision:** Out-of-store symlinks (`mkOutOfStoreSymlink`) for `dotfiles/` to enable instant live reloading without rebuilds.
-- **Decision:** Matugen Material You dynamic theming extracted from wallpapers to GTK, Qt, WezTerm, QuickShell, and Cava.
+- **Decision:** Decoupled **Wallust** theme engine (`dotfiles/wallust/`) using Lch colorspace and 16 ANSI color extraction. Completely replaces Matugen. Emits all dynamic palette outputs to `~/.cache/theme/` (QuickShell, WezTerm 16-color ANSI, Cava, GTK, Qt).
+- **Rule:** Wallust engine must remain strictly self-contained and portable; wallpaper handlers and QuickShell widgets communicate only via clean file contracts (`generate.sh <image>` and `~/.cache/theme/colors.json`).
 
 ### 7. Containerized .deb Support (Distrobox + Rootless Podman)
 - **Decision:** Rootless Podman daemonless runtime (`virtualisation.podman.enable = true`, `dockerCompat = false`) combined with Distrobox (`deb-box`).
 - **Rationale:** Zero background daemons, zero battery/CPU idle drain, and no root escalation vectors. Applications install once and export native `.desktop` files into Fuzzel. When closed, processes exit completely.
 - **Rules:** GUI and Electron packages inside Distrobox must enforce native Wayland (`ELECTRON_OZONE_PLATFORM_HINT=auto`, `--ozone-platform-hint=auto`) and include container-side portal fallbacks (`zenity`, `xdg-utils`, Mesa DRI drivers) to avoid Xwayland Glamor shader crashes during file picker navigation.
+
+### 8. Architectural Modularity & Subsystem Decoupling
+- **Decision:** Strict modular boundaries across system features. No mixed files or tight cross-dependencies.
+- **Subsystem Contracts:**
+  - **Theming (`dotfiles/wallust/`)**: Portable standalone color engine. Contains extraction, PIL/Magick luminance math, template generation, neutral fallback mode (`./generate.sh --neutral`), and client reloads. Zero wallpaper or UI dependencies.
+  - **Wallpaper (`dotfiles/wallpaper/`)**: Portable desktop background manager (`wallpaper.sh`). Encapsulates daemon lifecycles (`awww`, `mpvpaper`), fast thumbnail generation, directory inotify watching, and online DuckDuckGo search. Hands off to theme engine via clean one-line async execution (`$THEME_ENGINE "$WALLPAPER" &`).
+  - **QuickShell Widgets**: QuickShell components (e.g. `wallpaper/`, `network/`, `music/`, `calendar/`) must remain self-contained with localized `Scaler.qml` and `Theme` adapters, eliminating `import "../"` parent breakages when copied to other QuickShell environments.
+

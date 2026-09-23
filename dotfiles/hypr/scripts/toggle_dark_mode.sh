@@ -3,10 +3,10 @@
 # Bound to: CTRL + SUPER + D
 set -euo pipefail
 
-STATE_FILE="$HOME/.cache/matugen/wallpaper_is_light.txt"
-QS_COLORS="$HOME/.cache/matugen/qs_colors.json"
+STATE_FILE="$HOME/.cache/theme/is_light.txt"
+QS_COLORS="$HOME/.cache/theme/colors.json"
 
-mkdir -p "$HOME/.cache/matugen"
+mkdir -p "$HOME/.cache/theme" "$HOME/.cache/matugen"
 
 current="false"
 if [ -f "$STATE_FILE" ]; then

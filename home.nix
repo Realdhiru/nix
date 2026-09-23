@@ -50,9 +50,15 @@
     force = true;
   };
       
-  xdg.configFile."matugen" = {
+  xdg.configFile."wallust" = {
     source = config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/matugen";
+      "${config.home.homeDirectory}/nix/dotfiles/wallust";
+    force = true;
+  };
+
+  xdg.configFile."wallpaper" = {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/wallpaper";
     force = true;
   };
 
@@ -88,8 +94,21 @@
     Terminal=false
     Categories=System;Utility;
     MimeType=application/vnd.debian.binary-package;application/x-deb;
-    NoDisplay=false
+    NoDisplay=true
   '';
+
+  # Declarative default file associations
+  xdg.mimeApps = {
+    enable = true;
+    defaultApplications = {
+      "inode/directory" = [ "pcmanfm-qt.desktop" ];
+      "image/jpeg" = [ "imv-dir.desktop" ];
+      "image/png" = [ "imv-dir.desktop" ];
+      "image/gif" = [ "imv-dir.desktop" ];
+      "image/webp" = [ "imv-dir.desktop" ];
+      "image/bmp" = [ "imv-dir.desktop" ];
+    };
+  };
 
   # WirePlumber: Disable conflicting libcamera monitor so UVC cameras are exclusively handled by V4L2
   xdg.configFile."wireplumber/wireplumber.conf.d/50-disable-libcamera.conf" = {

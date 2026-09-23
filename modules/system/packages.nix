@@ -44,7 +44,7 @@ in
     grim slurp grimblast gpu-screen-recorder-gtk
 
     # Media & Display
-    (mpv.override { scripts = [ mpvScripts.mpris ]; }) mpvpaper awww playerctl brightnessctl cava loupe ffmpeg imagemagick
+    (mpv.override { scripts = [ mpvScripts.mpris ]; }) mpvpaper awww playerctl brightnessctl cava imv loupe ffmpeg imagemagick
 
     # Documents & Creative
     kdePackages.okular onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic
@@ -56,7 +56,7 @@ in
     acpi iw lm_sensors
 
     # Desktop Integration
-    libnotify polkit_gnome hypridle hyprlock quickshellWrapped qt6Packages.qtmultimedia matugen
+    libnotify polkit_gnome hypridle hyprlock quickshellWrapped qt6Packages.qtmultimedia wallust
 
     powertop psmisc hyprsunset usbutils opencode repomix
 

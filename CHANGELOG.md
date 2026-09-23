@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-09-23 — .deb Container Hardening, Photo Popup Workflow & Launcher Hygiene
+
+- **Subsystem Decoupling & Modular Architecture**:
+  - **Standalone Wallust Theme Engine (`dotfiles/wallust/`)**: Encapsulated all palette extraction, PIL/Magick luminance analysis, ANSI template rendering, neutral state generation (`generate.sh --neutral`), and client reloads. 100% portable to any Linux distro with zero external desktop couplings.
+  - **Standalone Wallpaper Subsystem (`dotfiles/wallpaper/`)**: Consolidated all desktop wallpaper management into a self-contained program (`wallpaper.sh`) with subcommands (`set`, `boot`, `kill`, `ensure`, `thumb`, `watch`, `clean`, `search`). Encapsulates awww and mpvpaper daemons, thumbnail generation, inotify directory watcher, and online DuckDuckGo search. Hands off to theme engine asynchronously without any inline color logic.
+  - **Decoupled QuickShell Wallpaper Picker (`quickshell/wallpaper/`)**: Provided local `Scaler.qml` and `MatugenColors.qml` adapters in the widget directory, removing `import "../"` parent dependencies so the widget can be dropped standalone into any QuickShell project.
+  - **Declarative NixOS & Compatibility Shims**: Linked `xdg.configFile."wallpaper"` in [`home.nix`](file:///home/realdhiru/nix/home.nix) and deployed lightweight 1-line compatibility shims in `dotfiles/hypr/scripts/` to ensure all existing keybinds and scripts resolve seamlessly.
+- **Distrobox Font Metrics & Host CLI Shims**: Installed `fonts-noto`, `fonts-noto-cjk`, `fonts-liberation`, `fonts-dejavu`, and `fontconfig` with `fc-cache -f` in `deb-box` to eliminate character overlapping and glyph collisions in Electron `.deb` apps. Added transparent host shims in container `/usr/local/bin` (`nix`, `nixos-rebuild`, `rebuild`, `hyprctl`, `journalctl`, `systemctl`, `git`) via `distrobox-host-exec`, enabling containerized AI assistants and shells to inspect and manage the host system directly.
+- **Image Viewer Popup & Escape Key Workflow**: Added `imv` to [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix), configured centered floating window rule in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) (`^(imv|org\.gnome\.Loupe)$`), and set declarative `xdg.mimeApps` default associations in [`home.nix`](file:///home/realdhiru/nix/home.nix) to `imv-dir.desktop` for instant Wayland rendering and `Escape`/`q` dismissal.
+- **Application Launcher Hygiene**: Configured `NoDisplay=true` on `distrobox-install.desktop` in [`home.nix`](file:///home/realdhiru/nix/home.nix) and `deb-box.desktop` in `~/.local/share/applications/` to hide raw container shortcuts from the Fuzzel launcher while preserving PCManFM-Qt's right-click context menu.
+
 ## 2026-09-20 — Rootless Distrobox & .deb Integration
 
 - **Daemonless Podman & Distrobox**: Added rootless `virtualisation.podman` (`dockerCompat = false`) and `distrobox` to [`modules/system/services.nix`](file:///home/realdhiru/nix/modules/system/services.nix) and [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix) for battery-efficient, zero-background-overhead container execution.

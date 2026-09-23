@@ -1,0 +1,14 @@
+# Wallust v3.5 - High-Vibrancy Systemwide Theme Engine
+backend = "resized"
+color_space = "lch"
+palette = "harddark16"
+check_contrast = true
+
+[templates]
+colors = { template = "colors.json", target = "~/.cache/theme/colors.json" }
+wezterm = { template = "wezterm-colors.lua", target = "~/.cache/theme/wezterm-colors.lua" }
+cava = { template = "cava", target = "~/.config/cava/themes/wallust" }
+gtk = { template = "gtk.css", target = "~/.cache/theme/gtk.css" }
+qtct = { template = "qtct.conf", target = "~/.cache/theme/qtct.conf" }
+qt_style = { template = "qt-style.qss", target = "~/.cache/theme/qt-style.qss" }
+hyprland = { template = "hyprland-colors.conf", target = "~/.cache/theme/hyprland-colors.conf" }

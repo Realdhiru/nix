@@ -28,14 +28,10 @@ Item {
     property color maroon: "#eba0ac"
     property color teal: "#94e2d5"
 
-    // Dynamic wallpaper lightness indicators for adaptive widget styling
     property bool isLight: false
     property real topLuminance: 50.0
 
-    // Dynamically resolve HOME instead of hardcoding the user profile
     readonly property string colorsFile: Quickshell.env("HOME") + "/.cache/theme/colors.json"
-
-    // Internal state cache to prevent redundant processing
     property string _lastJson: ""
 
     function applyJson(txt) {
@@ -51,19 +47,15 @@ Item {
         } catch(e) {}
     }
 
-    Process {
-        id: colorWatcher
-        command: ["bash", "-c", "$HOME/.config/hypr/scripts/quickshell/watchers/colors_wait.sh && (cat $HOME/.cache/theme/colors.json 2>/dev/null || cat $HOME/.cache/matugen/qs_colors.json 2>/dev/null || echo '{}')"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.applyJson(this.text ? this.text.trim() : "");
-                colorWatcher.running = false;
-                colorWatcher.running = true;
-            }
+    // Live file watcher on theme colors.json
+    FileView {
+        path: root.colorsFile
+        onTextChanged: {
+            root.applyJson(text());
         }
     }
 
+    // Fallback process loader on initial startup
     Process {
         id: initialLoader
         command: ["cat", root.colorsFile]

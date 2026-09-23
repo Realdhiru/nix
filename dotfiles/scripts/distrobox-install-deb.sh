@@ -32,8 +32,17 @@ if ! distrobox list --no-color 2>/dev/null | grep -q "[[:space:]]${BOX_NAME}[[:s
     distrobox create --name "$BOX_NAME" --image "$CONTAINER_IMAGE" --yes
     distrobox enter "$BOX_NAME" -- bash -c "
         sudo apt-get update -qq && \
-        sudo apt-get install -y --no-install-recommends zenity xdg-utils libgl1-mesa-dri && \
-        echo 'ELECTRON_OZONE_PLATFORM_HINT=auto' | sudo tee -a /etc/environment
+        sudo apt-get install -y --no-install-recommends zenity xdg-utils libgl1-mesa-dri fonts-noto fonts-noto-cjk fonts-liberation fonts-dejavu fontconfig && \
+        fc-cache -f && \
+        echo 'ELECTRON_OZONE_PLATFORM_HINT=auto' | sudo tee -a /etc/environment && \
+        sudo tee /usr/local/bin/distrobox-host-wrapper >/dev/null << 'EOF'
+#!/bin/sh
+exec distrobox-host-exec \"\$(basename \"\$0\")\" \"\$@\"
+EOF
+        sudo chmod +x /usr/local/bin/distrobox-host-wrapper && \
+        for cmd in nix nixos-rebuild rebuild hyprctl journalctl systemctl git; do
+            sudo ln -sf /usr/local/bin/distrobox-host-wrapper /usr/local/bin/\$cmd
+        done
     "
 fi
 

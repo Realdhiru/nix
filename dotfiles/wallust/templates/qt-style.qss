@@ -1,0 +1,270 @@
+/* =========================================================
+   GLOBAL & BASICS 
+========================================================= */
+QWidget {
+    font-family: "JetBrains Mono";
+    font-size: 11pt;
+    color: {{foreground}};
+}
+
+QMainWindow, QDialog {
+    background-color: {{background}};
+}
+
+QToolTip {
+    background-color: {{color8}};
+    color: {{foreground}};
+    border: 1px solid {{color8}};
+    border-radius: 6px;
+    padding: 6px;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+QPushButton {
+    background-color: {{color8}};
+    color: {{foreground}};
+    border: 1px solid {{color8}};
+    border-radius: 6px;
+    padding: 6px 16px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: {{color12}};
+    border: 1px solid {{color4}};
+}
+
+QPushButton:pressed, QPushButton:checked {
+    background-color: {{color4}};
+    color: {{background}};
+    border: 1px solid {{color4}};
+}
+
+QPushButton:disabled {
+    background-color: {{color0}};
+    color: {{color8}};
+    border: 1px solid transparent;
+}
+
+/* =========================================================
+   INPUTS (Spinners, Dropdowns only)
+========================================================= */
+QSpinBox, QDoubleSpinBox, QComboBox {
+    background-color: {{background}};
+    color: {{foreground}};
+    border: 1px solid {{color8}};
+    border-radius: 6px;
+    padding: 6px 10px;
+    selection-background-color: {{color4}};
+    selection-color: {{background}};
+}
+
+QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
+    border: 2px solid {{color4}};
+    padding: 5px 9px;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+QComboBox::down-arrow {
+    image: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid {{foreground}};
+    margin-right: 10px;
+}
+
+/* =========================================================
+   CHECKBOXES & RADIOS
+========================================================= */
+QCheckBox, QRadioButton {
+    spacing: 8px;
+}
+
+QCheckBox::indicator, QRadioButton::indicator {
+    width: 18px;
+    height: 18px;
+    background-color: {{background}};
+    border: 2px solid {{color8}};
+}
+
+QCheckBox::indicator {
+    border-radius: 4px;
+}
+
+QRadioButton::indicator {
+    border-radius: 11px;
+}
+
+QCheckBox::indicator:hover, QRadioButton::indicator:hover {
+    border: 2px solid {{color4}};
+}
+
+QCheckBox::indicator:checked, QRadioButton::indicator:checked {
+    background-color: {{color4}};
+    border: 2px solid {{color4}};
+}
+
+QRadioButton::indicator:checked {
+    width: 10px;
+    height: 10px;
+    border: 6px solid {{color4}};
+    background-color: {{background}};
+}
+
+/* =========================================================
+   SLIDERS & PROGRESS BARS
+========================================================= */
+QSlider::groove:horizontal {
+    border-radius: 3px;
+    height: 6px;
+    background: {{color8}};
+}
+
+QSlider::sub-page:horizontal {
+    background: {{color4}};
+    border-radius: 3px;
+}
+
+QSlider::handle:horizontal {
+    background: {{color4}};
+    width: 16px;
+    height: 16px;
+    margin: -5px 0;
+    border-radius: 8px;
+}
+
+QSlider::handle:horizontal:hover {
+    background: {{color12}};
+    border: 2px solid {{color4}};
+}
+
+QProgressBar {
+    background-color: {{color8}};
+    border-radius: 6px;
+    text-align: center;
+    color: {{foreground}};
+}
+
+QProgressBar::chunk {
+    background-color: {{color4}};
+    border-radius: 6px;
+}
+
+/* =========================================================
+   TABS & GROUP BOXES
+========================================================= */
+QTabWidget::pane {
+    border: 1px solid {{color8}};
+    border-radius: 8px;
+    background: {{background}};
+    top: -1px;
+}
+
+QTabBar::tab {
+    background: transparent;
+    color: {{color7}};
+    padding: 8px 16px;
+    border-bottom: 2px solid transparent;
+}
+
+QTabBar::tab:hover {
+    color: {{foreground}};
+    background: {{color0}};
+}
+
+QTabBar::tab:selected {
+    color: {{color4}};
+    border-bottom: 2px solid {{color4}};
+    font-weight: bold;
+}
+
+QGroupBox {
+    border: 1px solid {{color8}};
+    border-radius: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 8px;
+    color: {{color4}};
+    font-weight: bold;
+}
+
+/* =========================================================
+   VIEWS (Lists, Trees, Tables)
+========================================================= */
+QTreeView, QListView, QTableView {
+    background-color: {{background}};
+    alternate-background-color: {{color0}};
+    border: 1px solid {{color8}};
+    border-radius: 6px;
+    gridline-color: {{color8}};
+}
+
+QTreeView::item:selected, QListView::item:selected, QTableView::item:selected {
+    background-color: {{color4}};
+    color: {{background}};
+}
+
+/* =========================================================
+   MENUS
+========================================================= */
+QMenuBar {
+    background-color: transparent;
+}
+
+QMenuBar::item:selected {
+    background-color: {{color8}};
+    border-radius: 4px;
+}
+
+QMenu {
+    background-color: {{color0}};
+    border: 1px solid {{color8}};
+    border-radius: 8px;
+    padding: 6px;
+}
+
+QMenu::item {
+    padding: 6px 24px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected {
+    background-color: {{color4}};
+    color: {{background}};
+}
+
+/* =========================================================
+   SCROLLBARS
+========================================================= */
+QScrollBar:vertical {
+    border: none;
+    background: {{color0}};
+    width: 12px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical {
+    background: {{color8}};
+    min-height: 30px;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: {{color4}};
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}

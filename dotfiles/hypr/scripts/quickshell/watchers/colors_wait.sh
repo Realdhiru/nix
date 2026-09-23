@@ -4,7 +4,8 @@
 # Blocks until ~/.cache/matugen/qs_colors.json changes (inotify),
 # with a 300s timeout failsafe, then exits so MatugenColors re-reads instantly.
 
-TARGET="$HOME/.cache/matugen/qs_colors.json"
+TARGET="$HOME/.cache/theme/colors.json"
+[ ! -f "$TARGET" ] && [ -f "$HOME/.cache/matugen/qs_colors.json" ] && TARGET="$HOME/.cache/matugen/qs_colors.json"
 
 trap "exit 0" EXIT INT TERM
 
