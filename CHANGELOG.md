@@ -5,14 +5,12 @@
 - **Monochrome & Grayscale Wallpaper Support**:
   - Added automatic grayscale detection (`is_mono`) to [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh).
   - Eliminated the hardcoded `#89b4fa` blue fallback when wallpapers lack chroma. Sets radiant ivory/silver accent (`#EDE6DC`) and switches Wallust dynamically to `dark16` + `lch` mode, producing pure black, charcoal, silver, and white palettes across WezTerm, QuickShell, and system widgets with zero artificial blue/green color cast.
-- **Enforced Qt6 Dark Theme & Rebuild Fix**:
-  - Resolved `QT_QPA_PLATFORMTHEME` option conflict with Home Manager's `qt.platformTheme` in [`modules/home/theme.nix`](file:///home/realdhiru/nix/modules/home/theme.nix) by using `lib.mkForce "qt6ct;qt5ct"`.
-  - Added declarative `dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark"` and `gtk-theme = "Adwaita:dark"` in `theme.nix`.
-  - Configured `ChangeColors=true` and `RenderMode=Invert` in `~/.config/okularpartrc` so PDF document pages open in dark mode by default.
-- **Restored 100% Opacity on Antigravity IDE**:
-  - Removed `opacity = "0.67"` rule for `antigravity-ide` in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua). Window buffer is now 100% solid with fully opaque, sharp text and zero half-transparency.
-- **Dynamic Antigravity IDE Theme Sync**:
-  - Added automatic `workbench.colorCustomizations` generation in [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), live-syncing Antigravity IDE's editor background, sidebar, activity bar, status bar, and selection highlights to the active wallpaper palette.
+- **Restored PCManFM-Qt & Okular Native Styling**:
+  - Reverted experimental `QT_QPA_PLATFORMTHEME` and `QT_STYLE_OVERRIDE` additions from [`dotfiles/hypr/env.lua`](file:///home/realdhiru/nix/dotfiles/hypr/env.lua) and [`modules/home/theme.nix`](file:///home/realdhiru/nix/modules/home/theme.nix). Semicolon-delimited values prevented Qt's plugin loader from locating `qt5ct`/`qt6ct`, which broke PCManFM-Qt's stylesheet application. Native Home Manager `qtct` integration is restored.
+  - Reverted `~/.config/okularpartrc` back to clean default view (removed document color inversion).
+- **Restored Antigravity IDE Translucent Window Rule**:
+  - Re-enabled `opacity = "0.67"` in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) per user request.
+  - Purged unwanted `workbench.colorCustomizations` pills from `~/.config/Antigravity IDE/User/settings.json` and removed IDE config injection from [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh).
 - **Condensed Hotspot Capsule to Compact Icon in Battery Popup**:
   - Replaced the wide 96px `"Hotspot"` text button in [`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml) with a sleek 38px icon button (`󰖩`).
   - Frees up 58px in the header row, expanding the battery runtime capsule (`󰂄 1h 54m LEFT`) to 188px and completely eliminating text collision with the DND bell icon.

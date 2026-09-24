@@ -278,29 +278,6 @@ ln -sf "$TARGET_CACHE/gtk.css" "$MATUGEN_COMPAT/gtk.css"
 ln -sf "$TARGET_CACHE/qtct.conf" "$MATUGEN_COMPAT/qtct.conf"
 ln -sf "$TARGET_CACHE/qt-style.qss" "$MATUGEN_COMPAT/qt-style.qss"
 
-# Sync color palette with Antigravity IDE (VS Code)
-IDE_SETTINGS="$HOME/.config/Antigravity IDE/User/settings.json"
-if [ -f "$IDE_SETTINGS" ] && [ -f "$TARGET_CACHE/colors.json" ]; then
-    BASE_COL=$(jq -r '.base // "#121318"' "$TARGET_CACHE/colors.json")
-    MANTLE_COL=$(jq -r '.mantle // "#101115"' "$TARGET_CACHE/colors.json")
-    CRUST_COL=$(jq -r '.crust // "#0c0d10"' "$TARGET_CACHE/colors.json")
-    PRIMARY_COL=$(jq -r '.primary // "#89b4fa"' "$TARGET_CACHE/colors.json")
-    TEXT_COL=$(jq -r '.text // "#EDE6DC"' "$TARGET_CACHE/colors.json")
-    
-    jq --arg base "$BASE_COL" --arg mantle "$MANTLE_COL" --arg crust "$CRUST_COL" --arg prim "$PRIMARY_COL" --arg txt "$TEXT_COL" \
-       '.["workbench.colorCustomizations"] = (.["workbench.colorCustomizations"] // {}) + {
-           "editor.background": $base,
-           "sideBar.background": $mantle,
-           "activityBar.background": $crust,
-           "statusBar.background": $crust,
-           "statusBar.foreground": $txt,
-           "activityBar.activeBorder": $prim,
-           "tab.activeBorder": $prim,
-           "editorCursor.foreground": $prim,
-           "editor.selectionBackground": ($prim + "33")
-       }' "$IDE_SETTINGS" > "$IDE_SETTINGS.tmp" 2>/dev/null && mv -f "$IDE_SETTINGS.tmp" "$IDE_SETTINGS"
-fi
-
 # Notify client applications if running
 pkill -USR2 cava 2>/dev/null || true
 pkill -HUP wezterm-gui 2>/dev/null || true
