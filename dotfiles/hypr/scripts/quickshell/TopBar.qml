@@ -544,7 +544,7 @@ Variants {
                             y: (workspacesBox.height - barWindow.s(32)) / 2
                             height: barWindow.s(32)
                             radius: barWindow.s(10)
-                            color: Qt.rgba(barWindow.accentColor.r, barWindow.accentColor.g, barWindow.accentColor.b, Config.activePillOpacity)
+                            color: Qt.rgba(barWindow.accentColor.r, barWindow.accentColor.g, barWindow.accentColor.b, 0.78)
                             z: 0
 
                             property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsRepeater.count)
@@ -633,7 +633,7 @@ Variants {
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
 
-                                        color: index === workspacesModel.activeIndex ? mocha.text : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
+                                        color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
 
                                         Behavior on color { ColorAnimation { duration: 250 } }
                                     }
@@ -1227,7 +1227,7 @@ Variants {
                                         anchors.fill: parent
                                         radius: barWindow.s(10)
                                         opacity: 1.0
-                                        color: Qt.rgba(barWindow.accentColor.r, barWindow.accentColor.g, barWindow.accentColor.b, Config.activePillOpacity)
+                                        color: Qt.rgba(barWindow.accentColor.r, barWindow.accentColor.g, barWindow.accentColor.b, 0.78)
                                     }
 
                                     property real targetWidth: barWindow.isDesktop ? barWindow.s(34) : batLayoutRow.implicitWidth + barWindow.s(24)
@@ -1250,8 +1250,8 @@ Variants {
                                         id: batLayoutRow
                                         anchors.centerIn: parent
                                         spacing: barWindow.s(8)
-                                        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: barWindow.accentColor; Behavior on color { ColorAnimation { duration: 300 } } }
-                                        Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.text; Behavior on color { ColorAnimation { duration: 300 } } }
+                                        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: mocha.crust; Behavior on color { ColorAnimation { duration: 300 } } }
+                                        Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.crust; Behavior on color { ColorAnimation { duration: 300 } } }
                                     }
                                     MouseArea {
                                         id: batMouse; hoverEnabled: true; anchors.fill: parent;

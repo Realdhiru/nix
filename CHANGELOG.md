@@ -2,12 +2,16 @@
 
 ## 2026-09-24 — Global Dark Lock, Harmonic Amber Palette, Pure Liquid Glass & Centralized Settings
 
+- **Fixed Rebuild Failure (`home-manager-realdhiru.service`)**:
+  - Removed stale backup file `~/.config/mimeapps.list.hm-backup` that blocked Home Manager activation.
+  - Added `xdg.configFile."mimeapps.list".force = true;` and preserved `x-scheme-handler/codex` in [`home.nix`](file:///home/realdhiru/nix/home.nix), preventing future backup clobber collisions during system rebuilds.
+  - Verified with `nixos-rebuild build --flake .#nixos` (passed with exit code 0).
+- **Restored Original Active Workspace & Battery Pill Shading**:
+  - Reverted active workspace highlight and battery pill fills in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml) back to original rich `0.78` opacity.
+  - Restored high-contrast dark typography (`mocha.crust`) for active numbers and battery indicators per user request.
+  - Pruned temporary `activePillOpacity` property from [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml) and [`settings.json`](file:///home/realdhiru/nix/dotfiles/hypr/settings.json).
 - **Resolved Hyprland Window Rule Error**:
   - Removed duplicate table-based rule in [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) (`opacity = { 0.88, 0.82 }`); retained clean string definition (`opacity = "0.67"`) under `not is_opaque` block, clearing the Hyprland red banner error.
-- **Toned Down Active Workspace & Battery Pill Contrast**:
-  - Replaced hardcoded `0.78` opacity fills in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml) with configurable `Config.activePillOpacity` (`0.28`).
-  - Switched text from black (`mocha.crust`) to warm ivory (`mocha.text`) on active workspace and battery pills for high-contrast legibility over subtle glass tints.
-  - Exposed `"activePillOpacity": 0.28` in [`settings.json`](file:///home/realdhiru/nix/dotfiles/hypr/settings.json) and documented in [`QUICKSHELL_SETTINGS.md`](file:///home/realdhiru/nix/dotfiles/hypr/QUICKSHELL_SETTINGS.md).
 - **Neutral Dark Slate Theme Overhaul (PCManFM-Qt & GTK/Qt Apps)**:
   - Rewrote [`dotfiles/wallust/templates/qt-style.qss`](file:///home/realdhiru/nix/dotfiles/wallust/templates/qt-style.qss) and [`dotfiles/wallust/templates/gtk.css`](file:///home/realdhiru/nix/dotfiles/wallust/templates/gtk.css): decoupled base application backgrounds and fonts from ANSI `{{foreground}}` and `{{color8}}`. Established neutral dark slate `#121318` background, `#16171f` view/input areas, `#EDE6DC` warm ivory text, and reserved wallpaper dynamic accent `{{color4}}` strictly for active selections and focus states.
   - Added translucent window rule in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) (`class = "^(pcmanfm-qt)$"`, opacity `0.88`/`0.82`) with dual-pass background blur.

@@ -98,6 +98,7 @@
   '';
 
   # Declarative default file associations
+  xdg.configFile."mimeapps.list".force = true;
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
@@ -107,6 +108,7 @@
       "image/gif" = [ "imv-dir.desktop" ];
       "image/webp" = [ "imv-dir.desktop" ];
       "image/bmp" = [ "imv-dir.desktop" ];
+      "x-scheme-handler/codex" = [ "deb-box-chatgpt.desktop" ];
     };
   };
 

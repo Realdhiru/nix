@@ -68,9 +68,6 @@ Every color option below accepts any of these tokens extracted dynamically from 
   - Recommended: `0.30` - `0.45` for liquid glass.
 - **`topbarPillHoverOpacity`**: `0.0` to `1.0`.
   - Recommended: `0.55` - `0.70` for responsive hover feedback.
-- **`activePillOpacity`**: `0.0` (invisible) to `1.0` (solid block).
-  - Tints active indicators (focused workspace pill & battery pill).
-  - Recommended: `0.20` - `0.35` for subtle liquid glass harmony without popping out aggressively. Default: `0.28`.
 
 ### C. Popups & Cards
 - **`popupBackgroundSource`**: `"base"` | `"mantle"` | `"crust"` | `"surface0"`

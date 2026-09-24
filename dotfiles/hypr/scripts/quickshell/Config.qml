@@ -109,7 +109,6 @@ Item {
     property real cardOpacity: config.getSetting("cardOpacity", 0.04)
     property real topbarPillOpacity: config.getSetting("topbarPillOpacity", 0.35)
     property real topbarPillHoverOpacity: config.getSetting("topbarPillHoverOpacity", 0.60)
-    property real activePillOpacity: config.getSetting("activePillOpacity", 0.28)
     // Border options: borderWidth = 0 (frameless) or 1 (hairline); borderOpacity = 0.04 - 0.30
     property int borderWidth: config.getSetting("borderWidth", 0)
     property real borderOpacity: config.getSetting("borderOpacity", 0.0)
@@ -483,7 +482,6 @@ Item {
                         if (config.rawSettings.cardOpacity !== undefined) config.cardOpacity = config.rawSettings.cardOpacity;
                         if (config.rawSettings.topbarPillOpacity !== undefined) config.topbarPillOpacity = config.rawSettings.topbarPillOpacity;
                         if (config.rawSettings.topbarPillHoverOpacity !== undefined) config.topbarPillHoverOpacity = config.rawSettings.topbarPillHoverOpacity;
-                        if (config.rawSettings.activePillOpacity !== undefined) config.activePillOpacity = config.rawSettings.activePillOpacity;
                         if (config.rawSettings.borderWidth !== undefined) config.borderWidth = config.rawSettings.borderWidth;
                         if (config.rawSettings.borderOpacity !== undefined) config.borderOpacity = config.rawSettings.borderOpacity;
                         if (config.rawSettings.glassSpecular !== undefined) config.glassSpecular = config.rawSettings.glassSpecular;
