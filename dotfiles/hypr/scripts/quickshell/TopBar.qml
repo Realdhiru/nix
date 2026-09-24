@@ -193,9 +193,27 @@ Variants {
             }
 
             function cavaBarColor(barIndex, barCount, segIndex, segCount) {
+                let mode = Config.cavaGradient || "soft";
                 let topColor = barWindow.accentColor;
-                let bottomColor = (mocha.sapphire && mocha.sapphire !== mocha.surface0) ? mocha.sapphire : (mocha.blue || mocha.subtext0);
                 let t = (segCount <= 1) ? 1.0 : (segIndex / (segCount - 1));
+
+                if (mode === "soft") {
+                    // Soft monochromatic luminescence: gentle 0.35 tint at base rising to full 1.0 radiance at peaks
+                    let alpha = 0.35 + (0.65 * t);
+                    return Qt.rgba(topColor.r, topColor.g, topColor.b, alpha);
+                }
+
+                let bottomColor = topColor;
+                if (mode === "warm") {
+                    bottomColor = (mocha.peach && mocha.peach !== mocha.surface0) ? mocha.peach : (mocha.mauve || topColor);
+                } else if (mode === "ivory") {
+                    bottomColor = mocha.subtext0 || mocha.text;
+                } else if (mode === "sapphire") {
+                    bottomColor = (mocha.sapphire && mocha.sapphire !== mocha.surface0) ? mocha.sapphire : (mocha.blue || mocha.subtext0);
+                } else if (mocha[mode]) {
+                    bottomColor = mocha[mode];
+                }
+
                 return Qt.rgba(
                     Math.max(0.0, Math.min(1.0, bottomColor.r + (topColor.r - bottomColor.r) * t)),
                     Math.max(0.0, Math.min(1.0, bottomColor.g + (topColor.g - bottomColor.g) * t)),

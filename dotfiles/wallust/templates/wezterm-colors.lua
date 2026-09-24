@@ -2,8 +2,9 @@ return {
     foreground = "{{foreground}}",
     background = "{{background}}",
 
-    cursor_bg = "{{cursor}}",
+    cursor_bg = "{{color4}}",
     cursor_fg = "{{background}}",
+    cursor_border = "{{color4}}",
 
     selection_bg = "{{color4}}",
     selection_fg = "{{foreground}}",

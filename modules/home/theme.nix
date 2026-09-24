@@ -65,4 +65,13 @@
     stylesheets=${config.home.homeDirectory}/.cache/theme/qt-style.qss
     style=Fusion
   '';
+
+  # Enforce dark theme for KDE Frameworks applications (Okular, Dolphin, Gwenview)
+  xdg.configFile."kdeglobals".text = ''
+    [General]
+    ColorScheme=BreezeDark
+
+    [KDE]
+    colorScheme=BreezeDark
+  '';
 }

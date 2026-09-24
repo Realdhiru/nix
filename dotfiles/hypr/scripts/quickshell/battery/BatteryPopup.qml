@@ -538,11 +538,11 @@ Item {
 
                             Rectangle {
                                 id: hotspotBtn
-                                Layout.preferredWidth: window.s(96)
+                                Layout.preferredWidth: window.s(38)
                                 Layout.preferredHeight: window.s(38)
                                 radius: window.s(12)
-                                color: hotspotMa.containsMouse || window.showHotspotMenu ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
-                                border.color: hotspotMa.containsMouse || window.showHotspotMenu ? window.surface2 : Qt.alpha(window.surface1, 0.3)
+                                color: window.hotspotActive ? Qt.alpha(window.primary, 0.25) : (hotspotMa.containsMouse || window.showHotspotMenu ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08))
+                                border.color: window.hotspotActive ? window.primary : (hotspotMa.containsMouse || window.showHotspotMenu ? window.surface2 : Qt.alpha(window.surface1, 0.3))
                                 border.width: Config.borderWidth
                                 clip: true
 
@@ -550,13 +550,13 @@ Item {
                                 Behavior on border.color { ColorAnimation { duration: 150 } }
 
                                 Text {
-                                    id: hotspotText
+                                    id: hotspotIcon
                                     anchors.centerIn: parent
-                                    text: window.hotspotActive ? ("Hotspot (" + window.hotspotClients + ")") : "Hotspot"
-                                    font.family: "JetBrains Mono"
-                                    font.weight: Font.Bold
-                                    font.pixelSize: window.s(11)
-                                    color: window.text
+                                    text: "󰖩"
+                                    font.family: "Iosevka Nerd Font"
+                                    font.pixelSize: window.s(17)
+                                    color: window.hotspotActive ? window.primary : (hotspotMa.containsMouse || window.showHotspotMenu ? window.text : window.subtext0)
+                                    Behavior on color { ColorAnimation { duration: 150 } }
                                 }
 
                                 MouseArea {

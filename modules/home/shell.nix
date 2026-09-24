@@ -20,6 +20,9 @@
     };
 
     initContent = ''
+      # Suppress Zsh reverse-video '%' end-of-line mark on terminal launch
+      PROMPT_EOL_MARK=""
+
       # Rebuild safety policy (2026-08-16 i915 incident, docs/decisions.md):
       #   record known-good -> commit -> BUILD (no activation on failure) ->
       #   switch -> health gate -> auto-rollback on critical checks.

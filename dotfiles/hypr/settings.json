@@ -14,6 +14,7 @@
   "clockColorSource": "text",
   "textColorSource": "text",
   "accentColorSource": "primary",
+  "cavaGradient": "soft",
   "wallpaperDir": "/home/realdhiru/Pictures/Wallpapers",
   "language": "",
   "kbOptions": "grp:alt_shift_toggle",

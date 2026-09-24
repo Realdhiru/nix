@@ -119,6 +119,8 @@ Item {
     property string clockColorSource: config.getSetting("clockColorSource", "text")
     property string textColorSource: config.getSetting("textColorSource", "text")
     property string accentColorSource: config.getSetting("accentColorSource", "primary")
+    // CAVA gradient options: "soft" (monochrome intensity glow), "warm" (peach/mauve to primary), "ivory" (ivory to primary), "sapphire"
+    property string cavaGradient: config.getSetting("cavaGradient", "soft")
 
     property bool isSolidMode: false
     readonly property real effectivePopupOpacity: config.isSolidMode ? 1.0 : config.popupOpacity
@@ -490,6 +492,7 @@ Item {
                         if (config.rawSettings.clockColorSource !== undefined) config.clockColorSource = config.rawSettings.clockColorSource;
                         if (config.rawSettings.textColorSource !== undefined) config.textColorSource = config.rawSettings.textColorSource;
                         if (config.rawSettings.accentColorSource !== undefined) config.accentColorSource = config.rawSettings.accentColorSource;
+                        if (config.rawSettings.cavaGradient !== undefined) config.cavaGradient = config.rawSettings.cavaGradient;
                         if (config.rawSettings.topbarHelpIcon !== undefined) config.topbarHelpIcon = config.rawSettings.topbarHelpIcon;
                         if (config.rawSettings.wallpaperDir !== undefined) {
                             let wp = config.rawSettings.wallpaperDir;

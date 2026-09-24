@@ -1,10 +1,10 @@
 # Wallust v3.5 - High-Vibrancy Systemwide Theme Engine
 # Backend options: "resized" (default, fast/vibrant), "wal", "thumb", "kmeans"
 backend = "resized"
-# Colorspace options: "salience" (best contrast), "lch", "lab", "rgb", "hsl"
-color_space = "salience"
-# Palette options: "saliencedark16" (dark mode), "saliencelight16" (light mode), "dark16", "softdark16"
-palette = "saliencedark16"
+# Colorspace options: "lchansi" (preserves 8 ANSI hues), "salience", "lch", "lab", "rgb", "hsl"
+color_space = "lchansi"
+# Palette options: "ansidark16" (TTY ANSI order tuned to wallpaper), "saliencedark16", "dark16"
+palette = "ansidark16"
 check_contrast = true
 
 [templates]

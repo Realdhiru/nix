@@ -2,6 +2,32 @@
 
 ## 2026-09-24 — Global Dark Lock, Harmonic Amber Palette, Pure Liquid Glass & Centralized Settings
 
+- **Condensed Hotspot Capsule to Compact Icon in Battery Popup**:
+  - Replaced the wide 96px `"Hotspot"` text button in [`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml) with a sleek 38px icon button (`󰖩`).
+  - Frees up 58px in the header row, expanding the battery runtime capsule (`󰂄 1h 54m LEFT`) to 188px and completely eliminating text collision with the DND bell icon.
+- **Dynamic Wallpaper-Extracted ANSI Palette (`ansidark16` + `lchansi`)**:
+  - Configured Wallust in [`dotfiles/wallust/wallust.toml`](file:///home/realdhiru/nix/dotfiles/wallust/wallust.toml) and [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh) to use `lchansi` colorspace with `ansidark16` palette and `--check-contrast`.
+  - Re-linked [`dotfiles/wallust/templates/wezterm-colors.lua`](file:///home/realdhiru/nix/dotfiles/wallust/templates/wezterm-colors.lua) directly to dynamic tokens (`color0`–`color15`, `foreground`, `background`, `cursor`). Unlike `saliencedark16` (which sorted colors randomly by saliency and dumped brown into blue slots), `lchansi` preserves all 8 standard ANSI roles while deriving exact harmonious shades from the active wallpaper.
+- **Physical OLED Pitch-Black Screen on Killed Wallpaper**:
+  - Configured `force_default_wallpaper = 0` and `background_color = 0x000000` in [`dotfiles/hypr/misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua).
+  - Eliminates Hyprland's default gray `0x111111` root clear color when wallpapers are stopped (`wallpaper.sh kill`), allowing the ASUS OLED panel to turn off pixels completely (0.000 nits, 0 mA draw).
+- **Eliminated Olive-Green Palette Artifact on Neutral Theme**:
+  - Diagnosed root cause in [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh): ImageMagick 7 `histogram:info:` outputs 16-bit hex (`#RRRRGGGGBBBB`), causing 6-char regex matching to capture `#RRRRGG` (interpreting the green high-byte as the green component and creating a false high-saturation green spike).
+  - Added `-depth 8` and multi-length hex parser support, and rewrote the `--neutral` branch to deterministically emit a pure OLED pitch-black palette (`base = "#000000"`, `primary = "#89b4fa"`, `mauve = "#cba6f7"`) without running salience clustering on synthetic gradient seeds.
+
+- **Eliminated Terminal 42% Dimming & Enforced 0.0 Pure Transparency**:
+  - Found and removed stale `~/.cache/matugen/wallpaper_is_light.txt` (`true`) left from legacy Matugen, which had been causing [`dotfiles/wezterm.lua`](file:///home/realdhiru/nix/dotfiles/wezterm.lua) to trigger `is_light = true` and set `config.window_background_opacity = 0.42`.
+  - Removed obsolete `is_light` logic from `wezterm.lua` and hard-locked `config.window_background_opacity = 0.0` for true transparent glass without background dimming.
+- **Restored Translucent Blur on File Manager (`pcmanfm-qt`)**:
+  - Re-enabled compositor window rule in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) (`opacity = "0.78"`). Upstream Qt QWidget architecture cannot create translucent top-level window buffers via CSS alone without C++ binary source modifications (`Qt::WA_TranslucentBackground`), making the compositor rule the only path for desktop glass.
+- **Automated Live GTK Theme Refresh on Wallpaper Switch**:
+  - Added live D-Bus / GSettings toggle trigger in [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), notifying active GTK applications to immediately reload stylesheet changes whenever a new wallpaper is applied.
+- **Enforced Automatic Dark Theme for KDE Framework Apps**:
+- **Suppressed Terminal Launch `%` Marker**:
+  - Configured `PROMPT_EOL_MARK=""` in [`modules/home/shell.nix`](file:///home/realdhiru/nix/modules/home/shell.nix) (`programs.zsh.initContent`), suppressing the Zsh reverse-video end-of-line marker displayed upon launching terminal sessions.
+- **Harmonic Soft CAVA Visualizer Gradients**:
+  - Overhauled CAVA vertical interpolation in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml) to support four distinct soft gradient modes (`"soft"`, `"warm"`, `"ivory"`, `"sapphire"`), configurable live in [`settings.json`](file:///home/realdhiru/nix/dotfiles/hypr/settings.json) (`"cavaGradient"`).
+  - Defaulted to `"soft"`: a monochromatic luminescent intensity fade (delicate 0.35 alpha at base rising to 1.0 radiant accent at peaks) that eliminates muddy RGB color collisions.
 - **Fixed Rebuild Failure (`home-manager-realdhiru.service`)**:
   - Removed stale backup file `~/.config/mimeapps.list.hm-backup` that blocked Home Manager activation.
   - Added `xdg.configFile."mimeapps.list".force = true;` and preserved `x-scheme-handler/codex` in [`home.nix`](file:///home/realdhiru/nix/home.nix), preventing future backup clobber collisions during system rebuilds.

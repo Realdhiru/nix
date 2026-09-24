@@ -68,6 +68,12 @@ Every color option below accepts any of these tokens extracted dynamically from 
   - Recommended: `0.30` - `0.45` for liquid glass.
 - **`topbarPillHoverOpacity`**: `0.0` to `1.0`.
   - Recommended: `0.55` - `0.70` for responsive hover feedback.
+- **`cavaGradient`**: `"soft"` | `"warm"` | `"ivory"` | `"sapphire"`
+  - Controls CAVA visualizer vertical gradient style:
+    - `"soft"` (default): Monochromatic luminescent intensity fade (delicate 0.35 alpha at base rising to 1.0 vibrant accent at peaks). Completely avoids muddy middle-color collisions.
+    - `"warm"`: Sunset fade between warm peach/mauve and primary accent.
+    - `"ivory"`: Clean transition from warm ivory `subtext0` at base to primary accent at peaks.
+    - `"sapphire"`: Cool sapphire blue at base to primary accent at peaks.
 
 ### C. Popups & Cards
 - **`popupBackgroundSource`**: `"base"` | `"mantle"` | `"crust"` | `"surface0"`

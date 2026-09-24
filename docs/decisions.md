@@ -66,3 +66,14 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - Tray access consolidated: Quick access tray icons live directly alongside system toggles (Hotspot, DND, volume, brightness, power profiles) in BatteryPopup header.
   - Zero-border design: Explicitly removed artificial hairline borders, rotating shape masks, and outer stroke containers across all widget popups (`MusicPopup`, `BatteryPopup`, `CalendarPopup`, `PopupCard`, `MonitorPopup`, `FocusTimePopup`, `NetworkPopup`, `ClipboardManager`). Default `borderWidth = 0` and `borderOpacity = 0.0` in `settings.json`.
 
+### 10. Terminal Dynamic ANSI Extraction & OLED Surface Authority
+- **Dynamic Wallpaper-Extracted ANSI Palette (`ansidark16` + `lchansi`):**
+  - Configured Wallust with `--colorspace lchansi --palette ansidark16 --check-contrast` in [`dotfiles/wallust/wallust.toml`](file:///home/realdhiru/nix/dotfiles/wallust/wallust.toml) and [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh).
+  - All terminal ANSI slots (`color0`-`color15`), foreground, background, and cursor in [`wezterm-colors.lua`](file:///home/realdhiru/nix/dotfiles/wallust/templates/wezterm-colors.lua) are dynamically derived from the wallpaper while preserving standard ANSI hue roles (red, green, blue, etc.), preventing muddy cluster collisions.
+- **Physical OLED Pitch-Black Root Compositor Background:**
+  - In [`dotfiles/hypr/misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua), `background_color = 0x000000` and `force_default_wallpaper = 0`.
+  - When wallpaper daemons are terminated (`wallpaper.sh kill`), Hyprland renders pure `#000000`, turning off OLED pixels completely (0.000 nits, 0 mA draw) instead of illuminating the screen with Hyprland's default `0x111111` gray.
+- **Deterministic Neutral Theme Bypass:**
+  - In [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), `--neutral` bypasses Wallust salience clustering and ImageMagick histogram extraction, deterministically generating an OLED pitch-black palette without risk of false olive-green color spikes.
+
+
