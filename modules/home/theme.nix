@@ -1,12 +1,13 @@
 { config, lib, pkgs, ... }:
 {
   home.sessionVariables.GTK_THEME = "Adwaita:dark";
+  home.sessionVariables.QT_QPA_PLATFORMTHEME = "qt6ct;qt5ct";
 
-  # GTK3 config channels (settings.ini/dconf) don't apply here; environment is
-  # the only reliable channel (proven). sessionVariables covers GUI/logins;
-  # user-environment.d covers systemd user services (e.g. the portal).
+  # GTK3/Qt config channels
   xdg.configFile."environment.d/gtk-theme.conf".text =
     "GTK_THEME=Adwaita:dark\n";
+  xdg.configFile."environment.d/qt-theme.conf".text =
+    "QT_QPA_PLATFORMTHEME=qt6ct;qt5ct\n";
 
   gtk = {
     enable = true;

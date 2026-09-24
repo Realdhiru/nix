@@ -2,6 +2,14 @@
 
 ## 2026-09-24 — Global Dark Lock, Harmonic Amber Palette, Pure Liquid Glass & Centralized Settings
 
+- **Monochrome & Grayscale Wallpaper Support**:
+  - Added automatic grayscale detection (`is_mono`) to [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh).
+  - Eliminated the hardcoded `#89b4fa` blue fallback when wallpapers lack chroma. Sets radiant ivory/silver accent (`#EDE6DC`) and switches Wallust dynamically to `dark16` + `lch` mode, producing pure black, charcoal, silver, and white palettes across WezTerm, QuickShell, and system widgets with zero artificial blue/green color cast.
+- **Enforced Qt6 Dark Theme (Okular & KDE Apps)**:
+  - Added `QT_QPA_PLATFORMTHEME = "qt6ct;qt5ct"` to [`dotfiles/hypr/env.lua`](file:///home/realdhiru/nix/dotfiles/hypr/env.lua) and [`modules/home/theme.nix`](file:///home/realdhiru/nix/modules/home/theme.nix). Previously, `QT_QPA_PLATFORMTHEME=qt5ct` caused Qt6 apps (like Okular 26.08) to bypass `qt6ct` and fall back to default light mode.
+  - Configured `ChangeColors=true` and `RenderMode=Invert` in `~/.config/okularpartrc` so PDF document pages open in comfortable dark mode by default.
+- **Dynamic Antigravity IDE Theme Sync**:
+  - Added automatic `workbench.colorCustomizations` generation in [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), live-syncing Antigravity IDE's editor background, sidebar, activity bar, status bar, and selection highlights to the active wallpaper palette.
 - **Condensed Hotspot Capsule to Compact Icon in Battery Popup**:
   - Replaced the wide 96px `"Hotspot"` text button in [`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml) with a sleek 38px icon button (`󰖩`).
   - Frees up 58px in the header row, expanding the battery runtime capsule (`󰂄 1h 54m LEFT`) to 188px and completely eliminating text collision with the DND bell icon.

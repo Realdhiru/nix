@@ -121,9 +121,7 @@ EOF
 
     # Notify client applications
     pkill -USR2 cava 2>/dev/null || true
-    if command -v wezterm >/dev/null 2>&1; then
-        wezterm cli reload-configuration 2>/dev/null || true
-    fi
+    pkill -HUP wezterm-gui 2>/dev/null || true
     if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
         hyprctl reload >/dev/null 2>&1 || true
     fi
@@ -196,6 +194,7 @@ for line in lines:
 
 colored = [p for p in parsed if p[3] >= 0.15 and 0.10 <= p[4] <= 0.85]
 if colored:
+    is_mono = "False"
     colored.sort(key=lambda p: (p[0] ** 0.7) * (1.0 + p[3] * 1.5), reverse=True)
     best = colored[0]
     target_l = 0.38 if mode == "light" else 0.68
@@ -203,7 +202,9 @@ if colored:
     r, g, b = colorsys.hls_to_rgb(best[2], target_l, target_s)
     accent = "#{0:02x}{1:02x}{2:02x}".format(int(r*255), int(g*255), int(b*255))
 else:
-    accent = "#89b4fa"
+    is_mono = "True"
+    # Pure monochrome wallpaper: clean radiant silver/platinum accent (never false blue)
+    accent = "#EDE6DC" if mode == "dark" else "#2D3139"
 
 if mode == "light":
     text_color = "#181926"
@@ -214,7 +215,7 @@ else:
     subtext0 = "#C9BFB5"
     subtext1 = "#A89F95"
 
-print(f"{accent}|{text_color}|{subtext0}|{subtext1}")
+print(f"{accent}|{text_color}|{subtext0}|{subtext1}|{is_mono}")
 ' "$MODE" 2>/dev/null || true)
 fi
 
@@ -222,13 +223,20 @@ ACCENT=""
 TEXT_COLOR=""
 SUBTEXT0=""
 SUBTEXT1=""
+IS_MONO="False"
 if [ -n "$COLOR_DATA" ]; then
-    IFS="|" read -r ACCENT TEXT_COLOR SUBTEXT0 SUBTEXT1 <<< "$COLOR_DATA"
+    IFS="|" read -r ACCENT TEXT_COLOR SUBTEXT0 SUBTEXT1 IS_MONO <<< "$COLOR_DATA"
 fi
 
 # 3. Run Wallust with dynamic wallpaper-extracted ANSI palette
-PALETTE="ansidark16"
-COLORSPACE="lchansi"
+# If monochrome, use clean dark16 + lch to prevent false rainbow ANSI synthesis
+if [ "$IS_MONO" = "True" ]; then
+    PALETTE="dark16"
+    COLORSPACE="lch"
+else
+    PALETTE="ansidark16"
+    COLORSPACE="lchansi"
+fi
 if [ "$MODE" = "light" ]; then
     PALETTE="light16"
     COLORSPACE="lch"
@@ -270,11 +278,32 @@ ln -sf "$TARGET_CACHE/gtk.css" "$MATUGEN_COMPAT/gtk.css"
 ln -sf "$TARGET_CACHE/qtct.conf" "$MATUGEN_COMPAT/qtct.conf"
 ln -sf "$TARGET_CACHE/qt-style.qss" "$MATUGEN_COMPAT/qt-style.qss"
 
+# Sync color palette with Antigravity IDE (VS Code)
+IDE_SETTINGS="$HOME/.config/Antigravity IDE/User/settings.json"
+if [ -f "$IDE_SETTINGS" ] && [ -f "$TARGET_CACHE/colors.json" ]; then
+    BASE_COL=$(jq -r '.base // "#121318"' "$TARGET_CACHE/colors.json")
+    MANTLE_COL=$(jq -r '.mantle // "#101115"' "$TARGET_CACHE/colors.json")
+    CRUST_COL=$(jq -r '.crust // "#0c0d10"' "$TARGET_CACHE/colors.json")
+    PRIMARY_COL=$(jq -r '.primary // "#89b4fa"' "$TARGET_CACHE/colors.json")
+    TEXT_COL=$(jq -r '.text // "#EDE6DC"' "$TARGET_CACHE/colors.json")
+    
+    jq --arg base "$BASE_COL" --arg mantle "$MANTLE_COL" --arg crust "$CRUST_COL" --arg prim "$PRIMARY_COL" --arg txt "$TEXT_COL" \
+       '.["workbench.colorCustomizations"] = (.["workbench.colorCustomizations"] // {}) + {
+           "editor.background": $base,
+           "sideBar.background": $mantle,
+           "activityBar.background": $crust,
+           "statusBar.background": $crust,
+           "statusBar.foreground": $txt,
+           "activityBar.activeBorder": $prim,
+           "tab.activeBorder": $prim,
+           "editorCursor.foreground": $prim,
+           "editor.selectionBackground": ($prim + "33")
+       }' "$IDE_SETTINGS" > "$IDE_SETTINGS.tmp" 2>/dev/null && mv -f "$IDE_SETTINGS.tmp" "$IDE_SETTINGS"
+fi
+
 # Notify client applications if running
 pkill -USR2 cava 2>/dev/null || true
-if command -v wezterm >/dev/null 2>&1; then
-    wezterm cli reload-configuration 2>/dev/null || true
-fi
+pkill -HUP wezterm-gui 2>/dev/null || true
 if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
     hyprctl reload >/dev/null 2>&1 || true
 fi
