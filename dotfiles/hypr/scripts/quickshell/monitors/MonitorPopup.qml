@@ -45,6 +45,7 @@ Item {
     readonly property color surface0: _theme.surface0
     readonly property color surface1: _theme.surface1
     readonly property color surface2: _theme.surface2
+    readonly property color primary: _theme.primary
 
     readonly property color mauve: _theme.mauve
     readonly property color blue: _theme.blue
@@ -60,7 +61,7 @@ Item {
     // STATE & MATH
     // -------------------------------------------------------------------------
     property int activeEditIndex: 0
-    property int activeFocusIndex: 0 // 0: Res, 1: Clock, 2: Frame, 3: Scale, 4: Apply
+    property int activeFocusIndex: 0 // 0: Res, 1: Orientation, 2: Frame, 3: Scale, 4: Apply
     property real uiScale: 0.10
 
     // Wayland Absolute Anchor tracking
@@ -72,19 +73,19 @@ Item {
     }
 
     property var resList: [
-        {w: 3840, h: 2160, l: "4K",     accent: window.pink},
-        {w: 2880, h: 1620, l: "QHD", accent: window.mauve},
-        {w: 1920, h: 1080, l: "FHD",    accent: window.blue},
-        {w: 1600, h: 900,  l: "HD+",    accent: window.teal},
-        {w: 1366, h: 768,  l: "WXGA",   accent: window.yellow},
-        {w: 1280, h: 720,  l: "HD",     accent: window.peach},
-        {w: 1024, h: 768,  l: "XGA",    accent: window.green},
-        {w: 800,  h: 600,  l: "SVGA",   accent: window.red}
+        {w: 3840, h: 2160, l: "4K",   accent: window.primary},
+        {w: 2880, h: 1620, l: "QHD",  accent: window.primary},
+        {w: 1920, h: 1080, l: "FHD",  accent: window.primary},
+        {w: 1600, h: 900,  l: "HD+",  accent: window.primary},
+        {w: 1366, h: 768,  l: "WXGA", accent: window.primary},
+        {w: 1280, h: 720,  l: "HD",   accent: window.primary},
+        {w: 1024, h: 768,  l: "XGA",  accent: window.primary},
+        {w: 800,  h: 600,  l: "SVGA", accent: window.primary}
     ]
 
-    property color selectedResAccent: window.mauve
-    property color selectedRateAccent: window.blue
-    property color selectedScaleAccent: window.green
+    property color selectedResAccent: window.primary
+    property color selectedRateAccent: window.primary
+    property color selectedScaleAccent: window.primary
 
     property int currentTransform: monitorsModel.count > 0 ? monitorsModel.get(window.activeEditIndex).transform : 0
     property bool currentIsPortrait: currentTransform === 1 || currentTransform === 3
@@ -723,10 +724,6 @@ Item {
                                         anchors.centerIn: parent
                                         spacing: window.s(4)
 
-                                        // Restored Rotation: Acts as a pointer to the monitor's physical bottom
-                                        rotation: window.currentTransform * 90
-                                        Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
-
                                         Text {
                                             Layout.alignment: Qt.AlignHCenter
                                             font.family: "Iosevka Nerd Font"
@@ -1147,7 +1144,7 @@ Item {
 
                     Item { Layout.preferredHeight: window.s(2) }
 
-                    // --- ROTATION DIAL (CLOCK-STYLE) SECTION ---
+                    // --- ROTATION CLOCK DIAL SECTION ---
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.preferredHeight: window.s(120)
@@ -1156,8 +1153,6 @@ Item {
 
                         Rectangle {
                             id: clockDial
-                            // Use Layout properties instead of standard width/height to prevent
-                            // the layout engine from breaking your dimensions during resize
                             Layout.preferredWidth: window.s(120)
                             Layout.preferredHeight: window.s(120)
                             Layout.alignment: Qt.AlignCenter
@@ -1165,7 +1160,7 @@ Item {
                             radius: width / 2
                             color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
 
-                            border.color: window.activeFocusIndex === 1 ? window.selectedResAccent : Qt.alpha(window.surface1, 0.3)
+                            border.color: window.activeFocusIndex === 1 ? window.primary : Qt.alpha(window.surface1, 0.3)
                             border.width: window.activeFocusIndex === 1 ? window.s(3) : window.s(2)
                             Behavior on border.color { ColorAnimation { duration: 200 } }
                             Behavior on border.width { NumberAnimation { duration: 200 } }
@@ -1194,14 +1189,14 @@ Item {
                                 anchors.fill: parent
                                 property int activeTransform: monitorsModel.count > 0 ? monitorsModel.get(window.activeEditIndex).transform : 0
                                 rotation: activeTransform * 90
-                                Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack;} }
+                                Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
 
                                 // Pointer Line
                                 Rectangle {
                                     width: window.s(5)
                                     height: parent.height / 2 - window.s(20)
                                     radius: window.s(2.5)
-                                    color: window.selectedResAccent
+                                    color: window.primary
                                     anchors.bottom: parent.verticalCenter
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     Behavior on color { ColorAnimation { duration: 300 } }
@@ -1210,10 +1205,10 @@ Item {
                                 // Center Dot
                                 Rectangle {
                                     width: window.s(18)
-                                    height: window.s(18) // Replaced height: width binding
+                                    height: window.s(18)
                                     radius: width / 2
                                     color: window.base
-                                    border.color: window.selectedResAccent
+                                    border.color: window.primary
                                     border.width: window.s(4)
                                     anchors.centerIn: parent
                                     Behavior on border.color { ColorAnimation { duration: 300 } }
@@ -1251,54 +1246,6 @@ Item {
                             }
                         }
 
-                        Rectangle {
-                            id: flip180Btn
-                            Layout.alignment: Qt.AlignVCenter
-                            Layout.preferredWidth: window.s(84)
-                            Layout.preferredHeight: window.s(36)
-                            Layout.leftMargin: window.s(16)
-                            radius: window.s(10)
-                            property bool isCurrent180: monitorsModel.count > 0 && monitorsModel.get(window.activeEditIndex).transform === 2
-                            color: flip180Ma.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.12) : (isCurrent180 ? Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, 0.2) : (Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)))
-                            border.color: flip180Ma.containsMouse ? Qt.alpha(window.text, 0.25) : (isCurrent180 ? window.mauve : Qt.alpha(window.surface1, 0.3))
-                            border.width: 1
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Behavior on border.color { ColorAnimation { duration: 150 } }
-
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: window.s(6)
-                                Text {
-                                    font.family: "Iosevka Nerd Font"
-                                    font.pixelSize: window.s(16)
-                                    color: flip180Btn.isCurrent180 ? window.mauve : window.text
-                                    text: "󰑮"
-                                }
-                                Text {
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: window.s(12)
-                                    font.weight: Font.Bold
-                                    color: flip180Btn.isCurrent180 ? window.mauve : window.text
-                                    text: "180°"
-                                }
-                            }
-
-                            MouseArea {
-                                id: flip180Ma
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (monitorsModel.count === 0) return;
-                                    window.activeFocusIndex = 1;
-                                    let curT = monitorsModel.get(window.activeEditIndex).transform || 0;
-                                    let newT = curT === 2 ? 0 : 2;
-                                    monitorsModel.setProperty(window.activeEditIndex, "transform", newT);
-                                    delayedLayoutUpdate.restart();
-                                }
-                            }
-                        }
-
                         Item { Layout.fillWidth: true }
                     }
                     Item { Layout.preferredHeight: window.s(2) }
@@ -1312,7 +1259,6 @@ Item {
                         Layout.rightMargin: window.s(6)
 
                         property var rates: [60, 75, 100, 120, 144, 165, 180, 240, 360]
-                        property var rateColors: [window.red, window.mauve, window.blue, window.sapphire, window.teal, window.pink, window.yellow, window.green, window.peach]
 
                         property int currentIndex: {
                             if (monitorsModel.count === 0) return 0;
@@ -1339,7 +1285,7 @@ Item {
                             if (monitorsModel.count === 0) return;
                             visualPct = idx / (rates.length - 1);
                             monitorsModel.setProperty(window.activeEditIndex, "rate", rates[idx].toString());
-                            window.selectedRateAccent = rateColors[idx];
+                            window.selectedRateAccent = window.primary;
                         }
 
                         Rectangle {
@@ -1425,7 +1371,7 @@ Item {
                                 }
 
                                 monitorsModel.setProperty(window.activeEditIndex, "rate", sliderContainer.rates[idx].toString());
-                                window.selectedRateAccent = sliderContainer.rateColors[idx];
+                                window.selectedRateAccent = window.primary;
                             }
 
                             onPressed: (mouse) => updateSelection(mouse.x, false)
@@ -1447,7 +1393,6 @@ Item {
 
                         property var scales: [1.0, 1.25, 1.33, 1.5, 1.8, 2.0, 2.5]
                         property var scaleLabels: ["1x", "1.25", "1.33", "1.5", "1.8", "2x", "2.5x"]
-                        property var scaleColors: [window.red, window.mauve, window.blue, window.sapphire, window.teal, window.pink, window.yellow]
 
                         property int currentIndex: {
                             if (monitorsModel.count === 0) return 0;
@@ -1474,7 +1419,7 @@ Item {
                             if (monitorsModel.count === 0) return;
                             visualPct = idx / (scales.length - 1);
                             monitorsModel.setProperty(window.activeEditIndex, "sysScale", scales[idx]);
-                            window.selectedScaleAccent = scaleColors[idx];
+                            window.selectedScaleAccent = window.primary;
                             delayedLayoutUpdate.restart();
                         }
 
@@ -1561,7 +1506,7 @@ Item {
                                 }
 
                                 monitorsModel.setProperty(window.activeEditIndex, "sysScale", scaleSliderContainer.scales[idx]);
-                                window.selectedScaleAccent = scaleSliderContainer.scaleColors[idx];
+                                window.selectedScaleAccent = window.primary;
                                 delayedLayoutUpdate.restart();
                             }
 
@@ -1587,7 +1532,7 @@ Item {
                             source: applyBtn
                             anchors.fill: applyBtn
                             shadowEnabled: true
-                            shadowColor: window.selectedRateAccent
+                            shadowColor: window.primary
                             shadowBlur: window.applyHovered || window.activeFocusIndex === 4 ? 1.2 : 0.6
                             shadowOpacity: window.applyHovered || window.activeFocusIndex === 4 ? 0.6 : 0.2
                             shadowVerticalOffset: window.s(4)
@@ -1601,20 +1546,8 @@ Item {
                             id: applyBtn
                             anchors.fill: parent
                             radius: window.s(25)
-
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop {
-                                    position: 0.0
-                                    color: window.selectedResAccent
-                                    Behavior on color { ColorAnimation { duration: 400 } }
-                                }
-                                GradientStop {
-                                    position: 1.0
-                                    color: window.selectedRateAccent
-                                    Behavior on color { ColorAnimation { duration: 400 } }
-                                }
-                            }
+                            color: window.primary
+                            Behavior on color { ColorAnimation { duration: 300 } }
 
                             border.color: window.activeFocusIndex === 4 ? window.crust : "transparent"
                             border.width: window.activeFocusIndex === 4 ? window.s(2) : 0

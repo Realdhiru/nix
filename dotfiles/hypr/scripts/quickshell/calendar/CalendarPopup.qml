@@ -102,34 +102,26 @@ Item {
     readonly property color green: _theme.green
     readonly property color red: _theme.red
 
+    readonly property color primary: _theme.primary
+
     readonly property string scriptsDir: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/calendar"
 
     // -------------------------------------------------------------------------
-    // TIME OF DAY & SETTINGS-CONFIGURED DYNAMIC COLORS
+    // DYNAMIC THEME HARMONIZED COLORS
     // -------------------------------------------------------------------------
     readonly property color timeColor: {
         let src = Config.clockColorSource;
         if (src && src !== "auto" && window[src]) return window[src];
-        let h = window.currentTime.getHours();
-        if (h >= 5 && h < 12) return window.peach;      
-        if (h >= 12 && h < 17) return window.sapphire;  
-        if (h >= 17 && h < 21) return window.mauve;     
-        return window.blue;                             
+        return window.text;
     }
 
     readonly property color activeAccent: {
         let src = Config.accentColorSource;
         if (src && src !== "auto" && window[src]) return window[src];
-        return window.timeAccent;
+        return window.primary;
     }
 
-    readonly property color timeAccent: {
-        let h = window.currentTime.getHours();
-        if (h >= 5 && h < 12) return window.yellow;     
-        if (h >= 12 && h < 17) return window.teal;      
-        if (h >= 17 && h < 21) return window.pink;      
-        return window.mauve;                            
-    }
+    readonly property color timeAccent: activeAccent
 
     readonly property color textAccent: Qt.tint(window.activeAccent, Qt.alpha(window.text, 0.35))
 
@@ -229,10 +221,10 @@ Item {
     property var weatherData: null
     property int weatherView: 0
     property color activeWeatherHex: {
-        if (!window.weatherData) return window.mauve;
+        if (!window.weatherData) return window.activeAccent;
         if (window.weatherView === 0 && window.weatherData.current_hex) return window.weatherData.current_hex;
         if (window.weatherData.forecast && window.weatherData.forecast[window.weatherView]) return window.weatherData.forecast[window.weatherView].hex;
-        return window.mauve;
+        return window.activeAccent;
     }
 
     property int targetWeatherView: 0
@@ -745,17 +737,10 @@ Item {
                 anchors.margins: Math.round(40 * window.sf)
                 width: Math.round(320 * window.sf)
                 height: Math.round(420 * window.sf)
-                // Options: cardColor adapts to Config.cardColorSource & Config.effectiveCardOpacity
-                color: {
-                    if (Config.cardColorSource === "glass") {
-                        return Qt.rgba(1, 1, 1, Config.effectiveCardOpacity > 0 ? Config.effectiveCardOpacity : Config.glassSpecular);
-                    }
-                    let col = window[Config.cardColorSource] || window.surface0;
-                    return Qt.rgba(col.r, col.g, col.b, Config.effectiveCardOpacity > 0 ? Config.effectiveCardOpacity : 0.20);
-                }
+                color: "transparent"
                 radius: Math.round(14 * window.sf)
-                border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(1, 1, 1, Config.borderOpacity) : "transparent"
-                border.width: Config.borderWidth
+                border.color: "transparent"
+                border.width: 0
                 z: 10 
 
                 opacity: introCalendar

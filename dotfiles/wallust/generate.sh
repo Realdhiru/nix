@@ -36,19 +36,19 @@ if [ "$WALLPAPER" = "--neutral" ]; then
   "text": "#EDE6DC",
   "subtext0": "#C9BFB5",
   "subtext1": "#A89F95",
-  "blue": "#89b4fa",
-  "sapphire": "#74c7ec",
-  "peach": "#fab387",
-  "green": "#a6e3a1",
-  "red": "#f38ba8",
-  "mauve": "#cba6f7",
-  "pink": "#f5c2e7",
-  "yellow": "#f9e2af",
-  "maroon": "#eba0ac",
-  "teal": "#94e2d5",
+  "blue": "#7E7E7F",
+  "sapphire": "#8B8C8E",
+  "peach": "#828284",
+  "green": "#5E5E60",
+  "red": "#484849",
+  "mauve": "#EDE6DC",
+  "pink": "#B4B5B7",
+  "yellow": "#747576",
+  "maroon": "#4C4D4F",
+  "teal": "#ADADAF",
   "isLight": false,
   "topLuminance": 0.0,
-  "primary": "#89b4fa"
+  "primary": "#EDE6DC"
 }
 EOF
 
@@ -57,33 +57,33 @@ return {
     foreground = "#EDE6DC",
     background = "#000000",
 
-    cursor_bg = "#89b4fa",
+    cursor_bg = "#EDE6DC",
     cursor_fg = "#000000",
-    cursor_border = "#89b4fa",
+    cursor_border = "#EDE6DC",
 
-    selection_bg = "#89b4fa",
-    selection_fg = "#000000",
+    selection_bg = "#313131",
+    selection_fg = "#EDE6DC",
 
     ansi = {
-        "#45475a",  -- Black
-        "#f38ba8",  -- Red
-        "#a6e3a1",  -- Green
-        "#f9e2af",  -- Yellow
-        "#89b4fa",  -- Blue
-        "#cba6f7",  -- Magenta
-        "#89dceb",  -- Cyan
-        "#cdd6f4"   -- White
+        "#151515",  -- Black
+        "#484849",  -- Red
+        "#5E5E60",  -- Green
+        "#747576",  -- Yellow
+        "#7E7E7F",  -- Blue
+        "#878889",  -- Magenta
+        "#ADADAF",  -- Cyan
+        "#EAEBEC"   -- White
     },
 
     brights = {
-        "#585b70",  -- Bright Black
-        "#f38ba8",  -- Bright Red
-        "#a6e3a1",  -- Bright Green
-        "#f9e2af",  -- Bright Yellow
-        "#89b4fa",  -- Bright Blue
-        "#f5c2e7",  -- Bright Magenta
-        "#94e2d5",  -- Bright Cyan
-        "#ffffff"   -- Bright White
+        "#404040",  -- Bright Black
+        "#4C4D4F",  -- Bright Red
+        "#6A6A6C",  -- Bright Green
+        "#828284",  -- Bright Yellow
+        "#8B8C8E",  -- Bright Blue
+        "#B4B5B7",  -- Bright Magenta
+        "#E6E7E9",  -- Bright Cyan
+        "#FFFFFF"   -- Bright White
     }
 }
 EOF
@@ -93,23 +93,23 @@ EOF
 [color]
 gradient = 1
 gradient_count = 8
-gradient_color_1 = '#89b4fa'
-gradient_color_2 = '#74c7ec'
-gradient_color_3 = '#94e2d5'
-gradient_color_4 = '#a6e3a1'
-gradient_color_5 = '#f9e2af'
-gradient_color_6 = '#fab387'
-gradient_color_7 = '#cba6f7'
-gradient_color_8 = '#f5c2e7'
+gradient_color_1 = '#EDE6DC'
+gradient_color_2 = '#D4D4D8'
+gradient_color_3 = '#A1A1AA'
+gradient_color_4 = '#71717A'
+gradient_color_5 = '#52525B'
+gradient_color_6 = '#3F3F46'
+gradient_color_7 = '#27272A'
+gradient_color_8 = '#18181B'
 EOF
 
-    sed 's/{{color4}}/#89b4fa/g' "$SCRIPT_DIR/templates/gtk.css" > "$TARGET_CACHE/gtk.css"
-    sed -e 's/{{color4}}/#89b4fa/g' -e 's/{{color2}}/#a6e3a1/g' -e 's/{{color3}}/#f9e2af/g' "$SCRIPT_DIR/templates/qtct.conf" > "$TARGET_CACHE/qtct.conf"
-    sed 's/{{color4}}/#89b4fa/g' "$SCRIPT_DIR/templates/qt-style.qss" > "$TARGET_CACHE/qt-style.qss"
+    sed 's/{{color4}}/#EDE6DC/g' "$SCRIPT_DIR/templates/gtk.css" > "$TARGET_CACHE/gtk.css"
+    sed -e 's/{{color4}}/#EDE6DC/g' -e 's/{{color2}}/#5E5E60/g' -e 's/{{color3}}/#747576/g' "$SCRIPT_DIR/templates/qtct.conf" > "$TARGET_CACHE/qtct.conf"
+    sed 's/{{color4}}/#EDE6DC/g' "$SCRIPT_DIR/templates/qt-style.qss" > "$TARGET_CACHE/qt-style.qss"
     cat <<'EOF' > "$TARGET_CACHE/hyprland-colors.conf"
-$active_border_col_1 = rgb(89b4fa)
-$active_border_col_2 = rgb(cba6f7)
-$inactive_border_col = rgb(45475a)
+$active_border_col_1 = rgb(EDE6DC)
+$active_border_col_2 = rgb(C9BFB5)
+$inactive_border_col = rgb(282828)
 EOF
 
     # Backward compatibility symlinks
@@ -269,6 +269,18 @@ if [ -f "$TARGET_CACHE/colors.json" ]; then
         "$TARGET_CACHE/colors.json" > "$TARGET_CACHE/colors.json.tmp" 2>/dev/null && \
     cat "$TARGET_CACHE/colors.json.tmp" > "$TARGET_CACHE/colors.json" && \
     rm -f "$TARGET_CACHE/colors.json.tmp"
+fi
+
+# 5. Inject dynamic wallpaper accent into GTK, Qt stylesheets and Qt color palette
+if [ -n "$ACCENT" ]; then
+    sed "s/{{color4}}/$ACCENT/g" "$SCRIPT_DIR/templates/gtk.css" > "$TARGET_CACHE/gtk.css"
+    sed -e "s/{{color4}}/$ACCENT/g" -e "s/{{color2}}/${SUBTEXT0:-#5E5E60}/g" -e "s/{{color3}}/${SUBTEXT1:-#747576}/g" "$SCRIPT_DIR/templates/qtct.conf" > "$TARGET_CACHE/qtct.conf"
+    sed "s/{{color4}}/$ACCENT/g" "$SCRIPT_DIR/templates/qt-style.qss" > "$TARGET_CACHE/qt-style.qss"
+    cat <<EOF > "$TARGET_CACHE/hyprland-colors.conf"
+\$active_border_col_1 = rgb(${ACCENT#'#'})
+\$active_border_col_2 = rgb(${SUBTEXT0#'#'})
+\$inactive_border_col = rgb(282828)
+EOF
 fi
 
 # Backward compatibility symlinks for apps expecting legacy paths

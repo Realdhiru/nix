@@ -58,7 +58,7 @@ hl.bind(mainMod .. " + ALT + ALT_R", hl.dsp.exec_cmd('bash -c "if pidof quickshe
 hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("wezterm"))
 hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd('wezterm start -- zsh -c "fastfetch; exec zsh"'))
 
-hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("pcmanfm-qt"))
+hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("env QT_QPA_PLATFORMTHEME=qt6ct pcmanfm-qt"))
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_menu.sh app"))
 hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_menu.sh file"))
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("antigravity-ide"))

@@ -47,7 +47,7 @@ in
     (mpv.override { scripts = [ mpvScripts.mpris ]; }) mpvpaper awww playerctl brightnessctl cava imv loupe ffmpeg imagemagick
 
     # Documents & Creative
-    kdePackages.okular onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic
+    kdePackages.okular kdePackages.breeze onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic
 
     # Audio & Networking
     pwvucontrol networkmanagerapplet blueman

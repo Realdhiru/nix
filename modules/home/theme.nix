@@ -1,12 +1,15 @@
 { config, lib, pkgs, ... }:
 {
   home.sessionVariables.GTK_THEME = "Adwaita:dark";
+  home.sessionVariables.QT_QPA_PLATFORMTHEME = lib.mkForce "qt6ct";
 
   # GTK3 config channels (settings.ini/dconf) don't apply here; environment is
   # the only reliable channel (proven). sessionVariables covers GUI/logins;
   # user-environment.d covers systemd user services (e.g. the portal).
   xdg.configFile."environment.d/gtk-theme.conf".text =
     "GTK_THEME=Adwaita:dark\n";
+  xdg.configFile."environment.d/qt-theme.conf".text =
+    "QT_QPA_PLATFORMTHEME=qt6ct\n";
 
   gtk = {
     enable = true;
@@ -34,9 +37,11 @@
   qt = {
     enable = true;
     platformTheme.name = "qtct";
-    style.name = "fusion";
   };
-  home.packages = with pkgs; [ qt6Packages.qt6ct libsForQt5.qt5ct glib inotify-tools ];
+  home.packages = with pkgs; [ qt6Packages.qt6ct libsForQt5.qt5ct kdePackages.breeze glib inotify-tools ];
+
+  xdg.dataFile."color-schemes/BreezeDark.colors".source =
+    "${pkgs.kdePackages.breeze}/share/color-schemes/BreezeDark.colors";
 
   # Global cursor theme
   home.pointerCursor = {

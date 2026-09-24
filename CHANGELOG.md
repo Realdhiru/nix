@@ -2,12 +2,26 @@
 
 ## 2026-09-24 — Global Dark Lock, Harmonic Amber Palette, Pure Liquid Glass & Centralized Settings
 
-- **Monochrome & Grayscale Wallpaper Support**:
-  - Added automatic grayscale detection (`is_mono`) to [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh).
-  - Eliminated the hardcoded `#89b4fa` blue fallback when wallpapers lack chroma. Sets radiant ivory/silver accent (`#EDE6DC`) and switches Wallust dynamically to `dark16` + `lch` mode, producing pure black, charcoal, silver, and white palettes across WezTerm, QuickShell, and system widgets with zero artificial blue/green color cast.
-- **Restored PCManFM-Qt & Okular Native Styling**:
-  - Reverted experimental `QT_QPA_PLATFORMTHEME` and `QT_STYLE_OVERRIDE` additions from [`dotfiles/hypr/env.lua`](file:///home/realdhiru/nix/dotfiles/hypr/env.lua) and [`modules/home/theme.nix`](file:///home/realdhiru/nix/modules/home/theme.nix). Semicolon-delimited values prevented Qt's plugin loader from locating `qt5ct`/`qt6ct`, which broke PCManFM-Qt's stylesheet application. Native Home Manager `qtct` integration is restored.
-  - Reverted `~/.config/okularpartrc` back to clean default view (removed document color inversion).
+- **Monitor Widget Overhaul & Rotation Clock Dial Restored**:
+  - Restored the clean rotation clock dial (`clockDial` & `dialPointer`) in [`dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml), styled cleanly with `window.primary`.
+  - Permanently removed the `180°` flip button (`flip180Btn`) per user request.
+  - Reset monitor model and compositor transform back to `0` (normal landscape), preventing screen inversion.
+  - Removed artificial rotation from the preview card so text and icons always remain upright.
+  - Eliminated hardcoded rainbow RGB arrays (`rateColors`, `scaleColors`, multi-color `resList` accents, and candy-colored apply button gradient), standardizing all controls to `window.primary`.
+- **Dynamic Wallpaper Color Linking Across Qt, GTK, & PCManFM**:
+  - Diagnosed blue selection bug: Wallust templates used `{{color4}}` (ANSI blue slot) for highlight and selection colors across `qt-style.qss`, `qtct.conf`, and `gtk.css`, bypassing the dynamic extracted wallpaper accent.
+  - Updated [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh) to inject the actual dominant extracted wallpaper accent (`$ACCENT`) into `qt-style.qss` (`QTreeView::item:selected`), `qtct.conf` (QPalette Highlight slot), `gtk.css` (`accent_color`), and `hyprland-colors.conf` right after Wallust runs. PCManFM-Qt, Qt, GTK, and compositor borders now dynamically match the wallpaper color.
+- **Calendar Background Clean-Up**:
+  - In [`dotfiles/hypr/scripts/quickshell/calendar/CalendarPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/CalendarPopup.qml), set `calendarRect` background and border to `transparent`.
+  - Removes the washed-out milky grey container card, letting the calendar float organically on the dark popup backdrop in unison with the right-side weather wing and central clock.
+- **Calendar & Weather Harmonization**:
+  - Bound `activeAccent` and `timeAccent` in [`dotfiles/hypr/scripts/quickshell/calendar/CalendarPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/CalendarPopup.qml) directly to `_theme.primary`.
+  - Bound `timeColor` to `_theme.text` and `activeWeatherHex` to `window.activeAccent`.
+  - Added missing `readonly property color primary: _theme.primary` to `CalendarPopup.qml`, eliminating hardcoded night-time mauve (`#CBA6F7`) and blue fallbacks on the active day pill, year progress bar, and weather orbit slots.
+- **Qt6 / PCManFM-Qt & Okular Dark Theme Fixes**:
+  - In [`modules/home/theme.nix`](file:///home/realdhiru/nix/modules/home/theme.nix), removed `style.name = "fusion"` which was forcing `QT_STYLE_OVERRIDE=fusion` and breaking Qt stylesheet processing.
+  - Added `kdePackages.breeze` in [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix) and linked `~/.local/share/color-schemes/BreezeDark.colors`, allowing Okular to locate its color scheme and render native dark mode without high-contrast artifacts.
+  - Enforced `QT_QPA_PLATFORMTHEME = "qt6ct"` across `env.lua` and user session variables.
 - **Restored Antigravity IDE Translucent Window Rule**:
   - Re-enabled `opacity = "0.67"` in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) per user request.
   - Purged unwanted `workbench.colorCustomizations` pills from `~/.config/Antigravity IDE/User/settings.json` and removed IDE config injection from [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh).
