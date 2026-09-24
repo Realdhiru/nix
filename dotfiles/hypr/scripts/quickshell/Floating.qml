@@ -199,7 +199,7 @@ Variants {
                 return isNaN(res) ? val : res;
             }
 
-            MatugenColors { id: mocha }
+            Theme { id: mocha }
 
             // =========================================================
             // --- DYNAMIC LAYOUT LOGIC

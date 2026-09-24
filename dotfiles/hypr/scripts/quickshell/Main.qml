@@ -10,6 +10,7 @@ PanelWindow {
     id: masterWindow
     color: "transparent"
 
+    Theme { id: themeInstance }
 
     Keys.onEscapePressed: (event) => {
         switchWidget("hidden", "");
@@ -18,6 +19,10 @@ PanelWindow {
 
     IpcHandler {
         target: "main"
+
+        function reloadTheme(): void {
+            if (themeInstance) themeInstance.reload();
+        }
 
         function forceReload(): void {
             Quickshell.reload(true)
@@ -28,7 +33,7 @@ PanelWindow {
             targetWidget = targetWidget || "";
             arg = arg || "";
 
-            let isClosing = (masterWindow.currentActive !== "hidden" && !masterWindow.isVisible);
+            let isClosing = (masterWindow.currentActive !== "hidden" && !masterWindow.isWindowActive);
             let effectivelyActive = isClosing ? "hidden" : masterWindow.currentActive;
             console.log("IPC", cmd, targetWidget, effectivelyActive);
 
@@ -101,7 +106,7 @@ PanelWindow {
 
     MouseArea {
         anchors.fill: parent
-        enabled: masterWindow.isVisible
+        enabled: masterWindow.isWindowActive
         onClicked: switchWidget("hidden", "")
     }
 
@@ -152,6 +157,7 @@ PanelWindow {
     Component.onCompleted: {
         Config.masterWidth = masterWindow.width;
         Config.masterHeight = masterWindow.height;
+        masterWindow.applySettings(settingsFileView.text());
     }
 
     property var _preloadQueue: ["battery", "network", "music", "clipboard", "monitors", "focustime", "weather_setup", "calendar", "wallpaper"]
@@ -187,6 +193,7 @@ PanelWindow {
     // on every widget switch feeding nothing.
 
     property bool isVisible: false
+    property bool isWindowActive: false
     property string activeArg: ""
     property bool disableMorph: false
 
@@ -218,27 +225,26 @@ PanelWindow {
         onTriggered: masterWindow.isStartup = false
     }
 
-    Process {
-        id: settingsReader
-        command: ["bash", "-c", "$HOME/.config/hypr/scripts/quickshell/watchers/settings_wait.sh && cat $HOME/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    if (this.text && this.text.trim().length > 0) {
-                        let parsed = JSON.parse(this.text);
-                        if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
-                            masterWindow.globalUiScale = parsed.uiScale;
-                        }
-                    }
-                } catch (e) {
-                    console.log("Error parsing settings.json in main.qml:", e);
-                }
-                settingsReader.running = false;
-                settingsReader.running = true;
+    FileView {
+        id: settingsFileView
+        path: Quickshell.env("HOME") + "/.config/hypr/settings.json"
+        watchChanges: true
+        onTextChanged: masterWindow.applySettings(text())
+        onFileChanged: masterWindow.applySettings(text())
+    }
+
+    function applySettings(txt) {
+        if (!txt || txt.trim().length === 0) return;
+        try {
+            let parsed = JSON.parse(txt);
+            if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
+                masterWindow.globalUiScale = parsed.uiScale;
             }
+        } catch (e) {
+            console.log("Error parsing settings.json in Main.qml:", e);
         }
     }
+
 
     property var    _layoutCache:    ({})
     property string _layoutCacheKey: ""
@@ -332,25 +338,25 @@ PanelWindow {
         }
         Behavior on height {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isWindowActive ? Easing.OutCubic : Easing.InCubic }
         }
 
-        scale: masterWindow.isVisible ? 1.0 : 0.0
+        scale: masterWindow.isWindowActive ? 1.0 : 0.96
         transformOrigin: Item.Center
 
         Behavior on scale {
             enabled: !masterWindow.disableMorph
             NumberAnimation {
-                duration: masterWindow.isVisible ? 230 : 230
-                easing.type: masterWindow.isVisible ? Easing.OutExpo : Easing.InExpo
+                duration: masterWindow.isWindowActive ? 140 : 120
+                easing.type: masterWindow.isWindowActive ? Easing.OutCubic : Easing.InCubic
             }
         }
 
-        opacity: masterWindow.isVisible ? 1.0 : 0.0
+        opacity: masterWindow.isWindowActive ? 1.0 : 0.0
         Behavior on opacity {
             NumberAnimation {
-                duration: 160
-                easing.type: masterWindow.isVisible ? Easing.OutCubic : Easing.InCubic
+                duration: masterWindow.isWindowActive ? 140 : 120
+                easing.type: masterWindow.isWindowActive ? Easing.OutCubic : Easing.InCubic
             }
         }
 
@@ -416,15 +422,16 @@ PanelWindow {
 
         if (newWidget === "hidden") {
             if (currentActive !== "hidden") {
-                masterWindow.morphDuration = 160;
+                masterWindow.morphDuration = 130;
                 masterWindow.disableMorph = false;
-                masterWindow.isVisible = false;
+                masterWindow.isWindowActive = false;
 
-                delayedClear.start();
+                delayedClear.restart();
             }
         } else {
-            if (currentActive === "hidden" || !masterWindow.isVisible) {
-                masterWindow.morphDuration = 160;
+            delayedClear.stop();
+            if (currentActive === "hidden" || !masterWindow.isWindowActive) {
+                masterWindow.morphDuration = 140;
                 masterWindow.disableMorph = false;
 
                 let t = getLayout(newWidget);
@@ -533,6 +540,7 @@ PanelWindow {
         }
 
         masterWindow.isVisible = true;
+        masterWindow.isWindowActive = true;
         focusTimer.restart();
     }
 
@@ -543,14 +551,11 @@ PanelWindow {
 
     Timer {
         id: delayedClear
-        // Must outlast the replaceExit transition (morphDurationShift=210ms)
-        // and never fire while a stack transition is still running — clearing
-        // mid-transition destroys the outgoing widget while models are being
-        // written into it (Qt6 QQmlDelegateModel teardown crash family).
-        interval: 280
+        interval: 135
 
         onTriggered: {
-            if (!masterWindow.isVisible && !widgetStack.busy) {
+            if (!masterWindow.isWindowActive && !widgetStack.busy) {
+                masterWindow.isVisible = false;
                 masterWindow.currentActive = "hidden";
                 widgetStack.replace(blankContainer, {}, StackView.Immediate);
                 masterWindow.disableMorph = false;

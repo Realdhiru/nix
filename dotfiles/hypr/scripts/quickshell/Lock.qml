@@ -15,7 +15,7 @@ ShellRoot {
     id: root
 
 
-    MatugenColors { id: _theme }
+    Theme { id: _theme }
     readonly property color base: _theme.base
     readonly property color crust: _theme.crust
     readonly property color mantle: _theme.mantle

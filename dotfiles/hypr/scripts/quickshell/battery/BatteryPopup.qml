@@ -5,6 +5,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
+import Quickshell.Services.SystemTray
 import "../"
 
 Item {
@@ -60,7 +61,7 @@ Item {
         return scaler.s(val); 
     }
 
-    MatugenColors { id: _theme }
+    Theme { id: _theme }
     readonly property color base: _theme.base
     readonly property color mantle: _theme.mantle
     readonly property color crust: _theme.crust
@@ -492,8 +493,8 @@ Item {
             anchors.fill: parent
             radius: window.s(20)
             color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
-            border.color: window.surface0
-            border.width: Config.borderWidth
+            border.color: "transparent"
+            border.width: 0
             clip: true
 
             Rectangle {
@@ -660,6 +661,103 @@ Item {
                                     onClicked: {
                                         window.dndEnabled = !window.dndEnabled;
                                         Quickshell.execDetached(["sh", "-c", "echo '" + (window.dndEnabled ? "1" : "0") + "' > '" + Caching.getCacheDir("dnd") + "/state'"]);
+                                    }
+                                }
+                            }
+
+                            // Integrated System Tray inside Battery Widget
+                            Rectangle {
+                                id: popupTrayBox
+                                Layout.preferredHeight: window.s(38)
+                                radius: window.s(12)
+                                color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
+                                border.width: 0
+                                border.color: "transparent"
+                                clip: true
+
+                                property var filteredTrayItems: {
+                                    let raw = SystemTray.items.values || [];
+                                    let res = [];
+                                    for (let i = 0; i < raw.length; i++) {
+                                        let item = raw[i];
+                                        if (!item) continue;
+                                        let idStr = (item.id || "").toLowerCase();
+                                        let titleStr = (item.title || "").toLowerCase();
+                                        if (idStr.includes("blueman") || idStr.includes("bluetooth") ||
+                                            idStr.includes("kdeconnect") || idStr.includes("kde connect") ||
+                                            titleStr.includes("blueman") || titleStr.includes("bluetooth") ||
+                                            titleStr.includes("kdeconnect") || titleStr.includes("kde connect")) {
+                                            continue;
+                                        }
+                                        res.push(item);
+                                    }
+                                    return res;
+                                }
+
+                                property real targetWidth: trayPopupRepeater.count > 0 ? (trayPopupRepeater.count * window.s(22) + (trayPopupRepeater.count - 1) * window.s(8) + window.s(20)) : 0
+                                Layout.preferredWidth: targetWidth
+                                visible: targetWidth > 0
+
+                                Behavior on Layout.preferredWidth { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
+
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: window.s(8)
+
+                                    Repeater {
+                                        id: trayPopupRepeater
+                                        model: popupTrayBox.filteredTrayItems
+                                        delegate: Image {
+                                            id: trayIconItem
+                                            source: modelData.icon || ""
+                                            fillMode: Image.PreserveAspectFit
+                                            sourceSize: Qt.size(window.s(18), window.s(18))
+                                            width: window.s(18)
+                                            height: window.s(18)
+                                            anchors.verticalCenter: parent.verticalCenter
+
+                                            property bool isHovered: trayIconMouse.containsMouse
+                                            opacity: isHovered ? 1.0 : 0.8
+                                            scale: isHovered ? 1.15 : 1.0
+                                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                                            Behavior on scale { NumberAnimation { duration: 150 } }
+
+                                            QsMenuAnchor {
+                                                id: menuAnchor
+                                                anchor.window: typeof masterWindow !== "undefined" ? masterWindow : null
+                                                anchor.item: trayIconItem
+                                                menu: modelData.menu
+                                            }
+
+                                            MouseArea {
+                                                id: trayIconMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: (event) => {
+                                                    if (event.button === Qt.LeftButton) {
+                                                        if (modelData.isMenuOnly || modelData.onlyMenu) {
+                                                            menuAnchor.open();
+                                                        } else if (typeof modelData.activate === "function") {
+                                                            modelData.activate();
+                                                        }
+                                                    } else if (event.button === Qt.MiddleButton) {
+                                                        if (typeof modelData.secondaryActivate === "function") {
+                                                            modelData.secondaryActivate();
+                                                        }
+                                                    } else if (event.button === Qt.RightButton) {
+                                                        if (modelData.menu) {
+                                                            menuAnchor.open();
+                                                        } else if (typeof modelData.contextMenu === "function") {
+                                                            modelData.contextMenu(event.x, event.y);
+                                                        } else {
+                                                            modelData.activate();
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -949,7 +1047,7 @@ Item {
                                         text: "No client devices connected."
                                         font.family: "JetBrains Mono"
                                         font.pixelSize: window.s(10)
-                                        color: window.overlay0
+                                        color: window.subtext0
                                     }
 
                                     Repeater {
@@ -981,7 +1079,7 @@ Item {
                             font.family: "JetBrains Mono"
                             font.weight: Font.Medium
                             font.pixelSize: window.s(14)
-                            color: window.overlay0
+                            color: window.subtext0
                             text: "You're all caught up."
                             visible: !notifModel || notifModel.count === 0
                             opacity: introNotifs

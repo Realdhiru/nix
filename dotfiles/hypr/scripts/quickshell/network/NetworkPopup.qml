@@ -173,7 +173,7 @@ Item {
         } catch(e) {}
     }
 
-    MatugenColors { id: _theme }
+    Theme { id: _theme }
 
     readonly property color base: _theme.base
     readonly property color mantle: _theme.mantle
@@ -936,7 +936,7 @@ Item {
             anchors.fill: parent
             radius: window.s(20)
             color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
-            border.color: window.surface0
+            border.color: Config.borderWidth > 0 ? window.surface0 : "transparent"
             border.width: Config.borderWidth
             clip: true
 
@@ -1817,7 +1817,7 @@ Item {
                                     }
                                 }
 
-                                color: floatCard.locksList ? "#2affffff" : "#0effffff"
+                                color: floatCard.locksList ? "#2affffff" : Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, 0.45)
                                 Behavior on color { ColorAnimation { duration: 200 } }
 
                                 Rectangle {

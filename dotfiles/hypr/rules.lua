@@ -19,9 +19,11 @@ if killed_ok or game_ok or (prof_ok and prof_val and prof_val:match("power%-save
     is_opaque = true
 end
 
+-- Opacity options: "0.0" (transparent) to "1.0" (opaque). Glass range: "0.50" to "0.70"
 if not is_opaque then
     hl.window_rule({ match = { class = "^spotify$" }, opacity = "0.92" })
     hl.window_rule({ match = { class = "^antigravity-ide$" }, opacity = "0.67" })
+    hl.window_rule({ match = { class = "^Chatgpt$" }, opacity = "0.5" })
     hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.67" })
 
     -- Brave Apps
@@ -118,17 +120,15 @@ hl.window_rule({ match = { title = "^app-launcher$" }, float = true, center = tr
 -- Layer Rules
 -- ======================================================
 
--- Fuzzel (Native Wayland launcher)
+-- Fuzzel (Native Wayland launcher) - matched to Quickshell liquid glass
 hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, blur = true })
-hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, ignore_alpha = 0.1 })
+hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, ignore_alpha = 0.05 })
 hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, animation = "fade" })
 
--- Quickshell (Glassmorphism)
-hl.layer_rule({ match = { namespace = "^(qs-master)$" }, blur = true })
-hl.layer_rule({ match = { namespace = "^(qs-master)$" }, ignore_alpha = 0.1 })
-hl.layer_rule({ match = { namespace = "^(qs-master)$" }, animation = "none" })
-hl.layer_rule({ match = { namespace = "quickshell" }, ignore_alpha = 0.0 })
-hl.layer_rule({ match = { namespace = "quickshell" }, animation = "none" })
+-- Quickshell (Liquid Glassmorphism)
+hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, blur = true })
+hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, ignore_alpha = 0.05 })
+hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, animation = "none" })
 
 -- ======================================================
 -- Counter-Strike 2

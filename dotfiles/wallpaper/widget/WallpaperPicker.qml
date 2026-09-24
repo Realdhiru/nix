@@ -5,6 +5,7 @@ import QtCore
 import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
+import "../"
 
 Item {
     id: window
@@ -19,7 +20,7 @@ Item {
         return scaler.s(val); 
     }
 
-    MatugenColors { id: _theme }
+    Theme { id: _theme }
 
     property string widgetArg: ""
     property string targetWallName: ""
@@ -65,19 +66,10 @@ Item {
     property bool jumpToLastOnFilterChange: false
 
     readonly property var filterData: [
-        { name: "All", hex: "", label: "All" },
-        { name: "GIFs", hex: "", label: "GIF" },
-        { name: "Videos", hex: "", label: "Vid" },
-        { name: "Red", hex: "#E05666", label: "" },
-        { name: "Orange", hex: "#E58E43", label: "" },
-        { name: "Yellow", hex: "#EBCB8B", label: "" },
-        { name: "Green", hex: "#A3BE8C", label: "" },
-        { name: "Blue", hex: "#81A1C1", label: "" },
-        { name: "Purple", hex: "#B48EAD", label: "" },
-        { name: "Pink", hex: "#F48FB1", label: "" },
-        { name: "Dark", hex: "#2E3440", label: "" },
-        { name: "Light", hex: "#ECEFF4", label: "" },
-        { name: "Search", hex: "", label: "Search" } 
+        { name: "All", label: "All" },
+        { name: "GIFs", label: "GIF" },
+        { name: "Videos", label: "Vid" },
+        { name: "Search", label: "Search" } 
     ]
 
     ListModel { id: monitorModel }
@@ -136,8 +128,6 @@ Item {
         }
     }
 
-    property var colorMap: ({})
-
     Process {
         id: markersProc
         command: ["bash", "-c", "ls -1 \"$HOME/.cache/quickshell/wallpaper_picker/colors_markers/\" 2>/dev/null || true"]
@@ -147,35 +137,22 @@ Item {
                 let output = this.text;
                 if (!output || output.trim().length === 0) return;
                 let lines = output.trim().split("\n");
-                let catMap = {};
-                let hexMap = {};
+                let map = {};
                 for (let i = 0; i < lines.length; i++) {
                     let line = lines[i].trim();
                     if (line.length === 0) continue;
+                    let catMatch = line.match(/_CAT_([a-z]+)_HEX_/);
+                    if (!catMatch) continue;
+                    let category = catMatch[1];
                     let firstUnderscore = line.indexOf("_");
                     let catIdx = line.indexOf("_CAT_");
-                    let hexIdx = line.indexOf("_HEX_");
-                    if (firstUnderscore < 0) continue;
-                    
-                    let endIdx = catIdx >= 0 ? catIdx : (hexIdx >= 0 ? hexIdx : -1);
-                    if (endIdx < 0) continue;
-                    let wallpaperName = line.substring(firstUnderscore + 1, endIdx);
-                    if (!wallpaperName) continue;
-
-                    if (catIdx >= 0) {
-                        let catPart = line.substring(catIdx + 5);
-                        let subHex = catPart.indexOf("_HEX_");
-                        catMap[wallpaperName] = subHex >= 0 ? catPart.substring(0, subHex) : catPart;
-                    }
-                    if (hexIdx >= 0) {
-                        hexMap[wallpaperName] = line.substring(hexIdx + 5).trim();
+                    if (firstUnderscore < 0 || catIdx < 0) continue;
+                    let wallpaperName = line.substring(firstUnderscore + 1, catIdx);
+                    if (wallpaperName.length > 0) {
+                        map[wallpaperName] = category;
                     }
                 }
-                window.wallpaperCategoryMap = catMap;
-                window.colorMap = hexMap;
-                if (window.isColorFilter(window.currentFilter)) {
-                    window.populateColorProxy(window.currentFilter);
-                }
+                window.wallpaperCategoryMap = map;
             }
         }
     }
@@ -339,9 +316,6 @@ Item {
                     window.trySearchFocus();
                 }
             } else {
-                if (window.isColorFilter(window.currentFilter)) {
-                    window.populateColorProxy(window.currentFilter);
-                }
                 window.applyFilters(returningFromSearch);
             }
             window.isModelChanging = false;
@@ -409,84 +383,6 @@ Item {
         "videos": 10
     })
 
-    function isColorFilter(filter) {
-        return filter === "Red" || filter === "Orange" || filter === "Yellow" || 
-               filter === "Green" || filter === "Blue" || filter === "Purple" || 
-               filter === "Pink" || filter === "Dark" || filter === "Light";
-    }
-
-    function checkItemMatchesColor(fileName, filter) {
-        let fStr = String(fileName);
-        let category = window.wallpaperCategoryMap[fStr] || "";
-        let hexStr = window.colorMap[fStr] || "";
-
-        if (category) {
-            if (filter === "Pink" && category === "sakura") return true;
-            if (filter === "Red" && category === "sunset") return true;
-            if (filter === "Orange" && (category === "sunset" || category === "gruvbox")) return true;
-            if (filter === "Yellow" && category === "gruvbox") return true;
-            if (filter === "Green" && category === "emerald") return true;
-            if (filter === "Blue" && (category === "nord" || category === "ocean")) return true;
-            if (filter === "Purple" && category === "synthwave") return true;
-            if (filter === "Dark" && category === "dark") return true;
-            if (filter === "Light" && category === "light") return true;
-        }
-
-        if (!hexStr) return false;
-        hexStr = hexStr.replace(/#/g, "").trim();
-        if (hexStr.length < 6) return false;
-
-        let r = parseInt(hexStr.substring(0,2), 16) / 255.0;
-        let g = parseInt(hexStr.substring(2,4), 16) / 255.0;
-        let b = parseInt(hexStr.substring(4,6), 16) / 255.0;
-        if (isNaN(r) || isNaN(g) || isNaN(b)) return false;
-
-        let max = Math.max(r, g, b), min = Math.min(r, g, b);
-        let d = max - min;
-        let h = 0;
-        let s = max === 0 ? 0 : d / max;
-        let v = max;
-
-        if (max !== min) {
-            if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-            else if (max === g) h = (b - r) / d + 2;
-            else h = (r - g) / d + 4;
-            h /= 6.0;
-        }
-        h = h * 360.0;
-
-        if (v < 0.22 && filter === "Dark") return true;
-        if (v > 0.78 && s < 0.25 && filter === "Light") return true;
-        if (s < 0.15 && (filter === "Dark" || filter === "Light")) return (v < 0.5 ? filter === "Dark" : filter === "Light");
-
-        if ((h >= 345 || h < 18) && filter === "Red") return true;
-        if (h >= 18 && h < 45 && filter === "Orange") return true;
-        if (h >= 45 && h < 75 && filter === "Yellow") return true;
-        if (h >= 75 && h < 165 && filter === "Green") return true;
-        if (h >= 165 && h < 260 && filter === "Blue") return true;
-        if (h >= 260 && h < 315 && filter === "Purple") return true;
-        if (h >= 315 && h < 345 && filter === "Pink") return true;
-
-        return false;
-    }
-
-    function populateColorProxy(filterName) {
-        window.isModelChanging = true;
-        colorProxyModel.clear();
-        let batch = [];
-        for (let i = 0; i < localProxyModel.count; i++) {
-            let item = localProxyModel.get(i);
-            let fn = String(item.fileName || "");
-            if (window.checkItemMatchesColor(fn, filterName)) {
-                batch.push({ "fileName": fn, "fileUrl": item.fileUrl });
-            }
-        }
-        if (batch.length > 0) {
-            colorProxyModel.append(batch);
-        }
-        window.isModelChanging = false;
-        window.updateVisibleCount();
-    }
 
     property var wallpaperCategoryMap: ({})
 
@@ -773,7 +669,6 @@ Item {
         if (filter === "Search") return searchProxyModel;
         if (filter === "GIFs" || filter === "GIF") return gifsProxyModel;
         if (filter === "Videos" || filter === "Video") return videosProxyModel;
-        if (window.isColorFilter(filter)) return colorProxyModel;
         return localProxyModel;
     }
 
@@ -965,7 +860,6 @@ Item {
     ListModel { id: localProxyModel }
     ListModel { id: gifsProxyModel }
     ListModel { id: videosProxyModel }
-    ListModel { id: colorProxyModel }
     ListModel { id: searchProxyModel }
     readonly property var activeModel: window.getModelForFilter(window.currentFilter)
 
@@ -1035,10 +929,6 @@ Item {
             window.sortListModel(gifsProxyModel);
             window.sortListModel(videosProxyModel);
             window.isModelChanging = false;
-        }
-
-        if (window.isColorFilter(window.currentFilter)) {
-            window.populateColorProxy(window.currentFilter);
         }
 
         if (window.currentFilter !== "Search") window.updateVisibleCount();
@@ -1524,33 +1414,21 @@ Item {
                 model: window.filterData
                 delegate: Item {
                     visible: modelData.name !== "Search"
-                    width: !visible ? 0 : ((modelData.name === "GIFs" || modelData.name === "Videos" || modelData.name === "All") 
-                                           ? (modelData.name === "GIFs" ? filterText.contentWidth + window.s(28) : window.s(44)) 
-                                           : (modelData.hex !== "" ? window.s(32) : window.s(44)))
+                    width: !visible ? 0 : (modelData.name === "GIFs" ? filterText.contentWidth + window.s(28) : window.s(44))
                     height: !visible ? 0 : window.s(36)
                     anchors.verticalCenter: parent.verticalCenter
                     
                     Rectangle {
                         anchors.fill: parent
-                        radius: modelData.hex !== "" ? window.s(16) : window.s(10)
-                        color: modelData.hex !== "" 
-                            ? modelData.hex 
-                            : (window.currentFilter === modelData.name ? _theme.surface2 : "transparent")
-                        border.color: window.currentFilter === modelData.name ? _theme.text : (modelData.hex !== "" ? Qt.rgba(1,1,1,0.25) : _theme.surface1)
+                        radius: window.s(10)
+                        color: window.currentFilter === modelData.name ? _theme.surface2 : "transparent"
+                        border.color: window.currentFilter === modelData.name ? _theme.text : _theme.surface1
                         border.width: window.currentFilter === modelData.name ? window.s(2) : 1
-                        scale: window.currentFilter === modelData.name ? 1.18 : (filterMouse.containsMouse ? 1.08 : 1.0)
+                        scale: window.currentFilter === modelData.name ? 1.15 : (filterMouse.containsMouse ? 1.08 : 1.0)
                         
                         Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
                         Behavior on border.color { ColorAnimation { duration: 300 } }
                         Behavior on color { ColorAnimation { duration: 300 } }
-
-                        Rectangle {
-                            visible: modelData.hex !== "" && window.currentFilter === modelData.name
-                            width: window.s(8); height: window.s(8)
-                            radius: window.s(4)
-                            anchors.centerIn: parent
-                            color: modelData.name === "Light" ? "#2E3440" : "#FFFFFF"
-                        }
 
                         Text {
                             id: filterText

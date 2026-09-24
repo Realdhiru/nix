@@ -1,14 +1,84 @@
 # CHANGELOG
 
+## 2026-09-24 — Global Dark Lock, Harmonic Amber Palette, Pure Liquid Glass & Centralized Settings
+
+- **Resolved Hyprland Window Rule Error**:
+  - Removed duplicate table-based rule in [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) (`opacity = { 0.88, 0.82 }`); retained clean string definition (`opacity = "0.67"`) under `not is_opaque` block, clearing the Hyprland red banner error.
+- **Toned Down Active Workspace & Battery Pill Contrast**:
+  - Replaced hardcoded `0.78` opacity fills in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml) with configurable `Config.activePillOpacity` (`0.28`).
+  - Switched text from black (`mocha.crust`) to warm ivory (`mocha.text`) on active workspace and battery pills for high-contrast legibility over subtle glass tints.
+  - Exposed `"activePillOpacity": 0.28` in [`settings.json`](file:///home/realdhiru/nix/dotfiles/hypr/settings.json) and documented in [`QUICKSHELL_SETTINGS.md`](file:///home/realdhiru/nix/dotfiles/hypr/QUICKSHELL_SETTINGS.md).
+- **Neutral Dark Slate Theme Overhaul (PCManFM-Qt & GTK/Qt Apps)**:
+  - Rewrote [`dotfiles/wallust/templates/qt-style.qss`](file:///home/realdhiru/nix/dotfiles/wallust/templates/qt-style.qss) and [`dotfiles/wallust/templates/gtk.css`](file:///home/realdhiru/nix/dotfiles/wallust/templates/gtk.css): decoupled base application backgrounds and fonts from ANSI `{{foreground}}` and `{{color8}}`. Established neutral dark slate `#121318` background, `#16171f` view/input areas, `#EDE6DC` warm ivory text, and reserved wallpaper dynamic accent `{{color4}}` strictly for active selections and focus states.
+  - Added translucent window rule in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) (`class = "^(pcmanfm-qt)$"`, opacity `0.88`/`0.82`) with dual-pass background blur.
+  - Matched Fuzzel launcher styling in [`dotfiles/fuzzel/fuzzel.ini`](file:///home/realdhiru/nix/dotfiles/fuzzel/fuzzel.ini) to QuickShell liquid glass (background `12131833`, text `EDE6DCff`, border width `0`).
+- **Complete Elimination of Borders Across Widgets**:
+  - Zeroed out all borders in QuickShell:
+    - [`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml): Completely excised the outer rotating gradient border item and shape mask. Outer card border set to 0.
+    - [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml): Zeroed outer border (`border.width: 0`, `border.color: "transparent"`).
+    - [`PopupCard.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/PopupCard.qml): Hard-enforced `border.width: Config.borderWidth` (0) and `border.color: "transparent"` when `Config.borderWidth === 0`.
+    - [`CalendarPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/CalendarPopup.qml): Removed `border.width > 0 ? Config.borderWidth : 1` fallback that forced 1px lines; set outer and inner card borders to transparent and 0.
+    - [`MonitorPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml), [`ClipboardManager.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml), [`FocusTimePopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml), [`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml): Zeroed outer borders when `Config.borderWidth === 0`.
+    - [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml): Replaced hardcoded `border.width: 1` on status and recording pills with `Config.borderWidth` (0).
+    - [`settings.json`](file:///home/realdhiru/nix/dotfiles/hypr/settings.json) & [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml): Set default `"borderWidth": 0` and `"borderOpacity": 0.0`.
+- **System Tray Relocation to Battery Popup**:
+  - Transplanted `SystemTray` from `TopBar.qml` into [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml), positioned in the header row directly beside the notification mute/DND toggle.
+  - Full support for left-click activation, right-click context menu, and middle-click secondary actions via `QsMenuAnchor`.
+  - Removed `trayBox` from `TopBar.qml` to declutter the status bar and prevent duplicate D-Bus SNI event listeners.
+- **TopBar CAVA Audio Visualizer Gradient**:
+  - Implemented top-to-bottom vertical color interpolation in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml) for CAVA bars, smoothly blending from cool sapphire (`mocha.sapphire`/`blue`) at the base to the wallpaper's primary accent color at the peak.
+- **Fixed Low-Contrast / Unreadable Widget Typography**:
+  - Repaired unreadable resolution labels and refresh rate / scaling slider tick marks in [`MonitorPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml) by rebinding from `overlay0` to `subtext0`.
+  - Bound "You're all caught up." and "No client devices connected." in [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml) to `subtext0` for high contrast against dark glass.
+  - Added floor in [`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh) guaranteeing `overlay0` never drops below `#6c7086`.
+
+- **Replaced Matugen Legacy with Theme.qml & Pruned Dead Files**:
+  - **Clean Component Replacement (`Theme.qml`)**: Replaced `MatugenColors.qml` with [`Theme.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Theme.qml) across all 13 QuickShell widget modules. Completely purged `MatugenColors.qml` from the disk and codebase.
+  - **Purged Dead Matugen Configs**: Completely removed obsolete `dotfiles/matugen/` directory and updated [`wezterm.lua`](file:///home/realdhiru/nix/dotfiles/wezterm.lua) to load themes directly from `~/.cache/theme/`.
+- **Centralized QuickShell Visual Controls (`settings.json`, `Config.qml`)**:
+  - Bound all QuickShell appearance controls directly to [`settings.json`](file:///home/realdhiru/nix/dotfiles/hypr/settings.json):
+    - `topbarPillOpacity`: Opacity of TopBar widget pills (default `0.35`).
+    - `topbarPillHoverOpacity`: Hover opacity of TopBar pills (default `0.60`).
+    - `topbarColorSource`: Color token for TopBar pills (default `"surface1"`; options: `"surface1"`, `"base"`, `"glass"`, `"primary"`).
+    - `cardColorSource`: Background token for inner cards (default `"glass"`; options: `"glass"`, `"surface0"`, `"subtext0"`).
+    - `clockColorSource`: Color token for clock digits (default `"text"`; options: `"text"`, `"mauve"`, `"pink"`).
+    - `textColorSource`: General typography token (default `"text"`).
+    - `accentColorSource`: Accent highlight token (default `"primary"`).
+    - `borderWidth` & `borderOpacity`: Hairline border controls.
+    - `glassSpecular`: Pure specular sheen alpha (`0.04`).
+  - Wire changes live across all components via inotify without restarting QuickShell.
+- **Global Dark Mode Lock & Manual Settings Integration**:
+  - **Permanently Locked Dark Mode**: Removed automatic wallpaper-luminance light mode switching in [`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh). The system permanently defaults to `saliencedark16` across all wallpapers (both light and dark artwork).
+  - **Single Manual Configuration Option**: Added `"themeMode": "dark"` (Options: `"dark"` | `"light"`) in [`settings.json`](file:///home/realdhiru/nix/dotfiles/hypr/settings.json). Light mode is only engaged if explicitly configured here.
+- **Harmonic Palette Extraction & Warm Ivory Typography**:
+  - **Eliminated Harsh Red Text**: Decoupled `text`, `subtext0`, and `subtext1` from ANSI `{{foreground}}` in [`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh). Locked typography to clean, soft warm ivory (`#EDE6DC` / `#C9BFB5`), eliminating red clock digits, temperature labels, and text headers.
+  - **Harmonic Accent Scoring**: Balanced color frequency and saturation (`(count^0.7) * (1 + 1.5 * sat)`). Extracts rich, balanced accents (e.g. warm golden amber `#e49975` from Gruvbox artwork, botanical green `#d7da80` from foliage) rather than isolated red turntable spikes.
+- **Pure Liquid Glass & Elimination of Black Box Backgrounds**:
+  - **Removed Dark Card Fallbacks (`PopupCard.qml`, `CalendarPopup.qml`)**: Replaced dark 20% `surface0` (`#120D0B`) fallbacks with pure liquid glass specular sheen (`Qt.rgba(255, 255, 255, 0.04)`) and delicate glass borders (`0.08` alpha). The blurred wallpaper flows seamlessly through widgets without blocky dark patches.
+- **Removed Solid/Frosted Mode Toggle**:
+  - Deleted `dotfiles/hypr/scripts/toggle_dark_mode.sh` and removed `SUPER + CTRL + D` keybind from [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua).
+  - Stripped `isLightMode` / `isLightWatcher` from [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml) and [`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml).
+- **Pruned Dead Code & Obsolete Files**:
+  - Deleted obsolete watcher scripts (`colors_wait.sh`, `settings_wait.sh`, `power_state_watcher.sh`, `update_wait.sh`) and redundant QML files in `quickshell/wallpaper/`.
+
 ## 2026-09-23 — .deb Container Hardening, Photo Popup Workflow & Launcher Hygiene
 
 - **Subsystem Decoupling & Modular Architecture**:
   - **Standalone Wallust Theme Engine (`dotfiles/wallust/`)**: Encapsulated all palette extraction, PIL/Magick luminance analysis, ANSI template rendering, neutral state generation (`generate.sh --neutral`), and client reloads. 100% portable to any Linux distro with zero external desktop couplings.
   - **Standalone Wallpaper Subsystem (`dotfiles/wallpaper/`)**: Consolidated all desktop wallpaper management into a self-contained program (`wallpaper.sh`) with subcommands (`set`, `boot`, `kill`, `ensure`, `thumb`, `watch`, `clean`, `search`). Encapsulates awww and mpvpaper daemons, thumbnail generation, inotify directory watcher, and online DuckDuckGo search. Hands off to theme engine asynchronously without any inline color logic.
-  - **Decoupled QuickShell Wallpaper Picker (`quickshell/wallpaper/`)**: Provided local `Scaler.qml` and `MatugenColors.qml` adapters in the widget directory, removing `import "../"` parent dependencies so the widget can be dropped standalone into any QuickShell project.
+  - **Wallpaper Renderer Socket Reliability**: Fixed `awww img` backgrounding in `backend/set.sh` that was prematurely killing the IPC socket transmission upon subshell exit; synchronous execution ensures instant desktop wallpaper transitions.
+  - **Inotify Live Event Pipeline**: Resolved inode-replacement race condition in `generate.sh` by replacing `mv -f` with in-place stream write (`cat tmp > colors.json`), guaranteeing `colors_wait.sh` catches `close_write` and immediately re-reads colors without timeout stalls.
+  - **QuickShell Wallpaper Picker Integration**: Restored `import "../"` in `WallpaperPicker.qml` to retain native access to QuickShell singletons (`Caching`, `Scaler`, `MatugenColors`), eliminating `ReferenceError: Caching is not defined` and enabling smooth wallpaper picker toggles via `SUPER + SHIFT + W`.
   - **Declarative NixOS & Compatibility Shims**: Linked `xdg.configFile."wallpaper"` in [`home.nix`](file:///home/realdhiru/nix/home.nix) and deployed lightweight 1-line compatibility shims in `dotfiles/hypr/scripts/` to ensure all existing keybinds and scripts resolve seamlessly.
 - **Distrobox Font Metrics & Host CLI Shims**: Installed `fonts-noto`, `fonts-noto-cjk`, `fonts-liberation`, `fonts-dejavu`, and `fontconfig` with `fc-cache -f` in `deb-box` to eliminate character overlapping and glyph collisions in Electron `.deb` apps. Added transparent host shims in container `/usr/local/bin` (`nix`, `nixos-rebuild`, `rebuild`, `hyprctl`, `journalctl`, `systemctl`, `git`) via `distrobox-host-exec`, enabling containerized AI assistants and shells to inspect and manage the host system directly.
 - **Image Viewer Popup & Escape Key Workflow**: Added `imv` to [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix), configured centered floating window rule in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) (`^(imv|org\.gnome\.Loupe)$`), and set declarative `xdg.mimeApps` default associations in [`home.nix`](file:///home/realdhiru/nix/home.nix) to `imv-dir.desktop` for instant Wayland rendering and `Escape`/`q` dismissal.
+- **QuickShell Liquid Glass Aesthetics & Vibrant Wallpaper Accent Generation**:
+  - **Removed White Tint & Artificial Borders**: Reverted `cardBorderWidth` to 0 and transparent borders in [`PopupCard.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/PopupCard.qml), removed artificial white specular line, and reduced [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml) pill borders to subtle hairlines (`0.04` idle, `0.08` hover), eliminating milky haze and restoring pure frosted glass.
+  - **Eliminated Stale Mode Poisoning (`backend/set.sh`)**: Removed legacy `is_light.txt` propagation that was forcing `light16` white palettes onto dark wallpapers during background changes.
+  - **Algorithmic Vibrant Accent Extraction (`wallust/generate.sh`)**: Implemented HLS chroma/vibrancy extraction using `magick` and `python3`, calculating the true dominant saturated accent of each wallpaper (tuned to $L \approx 0.68$, $S \ge 0.55$) and injecting it into `mauve` and `primary` in `colors.json`. Foliage wallpapers now illuminate with vibrant botanical greens (`#ccda80`) instead of muddy terminal ANSI olive-browns.
+  - **Salience Palette & Organic Surface Tints (`wallust/templates/colors.json`)**: Configured `saliencedark16` with `salience` colorspace in `wallust.toml` and subtle organic surface steps (`lighten(0.04)`, `0.08`, `0.12`), ensuring seamless blending with blurred wallpaper backdrops.
+  - **Eliminated 1-2s Startup Glitch & Fork Storms**: Replaced bash process watcher loops (`colors_wait.sh`, `settings_wait.sh`) in [`MatugenColors.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/MatugenColors.qml), [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml), and [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml) with native C++ `FileView { watchChanges: true }`, delivering synchronous token evaluation on frame 0.
+  - **Compositor Command Dispatch Fix (`qs_manager.sh`)**: Corrected reload dispatch from invalid `hl.dispatch(hl.dsp.exec_cmd(...))` to direct compositor execution `hl.exec_cmd(...)`, with `pkill -9 -f "quickshell"` ensuring clean restarts without orphaned processes.
 - **Application Launcher Hygiene**: Configured `NoDisplay=true` on `distrobox-install.desktop` in [`home.nix`](file:///home/realdhiru/nix/home.nix) and `deb-box.desktop` in `~/.local/share/applications/` to hide raw container shortcuts from the Fuzzel launcher while preserving PCManFM-Qt's right-click context menu.
 
 ## 2026-09-20 — Rootless Distrobox & .deb Integration

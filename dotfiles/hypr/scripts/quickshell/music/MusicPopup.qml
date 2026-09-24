@@ -46,7 +46,7 @@ Item {
         return scaler.s(val);
     }
 
-    MatugenColors { id: _theme }
+    Theme { id: _theme }
 
     readonly property color base: _theme.base
     readonly property color surface0: _theme.surface0
@@ -334,108 +334,16 @@ Item {
 
         scale: 0.92 + (0.08 * root.introMain)
         opacity: root.introMain
-        transform: Translate { y: root.s(15) * (1 - root.introMain) }
-
-        Item {
-            anchors.fill: parent
-            visible: Config.borderWidth > 0
-
-            Shape {
-                id: maskRectOuter
-                anchors.fill: parent
-                visible: false 
-                layer.enabled: true
-                preferredRendererType: Shape.GeometryRenderer 
-
-                property real sw: root.s(6)
-                property real inset: (sw / 2) + root.s(0.5)
-                property real w: width
-                property real h: height
-                property real r: root.s(14) - inset
-
-                property real straightLines: 2 * (w - 2 * inset - 2 * r) + 2 * (h - 2 * inset - 2 * r)
-                property real arcLines: 2 * Math.PI * r
-                property real perimeter: straightLines + arcLines
-
-                property real drawProgress: 0
-
-                NumberAnimation on drawProgress {
-                    id: chargeAnim
-                    from: 0
-                    to: maskRectOuter.perimeter
-                    duration: 1200 
-                    easing.type: Easing.OutCubic
-                    running: true 
-                }
-
-                ShapePath {
-                    strokeColor: "#ffffff"
-                    strokeWidth: maskRectOuter.sw
-                    fillColor: "transparent"
-                    PathArc {
-                        x: maskRectOuter.inset + maskRectOuter.r; y: maskRectOuter.inset
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise
-                    }
-                    PathLine { x: maskRectOuter.w - maskRectOuter.inset - maskRectOuter.r; y: maskRectOuter.inset }
-                    PathArc {
-                        x: maskRectOuter.w - maskRectOuter.inset; y: maskRectOuter.inset + maskRectOuter.r
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise
-                    }
-                    PathLine { x: maskRectOuter.w - maskRectOuter.inset; y: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.r }
-                    PathArc {
-                        x: maskRectOuter.w - maskRectOuter.inset - maskRectOuter.r; y: maskRectOuter.h - maskRectOuter.inset
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise
-                    }
-                    PathLine { x: maskRectOuter.inset + maskRectOuter.r; y: maskRectOuter.h - maskRectOuter.inset }
-                    PathArc {
-                        x: maskRectOuter.inset; y: maskRectOuter.h - maskRectOuter.inset - maskRectOuter.r
-                        radiusX: maskRectOuter.r; radiusY: maskRectOuter.r; direction: PathArc.Clockwise
-                    }
-                }
-            }
-
-            Item {
-                id: gradContainer
-                anchors.fill: parent
-                visible: false 
-                clip: true 
-
-                Rectangle {
-                    width: Math.max(parent.width, parent.height) * 2
-                    height: width
-                    anchors.centerIn: parent
-
-                    NumberAnimation on rotation {
-                        from: 0; to: 360; duration: 5000
-                        loops: Animation.Infinite
-                        running: root.visible
-                    }
-
-                    gradient: Gradient {
-                        GradientStop { position: 0.0; color: root.bc1; Behavior on color { ColorAnimation { duration: 800; easing.type: Easing.InOutQuad } } }
-                        GradientStop { position: 0.33; color: root.bc2; Behavior on color { ColorAnimation { duration: 800; easing.type: Easing.InOutQuad } } }
-                        GradientStop { position: 0.66; color: root.bc3; Behavior on color { ColorAnimation { duration: 800; easing.type: Easing.InOutQuad } } }
-                        GradientStop { position: 1.0; color: root.bc4; Behavior on color { ColorAnimation { duration: 800; easing.type: Easing.InOutQuad } } }
-                    }
-                }
-            }
-
-            MultiEffect {
-                source: gradContainer
-                anchors.fill: parent
-                maskEnabled: true
-                maskSource: maskRectOuter
-            }
-        }
+        transform: Translate { y: root.s(15) * (1 - root.introMain)  }
 
         Rectangle {
             id: innerBg
             anchors.fill: parent
-            anchors.margins: Config.borderWidth > 0 ? -root.s(1) : 0
+            anchors.margins: 0
             clip: true
             color: Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity)
-            border.width: Config.borderWidth
-            border.color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.5)
+            border.width: 0
+            border.color: "transparent"
             radius: root.s(10)
 
             layer.enabled: true

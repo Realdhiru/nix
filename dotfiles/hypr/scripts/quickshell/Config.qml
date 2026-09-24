@@ -97,9 +97,29 @@ Item {
     // Legacy Specific Properties (Bound to Settings.qml)
     // =========================================================================
     property real uiScale: 1.0
-    property real popupOpacity: config.getSetting("popupOpacity", 0.2)
-    property real cardOpacity: config.getSetting("cardOpacity", 0.0)
+    // =========================================================================
+    // Centralized QuickShell Appearance & Theme Controls (Bound to settings.json)
+    // =========================================================================
+    // Options: themeMode = "dark" | "light"
+    property string themeMode: config.getSetting("themeMode", "dark")
+    // Popup & Card Appearance
+    property string popupBackgroundSource: config.getSetting("popupBackgroundSource", "base")
+    // Opacity options: 0.0 (transparent glass) to 1.0 (solid)
+    property real popupOpacity: config.getSetting("popupOpacity", 0.20)
+    property real cardOpacity: config.getSetting("cardOpacity", 0.04)
+    property real topbarPillOpacity: config.getSetting("topbarPillOpacity", 0.35)
+    property real topbarPillHoverOpacity: config.getSetting("topbarPillHoverOpacity", 0.60)
+    property real activePillOpacity: config.getSetting("activePillOpacity", 0.28)
+    // Border options: borderWidth = 0 (frameless) or 1 (hairline); borderOpacity = 0.04 - 0.30
     property int borderWidth: config.getSetting("borderWidth", 0)
+    property real borderOpacity: config.getSetting("borderOpacity", 0.0)
+    property real glassSpecular: config.getSetting("glassSpecular", 0.04)
+    // Color source options: "surface1", "surface0", "base", "mantle", "crust", "glass", "primary", "mauve", "text"
+    property string topbarColorSource: config.getSetting("topbarColorSource", "surface1")
+    property string cardColorSource: config.getSetting("cardColorSource", "glass")
+    property string clockColorSource: config.getSetting("clockColorSource", "text")
+    property string textColorSource: config.getSetting("textColorSource", "text")
+    property string accentColorSource: config.getSetting("accentColorSource", "primary")
 
     property bool isSolidMode: false
     readonly property real effectivePopupOpacity: config.isSolidMode ? 1.0 : config.popupOpacity
@@ -364,6 +384,7 @@ Item {
         sh("mkdir -p ~/.cache && touch ~/.cache/hypr_power_monitor.conf");
         settingsReader.running = false; settingsReader.running = true;
         envReader.running = false; envReader.running = true;
+        config.updateSolidMode();
     }
 
     Process {
@@ -390,25 +411,55 @@ Item {
         }
     }
 
-    Process {
-        id: solidModeDetector
-        command: ["bash", "-c", "if [ -f \"$HOME/.cache/wallpaper_killed\" ] || [ -f \"$HOME/.cache/gaming_mode\" ] || [ \"$(cat \"$HOME/.cache/qs_power_profile\" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null)\" = \"power-saver\" ]; then echo '1'; else echo '0'; fi"]
-        running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                config.isSolidMode = (this.text.trim() === "1");
-            }
+    FileView {
+        id: wpKilledWatcher
+        path: config.homeDir + "/.cache/wallpaper_killed"
+        watchChanges: true
+        onLoadedChanged: config.updateSolidMode()
+    }
+
+    FileView {
+        id: gamingModeWatcher
+        path: config.homeDir + "/.cache/gaming_mode"
+        watchChanges: true
+        onLoadedChanged: config.updateSolidMode()
+    }
+
+    FileView {
+        id: powerProfileWatcher
+        path: config.homeDir + "/.cache/qs_power_profile"
+        watchChanges: true
+        onLoadedChanged: config.updateSolidMode()
+        onTextChanged: config.updateSolidMode()
+        onFileChanged: {
+            powerProfileWatcher.reload();
+            config.updateSolidMode();
         }
     }
 
-    Timer {
-        id: solidModeTimer
-        interval: 1000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
-            if (!solidModeDetector.running) solidModeDetector.running = true;
+    function updateSolidMode() {
+        let wpKilled = wpKilledWatcher.loaded;
+        let gamingMode = gamingModeWatcher.loaded;
+        let profile = (powerProfileWatcher.loaded ? (powerProfileWatcher.text() || "").trim() : "");
+        config.isSolidMode = wpKilled || gamingMode || (profile === "power-saver");
+    }
+
+    FileView {
+        id: settingsFileWatcher
+        path: config.settingsJsonPath
+        watchChanges: true
+        onLoadedChanged: {
+            settingsReader.running = false;
+            settingsReader.running = true;
+        }
+        onFileChanged: {
+            settingsFileWatcher.reload();
+            settingsReader.running = false;
+            settingsReader.running = true;
+        }
+        onTextChanged: {
+            settingsReader.running = false;
+            settingsReader.running = true;
         }
     }
 
@@ -419,14 +470,28 @@ Item {
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    if (this.text && this.text.trim().length > 0 && this.text.trim() !== "{}") {
-                        config.rawSettings = JSON.parse(this.text);
+                    let raw = this.text ? this.text.trim() : "";
+                    let cleaned = raw.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+                    if (cleaned && cleaned.length > 0 && cleaned !== "{}") {
+                        config.rawSettings = JSON.parse(cleaned);
 
                         // Map explicitly defined properties
                         if (config.rawSettings.uiScale !== undefined) config.uiScale = config.rawSettings.uiScale;
+                        if (config.rawSettings.themeMode !== undefined) config.themeMode = config.rawSettings.themeMode;
+                        if (config.rawSettings.popupBackgroundSource !== undefined) config.popupBackgroundSource = config.rawSettings.popupBackgroundSource;
                         if (config.rawSettings.popupOpacity !== undefined) config.popupOpacity = config.rawSettings.popupOpacity;
                         if (config.rawSettings.cardOpacity !== undefined) config.cardOpacity = config.rawSettings.cardOpacity;
+                        if (config.rawSettings.topbarPillOpacity !== undefined) config.topbarPillOpacity = config.rawSettings.topbarPillOpacity;
+                        if (config.rawSettings.topbarPillHoverOpacity !== undefined) config.topbarPillHoverOpacity = config.rawSettings.topbarPillHoverOpacity;
+                        if (config.rawSettings.activePillOpacity !== undefined) config.activePillOpacity = config.rawSettings.activePillOpacity;
                         if (config.rawSettings.borderWidth !== undefined) config.borderWidth = config.rawSettings.borderWidth;
+                        if (config.rawSettings.borderOpacity !== undefined) config.borderOpacity = config.rawSettings.borderOpacity;
+                        if (config.rawSettings.glassSpecular !== undefined) config.glassSpecular = config.rawSettings.glassSpecular;
+                        if (config.rawSettings.topbarColorSource !== undefined) config.topbarColorSource = config.rawSettings.topbarColorSource;
+                        if (config.rawSettings.cardColorSource !== undefined) config.cardColorSource = config.rawSettings.cardColorSource;
+                        if (config.rawSettings.clockColorSource !== undefined) config.clockColorSource = config.rawSettings.clockColorSource;
+                        if (config.rawSettings.textColorSource !== undefined) config.textColorSource = config.rawSettings.textColorSource;
+                        if (config.rawSettings.accentColorSource !== undefined) config.accentColorSource = config.rawSettings.accentColorSource;
                         if (config.rawSettings.topbarHelpIcon !== undefined) config.topbarHelpIcon = config.rawSettings.topbarHelpIcon;
                         if (config.rawSettings.wallpaperDir !== undefined) {
                             let wp = config.rawSettings.wallpaperDir;

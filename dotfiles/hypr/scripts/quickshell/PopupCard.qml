@@ -8,29 +8,23 @@ Rectangle {
     default property alias content: innerContainer.data
     property real cardRadius: 20
     property bool showSpecular: true
-    property color cardColor: Qt.rgba(theme.surface0.r, theme.surface0.g, theme.surface0.b, Config.cardOpacity > 0 ? Config.cardOpacity : 0.22)
-    property color cardBorderColor: Config.borderWidth > 0 ? Qt.rgba(255, 255, 255, 0.18) : "transparent"
-    property real cardBorderWidth: Config.borderWidth > 0 ? Config.borderWidth : 0
+    // Options: cardColor adapts to Config.cardColorSource & Config.effectiveCardOpacity
+    property color cardColor: {
+        if (Config.cardColorSource === "glass") {
+            return Qt.rgba(1, 1, 1, Config.effectiveCardOpacity > 0 ? Config.effectiveCardOpacity : Config.glassSpecular);
+        }
+        let col = theme[Config.cardColorSource] || theme.surface0;
+        return Qt.rgba(col.r, col.g, col.b, Config.effectiveCardOpacity > 0 ? Config.effectiveCardOpacity : 0.20);
+    }
+    property color cardBorderColor: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(1, 1, 1, Config.borderOpacity) : "transparent"
+    property real cardBorderWidth: Config.borderWidth
 
-    MatugenColors { id: theme }
+    Theme { id: theme }
 
     color: cardColor
     radius: cardRadius
     border.width: cardBorderWidth
     border.color: cardBorderColor
-
-    // Top frosted specular reflection highlight
-    Rectangle {
-        id: specularLine
-        anchors.top: parent.top
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.max(0, parent.width - cardRoot.radius * 2)
-        anchors.topMargin: 1
-        height: 1
-        color: Qt.rgba(255, 255, 255, 0.22)
-        radius: 1
-        visible: cardRoot.showSpecular && cardRoot.cardBorderWidth > 0
-    }
 
     Item {
         id: innerContainer

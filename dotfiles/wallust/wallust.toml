@@ -1,7 +1,10 @@
 # Wallust v3.5 - High-Vibrancy Systemwide Theme Engine
+# Backend options: "resized" (default, fast/vibrant), "wal", "thumb", "kmeans"
 backend = "resized"
-color_space = "lch"
-palette = "harddark16"
+# Colorspace options: "salience" (best contrast), "lch", "lab", "rgb", "hsl"
+color_space = "salience"
+# Palette options: "saliencedark16" (dark mode), "saliencelight16" (light mode), "dark16", "softdark16"
+palette = "saliencedark16"
 check_contrast = true
 
 [templates]

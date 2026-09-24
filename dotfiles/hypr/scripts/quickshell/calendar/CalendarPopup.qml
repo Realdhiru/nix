@@ -76,9 +76,9 @@ Item {
     }
 
     // -------------------------------------------------------------------------
-    // COLORS (Dynamic Matugen Palette)
+    // COLORS (Dynamic Wallust Palette)
     // -------------------------------------------------------------------------
-    MatugenColors { id: _theme }
+    Theme { id: _theme }
     readonly property color base: _theme.base
     readonly property color mantle: _theme.mantle
     readonly property color crust: _theme.crust
@@ -105,14 +105,22 @@ Item {
     readonly property string scriptsDir: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/calendar"
 
     // -------------------------------------------------------------------------
-    // TIME OF DAY DYNAMIC COLORS
+    // TIME OF DAY & SETTINGS-CONFIGURED DYNAMIC COLORS
     // -------------------------------------------------------------------------
     readonly property color timeColor: {
+        let src = Config.clockColorSource;
+        if (src && src !== "auto" && window[src]) return window[src];
         let h = window.currentTime.getHours();
         if (h >= 5 && h < 12) return window.peach;      
         if (h >= 12 && h < 17) return window.sapphire;  
         if (h >= 17 && h < 21) return window.mauve;     
         return window.blue;                             
+    }
+
+    readonly property color activeAccent: {
+        let src = Config.accentColorSource;
+        if (src && src !== "auto" && window[src]) return window[src];
+        return window.timeAccent;
     }
 
     readonly property color timeAccent: {
@@ -123,7 +131,7 @@ Item {
         return window.mauve;                            
     }
 
-    readonly property color textAccent: Qt.tint(window.timeAccent, Qt.alpha(window.text, 0.35))
+    readonly property color textAccent: Qt.tint(window.activeAccent, Qt.alpha(window.text, 0.35))
 
     // -------------------------------------------------------------------------
     // STARTUP ANIMATION STATES
@@ -442,8 +450,12 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: Math.round(20 * window.sf)
-            color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
-            border.color: window.surface0
+            color: {
+                let src = Config.popupBackgroundSource || "base";
+                let col = window[src] || window.base;
+                return Qt.rgba(col.r, col.g, col.b, Config.effectivePopupOpacity);
+            }
+            border.color: Config.borderWidth > 0 ? Qt.rgba(window.text.r, window.text.g, window.text.b, Config.borderOpacity > 0 ? Config.borderOpacity : 0.08) : "transparent"
             border.width: Config.borderWidth
             clip: true
 
@@ -612,7 +624,7 @@ Item {
                             font.family: "JetBrains Mono"
                             font.weight: Font.Black
                             font.pixelSize: Math.round(84 * window.sf)
-                            color: window.text
+                            color: window[Config.clockColorSource] || window.text
                             style: Text.Outline; styleColor: Qt.alpha(window.crust, 0.4)
                         }
                         Text {
@@ -733,9 +745,16 @@ Item {
                 anchors.margins: Math.round(40 * window.sf)
                 width: Math.round(320 * window.sf)
                 height: Math.round(420 * window.sf)
-                color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.06) 
+                // Options: cardColor adapts to Config.cardColorSource & Config.effectiveCardOpacity
+                color: {
+                    if (Config.cardColorSource === "glass") {
+                        return Qt.rgba(1, 1, 1, Config.effectiveCardOpacity > 0 ? Config.effectiveCardOpacity : Config.glassSpecular);
+                    }
+                    let col = window[Config.cardColorSource] || window.surface0;
+                    return Qt.rgba(col.r, col.g, col.b, Config.effectiveCardOpacity > 0 ? Config.effectiveCardOpacity : 0.20);
+                }
                 radius: Math.round(14 * window.sf)
-                border.color: Qt.alpha(window.surface1, 0.3)
+                border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(1, 1, 1, Config.borderOpacity) : "transparent"
                 border.width: Config.borderWidth
                 z: 10 
 

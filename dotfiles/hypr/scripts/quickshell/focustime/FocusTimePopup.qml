@@ -29,7 +29,7 @@ Item {
    // -------------------------------------------------------------------------
     // COLORS (Dynamic Matugen Palette)
     // -------------------------------------------------------------------------
-    MatugenColors { id: _theme }
+    Theme { id: _theme }
     readonly property color base: _theme.base
     readonly property color mantle: _theme.mantle
     readonly property color crust: _theme.crust
@@ -544,7 +544,7 @@ Item {
             anchors.fill: parent
             radius: window.s(20)
             color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
-            border.color: window.surface1
+            border.color: Config.borderWidth > 0 ? window.surface1 : "transparent"
             border.width: Config.borderWidth
             clip: true
 

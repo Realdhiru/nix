@@ -104,7 +104,7 @@ else
             --transition-type fade \
             --transition-step 255 \
             --transition-duration 0.08 \
-            --transition-fps 60 > /dev/null 2>&1 &
+            --transition-fps 60 > /dev/null 2>&1
     fi
 fi
 
@@ -140,15 +140,10 @@ exec 8>&- 2>/dev/null || true
         [ -s "$frame_seed" ] && SEED="$frame_seed"
     fi
 
-    is_light="dark"
-    if [ -f "$HOME/.cache/theme/is_light.txt" ]; then
-        [ "$(cat "$HOME/.cache/theme/is_light.txt" 2>/dev/null)" = "true" ] && is_light="light"
-    fi
-
     # Trigger standalone theme engine if present
     THEME_ENGINE="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
     [ ! -x "$THEME_ENGINE" ] && THEME_ENGINE="$HOME/nix/dotfiles/wallust/generate.sh"
     if [ -x "$THEME_ENGINE" ]; then
-        "$THEME_ENGINE" "$SEED" "$is_light" >/dev/null 2>&1
+        "$THEME_ENGINE" "$SEED" >/dev/null 2>&1
     fi
 ) &

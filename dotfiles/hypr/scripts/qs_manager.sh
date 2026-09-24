@@ -29,10 +29,10 @@ TARGET="${2:-}"
 SUBTARGET="${3:-}"
 
 if [[ "$ACTION" == "reload" ]]; then
-    pkill -9 quickshell 2>/dev/null || true
+    pkill -9 -f "quickshell" 2>/dev/null || true
     pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
     sleep 0.3
-    hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('$QS_BIN -p $SHELL_QML_PATH'))" >/dev/null 2>&1
+    hyprctl eval "hl.exec_cmd('$QS_BIN -p $SHELL_QML_PATH')" >/dev/null 2>&1
     exit 0
 fi
 

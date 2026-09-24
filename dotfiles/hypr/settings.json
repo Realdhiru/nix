@@ -1,9 +1,21 @@
 {
-  "uiScale": 1.0,
-  "popupOpacity": 0.2,
-  "cardOpacity": 0.0,
+  "themeMode": "dark",
+  "uiScale": 1,
+  "popupBackgroundSource": "base",
+  "popupOpacity": 0.20,
+  "cardColorSource": "glass",
+  "cardOpacity": 0.04,
+  "topbarPillOpacity": 0.35,
+  "topbarPillHoverOpacity": 0.60,
+  "activePillOpacity": 0.28,
   "borderWidth": 0,
-  "wallpaperDir": "~/Pictures/Wallpapers",
+  "borderOpacity": 0.0,
+  "glassSpecular": 0.04,
+  "topbarColorSource": "surface1",
+  "clockColorSource": "text",
+  "textColorSource": "text",
+  "accentColorSource": "primary",
+  "wallpaperDir": "/home/realdhiru/Pictures/Wallpapers",
   "language": "",
   "kbOptions": "grp:alt_shift_toggle",
   "workspaceCount": 8,
@@ -18,5 +30,7 @@
       "scale": 2,
       "transform": 2
     }
-  ]
+  ],
+  "keybinds": [],
+  "topbarHelpIcon": true
 }

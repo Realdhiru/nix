@@ -8,9 +8,9 @@ Item {
     property color base: "#1e1e2e"
     property color mantle: "#181825"
     property color crust: "#11111b"
-    property color text: "#cdd6f4"
-    property color subtext0: "#bac2de"
-    property color subtext1: "#a6adc8"
+    property color text: "#EDE6DC"
+    property color subtext0: "#C9BFB5"
+    property color subtext1: "#A89F95"
     property color surface0: "#313244"
     property color surface1: "#45475a"
     property color surface2: "#585b70"
@@ -27,6 +27,7 @@ Item {
     property color yellow: "#f9e2af"
     property color maroon: "#eba0ac"
     property color teal: "#94e2d5"
+    property color primary: "#cba6f7"
 
     // Dynamic wallpaper lightness indicators for adaptive widget styling
     property bool isLight: false
@@ -51,27 +52,25 @@ Item {
         } catch(e) {}
     }
 
-    Process {
-        id: colorWatcher
-        command: ["bash", "-c", "$HOME/.config/hypr/scripts/quickshell/watchers/colors_wait.sh && (cat $HOME/.cache/theme/colors.json 2>/dev/null || cat $HOME/.cache/matugen/qs_colors.json 2>/dev/null || echo '{}')"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.applyJson(this.text ? this.text.trim() : "");
-                colorWatcher.running = false;
-                colorWatcher.running = true;
-            }
+    function reload() {
+        root._lastJson = "";
+        fileView.reload();
+    }
+
+    // Instant C++ native file loader & live inotify watcher (0ms startup, zero subprocess overhead)
+    FileView {
+        id: fileView
+        path: root.colorsFile
+        watchChanges: true
+        onLoadedChanged: root.applyJson(fileView.text())
+        onTextChanged: root.applyJson(fileView.text())
+        onFileChanged: {
+            root._lastJson = "";
+            fileView.reload();
         }
     }
 
-    Process {
-        id: initialLoader
-        command: ["cat", root.colorsFile]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.applyJson(this.text ? this.text.trim() : "");
-            }
-        }
+    Component.onCompleted: {
+        root.applyJson(fileView.text());
     }
 }

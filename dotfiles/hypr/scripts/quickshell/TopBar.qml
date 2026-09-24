@@ -56,25 +56,25 @@ Variants {
             exclusiveZone: barHeight - s(4)
             color: "transparent"
 
-            MatugenColors {
+            Theme {
                 id: mocha
             }
 
-            readonly property color pillBg: mocha.isLight
-                ? Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, 0.45)
-                : Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.35)
+            readonly property color accentColor: (Config.accentColorSource && mocha[Config.accentColorSource]) ? mocha[Config.accentColorSource] : mocha.primary
 
-            readonly property color pillBgHover: mocha.isLight
-                ? Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.60)
-                : Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.60)
+            readonly property color pillBg: {
+                let baseCol = Config.topbarColorSource === "glass" ? Qt.rgba(1, 1, 1, 1) : (mocha[Config.topbarColorSource] || mocha.surface1);
+                return Qt.rgba(baseCol.r, baseCol.g, baseCol.b, Config.topbarPillOpacity);
+            }
 
-            readonly property color pillBorder: mocha.isLight
-                ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08)
-                : Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+            readonly property color pillBgHover: {
+                let baseCol = Config.topbarColorSource === "glass" ? Qt.rgba(1, 1, 1, 1) : (mocha[Config.topbarColorSource] || mocha.surface0);
+                return Qt.rgba(baseCol.r, baseCol.g, baseCol.b, Config.topbarPillHoverOpacity);
+            }
 
-            readonly property color pillBorderHover: mocha.isLight
-                ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.15)
-                : Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.12)
+            readonly property color pillBorder: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, Config.borderOpacity) : "transparent"
+
+            readonly property color pillBorderHover: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, Config.borderOpacity * 2) : "transparent"
 
             property bool showHelpIcon: true
             property bool isRecording: false
@@ -193,12 +193,13 @@ Variants {
             }
 
             function cavaBarColor(barIndex, barCount, segIndex, segCount) {
-                let primary = mocha.mauve;
-                let vertFactor = (segCount <= 1) ? 1.0 : (0.85 + 0.15 * (segIndex / (segCount - 1)));
+                let topColor = barWindow.accentColor;
+                let bottomColor = (mocha.sapphire && mocha.sapphire !== mocha.surface0) ? mocha.sapphire : (mocha.blue || mocha.subtext0);
+                let t = (segCount <= 1) ? 1.0 : (segIndex / (segCount - 1));
                 return Qt.rgba(
-                    Math.min(1.0, primary.r * vertFactor),
-                    Math.min(1.0, primary.g * vertFactor),
-                    Math.min(1.0, primary.b * vertFactor),
+                    Math.max(0.0, Math.min(1.0, bottomColor.r + (topColor.r - bottomColor.r) * t)),
+                    Math.max(0.0, Math.min(1.0, bottomColor.g + (topColor.g - bottomColor.g) * t)),
+                    Math.max(0.0, Math.min(1.0, bottomColor.b + (topColor.b - bottomColor.b) * t)),
                     1.0
                 );
             }
@@ -206,8 +207,8 @@ Variants {
             property int batCap: parseInt(barWindow.batPercent) || 0
             property bool isCharging: barWindow.acOnline
             property color batDynamicColor: {
-                if (isCharging) return mocha.mauve;
-                if (batCap <= 20) return mocha.mauve;
+                if (isCharging) return barWindow.accentColor;
+                if (batCap <= 20) return barWindow.accentColor;
                 return mocha.text;
             }
 
@@ -280,8 +281,6 @@ Variants {
                 target: Hyprland
                 function onFocusedWorkspaceChanged() { barWindow.updateNativeWorkspaces(); }
                 function onActiveToplevelChanged() { Qt.callLater(barWindow.updateNativeWorkspaces); }
-                function onWorkspacesChanged() { Qt.callLater(barWindow.updateNativeWorkspaces); }
-                function onToplevelsChanged() { Qt.callLater(barWindow.updateNativeWorkspaces); }
                 function onRawEvent(name, data) {
                     if (name === "workspace" || name === "createworkspace" || name === "destroyworkspace"
                         || name === "focusedmon" || name === "moveworkspace" || name === "moveworkspacev2"
@@ -502,7 +501,7 @@ Variants {
                         id: workspacesBox
                         color: barWindow.pillBg
                         radius: barWindow.s(14)
-                        border.width: 1
+                        border.width: Config.borderWidth
                         border.color: barWindow.pillBorder
                         Behavior on color { ColorAnimation { duration: 250 } }
                         Behavior on border.color { ColorAnimation { duration: 250 } }
@@ -545,7 +544,7 @@ Variants {
                             y: (workspacesBox.height - barWindow.s(32)) / 2
                             height: barWindow.s(32)
                             radius: barWindow.s(10)
-                            color: Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.78)
+                            color: Qt.rgba(barWindow.accentColor.r, barWindow.accentColor.g, barWindow.accentColor.b, Config.activePillOpacity)
                             z: 0
 
                             property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsRepeater.count)
@@ -634,7 +633,7 @@ Variants {
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
 
-                                        color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
+                                        color: index === workspacesModel.activeIndex ? mocha.text : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
 
                                         Behavior on color { ColorAnimation { duration: 250 } }
                                     }
@@ -657,7 +656,7 @@ Variants {
                     Rectangle {
                         id: mediaBox
                         color: barWindow.pillBg
-                        radius: barWindow.s(14); border.width: 1; border.color: barWindow.pillBorder
+                        radius: barWindow.s(14); border.width: Config.borderWidth; border.color: barWindow.pillBorder
                         Behavior on color { ColorAnimation { duration: 250 } }
                         Behavior on border.color { ColorAnimation { duration: 250 } }
                         height: barWindow.barHeight
@@ -853,7 +852,7 @@ Variants {
                             property bool isHovered: centerMouse.containsMouse
                             property bool notifActive: NotifTicker.tickerVisible
                             color: isHovered ? barWindow.pillBgHover : barWindow.pillBg
-                            radius: barWindow.s(14); border.width: 1; border.color: isHovered ? barWindow.pillBorderHover : barWindow.pillBorder
+                            radius: barWindow.s(14); border.width: Config.borderWidth; border.color: isHovered ? barWindow.pillBorderHover : barWindow.pillBorder
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
                         height: barWindow.barHeight
@@ -911,7 +910,7 @@ Variants {
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: barWindow.s(18)
                                 font.weight: Font.Black
-                                color: mocha.mauve
+                                color: mocha[Config.clockColorSource] || barWindow.accentColor
                                 Layout.alignment: Qt.AlignVCenter
                             }
 
@@ -924,7 +923,7 @@ Variants {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(10)
                                     font.weight: Font.Black
-                                    color: mocha.text
+                                    color: mocha[Config.textColorSource] || mocha.text
                                     horizontalAlignment: Text.AlignLeft
                                     Layout.fillWidth: true
                                 }
@@ -1137,14 +1136,14 @@ Variants {
                                                 width: parent.fillW
                                                 height: parent.height
                                                 radius: height / 2
-                                                color: sliderContainer.isMuted ? mocha.subtext1 : mocha.mauve
+                                                color: sliderContainer.isMuted ? mocha.subtext1 : barWindow.accentColor
                                             }
                                             
                                             Rectangle {
                                                 width: parent.height + barWindow.s(4)
                                                 height: parent.height + barWindow.s(4)
                                                 radius: width / 2
-                                                color: sliderContainer.isMuted ? mocha.subtext1 : mocha.mauve
+                                                color: sliderContainer.isMuted ? mocha.subtext1 : barWindow.accentColor
                                                 border.color: mocha.surface2
                                                 border.width: barWindow.s(1)
                                                 
@@ -1198,129 +1197,11 @@ Variants {
                             onTriggered: rightContent.showLayout = true
                         }
 
-                        Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
-
-                        Rectangle {
-                            id: trayBox
-                            height: barWindow.barHeight
-                            radius: barWindow.s(14)
-                            border.color: barWindow.pillBorder
-                            border.width: 1
-                            color: barWindow.pillBg
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Behavior on border.color { ColorAnimation { duration: 150 } }
-                            property var filteredTrayItems: {
-                                let raw = SystemTray.items.values || [];
-                                let res = [];
-                                for (let i = 0; i < raw.length; i++) {
-                                    let item = raw[i];
-                                    if (!item) continue;
-                                    let idStr = (item.id || "").toLowerCase();
-                                    let titleStr = (item.title || "").toLowerCase();
-                                    if (idStr.includes("blueman") || idStr.includes("bluetooth") ||
-                                        idStr.includes("kdeconnect") || idStr.includes("kde connect") ||
-                                        titleStr.includes("blueman") || titleStr.includes("bluetooth") ||
-                                        titleStr.includes("kdeconnect") || titleStr.includes("kde connect")) {
-                                        continue;
-                                    }
-                                    res.push(item);
-                                }
-                                return res;
-                            }
-
-                            property real targetWidth: trayRepeater.count > 0 ? (trayRepeater.count * barWindow.s(18) + (trayRepeater.count - 1) * barWindow.s(10) + barWindow.s(24)) : 0
-                            width: targetWidth
-                            Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutExpo } }
-
-                            visible: targetWidth > 0
-                            opacity: targetWidth > 0 ? 1 : 0
-                            Behavior on opacity { NumberAnimation { duration: 300 } }
-
-                            Row {
-                                id: trayLayout
-                                anchors.centerIn: parent
-                                spacing: barWindow.s(10)
-
-                                Repeater {
-                                    id: trayRepeater
-                                    model: trayBox.filteredTrayItems
-                                    delegate: Image {
-                                        id: trayIcon
-                                        source: modelData.icon || ""
-                                        fillMode: Image.PreserveAspectFit
-
-                                        sourceSize: Qt.size(barWindow.s(18), barWindow.s(18))
-                                        width: barWindow.s(18)
-                                        height: barWindow.s(18)
-                                        anchors.verticalCenter: parent.verticalCenter
-
-                                        property bool isHovered: trayMouse.containsMouse
-                                        property bool initAnimTrigger: false
-                                        opacity: initAnimTrigger ? (isHovered ? 1.0 : 0.8) : 0.0
-                                        scale: initAnimTrigger ? (isHovered ? 1.15 : 1.0) : 0.0
-
-                                        Component.onCompleted: {
-                                            if (!barWindow.startupCascadeFinished) {
-                                                trayAnimTimer.interval = index * 25;
-                                                trayAnimTimer.start();
-                                            } else {
-                                                initAnimTrigger = true;
-                                            }
-                                        }
-                                        Timer {
-                                            id: trayAnimTimer
-                                            running: false
-                                            repeat: false
-                                            onTriggered: trayIcon.initAnimTrigger = true
-                                        }
-
-                                        Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-                                        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-
-                                        QsMenuAnchor {
-                                            id: menuAnchor
-                                            anchor.window: barWindow
-                                            anchor.item: trayIcon
-                                            menu: modelData.menu
-                                        }
-
-                                        MouseArea {
-                                            id: trayMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-                                            onClicked: (event) => {
-                                                if (event.button === Qt.LeftButton) {
-                                                    if (modelData.isMenuOnly || modelData.onlyMenu) {
-                                                        menuAnchor.open();
-                                                    } else if (typeof modelData.activate === "function") {
-                                                        modelData.activate();
-                                                    }
-                                                } else if (event.button === Qt.MiddleButton) {
-                                                    if (typeof modelData.secondaryActivate === "function") {
-                                                        modelData.secondaryActivate();
-                                                    }
-                                                } else if (event.button === Qt.RightButton) {
-                                                    if (modelData.menu) {
-                                                        menuAnchor.open();
-                                                    } else if (typeof modelData.contextMenu === "function") {
-                                                        modelData.contextMenu(event.x, event.y);
-                                                    } else {
-                                                        modelData.activate();
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
                         Rectangle {
                             height: barWindow.barHeight
                             radius: barWindow.s(14)
                             border.color: barWindow.pillBorder
-                            border.width: 1
+                            border.width: Config.borderWidth
                             color: barWindow.pillBg
                             clip: true
                             Behavior on color { ColorAnimation { duration: 150 } }
@@ -1346,7 +1227,7 @@ Variants {
                                         anchors.fill: parent
                                         radius: barWindow.s(10)
                                         opacity: 1.0
-                                        color: Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.78)
+                                        color: Qt.rgba(barWindow.accentColor.r, barWindow.accentColor.g, barWindow.accentColor.b, Config.activePillOpacity)
                                     }
 
                                     property real targetWidth: barWindow.isDesktop ? barWindow.s(34) : batLayoutRow.implicitWidth + barWindow.s(24)
@@ -1369,8 +1250,8 @@ Variants {
                                         id: batLayoutRow
                                         anchors.centerIn: parent
                                         spacing: barWindow.s(8)
-                                        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: mocha.crust; Behavior on color { ColorAnimation { duration: 300 } } }
-                                        Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.crust; Behavior on color { ColorAnimation { duration: 300 } } }
+                                        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: barWindow.accentColor; Behavior on color { ColorAnimation { duration: 300 } } }
+                                        Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.text; Behavior on color { ColorAnimation { duration: 300 } } }
                                     }
                                     MouseArea {
                                         id: batMouse; hoverEnabled: true; anchors.fill: parent;
@@ -1388,7 +1269,7 @@ Variants {
 
                             color: isHovered ? barWindow.pillBgHover : barWindow.pillBg
                             radius: barWindow.s(14)
-                            border.width: 1
+                            border.width: Config.borderWidth
                             border.color: isHovered ? barWindow.pillBorderHover : barWindow.pillBorder
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -1414,7 +1295,7 @@ Variants {
                                 text: ""
                                 font.family: "Iosevka Nerd Font"
                                 font.pixelSize: barWindow.s(20)
-                                color: mocha.mauve
+                                color: barWindow.accentColor
 
                                 SequentialAnimation on opacity {
                                     running: barWindow.isRecording && !recButton.isHovered

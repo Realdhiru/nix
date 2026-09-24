@@ -21,7 +21,7 @@ Item {
         return scaler.s(val); 
     }
 
-    MatugenColors { id: _theme }
+    Theme { id: _theme }
     
     readonly property color base: _theme.base
     readonly property color crust: _theme.crust
@@ -369,7 +369,7 @@ Item {
 
         radius: window.s(16)
         color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
-        border.color: window.surface1
+        border.color: Config.borderWidth > 0 ? window.surface1 : "transparent"
         border.width: Config.borderWidth
         clip: true
 

@@ -35,7 +35,7 @@ Item {
     // -------------------------------------------------------------------------
     // COLORS (Dynamic Matugen Palette)
     // -------------------------------------------------------------------------
-    MatugenColors { id: _theme }
+    Theme { id: _theme }
     readonly property color base: _theme.base
     readonly property color mantle: _theme.mantle
     readonly property color crust: _theme.crust
@@ -531,7 +531,7 @@ Item {
             anchors.fill: parent
             radius: window.s(30)
             color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
-            border.color: window.surface0
+            border.color: Config.borderWidth > 0 ? window.surface0 : "transparent"
             border.width: Config.borderWidth
             clip: true
 
@@ -1117,7 +1117,7 @@ Item {
                                     Text {
                                         font.family: "JetBrains Mono"
                                         font.pixelSize: window.s(11)
-                                        color: isSel ? window.text : window.overlay0
+                                        color: isSel ? window.text : window.subtext0
                                         text: modelData.w + "x" + modelData.h
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                     }
@@ -1398,7 +1398,7 @@ Item {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: window.s(13)
                                     font.weight: sliderContainer.currentIndex === index ? Font.Bold : Font.Normal
-                                    color: sliderContainer.currentIndex === index ? window.selectedRateAccent : window.overlay0
+                                    color: sliderContainer.currentIndex === index ? window.selectedRateAccent : window.subtext0
                                     Behavior on color { ColorAnimation { duration: 200 } }
                                 }
                             }
@@ -1534,7 +1534,7 @@ Item {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: window.s(13)
                                     font.weight: scaleSliderContainer.currentIndex === index ? Font.Bold : Font.Normal
-                                    color: scaleSliderContainer.currentIndex === index ? window.selectedScaleAccent : window.overlay0
+                                    color: scaleSliderContainer.currentIndex === index ? window.selectedScaleAccent : window.subtext0
                                     Behavior on color { ColorAnimation { duration: 200 } }
                                 }
                             }

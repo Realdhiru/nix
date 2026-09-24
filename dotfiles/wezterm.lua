@@ -41,13 +41,8 @@ local theme_path = wezterm.home_dir .. "/.cache/theme/wezterm-colors.lua"
 -- 2. Explicitly watch the generated file for automatic hot-reloading
 wezterm.add_to_config_reload_watch_list(theme_path)
 
--- 3. Wrap dofile in a pcall. If theme engine is in the middle of writing the file 
---    and it is temporarily empty, pcall prevents the terminal from crashing.
+-- 3. Wrap dofile in a pcall to prevent crash during atomic theme writes
 local success, theme = pcall(dofile, theme_path)
-if not success then
-    theme_path = wezterm.home_dir .. "/.cache/matugen/wezterm-colors.lua"
-    success, theme = pcall(dofile, theme_path)
-end
 if success and type(theme) == "table" then
     config.colors = theme
 end
