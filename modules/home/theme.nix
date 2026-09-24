@@ -1,7 +1,7 @@
 { config, lib, pkgs, ... }:
 {
   home.sessionVariables.GTK_THEME = "Adwaita:dark";
-  home.sessionVariables.QT_QPA_PLATFORMTHEME = "qt6ct;qt5ct";
+  home.sessionVariables.QT_QPA_PLATFORMTHEME = lib.mkForce "qt6ct;qt5ct";
 
   # GTK3/Qt config channels
   xdg.configFile."environment.d/gtk-theme.conf".text =
@@ -15,6 +15,11 @@
     iconTheme = { name = "buuf-nestort"; package = pkgs.buuf-nestort-icon-theme; };
     gtk3.extraConfig.gtk-application-prefer-dark-theme = true;
     gtk4.extraConfig.gtk-application-prefer-dark-theme = true;
+  };
+
+  dconf.settings."org/gnome/desktop/interface" = {
+    color-scheme = "prefer-dark";
+    gtk-theme = "Adwaita:dark";
   };
 
   xdg.dataFile."icons/buuf-nestort" = {

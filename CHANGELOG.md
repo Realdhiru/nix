@@ -5,9 +5,12 @@
 - **Monochrome & Grayscale Wallpaper Support**:
   - Added automatic grayscale detection (`is_mono`) to [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh).
   - Eliminated the hardcoded `#89b4fa` blue fallback when wallpapers lack chroma. Sets radiant ivory/silver accent (`#EDE6DC`) and switches Wallust dynamically to `dark16` + `lch` mode, producing pure black, charcoal, silver, and white palettes across WezTerm, QuickShell, and system widgets with zero artificial blue/green color cast.
-- **Enforced Qt6 Dark Theme (Okular & KDE Apps)**:
-  - Added `QT_QPA_PLATFORMTHEME = "qt6ct;qt5ct"` to [`dotfiles/hypr/env.lua`](file:///home/realdhiru/nix/dotfiles/hypr/env.lua) and [`modules/home/theme.nix`](file:///home/realdhiru/nix/modules/home/theme.nix). Previously, `QT_QPA_PLATFORMTHEME=qt5ct` caused Qt6 apps (like Okular 26.08) to bypass `qt6ct` and fall back to default light mode.
-  - Configured `ChangeColors=true` and `RenderMode=Invert` in `~/.config/okularpartrc` so PDF document pages open in comfortable dark mode by default.
+- **Enforced Qt6 Dark Theme & Rebuild Fix**:
+  - Resolved `QT_QPA_PLATFORMTHEME` option conflict with Home Manager's `qt.platformTheme` in [`modules/home/theme.nix`](file:///home/realdhiru/nix/modules/home/theme.nix) by using `lib.mkForce "qt6ct;qt5ct"`.
+  - Added declarative `dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark"` and `gtk-theme = "Adwaita:dark"` in `theme.nix`.
+  - Configured `ChangeColors=true` and `RenderMode=Invert` in `~/.config/okularpartrc` so PDF document pages open in dark mode by default.
+- **Restored 100% Opacity on Antigravity IDE**:
+  - Removed `opacity = "0.67"` rule for `antigravity-ide` in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua). Window buffer is now 100% solid with fully opaque, sharp text and zero half-transparency.
 - **Dynamic Antigravity IDE Theme Sync**:
   - Added automatic `workbench.colorCustomizations` generation in [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), live-syncing Antigravity IDE's editor background, sidebar, activity bar, status bar, and selection highlights to the active wallpaper palette.
 - **Condensed Hotspot Capsule to Compact Icon in Battery Popup**:
