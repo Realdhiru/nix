@@ -512,6 +512,7 @@ Item {
         }
 
         // Local filters (All, GIFs, Videos)
+        window._suppressSync = true;
         let flatPath = window.flatSrcDir.replace("file://", "") + "/" + fileName;
         let deleteLocalScript = `
             export FLAT_PATH="${escapeBash(flatPath)}"
@@ -873,11 +874,16 @@ Item {
         onStatusChanged: { if (status === FolderListModel.Ready) window.syncLocalModel() }
     }
 
+    property bool _suppressSync: false
     property int _localSyncedCount: 0
     property string _pendingDeleteTarget: ""
     property int _pendingDeleteIndex: -1
 
     function syncLocalModel() {
+        if (window._suppressSync) {
+            window._suppressSync = false;
+            return;
+        }
         let folderCount = localFolderModel.count;
         let preservedTarget = window._pendingDeleteTarget || window.targetWallName || "";
         let fallbackIndex = window._pendingDeleteIndex !== -1 ? window._pendingDeleteIndex : view.currentIndex;

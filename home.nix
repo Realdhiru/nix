@@ -113,23 +113,8 @@
     StartupWMClass=chatgpt
   '';
 
-  # Declarative default file associations
-  xdg.configFile."mimeapps.list".force = true;
-  xdg.mimeApps = {
-    enable = true;
-    defaultApplications = {
-      "inode/directory" = [ "pcmanfm-qt.desktop" ];
-      "image/jpeg" = [ "org.gnome.Loupe.desktop" ];
-      "image/png" = [ "org.gnome.Loupe.desktop" ];
-      "image/gif" = [ "org.gnome.Loupe.desktop" ];
-      "image/webp" = [ "org.gnome.Loupe.desktop" ];
-      "image/bmp" = [ "org.gnome.Loupe.desktop" ];
-      "x-scheme-handler/http" = [ "brave-browser.desktop" ];
-      "x-scheme-handler/https" = [ "brave-browser.desktop" ];
-      "text/html" = [ "brave-browser.desktop" ];
-      "x-scheme-handler/codex" = [ "deb-box-chatgpt.desktop" ];
-    };
-  };
+  # Mutable user-managed MIME associations (allows casual right-click "Set as Default" in PCManFM-Qt)
+  xdg.mimeApps.enable = false;
 
   # WirePlumber: Disable conflicting libcamera monitor so UVC cameras are exclusively handled by V4L2
   xdg.configFile."wireplumber/wireplumber.conf.d/50-disable-libcamera.conf" = {

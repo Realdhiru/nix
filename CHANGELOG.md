@@ -2,11 +2,11 @@
 
 ## 2026-09-26 — Full System Audit, MIME Hardening, Bootloader Safety & Daemon Cleanup
 
-- **Permanent Declarative MIME Protection & Browser Authority**:
-  - In [`home.nix`](file:///home/realdhiru/nix/home.nix), permanently locked `x-scheme-handler/http`, `x-scheme-handler/https`, and `text/html` to `brave-browser.desktop` under `xdg.mimeApps.defaultApplications`.
+- **Mutable User-Managed MIME Mode & Container Sanitization (Option 2)**:
+  - In [`home.nix`](file:///home/realdhiru/nix/home.nix), set `xdg.mimeApps.enable = false;`, unlinking the read-only Nix store symlink so `~/.config/mimeapps.list` is a mutable, user-owned configuration file. Users can casually right-click any file in PCManFM-Qt $\rightarrow$ Properties $\rightarrow$ Open With $\rightarrow$ "Set as default application" without filesystem errors.
   - Added declarative management of `xdg.dataFile."applications/deb-box-chatgpt.desktop"` in [`home.nix`](file:///home/realdhiru/nix/home.nix), strictly restricting its `MimeType` to `x-scheme-handler/codex;` and fixing unescaped `%U` shell quotes.
   - Updated [`dotfiles/scripts/distrobox-install-deb.sh`](file:///home/realdhiru/nix/dotfiles/scripts/distrobox-install-deb.sh) to automatically sanitize exported `.desktop` files, stripping HTTP/HTTPS/HTML and generic document associations and calling `update-desktop-database` to prevent containerized packages from ever hijacking host MIME associations.
-  - Purged hijacked entries from `~/.local/share/applications/mimeinfo.cache`.
+  - Purged hijacked entries from `~/.local/share/applications/mimeinfo.cache` and seeded a clean baseline `~/.config/mimeapps.list`.
 - **Bootloader Generation Cap on 511MB EFI Partition**:
   - Added `boot.loader.systemd-boot.configurationLimit = 10;` to [`modules/system/boot.nix`](file:///home/realdhiru/nix/modules/system/boot.nix). Prevents unbounded accumulation of EFI kernel/initrd files, permanently guarding against `/boot` 100% full rebuild failures (`OSError: [Errno 28]`).
 - **Elimination of Unnecessary Daemons & Background Services**:

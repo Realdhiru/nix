@@ -236,8 +236,9 @@ Variants {
                 let maxWs = 6;
                 if (focusedId > maxWs) maxWs = focusedId;
 
-                // 1. Scan active toplevel windows
-                if (Hyprland.toplevels && Hyprland.toplevels.values) {
+                // 1. Authoritative scan of live toplevel windows
+                let hasToplevels = (Hyprland.toplevels && Hyprland.toplevels.values && Hyprland.toplevels.values.length > 0);
+                if (hasToplevels) {
                     let tls = Hyprland.toplevels.values;
                     for (let i = 0; i < tls.length; i++) {
                         let tl = tls[i];
@@ -248,7 +249,7 @@ Variants {
                     }
                 }
 
-                // 2. Scan workspace models without relying on stale lastIpcObject
+                // 2. Discover higher-numbered occupied workspaces from workspace models without stale IPC ghosting
                 if (Hyprland.workspaces && Hyprland.workspaces.values) {
                     let values = Hyprland.workspaces.values;
                     for (let i = 0; i < values.length; i++) {
@@ -257,15 +258,13 @@ Variants {
                             let isOcc = false;
                             if (ws.toplevels && ws.toplevels.count !== undefined) {
                                 isOcc = (ws.toplevels.count > 0);
-                            } else if (ws.lastIpcObject && ws.lastIpcObject.windows !== undefined) {
-                                isOcc = (ws.lastIpcObject.windows > 0);
-                            } else if (ws.windows !== undefined) {
+                            } else if (!hasToplevels && ws.windows !== undefined) {
                                 isOcc = (ws.windows > 0);
                             }
                             if (isOcc) {
                                 occupiedMap[ws.id] = true;
+                                if (ws.id > maxWs) maxWs = ws.id;
                             }
-                            if (ws.id > maxWs) maxWs = ws.id;
                         }
                     }
                 }
