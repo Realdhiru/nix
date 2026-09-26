@@ -240,8 +240,8 @@ fi
 if [ "$IS_MONO" = "True" ]; then
     emit_neutral_theme
 else
-    PALETTE="ansidark16"
-    COLORSPACE="lchansi"
+    PALETTE="dark16"
+    COLORSPACE="lch"
     if [ "$MODE" = "light" ]; then
         PALETTE="light16"
         COLORSPACE="lch"
@@ -319,6 +319,8 @@ ln -sf "$TARGET_CACHE/qt-style.qss" "$MATUGEN_COMPAT/qt-style.qss"
 
 # Notify client applications if running
 pkill -USR2 cava 2>/dev/null || true
+touch "$TARGET_CACHE/wezterm-colors.lua" 2>/dev/null || true
+touch "$HOME/nix/dotfiles/wezterm.lua" 2>/dev/null || true
 pkill -HUP wezterm-gui 2>/dev/null || true
 if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
     hyprctl reload >/dev/null 2>&1 || true

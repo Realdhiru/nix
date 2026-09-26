@@ -2,6 +2,21 @@
 
 ## 2026-09-26 — Full System Audit, MIME Hardening, Bootloader Safety & Daemon Cleanup
 
+- **Wallust 16-Color Genuine ANSI Dynamic Palette & Contrast Engine**:
+  - Switched Wallust backend configuration in [`dotfiles/wallust/wallust.toml`](file:///home/realdhiru/nix/dotfiles/wallust/wallust.toml) and [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh) from `ansidark16` + `lchansi` (which forced fixed default ANSI hues) to `dark16` + `lch` with `--check-contrast`.
+  - Terminal 16 ANSI colors are now 100% extracted directly from the active wallpaper without hardcoded ANSI blue/cyan/red defaults.
+  - Added WezTerm hot reload hook in `generate.sh` (`touch` notification on config and `pkill -HUP wezterm-gui`), ensuring instant theme switching across all open transparent terminals.
+- **Elimination of Static Blue & Sapphire Color Leaks Across QuickShell Popups**:
+  - Replaced hardcoded `root.blue` in all 10 equalizer slider fills and timeline progress bar gradients in [`dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml) with dynamic `root.primary`.
+  - Replaced static `window.sapphire` with dynamic `window.primary` in [`dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml).
+  - Replaced static `window.blue` with `window.primary` in [`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml) (balanced power profile and action buttons), [`dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml) (charts and progress bars), and [`dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml).
+- **Sunset QuickShell Popup Liquid Glass Styling & Layer Blur**:
+  - Refactored [`dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml) background to use standard `Rectangle` with `root.base` and `Config.effectivePopupOpacity`, enabling Hyprland Kawase layer blur matching all other desktop popups.
+  - Replaced static `root.peach` with dynamic `root.primary` on temperature slider and preset buttons.
+  - Clamped gamma slider strictly to $\le 100\%$ with clean background daemon termination on default settings.
+- **Spotify Lyrics Window Rule & Geometry**:
+  - In [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), corrected class regex to `^(chromium-browser)$` and added a floating window rule for `title = ".*•.*"` (`size = { 320, 110 }`, `no_shadow = true`), eliminating letterbox canvas padding. Global `border_size = 0` governs window borders.
+
 - **Mutable User-Managed MIME Mode & Container Sanitization (Option 2)**:
   - In [`home.nix`](file:///home/realdhiru/nix/home.nix), set `xdg.mimeApps.enable = false;`, unlinking the read-only Nix store symlink so `~/.config/mimeapps.list` is a mutable, user-owned configuration file. Users can casually right-click any file in PCManFM-Qt $\rightarrow$ Properties $\rightarrow$ Open With $\rightarrow$ "Set as default application" without filesystem errors.
   - Added declarative management of `xdg.dataFile."applications/deb-box-chatgpt.desktop"` in [`home.nix`](file:///home/realdhiru/nix/home.nix), strictly restricting its `MimeType` to `x-scheme-handler/codex;` and fixing unescaped `%U` shell quotes.

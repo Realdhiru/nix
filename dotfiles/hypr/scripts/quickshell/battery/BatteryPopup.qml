@@ -205,7 +205,7 @@ Item {
 
     readonly property color batColorStart: {
         if (isCharging) return window.green;
-        if (batCapacity >= 70) return window.blue;
+        if (batCapacity >= 70) return window.primary;
         if (batCapacity >= 30) return window.yellow;
         return window.red;
     }
@@ -213,7 +213,7 @@ Item {
 
     readonly property color profileStart: {
         if (powerProfile === "performance") return window.red;
-        if (powerProfile === "balanced") return window.blue;
+        if (powerProfile === "balanced") return window.primary;
         if (powerProfile === "power-saver") return window.green;
         return window.surface2;
     }
@@ -221,7 +221,7 @@ Item {
 
     readonly property color ambientPrimary: window.batColorStart
     readonly property color ambientSecondary: {
-        if (isCharging) return window.sapphire;
+        if (isCharging) return window.primary;
         if (batCapacity >= 70) return window.mauve;
         if (batCapacity >= 30) return window.peach;
         return window.maroon; 
@@ -1371,13 +1371,13 @@ Item {
 
                                                     color: {
                                                         if (isPrimary) {
-                                                            return actionBtnMa.containsMouse ? window.blue : Qt.darker(window.blue, 1.2)
+                                                            return actionBtnMa.containsMouse ? window.primary : Qt.darker(window.primary, 1.2)
                                                         } else {
                                                             return actionBtnMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
                                                         }
                                                     }
                                                     
-                                                    border.color: isPrimary ? window.blue : Qt.alpha(window.surface2, 0.4)
+                                                    border.color: isPrimary ? window.primary : Qt.alpha(window.surface2, 0.4)
                                                     border.width: Config.borderWidth
                                                     
                                                     Behavior on color { ColorAnimation { duration: 150 } }

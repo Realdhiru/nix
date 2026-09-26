@@ -34,10 +34,21 @@ if not is_opaque then
     hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab25a38c938de4f8-Default$" }, opacity = "0.57" }) -- Notion
 
     -- Spotify Lyrics (Chromium)
-    hl.window_rule({ match = { class = "^Chromium-browser$" }, opacity = "0.57" })
+    hl.window_rule({ match = { class = "^(chromium-browser)$" }, opacity = "0.85" })
 else
     hl.window_rule({ match = { class = ".*" }, opacity = "1.0 override 1.0 override" })
 end
+
+-- ======================================================
+-- Spotify Lyrics Popup (CEF / chromium-browser)
+-- ======================================================
+hl.window_rule({
+    match = { class = "^(chromium-browser)$", title = ".*•.*" },
+    float = true,
+    pin = true,
+    size = { 320, 110 },
+    no_shadow = true,
+})
 
 -- ======================================================
 -- Global Rules

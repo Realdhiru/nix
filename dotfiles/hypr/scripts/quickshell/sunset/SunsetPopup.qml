@@ -140,9 +140,13 @@ EOF
         Quickshell.execDetached(["bash", "-c", script]);
     }
 
-    PopupCard {
+    Rectangle {
+        id: bgCard
         anchors.fill: parent
-        cardRadius: root.s(22)
+        radius: root.s(22)
+        color: Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity)
+        border.color: Config.borderWidth > 0 ? root.surface0 : "transparent"
+        border.width: Config.borderWidth
 
         ColumnLayout {
             anchors.fill: parent
@@ -158,14 +162,14 @@ EOF
                     width: root.s(42)
                     height: root.s(42)
                     radius: root.s(12)
-                    color: root.isActive ? Qt.rgba(root.peach.r, root.peach.g, root.peach.b, 0.22) : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.4)
+                    color: root.isActive ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.22) : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.g, 0.4)
 
                     Text {
                         anchors.centerIn: parent
                         text: root.isActive ? "󱩌" : "󰌵"
                         font.family: "Iosevka Nerd Font, JetBrains Mono"
                         font.pixelSize: root.s(22)
-                        color: root.isActive ? root.peach : root.subtext0
+                        color: root.isActive ? root.primary : root.subtext0
                     }
                 }
 
@@ -185,7 +189,7 @@ EOF
                         text: root.isActive ? `${root.currentTemp}K  •  ${root.currentGamma}% Gamma  •  ${root.currentSat}% Saturation` : "Default (6500K • 100% Gamma • 100% Color)"
                         font.family: "JetBrains Mono"
                         font.pixelSize: root.s(11)
-                        color: root.isActive ? root.peach : root.subtext0
+                        color: root.isActive ? root.primary : root.subtext0
                     }
                 }
 
@@ -247,7 +251,7 @@ EOF
                         font.family: "JetBrains Mono"
                         font.pixelSize: root.s(13)
                         font.weight: Font.Bold
-                        color: root.currentTemp < 5000 ? root.peach : root.primary
+                        color: root.primary
                     }
                 }
 
@@ -274,7 +278,7 @@ EOF
                             width: tempSlider.visualPosition * parent.width
                             height: parent.height
                             radius: root.s(4)
-                            color: root.peach
+                            color: root.primary
                         }
                     }
 
@@ -284,7 +288,7 @@ EOF
                         width: root.s(18)
                         height: root.s(18)
                         radius: root.s(9)
-                        color: tempSlider.pressed ? root.peach : root.text
+                        color: tempSlider.pressed ? root.primary : root.text
                         border.width: root.s(2)
                         border.color: root.crust
                     }
@@ -308,10 +312,10 @@ EOF
                             height: root.s(26)
                             radius: root.s(7)
                             color: (root.currentTemp === modelData.val)
-                                ? Qt.rgba(root.peach.r, root.peach.g, root.peach.b, 0.25)
+                                ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.25)
                                 : (pMa.containsMouse ? Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.5) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.4))
                             border.width: 1
-                            border.color: (root.currentTemp === modelData.val) ? root.peach : "transparent"
+                            border.color: (root.currentTemp === modelData.val) ? root.primary : "transparent"
 
                             Text {
                                 anchors.centerIn: parent
@@ -319,7 +323,7 @@ EOF
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: root.s(10)
                                 font.weight: (root.currentTemp === modelData.val) ? Font.Bold : Font.Normal
-                                color: (root.currentTemp === modelData.val) ? root.peach : root.text
+                                color: (root.currentTemp === modelData.val) ? root.primary : root.text
                             }
 
                             MouseArea {

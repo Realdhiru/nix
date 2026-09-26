@@ -174,7 +174,7 @@ Item {
                     Layout.preferredWidth: s(80)
                     Layout.preferredHeight: s(36)
                     radius: s(18)
-                    color: saveMa.containsMouse ? window.blue : window.lavender
+                    color: saveMa.containsMouse ? window.primary : window.lavender
                     Behavior on color { ColorAnimation { duration: 200 } }
 
                     Text {

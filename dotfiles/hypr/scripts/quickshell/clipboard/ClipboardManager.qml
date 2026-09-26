@@ -390,7 +390,7 @@ Item {
             x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
             y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
             opacity: 0.06
-            color: window.blue
+            color: window.primary
             Behavior on color { ColorAnimation { duration: 1000 } }
         }
 

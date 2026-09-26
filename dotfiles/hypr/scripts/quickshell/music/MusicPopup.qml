@@ -200,7 +200,7 @@ Item {
     }
 
     property var borderColors: {
-        var defaultColors = [root.mauve, root.blue, root.red, root.mauve];
+        var defaultColors = [root.mauve, root.primary, root.red, root.mauve];
         if (!root.musicData || !root.musicData.grad) return defaultColors;
 
         var hexRegex = /#[0-9a-fA-F]{6}/g;
@@ -213,7 +213,7 @@ Item {
     }
 
     property color bc1: borderColors[0] || root.mauve
-    property color bc2: borderColors[1] || root.blue
+    property color bc2: borderColors[1] || root.primary
     property color bc3: borderColors[2] || root.red
     property color bc4: borderColors[3] || root.mauve
 
@@ -384,7 +384,7 @@ Item {
                     y: (parent.height / 2 - height / 2) + Math.cos(root.globalOrbitAngle * 1.5) * root.s(-100)
 
                     opacity: root.musicData.status === "Playing" ? 0.08 : (root.musicData.status === "Paused" ? 0.02 : 0.0)
-                    color: root.musicData.status === "Playing" ? root.blue : root.surface1
+                    color: root.musicData.status === "Playing" ? root.primary : root.surface1
                     Behavior on color { ColorAnimation { duration: 1000 } }
                     Behavior on opacity { NumberAnimation { duration: 1000 } }
                 }
@@ -685,13 +685,13 @@ Item {
                                             x: -(root.catppuccinFlowOffset * root.s(1000))
                                             gradient: Gradient {
                                                 orientation: Gradient.Horizontal
-                                                GradientStop { position: 0.0000; color: Qt.lighter(root.blue, 1.2); Behavior on color { ColorAnimation { duration: 800 } } }
-                                                GradientStop { position: 0.1666; color: Qt.lighter(root.sapphire, 1.15); Behavior on color { ColorAnimation { duration: 800 } } }
+                                                GradientStop { position: 0.0000; color: Qt.lighter(root.primary, 1.2); Behavior on color { ColorAnimation { duration: 800 } } }
+                                                GradientStop { position: 0.1666; color: Qt.lighter(root.primary, 1.15); Behavior on color { ColorAnimation { duration: 800 } } }
                                                 GradientStop { position: 0.3333; color: Qt.lighter(root.mauve, 1.15); Behavior on color { ColorAnimation { duration: 800 } } }
-                                                GradientStop { position: 0.5000; color: Qt.lighter(root.blue, 1.2); Behavior on color { ColorAnimation { duration: 800 } } }
-                                                GradientStop { position: 0.6666; color: Qt.lighter(root.sapphire, 1.15); Behavior on color { ColorAnimation { duration: 800 } } }
+                                                GradientStop { position: 0.5000; color: Qt.lighter(root.primary, 1.2); Behavior on color { ColorAnimation { duration: 800 } } }
+                                                GradientStop { position: 0.6666; color: Qt.lighter(root.primary, 1.15); Behavior on color { ColorAnimation { duration: 800 } } }
                                                 GradientStop { position: 0.8333; color: Qt.lighter(root.mauve, 1.15); Behavior on color { ColorAnimation { duration: 800 } } }
-                                                GradientStop { position: 1.0000; color: Qt.lighter(root.blue, 1.2); Behavior on color { ColorAnimation { duration: 800 } } }
+                                                GradientStop { position: 1.0000; color: Qt.lighter(root.primary, 1.2); Behavior on color { ColorAnimation { duration: 800 } } }
                                             }
                                         }
                                     }
@@ -1025,7 +1025,7 @@ Item {
 
                                                     Rectangle {
                                                         anchors.fill: parent
-                                                        color: root.blue
+                                                        color: root.primary
 
                                                         Rectangle {
                                                             anchors.fill: parent
@@ -1033,7 +1033,7 @@ Item {
                                                             gradient: Gradient {
                                                                 orientation: Gradient.Vertical
                                                                 GradientStop { position: 0.0; color: root.mauve }
-                                                                GradientStop { position: 0.5; color: root.blue }
+                                                                GradientStop { position: 0.5; color: root.primary }
                                                                 GradientStop { position: 1.0; color: "transparent" }
                                                             }
                                                         }
@@ -1047,7 +1047,7 @@ Item {
                                                             gradient: Gradient {
                                                                 orientation: Gradient.Vertical
                                                                 GradientStop { position: 0.0; color: "transparent" }
-                                                                GradientStop { position: 0.2; color: root.blue }
+                                                                GradientStop { position: 0.2; color: root.primary }
                                                                 GradientStop { position: 0.5; color: root.text } 
                                                                 GradientStop { position: 0.8; color: root.mauve }
                                                                 GradientStop { position: 1.0; color: "transparent" }
@@ -1055,7 +1055,7 @@ Item {
 
                                                             layer.enabled: true
                                                             layer.effect: MultiEffect {
-                                                                shadowEnabled: true; shadowColor: root.blue; shadowBlur: 1.0; shadowOpacity: 1.0
+                                                                shadowEnabled: true; shadowColor: root.primary; shadowBlur: 1.0; shadowOpacity: 1.0
                                                             }
                                                         }
                                                     }

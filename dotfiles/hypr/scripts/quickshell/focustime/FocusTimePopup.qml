@@ -560,7 +560,7 @@ Item {
                 x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
                 y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
                 opacity: 0.010
-                color: window.blue
+                color: window.primary
             }
 
             ColumnLayout {
@@ -926,7 +926,7 @@ Item {
                                                     opacity: barMa.containsMouse ? 0.7 : 1.0
                                                     gradient: Gradient {
                                                         GradientStop { position: 0.0; color: window.mauve }
-                                                        GradientStop { position: 1.0; color: window.blue }
+                                                        GradientStop { position: 1.0; color: window.primary }
                                                     }
                                                 }
                                             }
@@ -1144,7 +1144,7 @@ Item {
                                                     gradient: Gradient {
                                                         orientation: Gradient.Horizontal
                                                         GradientStop { position: 0.0; color: window.mauve }
-                                                        GradientStop { position: 1.0; color: window.blue }
+                                                        GradientStop { position: 1.0; color: window.primary }
                                                     }
                                                     Behavior on width { 
                                                         enabled: window.introAppBars === 1.0
@@ -1194,7 +1194,7 @@ Item {
                                                     // Actively grow from ground up tied to introAppBars
                                                     height: Math.max(window.s(4), parent.height * (window.hourlyData[index] / Math.max(window.maxHourlyTotal, 1)) * window.introAppBars)
                                                     radius: window.s(2)
-                                                    color: window.hourlyData[index] > 0 ? window.blue : window.surface0
+                                                    color: window.hourlyData[index] > 0 ? window.primary : window.surface0
                                                     
                                                     Behavior on height { 
                                                         enabled: window.introAppBars === 1.0
@@ -1545,7 +1545,7 @@ Item {
                                                 gradient: Gradient {
                                                     orientation: Gradient.Horizontal
                                                     GradientStop { position: 0.0; color: window.mauve }
-                                                    GradientStop { position: 1.0; color: window.blue }
+                                                    GradientStop { position: 1.0; color: window.primary }
                                                 }
                                                 Behavior on width { 
                                                     enabled: window.introAppBars === 1.0
