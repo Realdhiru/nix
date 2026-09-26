@@ -237,31 +237,33 @@ Variants {
                 if (focusedId > maxWs) maxWs = focusedId;
 
                 // 1. Authoritative scan of live toplevel windows
-                let hasToplevels = (Hyprland.toplevels && Hyprland.toplevels.values && Hyprland.toplevels.values.length > 0);
-                if (hasToplevels) {
+                if (Hyprland.toplevels && Hyprland.toplevels.values) {
                     let tls = Hyprland.toplevels.values;
                     for (let i = 0; i < tls.length; i++) {
                         let tl = tls[i];
-                        if (tl && tl.activeWorkspace && tl.activeWorkspace.id > 0) {
-                            occupiedMap[tl.activeWorkspace.id] = true;
-                            if (tl.activeWorkspace.id > maxWs) maxWs = tl.activeWorkspace.id;
+                        let w = (tl && tl.workspace) ? tl.workspace.id : 0;
+                        if (w > 0) {
+                            occupiedMap[w] = true;
+                            if (w > maxWs) maxWs = w;
                         }
                     }
                 }
 
-                // 2. Discover higher-numbered occupied workspaces from workspace models without stale IPC ghosting
+                // 2. Discover occupied workspaces from workspace models
                 if (Hyprland.workspaces && Hyprland.workspaces.values) {
                     let values = Hyprland.workspaces.values;
                     for (let i = 0; i < values.length; i++) {
                         let ws = values[i];
                         if (ws && ws.id > 0) {
-                            let isOcc = false;
-                            if (ws.toplevels && ws.toplevels.count !== undefined) {
-                                isOcc = (ws.toplevels.count > 0);
-                            } else if (!hasToplevels && ws.windows !== undefined) {
-                                isOcc = (ws.windows > 0);
+                            let winCount = 0;
+                            if (ws.lastIpcObject && ws.lastIpcObject.windows !== undefined) {
+                                winCount = ws.lastIpcObject.windows;
+                            } else if (ws.toplevels && ws.toplevels.values) {
+                                winCount = ws.toplevels.values.length;
+                            } else if (ws.windows !== undefined) {
+                                winCount = ws.windows;
                             }
-                            if (isOcc) {
+                            if (winCount > 0) {
                                 occupiedMap[ws.id] = true;
                                 if (ws.id > maxWs) maxWs = ws.id;
                             }

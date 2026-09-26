@@ -16,9 +16,22 @@
 - **Focus Time Daemon (`focus_daemon.py`) Optimization**:
   - Replaced `subprocess.run(["pgrep", ...])` in [`dotfiles/hypr/scripts/quickshell/focustime/focus_daemon.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/focus_daemon.py) with zero-fork `/proc` comm inspection, eliminating 40 process forks per minute.
   - Throttled JSON tmpfs serialization to active window switch events or 30-second heartbeats (down from every 5s) and increased SQLite flush batching from 15s to 60s, keeping 100% accurate time tracking with virtually zero CPU/battery impact.
-- **Power Management & Window Rules**:
-  - Re-enabled USB autosuspend on battery (`USB_AUTOSUSPEND = 1;` in [`modules/system/power.nix`](file:///home/realdhiru/nix/modules/system/power.nix)) with explicit `USB_DENYLIST` to protect the internal webcam and mouse while allowing root USB hubs to power down.
-  - Configured Loupe image viewer window rule in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) to open as a compact centered floating window (`size = { 850, 550 }`).
+- **Quickshell TopBar Workspace Model Fix**:
+  - In [`dotfiles/hypr/scripts/quickshell/TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml), fixed toplevel property accessor to `tl.workspace.id` (was previously `tl.activeWorkspace.id`, which returned `undefined` in Quickshell C++ bindings). Added window count fallback from `ws.lastIpcObject.windows` and `ws.toplevels.values.length` on `Hyprland.workspaces`. Restores immediate visibility of all occupied workspace pills (1, 2, 4, 10, etc.).
+- **Black Wallpaper Color Handling & Terminal/Cava Dynamic Sync**:
+  - In [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), implemented dark-dominance ratio check: wallpapers with $\ge 80\%$ dark/black pixels or $<4\%$ color pixel coverage (such as minimalist or pixel-art wallpapers like `hello-world-pixel-art.png`) are automatically recognized as monochrome OLED backgrounds and immediately receive `emit_neutral_theme` (pure black `#000000`, platinum `#EDE6DC` text and borders, zero blue).
+  - Wrapped `wallust run` with error-handling fallback to `emit_neutral_theme`. Eliminates script termination on pure black or low-variance wallpapers (`Error: Not enough colors!`).
+  - Injected extracted wallpaper accent (`$ACCENT`) into [`wezterm-colors.lua`](file:///home/realdhiru/nix/dotfiles/wallust/templates/wezterm-colors.lua) for cursor and selection highlighting, and into `cava/themes/wallust` for dynamic audio visualizer gradients.
+- **Terminal Cava Gradient Luminescence Fix**:
+  - In [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), corrected the 8-step Cava gradient generation. Previously, `emit_neutral_theme` had the gradient upside down (`gradient_color_1` was bright `#EDE6DC` at the bottom and `#18181B` at the top tips). Fixed to start with a soft, muted base tint ($0.28\times$) at `gradient_color_1` and rise smoothly to full radiant wallpaper accent luminescence ($1.0\times$) at the peak `gradient_color_8`, perfectly matching the TopBar visualizer behavior.
+- **Hyprsunset Native GUI Slider Menu (`Mod + Ctrl + Shift + S`) Overhaul & Zero-Trash Lifecycle**:
+  - Re-architected [`dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml) with robust backend synchronization and strict process lifecycle:
+    1. **Auto-Daemon Start on Activity:** Checks `pgrep -x hyprsunset`; automatically launches the background daemon before issuing CTM commands whenever a non-default setting is selected.
+    2. **Strict Zero-Trash Lifecycle:** When all options are returned to default (6500K, 100% Gamma, 100% Saturation) or "Reset All" is clicked, automatically terminates `hyprsunset` (`pkill -x hyprsunset`), clears `screen_shader`, and purges cached shaders. Zero idle CPU or background process overhead.
+    3. **Temperature Slider:** Reversed orientation from 6500K on the left (Daylight) decreasing to 1000K on the right (Warm Amber), with 4 preset buttons (6500K, 4500K, 3000K, 1500K) positioned directly beneath slider points.
+    4. **Gamma Slider (50% to 100% Max):** Removed >100% range per hardware capability; default 100% positioned at full output, with presets for Dim (60%), Soft (80%), and Default (100%).
+    5. **Saturation & Grayscale Slider:** 0% to 100% saturation slider backed by dynamic GLSL fragment shader (`~/.cache/screen_saturation.frag`), instantly switching between grayscale, muted, and full-color modes without GPU overhead when at 100%.
+  - Registered `"sunset"` in [`dotfiles/hypr/scripts/quickshell/WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js) and bound `Mod + CTRL + SHIFT + S` in [`dotfiles/hypr/keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua).
 
 ## 2026-09-24 — Global Dark Lock, Harmonic Amber Palette, Pure Liquid Glass & Centralized Settings
 

@@ -44,7 +44,7 @@ hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh tog
 hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle calendar"))
 
 hl.bind(mainMod .. " + CTRL + SHIFT + V", hl.dsp.exec_cmd(scripts .. "fix_audio.sh"))
-hl.bind(mainMod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd(scripts .. "hyprsunset_menu.sh"))
+hl.bind(mainMod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle sunset"))
 
 -- Reload Hyprland & Quickshell
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(scripts .. "reload.sh"))

@@ -20,8 +20,7 @@ fi
 WALLPAPER="$1"
 MODE="${2:-}"
 
-# 1. Handle Neutral Theme Mode (pure pitch-black OLED desktop state)
-if [ "$WALLPAPER" = "--neutral" ]; then
+emit_neutral_theme() {
     cat <<'EOF' > "$TARGET_CACHE/colors.json"
 {
   "base": "#000000",
@@ -93,14 +92,14 @@ EOF
 [color]
 gradient = 1
 gradient_count = 8
-gradient_color_1 = '#EDE6DC'
-gradient_color_2 = '#D4D4D8'
-gradient_color_3 = '#A1A1AA'
-gradient_color_4 = '#71717A'
-gradient_color_5 = '#52525B'
-gradient_color_6 = '#3F3F46'
-gradient_color_7 = '#27272A'
-gradient_color_8 = '#18181B'
+gradient_color_1 = '#42403d'
+gradient_color_2 = '#5a5854'
+gradient_color_3 = '#736f6a'
+gradient_color_4 = '#8b8781'
+gradient_color_5 = '#a39f98'
+gradient_color_6 = '#bcb6ae'
+gradient_color_7 = '#d4cec5'
+gradient_color_8 = '#ede6dc'
 EOF
 
     sed 's/{{color4}}/#EDE6DC/g' "$SCRIPT_DIR/templates/gtk.css" > "$TARGET_CACHE/gtk.css"
@@ -111,6 +110,11 @@ $active_border_col_1 = rgb(EDE6DC)
 $active_border_col_2 = rgb(C9BFB5)
 $inactive_border_col = rgb(282828)
 EOF
+}
+
+# 1. Handle Neutral Theme Mode (pure pitch-black OLED desktop state)
+if [ "$WALLPAPER" = "--neutral" ]; then
+    emit_neutral_theme
 
     # Backward compatibility symlinks
     ln -sf "$TARGET_CACHE/colors.json" "$MATUGEN_COMPAT/qs_colors.json"
@@ -192,8 +196,13 @@ for line in lines:
         hex_c = "#{0:02x}{1:02x}{2:02x}".format(int(r*255), int(g*255), int(b*255))
         parsed.append((count, hex_c, h, s, l))
 
+total_pixels = sum(p[0] for p in parsed) or 1
+dark_or_mono_pixels = sum(p[0] for p in parsed if p[4] < 0.12 or p[3] < 0.12)
 colored = [p for p in parsed if p[3] >= 0.15 and 0.10 <= p[4] <= 0.85]
-if colored:
+colored_pixels = sum(p[0] for p in colored)
+
+# If image is >= 80% black/dark or colored pixels represent less than 4% of image:
+if colored and (dark_or_mono_pixels / total_pixels) < 0.80 and (colored_pixels / total_pixels) >= 0.04:
     is_mono = "False"
     colored.sort(key=lambda p: (p[0] ** 0.7) * (1.0 + p[3] * 1.5), reverse=True)
     best = colored[0]
@@ -203,7 +212,6 @@ if colored:
     accent = "#{0:02x}{1:02x}{2:02x}".format(int(r*255), int(g*255), int(b*255))
 else:
     is_mono = "True"
-    # Pure monochrome wallpaper: clean radiant silver/platinum accent (never false blue)
     accent = "#EDE6DC" if mode == "dark" else "#2D3139"
 
 if mode == "light":
@@ -228,28 +236,28 @@ if [ -n "$COLOR_DATA" ]; then
     IFS="|" read -r ACCENT TEXT_COLOR SUBTEXT0 SUBTEXT1 IS_MONO <<< "$COLOR_DATA"
 fi
 
-# 3. Run Wallust with dynamic wallpaper-extracted ANSI palette
-# If monochrome, use clean dark16 + lch to prevent false rainbow ANSI synthesis
+# 3. Apply Theme: if monochrome / dark-dominated, emit clean neutral OLED palette
 if [ "$IS_MONO" = "True" ]; then
-    PALETTE="dark16"
-    COLORSPACE="lch"
+    emit_neutral_theme
 else
     PALETTE="ansidark16"
     COLORSPACE="lchansi"
-fi
-if [ "$MODE" = "light" ]; then
-    PALETTE="light16"
-    COLORSPACE="lch"
-fi
+    if [ "$MODE" = "light" ]; then
+        PALETTE="light16"
+        COLORSPACE="lch"
+    fi
 
-wallust run \
-    --config-dir "$SCRIPT_DIR" \
-    --palette "$PALETTE" \
-    --colorspace "$COLORSPACE" \
-    --check-contrast \
-    -s \
-    -q \
-    "$WALLPAPER"
+    if ! wallust run \
+        --config-dir "$SCRIPT_DIR" \
+        --palette "$PALETTE" \
+        --colorspace "$COLORSPACE" \
+        --check-contrast \
+        -s \
+        -q \
+        "$WALLPAPER" 2>/dev/null; then
+        emit_neutral_theme
+    fi
+fi
 
 # 4. Merge metadata & vibrant accent into colors.json in-place
 if [ -f "$TARGET_CACHE/colors.json" ]; then
@@ -271,7 +279,7 @@ if [ -f "$TARGET_CACHE/colors.json" ]; then
     rm -f "$TARGET_CACHE/colors.json.tmp"
 fi
 
-# 5. Inject dynamic wallpaper accent into GTK, Qt stylesheets and Qt color palette
+# 5. Inject dynamic wallpaper accent into GTK, Qt, WezTerm, and Cava
 if [ -n "$ACCENT" ]; then
     sed "s/{{color4}}/$ACCENT/g" "$SCRIPT_DIR/templates/gtk.css" > "$TARGET_CACHE/gtk.css"
     sed -e "s/{{color4}}/$ACCENT/g" -e "s/{{color2}}/${SUBTEXT0:-#5E5E60}/g" -e "s/{{color3}}/${SUBTEXT1:-#747576}/g" "$SCRIPT_DIR/templates/qtct.conf" > "$TARGET_CACHE/qtct.conf"
@@ -281,6 +289,25 @@ if [ -n "$ACCENT" ]; then
 \$active_border_col_2 = rgb(${SUBTEXT0#'#'})
 \$inactive_border_col = rgb(282828)
 EOF
+
+    if [ -f "$TARGET_CACHE/wezterm-colors.lua" ]; then
+        sed -i "s/cursor_bg = \".*\"/cursor_bg = \"$ACCENT\"/" "$TARGET_CACHE/wezterm-colors.lua"
+        sed -i "s/cursor_border = \".*\"/cursor_border = \"$ACCENT\"/" "$TARGET_CACHE/wezterm-colors.lua"
+        sed -i "s/selection_bg = \".*\"/selection_bg = \"$ACCENT\"/" "$TARGET_CACHE/wezterm-colors.lua"
+    fi
+
+    if [ -d "$HOME/.config/cava/themes" ]; then
+        python3 -c '
+import sys
+c = sys.argv[1].lstrip("#")
+if len(c) >= 6:
+    r, g, b = int(c[0:2], 16)/255.0, int(c[2:4], 16)/255.0, int(c[4:6], 16)/255.0
+    print("[color]\ngradient = 1\ngradient_count = 8")
+    for i in range(8):
+        t = 0.28 + (0.72 * (i / 7.0))
+        print(f"gradient_color_{i+1} = \"#{int(r * t * 255):02x}{int(g * t * 255):02x}{int(b * t * 255):02x}\"")
+' "$ACCENT" > "$HOME/.config/cava/themes/wallust" 2>/dev/null || true
+    fi
 fi
 
 # Backward compatibility symlinks for apps expecting legacy paths
