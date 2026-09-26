@@ -109,6 +109,9 @@
       "image/webp" = [ "imv-dir.desktop" ];
       "image/bmp" = [ "imv-dir.desktop" ];
       "x-scheme-handler/codex" = [ "deb-box-chatgpt.desktop" ];
+            "x-scheme-handler/http" = [ "brave-browser.desktop" ];
+      "x-scheme-handler/https" = [ "brave-browser.desktop" ];
+      "text/html" = [ "brave-browser.desktop" ];
     };
   };
 
