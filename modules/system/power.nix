@@ -46,8 +46,8 @@
       PCIE_ASPM_ON_BAT = "powersupersave";
       PCIE_ASPM_ON_SAV = "powersupersave";
 
-      # Disable USB autosuspend completely to keep internal webcam, mouse, and USB devices awake
-      USB_AUTOSUSPEND = 0;
+      # Enable USB autosuspend on battery, while denylist protects internal webcam and input devices
+      USB_AUTOSUSPEND = 1;
       USB_AUTOSUSPEND_DISABLE_ON_AC = 1;
       USB_EXCLUDE_BTUSB = 1;
       USB_DENYLIST = "3554:fc00 3277:0022";

@@ -95,7 +95,7 @@ hl.window_rule({ match = { class = "^(lxqt-archiver)$" }, float = true, center =
 -- Image Viewers (Popup modal for photo openers)
 -- ======================================================
 
-hl.window_rule({ match = { class = "^(imv|org\\.gnome\\.Loupe)$" }, float = true, center = true, size = { 1100, 750 } })
+hl.window_rule({ match = { class = "^(org\\.gnome\\.Loupe)$" }, float = true, center = true, size = { 850, 550 } })
 
 -- ======================================================
 -- Steam & Gaming Dialogs

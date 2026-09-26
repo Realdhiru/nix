@@ -97,21 +97,37 @@
     NoDisplay=true
   '';
 
+  # Declarative ChatGPT Distrobox desktop entry: strictly locked to x-scheme-handler/codex
+  # completely stripped of HTTP/HTTPS/HTML and generic document handlers to prevent browser hijacking.
+  xdg.dataFile."applications/deb-box-chatgpt.desktop".text = ''
+    [Desktop Entry]
+    Name=ChatGPT (on deb-box)
+    Comment=ChatGPT by OpenAI
+    GenericName=AI assistant (on deb-box)
+    Exec=sh -c 'ELECTRON_OZONE_PLATFORM_HINT=auto "$@" ; /run/current-system/sw/bin/distrobox stop deb-box --yes >/dev/null 2>&1 &' -- /run/current-system/sw/bin/distrobox-enter -n deb-box -- chatgpt %U
+    Icon=chatgpt
+    Type=Application
+    StartupNotify=true
+    Categories=Utility;Development;
+    MimeType=x-scheme-handler/codex;
+    StartupWMClass=chatgpt
+  '';
+
   # Declarative default file associations
   xdg.configFile."mimeapps.list".force = true;
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
       "inode/directory" = [ "pcmanfm-qt.desktop" ];
-      "image/jpeg" = [ "imv-dir.desktop" ];
-      "image/png" = [ "imv-dir.desktop" ];
-      "image/gif" = [ "imv-dir.desktop" ];
-      "image/webp" = [ "imv-dir.desktop" ];
-      "image/bmp" = [ "imv-dir.desktop" ];
-      "x-scheme-handler/codex" = [ "deb-box-chatgpt.desktop" ];
-            "x-scheme-handler/http" = [ "brave-browser.desktop" ];
+      "image/jpeg" = [ "org.gnome.Loupe.desktop" ];
+      "image/png" = [ "org.gnome.Loupe.desktop" ];
+      "image/gif" = [ "org.gnome.Loupe.desktop" ];
+      "image/webp" = [ "org.gnome.Loupe.desktop" ];
+      "image/bmp" = [ "org.gnome.Loupe.desktop" ];
+      "x-scheme-handler/http" = [ "brave-browser.desktop" ];
       "x-scheme-handler/https" = [ "brave-browser.desktop" ];
       "text/html" = [ "brave-browser.desktop" ];
+      "x-scheme-handler/codex" = [ "deb-box-chatgpt.desktop" ];
     };
   };
 

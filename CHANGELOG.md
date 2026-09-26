@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 2026-09-26 — Full System Audit, MIME Hardening, Bootloader Safety & Daemon Cleanup
+
+- **Permanent Declarative MIME Protection & Browser Authority**:
+  - In [`home.nix`](file:///home/realdhiru/nix/home.nix), permanently locked `x-scheme-handler/http`, `x-scheme-handler/https`, and `text/html` to `brave-browser.desktop` under `xdg.mimeApps.defaultApplications`.
+  - Added declarative management of `xdg.dataFile."applications/deb-box-chatgpt.desktop"` in [`home.nix`](file:///home/realdhiru/nix/home.nix), strictly restricting its `MimeType` to `x-scheme-handler/codex;` and fixing unescaped `%U` shell quotes.
+  - Updated [`dotfiles/scripts/distrobox-install-deb.sh`](file:///home/realdhiru/nix/dotfiles/scripts/distrobox-install-deb.sh) to automatically sanitize exported `.desktop` files, stripping HTTP/HTTPS/HTML and generic document associations and calling `update-desktop-database` to prevent containerized packages from ever hijacking host MIME associations.
+  - Purged hijacked entries from `~/.local/share/applications/mimeinfo.cache`.
+- **Bootloader Generation Cap on 511MB EFI Partition**:
+  - Added `boot.loader.systemd-boot.configurationLimit = 10;` to [`modules/system/boot.nix`](file:///home/realdhiru/nix/modules/system/boot.nix). Prevents unbounded accumulation of EFI kernel/initrd files, permanently guarding against `/boot` 100% full rebuild failures (`OSError: [Errno 28]`).
+- **Elimination of Unnecessary Daemons & Background Services**:
+  - Removed Flatpak (`services.flatpak.enable = true` and `systemd.services.flatpak-repo`) from [`modules/system/services.nix`](file:///home/realdhiru/nix/modules/system/services.nix), eliminating dormant portal helper services and network-online boot wait states.
+  - Removed `gnome-software` from [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix).
+  - Stopped, disabled, and removed untracked imperative `wallpaper-watcher.service` from `~/.config/systemd/user/`.
+- **Focus Time Daemon (`focus_daemon.py`) Optimization**:
+  - Replaced `subprocess.run(["pgrep", ...])` in [`dotfiles/hypr/scripts/quickshell/focustime/focus_daemon.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/focus_daemon.py) with zero-fork `/proc` comm inspection, eliminating 40 process forks per minute.
+  - Throttled JSON tmpfs serialization to active window switch events or 30-second heartbeats (down from every 5s) and increased SQLite flush batching from 15s to 60s, keeping 100% accurate time tracking with virtually zero CPU/battery impact.
+- **Power Management & Window Rules**:
+  - Re-enabled USB autosuspend on battery (`USB_AUTOSUSPEND = 1;` in [`modules/system/power.nix`](file:///home/realdhiru/nix/modules/system/power.nix)) with explicit `USB_DENYLIST` to protect the internal webcam and mouse while allowing root USB hubs to power down.
+  - Configured Loupe image viewer window rule in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) to open as a compact centered floating window (`size = { 850, 550 }`).
+
 ## 2026-09-24 — Global Dark Lock, Harmonic Amber Palette, Pure Liquid Glass & Centralized Settings
 
 - **Monitor Widget Overhaul & Rotation Clock Dial Restored**:

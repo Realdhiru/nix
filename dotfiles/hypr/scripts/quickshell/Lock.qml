@@ -27,6 +27,7 @@ ShellRoot {
     readonly property color surface1: _theme.surface1
     readonly property color surface2: _theme.surface2
 
+    readonly property color primary: _theme.primary
     readonly property color mauve: _theme.mauve
     readonly property color red: _theme.red
     readonly property color peach: _theme.peach
@@ -424,7 +425,7 @@ ShellRoot {
                                 font.pixelSize: Math.round(92 * screenRoot.sc)
                                 font.weight: Font.Black
                                 font.letterSpacing: 2 * screenRoot.sc
-                                color: root.blue
+                                color: root.primary
                             }
 
                             // Stacked Clock: Minutes
@@ -749,7 +750,7 @@ ShellRoot {
                             anchors.verticalCenter: parent.verticalCenter
                             font.family: "Iosevka Nerd Font"
                             font.pixelSize: Math.round(16 * screenRoot.sc)
-                            color: (screenRoot.batStatus === "Charging") ? root.green : (parseInt(screenRoot.batPct) < 20 ? root.red : root.blue)
+                            color: (screenRoot.batStatus === "Charging") ? root.green : (parseInt(screenRoot.batPct) < 20 ? root.red : root.primary)
                             text: (screenRoot.batStatus === "Charging") ? "󰂄" : (parseInt(screenRoot.batPct) > 80 ? "󰁹" : (parseInt(screenRoot.batPct) > 50 ? "󰁾" : (parseInt(screenRoot.batPct) > 20 ? "󰁼" : "󰂃")))
                         }
 

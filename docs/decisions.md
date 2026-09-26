@@ -76,4 +76,12 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Deterministic Neutral Theme Bypass:**
   - In [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), `--neutral` bypasses Wallust salience clustering and ImageMagick histogram extraction, deterministically generating an OLED pitch-black palette without risk of false olive-green color spikes.
 
+### 11. Bootloader Generation Retention & EFI Partition Protection
+- **Decision:** Strict `boot.loader.systemd-boot.configurationLimit = 10` in [`modules/system/boot.nix`](file:///home/realdhiru/nix/modules/system/boot.nix).
+- **Rationale:** The physical EFI system partition is 511MB. Without an explicit retention limit, systemd-boot generates kernel/initrd pairs in `/boot/EFI/nixos/` indefinitely. Setting a hard limit of 10 keeps rollback entries safe while guaranteeing `/boot` disk usage remains below 200MB (~40% capacity).
+
+### 12. Host MIME Isolation & Container Application Sanitization
+- **Decision:** Permanent declarative browser authority in `home.nix` (`http`, `https`, `text/html` locked to `brave-browser.desktop`) and mandatory sanitization in [`distrobox-install-deb.sh`](file:///home/realdhiru/nix/dotfiles/scripts/distrobox-install-deb.sh).
+- **Rationale:** Containerized packages (`.deb` files exported via Distrobox) must never inject or alter system-wide web protocols or office document associations. Exported desktop files are strictly filtered to custom schemas (e.g. `x-scheme-handler/codex`) and desktop databases are resynced immediately.
+
 

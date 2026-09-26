@@ -50,23 +50,6 @@
   # File manager integration.
   services.gvfs.enable = true;
 
-  # Flatpak application support & Flathub repository (runs asynchronously once network is online)
-  services.flatpak.enable = true;
-  systemd.services.flatpak-repo = {
-    wantedBy = [ "network-online.target" ];
-    after = [ "network-online.target" ];
-    wants = [ "network-online.target" ];
-    path = [ pkgs.flatpak ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      if ! flatpak remotes --columns=name 2>/dev/null | grep -qx "flathub"; then
-        flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
-      fi
-    '';
-  };
 
   # Decouple local user sessions & display manager from network initialization
   systemd.services.systemd-user-sessions.after =

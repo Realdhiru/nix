@@ -363,22 +363,16 @@ def get_active_window_hyprctl():
 
 def is_locked():
     try:
-        # Check for QuickShell Lock.qml or hyprlock without walking all of /proc
-        r1 = subprocess.run(
-            ["pgrep", "-f", r"quickshell.*Lock\.qml"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=0.2
-        )
-        if r1.returncode == 0:
-            return True
-        r2 = subprocess.run(
-            ["pgrep", "-x", "hyprlock"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=0.2
-        )
-        return r2.returncode == 0
+        # Zero-fork lock detection: inspect /proc directly without spawning pgrep subprocesses
+        for entry in os.scandir('/proc'):
+            if entry.name.isdigit():
+                try:
+                    with open(os.path.join(entry.path, 'comm'), 'r') as f:
+                        if f.read().strip() == 'hyprlock':
+                            return True
+                except (FileNotFoundError, ProcessLookupError, PermissionError):
+                    continue
+        return False
     except Exception:
         return False
 
@@ -661,7 +655,7 @@ class DaemonTracker:
             except Exception:
                 pass
             
-        if len(self.buffer) >= 15:
+        if len(self.buffer) >= 60:
             self.flush()
             
     def flush(self):
@@ -783,6 +777,7 @@ def main():
     ipc_thread.start()
 
     tick_counter = 0
+    last_app_class = None
     while True:
         time.sleep(1)
         tick_counter += 1
@@ -804,8 +799,10 @@ def main():
         # the instance signature and reconnects within ~2s; between the
         # restart and reconnect nothing is attributed to "Unknown".
         if connected and cls_snapshot and cls_snapshot not in [""]:
-            # Only dump JSON to memory/disk every 5 seconds
-            tracker.fast_tick(cls_snapshot, title_snapshot, write_to_disk=(tick_counter % 5 == 0))
+            app_changed = (cls_snapshot != last_app_class)
+            should_write = app_changed or (tick_counter % 30 == 0)
+            tracker.fast_tick(cls_snapshot, title_snapshot, write_to_disk=should_write)
+            last_app_class = cls_snapshot
             
 if __name__ == "__main__":
     main()

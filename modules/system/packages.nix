@@ -44,7 +44,7 @@ in
     grim slurp grimblast gpu-screen-recorder-gtk
 
     # Media & Display
-    (mpv.override { scripts = [ mpvScripts.mpris ]; }) mpvpaper awww playerctl brightnessctl cava imv loupe ffmpeg imagemagick
+    (mpv.override { scripts = [ mpvScripts.mpris ]; }) mpvpaper awww playerctl brightnessctl cava loupe ffmpeg imagemagick
 
     # Documents & Creative
     kdePackages.okular kdePackages.breeze onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic
@@ -64,7 +64,6 @@ in
     file gsettings-desktop-schemas
 
     antigravity-ide
-    gnome-software
   ];
 
   programs.appimage = {

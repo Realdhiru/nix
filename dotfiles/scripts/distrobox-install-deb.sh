@@ -71,12 +71,30 @@ distrobox enter "$BOX_NAME" -- bash -c "
     fi
 "
 
-# Patch exported .desktop to run with native Wayland flags (for Electron/Chromium) and auto-stop container when closed
+# Patch exported .desktop: sanitize MIME types, run with Wayland flags, and safe Exec wrapper
 for df in ~/.local/share/applications/${BOX_NAME}-*.desktop; do
     [ -f "$df" ] || continue
+
+    # Strip dangerous/unintended MIME types (HTTP/HTTPS/HTML and generic document formats)
+    if grep -q "^MimeType=" "$df"; then
+        sed -i -E 's|x-scheme-handler/https?;||g' "$df"
+        sed -i -E 's|text/html;||g' "$df"
+        sed -i -E 's|application/vnd\.ms-[^;]+;||g' "$df"
+        sed -i -E 's|application/vnd\.openxmlformats-[^;]+;||g' "$df"
+        sed -i -E 's|text/(csv|tab-separated-values);||g' "$df"
+        # If MimeType is now empty, remove the line
+        sed -i -E '/^MimeType=;?$/d' "$df"
+    fi
+
+    # Safe Exec wrapper: pass %U as positional argument, avoiding EOF parse errors on complex URLs
     if ! grep -q "distrobox stop" "$df"; then
-        sed -i -E 's|Exec=(.*)|Exec=sh -c "ELECTRON_OZONE_PLATFORM_HINT=auto \1; distrobox stop '"$BOX_NAME"' --yes >/dev/null 2>\&1 \&"|g' "$df"
+        sed -i -E 's|Exec=(.*)|Exec=sh -c '\''ELECTRON_OZONE_PLATFORM_HINT=auto "$@" ; /run/current-system/sw/bin/distrobox stop '"$BOX_NAME"' --yes >/dev/null 2>\&1 \&'\'' -- \1|g' "$df"
     fi
 done
+
+# Synchronize desktop database to immediately purge hijacked MIME cache
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database ~/.local/share/applications/ >/dev/null 2>&1 || true
+fi
 
 notify "Distrobox (.deb)" "Successfully installed '$DEB_PKG_NAME'! Added to app launcher."
