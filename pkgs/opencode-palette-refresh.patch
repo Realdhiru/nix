@@ -1,0 +1,32 @@
+--- a/packages/tui/src/context/theme.tsx
++++ b/packages/tui/src/context/theme.tsx
+@@ -26,6 +26,7 @@
+ import { useTuiConfig } from "../config"
+ import { Global } from "@opencode-ai/core/global"
+ import { Glob } from "@opencode-ai/core/util/glob"
++import { watch } from "node:fs"
+ import { readFile } from "node:fs/promises"
+ import path from "node:path"
+ 
+@@ -45,7 +46,20 @@
+   },
+   subscribeRefresh(refresh) {
+     process.on("SIGUSR2", refresh)
+-    return () => process.off("SIGUSR2", refresh)
++    const target =
++      process.env.OPENCODE_PALETTE_WATCH || path.join(Global.Path.home, ".cache", "theme", "wezterm-colors.lua")
++    const base = path.basename(target)
++    let watcher: ReturnType<typeof watch> | undefined
++    try {
++      watcher = watch(path.dirname(target), (_event, filename) => {
++        if (filename !== null && filename !== base) return
++        refresh()
++      })
++    } catch {}
++    return () => {
++      process.off("SIGUSR2", refresh)
++      watcher?.close()
++    }
+   },
+ }
+ 

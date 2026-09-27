@@ -34,6 +34,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - `Scaler` in popups must use `currentWidth: Screen.width` (single-pass). Never pass device-pixel bounds (`Config.masterWidth`) to prevent double-scaling clipping.
   - Music geometry derives from `timeText.implicitWidth` minimum bounds; long titles marquee scroll.
   - Lockscreen live wallpaper draws inside `Lock.qml` via `WlSessionLock`. Lockscreen telemetry and media controls must remain 100% zero-polling, bound exclusively via kernel/tmpfs inotify `FileView` watchers (`/sys/class/power_supply/BAT0/`, `music_info.json`).
+  - **Theme Singleton Attempt & Constraint**: Attempted `Theme.qml` `pragma Singleton` consolidation on 2026-09-27 — caused system-wide black/undefined color rendering across all widgets simultaneously, root cause suspected to be a load-order race unique to singleton lifecycle (`FileView` not resolved before first property access), not fully diagnosed before reverting. Reverted to per-widget `Theme {}` instantiation, confirmed working. Do not retry without first writing a minimal isolated test case for singleton + `FileView` load-order behavior in QML before touching the real widget suite again.
 
 ### 4. Hardware Quirks Modularization (`hosts/nixos/hardware/`)
 - **ASUS Vivobook OLED (`asus.nix`):**

@@ -59,6 +59,9 @@
               pcmanfm-qt = prev.pcmanfm-qt.overrideAttrs (old: {
                 patches = (old.patches or [ ]) ++ [ ./pkgs/pcmanfm-qt-appid.patch ];
               });
+              opencode = prev.opencode.overrideAttrs (old: {
+                patches = (old.patches or [ ]) ++ [ ./pkgs/opencode-palette-refresh.patch ];
+              });
             })
           ];
         })
