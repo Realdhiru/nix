@@ -368,7 +368,7 @@ Item {
 
         root.requestedProfile = name;
         root.powerProfile = name;
-        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_requested_profile; echo '" + name + "' > /tmp/qs_power_profile; echo '" + name + "' > $HOME/.cache/qs_power_profile"]);
+        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_requested_profile; echo '" + name + "' > /tmp/qs_power_profile; echo '" + name + "' > $HOME/.cache/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile '" + name + "'"]);
 
         root._applyVisualOverrides(name);
 

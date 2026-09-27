@@ -124,7 +124,7 @@ Item {
         }
     }
 
-    property string stateFile: Quickshell.env("HOME") + "/.cache/hyprsunset_state.json"
+    property string stateFile: Quickshell.env("HOME") + "/.cache/quickshell/state.json"
     property string shaderFile: Quickshell.env("HOME") + "/.cache/screen_shader.frag"
     property string satShaderFile: Quickshell.env("HOME") + "/.cache/screen_saturation.frag"
 
@@ -137,12 +137,13 @@ Item {
 
     Process {
         id: stateReader
-        command: ["bash", "-c", `if [ -f "${root.stateFile}" ]; then cat "${root.stateFile}"; else echo '{"temp": 6500, "gamma": 100, "sat": 100, "grain": 0, "crt": 0, "active": false}'; fi`]
+        command: ["bash", "-c", `if [ -f "${root.stateFile}" ]; then cat "${root.stateFile}"; else echo '{"sunset": {"temp": 6500, "gamma": 100, "sat": 100, "grain": 0, "crt": 0, "active": false}}'; fi`]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    let d = JSON.parse(this.text.trim());
+                    let full = JSON.parse(this.text.trim());
+                    let d = full.sunset || full;
                     if (d.temp !== undefined) root.currentTemp = d.temp;
                     if (d.gamma !== undefined) root.currentGamma = d.gamma;
                     if (d.sat !== undefined) root.currentSat = d.sat;
@@ -263,8 +264,8 @@ EOF
                 hyprctl eval "hl.config({ decoration = { screen_shader = '${root.shaderFile}' } })" >/dev/null 2>&1 || true
             fi
 
-            # 3. Save persistent state
-            echo '{"temp": ${root.currentTemp}, "gamma": ${root.currentGamma}, "sat": ${root.currentSat}, "grain": ${root.currentGrain}, "crt": ${root.currentCrt}, "active": true}' > "${root.stateFile}"
+            # 3. Save persistent state in canonical state.json
+            bash "${Quickshell.env("HOME")}/.config/hypr/scripts/quickshell/state_ctl.sh" sunset ${root.currentTemp} ${root.currentGamma} ${root.currentSat} ${root.currentGrain} ${root.currentCrt} true
         `;
 
         Quickshell.execDetached(["bash", "-c", script]);
@@ -287,7 +288,7 @@ EOF
             fi
             hyprctl eval "hl.config({ decoration = { screen_shader = '' } })" >/dev/null 2>&1 || true
             rm -f "${root.shaderFile}" "${root.satShaderFile}"
-            echo '{"temp": 6500, "gamma": 100, "sat": 100, "grain": 0, "crt": 0, "active": false}' > "${root.stateFile}"
+            bash "${Quickshell.env("HOME")}/.config/hypr/scripts/quickshell/state_ctl.sh" sunset 6500 100 100 0 0 false
         `;
 
         Quickshell.execDetached(["bash", "-c", script]);

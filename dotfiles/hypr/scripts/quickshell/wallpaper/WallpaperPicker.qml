@@ -34,6 +34,25 @@ Item {
 
     property string currentFilter: "All"
     property string _lastFilter: "All"
+
+    onCurrentFilterChanged: {
+        if (_lastFilter !== currentFilter) {
+            _lastFilter = currentFilter;
+            Quickshell.execDetached(["bash", "-c", "bash '" + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh' set ui.wallpaperFilter '" + currentFilter + "'"]);
+        }
+    }
+
+    Process {
+        id: filterStateReader
+        command: ["bash", "-c", "bash '" + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh' get ui.wallpaperFilter"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let f = this.text.trim();
+                if (f !== "" && f !== "null") window.currentFilter = f;
+            }
+        }
+    }
     property string searchQuery: ""
     property bool isOnlineSearch: false
     property bool isSearchPaused: false

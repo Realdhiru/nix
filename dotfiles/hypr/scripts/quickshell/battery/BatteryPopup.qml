@@ -258,10 +258,10 @@ Item {
     Process {
         id: dndInit
         running: true
-        command: ["bash", "-c", "cat '" + Caching.getCacheDir("dnd") + "/state' 2>/dev/null || echo '0'"]
+        command: ["bash", "-c", "bash '" + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh' get modes.dnd"]
         stdout: StdioCollector {
             onStreamFinished: {
-                window.dndEnabled = (this.text.trim() === "1");
+                window.dndEnabled = (this.text.trim() === "true" || this.text.trim() === "1");
             }
         }
     }
@@ -670,7 +670,7 @@ Item {
                                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         window.dndEnabled = !window.dndEnabled;
-                                        Quickshell.execDetached(["sh", "-c", "echo '" + (window.dndEnabled ? "1" : "0") + "' > '" + Caching.getCacheDir("dnd") + "/state'"]);
+                                        Quickshell.execDetached(["bash", "-c", "bash '" + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh' set modes.dnd " + (window.dndEnabled ? "true" : "false") + " && mkdir -p '" + Caching.getCacheDir("dnd") + "' && echo '" + (window.dndEnabled ? "1" : "0") + "' > '" + Caching.getCacheDir("dnd") + "/state'"]);
                                     }
                                 }
                             }

@@ -463,45 +463,32 @@ ShellRoot {
                 Item {
                     anchors.fill: parent
 
-                    // Top Right: Clock Pill (Tight content geometry)
-                    Rectangle {
+                    // Top Right: Floating Clock & Date (Frameless, direct text)
+                    Item {
                         id: clockCornerPill
                         anchors.top: parent.top
                         anchors.topMargin: screenRoot.cornerMargin
                         anchors.right: parent.right
                         anchors.rightMargin: screenRoot.cornerMargin
-                        height: Math.round(48 * screenRoot.sc)
-                        width: clockInnerRow.implicitWidth + Math.round(28 * screenRoot.sc)
-                        radius: height / 2
-                        clip: true
-
-                        color: Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity)
-                        border.width: Config.borderWidth
-                        border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(255, 255, 255, Config.borderOpacity) : "transparent"
+                        height: clockInnerRow.implicitHeight
+                        width: clockInnerRow.implicitWidth
                         opacity: screenRoot.introState
-
-                        // Anti-bleed base
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: Qt.rgba(root.crust.r, root.crust.g, root.crust.b, Config.antiBleedOpacity)
-                            z: -1
-                        }
 
                         Row {
                             id: clockInnerRow
-                            anchors.centerIn: parent
-                            spacing: Math.round(14 * screenRoot.sc)
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            spacing: Math.round(20 * screenRoot.sc)
 
                             Row {
                                 anchors.verticalCenter: parent.verticalCenter
-                                spacing: Math.round(3 * screenRoot.sc)
+                                spacing: Math.round(4 * screenRoot.sc)
 
                                 Text {
                                     id: clockHours
                                     text: Qt.formatDateTime(new Date(), "hh")
                                     font.family: "JetBrains Mono"
-                                    font.pixelSize: Math.round(22 * screenRoot.sc)
+                                    font.pixelSize: Math.round(52 * screenRoot.sc)
                                     font.weight: Font.Black
                                     color: root.primary
                                 }
@@ -509,7 +496,7 @@ ShellRoot {
                                 Text {
                                     text: ":"
                                     font.family: "JetBrains Mono"
-                                    font.pixelSize: Math.round(22 * screenRoot.sc)
+                                    font.pixelSize: Math.round(52 * screenRoot.sc)
                                     font.weight: Font.Black
                                     color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.5)
                                 }
@@ -518,7 +505,7 @@ ShellRoot {
                                     id: clockMinutes
                                     text: Qt.formatDateTime(new Date(), "mm")
                                     font.family: "JetBrains Mono"
-                                    font.pixelSize: Math.round(22 * screenRoot.sc)
+                                    font.pixelSize: Math.round(52 * screenRoot.sc)
                                     font.weight: Font.Black
                                     color: root.lockText
                                 }
@@ -528,7 +515,7 @@ ShellRoot {
                             Rectangle {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 1
-                                height: Math.round(18 * screenRoot.sc)
+                                height: Math.round(36 * screenRoot.sc)
                                 color: Qt.rgba(255, 255, 255, 0.18)
                             }
 
@@ -537,9 +524,9 @@ ShellRoot {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: Qt.formatDateTime(new Date(), "ddd, MMM d")
                                 font.family: "JetBrains Mono"
-                                font.pixelSize: Math.round(15 * screenRoot.sc)
+                                font.pixelSize: Math.round(22 * screenRoot.sc)
                                 font.weight: Font.DemiBold
-                                color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.85)
+                                color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.90)
                             }
                         }
 
@@ -557,7 +544,7 @@ ShellRoot {
                         }
                     }
 
-                    // Bottom Left: Status / Quote Text (Clean 15px Theme token)
+                    // Bottom Left: Status / Quote Text (Prominent 18px text token)
                     Text {
                         anchors.bottom: parent.bottom
                         anchors.bottomMargin: screenRoot.cornerMargin
@@ -565,9 +552,9 @@ ShellRoot {
                         anchors.leftMargin: screenRoot.cornerMargin
                         text: screenRoot.splashQuote !== "" ? screenRoot.splashQuote : "Have a nice day!"
                         font.family: "JetBrains Mono"
-                        font.pixelSize: Math.round(15 * screenRoot.sc)
+                        font.pixelSize: Math.round(18 * screenRoot.sc)
                         font.weight: Font.DemiBold
-                        color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.85)
+                        color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.90)
                         width: Math.min(implicitWidth, parent.width * 0.45)
                         elide: Text.ElideRight
                         opacity: screenRoot.introState

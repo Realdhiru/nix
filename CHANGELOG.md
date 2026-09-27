@@ -11,10 +11,10 @@
   - **Debounced Updates & Layout**: Added a 50ms QML timer debounce (`applyTimer`) to prevent Hyprland shader recompilation spam during smooth slider dragging. Expanded popup height to `630px` in [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js#L18) and `SunsetPopup.qml` to accommodate all 5 controls with full keybindings (1-4 presets, Arrow keys, 0/R reset).
 - **Retired Legacy Static Shaders & Helpers**:
   - Removed obsolete static `.frag` files (`dotfiles/hypr/shaders/`), manual cycling script (`dotfiles/hypr/scripts/cycle-shader.sh`), keybind `SUPER + CTRL + S` in [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), and legacy `apply_shader()` hook in [`hyprland.lua`](file:///home/realdhiru/nix/dotfiles/hypr/hyprland.lua). Full dynamic control is now owned by `SunsetPopup.qml`.
-- **Lockscreen Glass Styling & Tight Geometry Overhaul**:
-  - In [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml), eliminated hardcoded `420px` minimum width floor on `clockCornerPill`, deriving container bounds tightly from `clockInnerRow.implicitWidth + 28px`.
-  - Standardized glass treatment across all lockscreen pills (`clockCornerPill`, `mediaBtn`, `pinPill`, `batteryPill`) using system-wide tokens: `root.base` fill at `Config.effectivePopupOpacity`, anti-bleed `crust` base layer at `Config.antiBleedOpacity`, and frameless border fallback (`border.width: Config.borderWidth`, `border.color: "transparent"`).
-  - Scaled bottom-left status quote text to `15px` (`Font.DemiBold`) with `root.text` color at `0.85` opacity for high readability.
+- **System-Wide Persistent State Consolidation**:
+  - Established single canonical state file `~/.cache/quickshell/state.json` storing all active user toggle state (`sunset`, `modes`, `power`, `ui`).
+  - Created [`dotfiles/hypr/scripts/quickshell/restore_state.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh) and [`state_ctl.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/state_ctl.sh) to automatically re-apply active shader pipelines (`hyprsunset`, `screen_shader.frag`), Gaming Mode parameters, DND state, and power profiles on QuickShell boot/reload via [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml).
+  - Migrated state readers/writers in [`SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml), [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml), [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml), and [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml). Purged obsolete `~/.cache/hyprsunset_state.json`.
 
 
 - **TopBar 3-Layer Glass Pass Completed**:

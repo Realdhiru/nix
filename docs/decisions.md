@@ -34,6 +34,12 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - `Scaler` in popups must use `currentWidth: Screen.width` (single-pass). Never pass device-pixel bounds (`Config.masterWidth`) to prevent double-scaling clipping.
   - Music geometry derives from `timeText.implicitWidth` minimum bounds; long titles marquee scroll.
   - Lockscreen live wallpaper draws inside `Lock.qml` via `WlSessionLock`. Lockscreen telemetry and media controls must remain 100% zero-polling, bound exclusively via kernel/tmpfs inotify `FileView` watchers (`/sys/class/power_supply/BAT0/`, `music_info.json`).
+
+### 4. Canonical Persistent State Architecture (`~/.cache/quickshell/state.json`)
+- **Decision**: Single canonical JSON file (`~/.cache/quickshell/state.json`) owns all live user toggle states across the system (`sunset`, `modes`, `power`, `ui`).
+- **Rules**:
+  - [`restore_state.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh) automatically re-applies active shaders, `hyprsunset` hardware CTMs, Gaming Mode, DND, and power profiles on QuickShell boot/reload via [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml).
+  - Toggling off or resetting any feature restores its entry to neutral defaults in `state.json`. No orphaned flag files or stale state files are permitted.
   - **Theme Singleton Attempt & Constraint**: Attempted `Theme.qml` `pragma Singleton` consolidation on 2026-09-27 — caused system-wide black/undefined color rendering across all widgets simultaneously, root cause suspected to be a load-order race unique to singleton lifecycle (`FileView` not resolved before first property access), not fully diagnosed before reverting. Reverted to per-widget `Theme {}` instantiation, confirmed working. Do not retry without first writing a minimal isolated test case for singleton + `FileView` load-order behavior in QML before touching the real widget suite again.
   - **Display & Shader Architecture Split**: `hyprsunset` daemon owns Temperature + Gamma (hardware CTM/gamma LUT). Hyprland's single `decoration:screen_shader` slot owns Saturation + Paper Grain + CRT Curvature together in one unified GLSL file, since Hyprland only supports one active `screen_shader` at a time. These two systems are fully independent.
 

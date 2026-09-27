@@ -12,6 +12,12 @@ PanelWindow {
 
     Theme { id: themeInstance }
 
+    Process {
+        id: startupStateRestorer
+        command: ["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/restore_state.sh"]
+        running: true
+    }
+
     Keys.onEscapePressed: (event) => {
         switchWidget("hidden", "");
         event.accepted = true;
