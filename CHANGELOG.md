@@ -5,9 +5,16 @@
 - **TopBar 3-Layer Glass Pass Completed**:
   - Added anti-bleed `crust` base layer, specular top hairline (`rgba(255,255,255,0.16)`), and specular fallback border (`Config.glassSpecular` when `borderWidth == 0`) to `mediaBox` and `recButton` pills in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml).
   - All TopBar pills (`workspacesBox`, `centerBox`, `sysPill`, `mediaBox`, `recButton`) now share identical 3-layer glass treatment.
-- **Lockscreen Media Button State Fix**:
-  - Removed optimistic `screenRoot.mediaStatus` toggle on click in [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml) media play/pause button. The button was flipping its visual state immediately on press before confirming real MPRIS status, causing it to show "Playing" when nothing was actually playing.
-  - Now dispatches `playerctl play-pause` only; visual state updates exclusively when the `FileView` watcher on `music_info.json` detects a real MPRIS `PlaybackStatus` change.
+- **Quickshell FileView Empirical Verification & Atomic Move Standardization**:
+  - Empirically proved via isolated QuickShell experiment that `Quickshell.Io.FileView` watches by **PATH**, re-arming its watcher across atomic `mv` replacements as well as in-place `cat >` writes (`textChanged` and `fileChanged` fire 100% reliably on both write modes).
+  - Standardized atomic `mv` write pattern (`.tmp` -> `mv`) across both [`colors.json`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh#L312) in `generate.sh` and `music_info.json` in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml#L331) and [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml#L654).
+- **Lockscreen Performance & Slowness Resolution**:
+  - `quitTimer.interval`: Set to `100ms` in [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml#L68) to allow `ext_session_lock_v1.unlock_and_destroy` socket flush before process termination.
+  - `bgImage`: `asynchronous: false` to force single frame 0 presentation commit without thread-pool double-commit delay.
+  - `splashDeferTimer`: Deferral interval set to `1000ms` so `hyprctl splash` IPC does not compete during lock presentation.
+- **Lockscreen Media Button Reactivity & Visibility Gate**:
+  - Added visibility gate (`visible: screenRoot.mediaStatus !== "Stopped"`) to `mediaBtn` in [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml#L601).
+  - Updated `mediaBtn` `onClicked` to execute `playerctl play-pause` and trigger immediate atomic `music_info.sh` refresh, eliminating icon toggle latency.
 - **Antigravity Toolchain Addition**:
   - Added `antigravity-hub` (v2.12.2, "Antigravity 2.0" multi-agent desktop hub) and `antigravity-cli` (v1.2.9, `agy` CLI tool) to [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix) alongside existing `antigravity-ide`.
 

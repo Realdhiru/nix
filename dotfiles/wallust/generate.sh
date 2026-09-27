@@ -19,6 +19,46 @@ fi
 WALLPAPER="$1"
 MODE="${2:-}"
 
+# Emit the OpenCode TUI theme from the live Wallust palette.
+# OpenCode has NO theme-file watcher: syncCustomThemes() runs only at onMount
+# in context/theme.tsx and there is no fs watcher anywhere in packages/tui, so
+# this file is picked up when OpenCode next launches, not on wallpaper change.
+# Every value below is a reference into the generated colors.json - no hardcoded
+# RGB. Transparency stays the tui-plugins' job (they zero the panel/background
+# alphas and derive the opaque menu shade), so this file ships plain colors.
+emit_opencode_theme() {
+    local src="$TARGET_CACHE/colors.json"
+    [ -f "$src" ] || return 0
+    mkdir -p "$HOME/.config/opencode/themes" 2>/dev/null || return 0
+    jq '{"$schema": "https://opencode.ai/theme.json",
+      theme: {
+        primary: .primary, secondary: .mauve, accent: .teal,
+        error: .red, warning: .yellow, success: .green, info: .blue,
+        text: .text, textMuted: .subtext0, selectedListItemText: .primary,
+        background: .base, backgroundPanel: .mantle,
+        backgroundElement: .surface0, backgroundMenu: .surface1,
+        border: .surface2, borderActive: .primary, borderSubtle: .surface1,
+        diffAdded: .green, diffRemoved: .red, diffContext: .overlay0,
+        diffHunkHeader: .blue, diffHighlightAdded: .peach,
+        diffHighlightRemoved: .maroon, diffAddedBg: .green,
+        diffRemovedBg: .red, diffContextBg: .surface0,
+        diffLineNumber: .overlay1, diffAddedLineNumberBg: .green,
+        diffRemovedLineNumberBg: .red,
+        markdownText: .text, markdownHeading: .primary, markdownLink: .blue,
+        markdownLinkText: .blue, markdownCode: .pink,
+        markdownBlockQuote: .overlay1, markdownEmph: .text,
+        markdownStrong: .text, markdownHorizontalRule: .surface2,
+        markdownListItem: .primary, markdownListEnumeration: .primary,
+        markdownImage: .mauve, markdownImageText: .text,
+        markdownCodeBlock: .surface0,
+        syntaxComment: .overlay1, syntaxKeyword: .mauve,
+        syntaxFunction: .blue, syntaxVariable: .teal, syntaxString: .green,
+        syntaxNumber: .peach, syntaxType: .yellow, syntaxOperator: .sapphire,
+        syntaxPunctuation: .overlay2
+      }
+    }' "$src" > "$HOME/.config/opencode/themes/wallust.json" 2>/dev/null || true
+}
+
 emit_neutral_theme() {
     cat <<'EOF' > "$TARGET_CACHE/colors.json"
 {
@@ -109,6 +149,8 @@ $active_border_col_1 = rgb(EDE6DC)
 $active_border_col_2 = rgb(C9BFB5)
 $inactive_border_col = rgb(282828)
 EOF
+
+    emit_opencode_theme
 }
 
 # 1. Handle Neutral Theme Mode (pure pitch-black OLED desktop state)
@@ -267,9 +309,10 @@ if [ -f "$TARGET_CACHE/colors.json" ]; then
             overlay2: "#9399b2"
         }' \
         "$TARGET_CACHE/colors.json" > "$TARGET_CACHE/colors.json.tmp" 2>/dev/null && \
-    cat "$TARGET_CACHE/colors.json.tmp" > "$TARGET_CACHE/colors.json" && \
-    rm -f "$TARGET_CACHE/colors.json.tmp"
+    mv "$TARGET_CACHE/colors.json.tmp" "$TARGET_CACHE/colors.json"
 fi
+
+emit_opencode_theme
 
 # 5. Inject dynamic wallpaper accent into GTK, Qt, WezTerm, and Cava
 if [ -n "$ACCENT" ]; then

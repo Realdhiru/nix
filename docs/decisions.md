@@ -112,3 +112,9 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - Each linked doc gets a one-line "read when…" trigger so the agent knows when loading it pays for itself.
   - `repomix-output.xml` (~1.5MB) must carry an explicit do-not-read instruction.
   - Newly added systemic rules are promoted here only after they are stable; day-to-day change history belongs in `CHANGELOG.md`, architectural rationale in this file.
+
+### 15. File Watcher Semantics & Atomic Write Policy (`Quickshell.Io.FileView` vs Raw `inotifywait`)
+- **Empirical Finding:** `Quickshell.Io.FileView` watches by **PATH**, not by inode. It automatically re-arms its watcher across atomic `mv` replacements as well as in-place `cat >` writes (`textChanged` and `fileChanged` fire 100% reliably on both write modes).
+- **Rule & Standardized Write Pattern:**
+  - **QuickShell `FileView` Contracts (`colors.json`, `music_info.json`)**: Use atomic move (`.tmp` -> `mv`). Atomic move is 100% safe for `Quickshell.Io.FileView` path watchers and eliminates partial-read JSON parse errors during concurrent reads.
+  - **Raw Bash / External Script Watchers (`inotifywait -e close_write ...`)**: Raw bash scripts using `inotifywait` on a single explicit file target (rather than watching an entire directory) attach to the underlying Linux inode. Executing `mv` replaces the inode, breaking single-file `inotifywait` handles. For legacy single-file script watchers, use in-place writes (`cat > target`).

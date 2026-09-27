@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "theme": "system",
+  "theme": "wallust",
   "plugin": [
     "./tui-plugins/transparent-system-theme.ts",
     "./tui-plugins/transparent-overlays.ts"

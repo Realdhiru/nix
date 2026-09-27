@@ -65,7 +65,7 @@ ShellRoot {
 
     Timer {
         id: quitTimer
-        interval: 0
+        interval: 100
         repeat: false
         onTriggered: Qt.quit()
     }
@@ -230,7 +230,7 @@ ShellRoot {
 
                 Process {
                     id: splashPoller
-                    running: true
+                    running: false
                     command: ["hyprctl", "splash"]
                     stdout: StdioCollector {
                         onStreamFinished: {
@@ -238,6 +238,14 @@ ShellRoot {
                             if (q.length > 0) screenRoot.splashQuote = q;
                         }
                     }
+                }
+
+                Timer {
+                    id: splashDeferTimer
+                    interval: 1000
+                    running: true
+                    repeat: false
+                    onTriggered: splashPoller.running = true
                 }
                 property string mediaStatus: "Stopped"
 
@@ -383,7 +391,7 @@ ShellRoot {
                     anchors.fill: parent
                     source: screenRoot.isStaticWallpaper ? screenRoot.currentWallpaperPath : ""
                     fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
+                    asynchronous: false
                     cache: true
                     visible: screenRoot.isStaticWallpaper
                 }
@@ -590,6 +598,7 @@ ShellRoot {
                         // 1. Play/Pause Media Control Button (Leftmost in cluster)
                         Rectangle {
                             id: mediaBtn
+                            visible: screenRoot.mediaStatus !== "Stopped"
                             width: parent.height
                             height: parent.height
                             radius: height / 2
@@ -641,12 +650,9 @@ ShellRoot {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    // Do NOT optimistically toggle mediaStatus here.
-                                    // The FileView watcher on music_info.json will
-                                    // update screenRoot.mediaStatus when the real
-                                    // MPRIS state changes, preventing visual
-                                    // divergence from actual playback status.
-                                    Quickshell.execDetached(["playerctl", "play-pause"]);
+                                    let runDir = Caching.getRunDir("music");
+                                    let cmd = "playerctl play-pause && sleep 0.05 && bash " + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/music/music_info.sh > '" + runDir + "/music_info.json.tmp' && mv '" + runDir + "/music_info.json.tmp' '" + runDir + "/music_info.json'";
+                                    Quickshell.execDetached(["bash", "-c", cmd]);
                                 }
                             }
                         }

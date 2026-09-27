@@ -94,28 +94,34 @@ export default {
       return true
     }
 
-    // Replaces the menu colour with a brand new opaque instance, so the panel
-    // pass above can never reach it through a shared upstream reference.
+    // Installs a brand new RGBA instance for the menu so the panel pass above
+    // can never reach it through a shared upstream reference, and so an aliased
+    // backgroundPanel/backgroundElement object can never be dragged opaque with
+    // it. The base RGB is snapshotted into plain numbers FIRST: this runs after
+    // the panel pass, and reading theme.background/theme.text live here would
+    // mix in whatever those objects were just mutated into.
     const setMenu = (theme: Theme) => {
-      const base = theme.background
+      const src = theme.background
       const light = theme.text
-      if (!base || !light) return false
-      const RGBA = Object.getPrototypeOf(base).constructor
+      if (!src || !light) return false
+      const RGBA = Object.getPrototypeOf(src).constructor
       if (typeof RGBA?.fromValues !== "function") return false
-      const mix = (i: 0 | 1 | 2) => (base[i] ?? 0) + ((light[i] ?? 0) - (base[i] ?? 0)) * MENU_LIGHT_MIX
-      const target = [mix(0), mix(1), mix(2)]
+      const base = [src.r ?? 0, src.g ?? 0, src.b ?? 0]
+      const lit = [light.r ?? 0, light.g ?? 0, light.b ?? 0]
+      const target = [0, 1, 2].map((i) => base[i]! + (lit[i]! - base[i]!) * MENU_LIGHT_MIX)
       const current = theme[MENU_KEY]
       // Idempotent: re-deriving the same floats must not retrigger a render.
       if (
         current &&
         current.a === 1 &&
-        Math.abs(current.r - target[0]) < 0.002 &&
-        Math.abs(current.g - target[1]) < 0.002 &&
-        Math.abs(current.b - target[2]) < 0.002
+        Math.abs(current.r - target[0]!) < 0.002 &&
+        Math.abs(current.g - target[1]!) < 0.002 &&
+        Math.abs(current.b - target[2]!) < 0.002
       )
         return false
-      theme[MENU_KEY] = RGBA.fromValues(target[0], target[1], target[2], 1)
-      decided.add(theme[MENU_KEY]!)
+      const menu = RGBA.fromValues(target[0]!, target[1]!, target[2]!, 1)
+      theme[MENU_KEY] = menu
+      decided.add(menu)
       return true
     }
 

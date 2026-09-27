@@ -16,12 +16,3 @@ qtct = { template = "qtct.conf", target = "~/.cache/theme/qtct.conf" }
 qt_style = { template = "qt-style.qss", target = "~/.cache/theme/qt-style.qss" }
 hyprland = { template = "hyprland-colors.conf", target = "~/.cache/theme/hyprland-colors.conf" }
 
-# DISABLED 2026-09-27 - do not re-enable as written.
-# `pkill -f <pattern>` matches every process whose cmdline merely CONTAINS the
-# pattern, and OpenCode spawns tools as `zsh -c "<command text>"`. Any tool
-# command mentioning this path was SIGUSR2'd and died, which OpenCode reported
-# as "User aborted the command / interrupted". Reproduced live.
-# A correct hook needs an exact-match pgrep+kill (never `pkill -f`), and it must
-# fire only AFTER WezTerm has actually re-read the palette - see docs/decisions.md.
-# [hooks]
-# opencode = 'pgrep -x ... | ...'
