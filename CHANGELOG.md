@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-09-27 — TopBar Glass Consistency, Lockscreen Media Fix & Antigravity Toolchain
+
+- **TopBar 3-Layer Glass Pass Completed**:
+  - Added anti-bleed `crust` base layer, specular top hairline (`rgba(255,255,255,0.16)`), and specular fallback border (`Config.glassSpecular` when `borderWidth == 0`) to `mediaBox` and `recButton` pills in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml).
+  - All TopBar pills (`workspacesBox`, `centerBox`, `sysPill`, `mediaBox`, `recButton`) now share identical 3-layer glass treatment.
+- **Lockscreen Media Button State Fix**:
+  - Removed optimistic `screenRoot.mediaStatus` toggle on click in [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml) media play/pause button. The button was flipping its visual state immediately on press before confirming real MPRIS status, causing it to show "Playing" when nothing was actually playing.
+  - Now dispatches `playerctl play-pause` only; visual state updates exclusively when the `FileView` watcher on `music_info.json` detects a real MPRIS `PlaybackStatus` change.
+- **Antigravity Toolchain Addition**:
+  - Added `antigravity-hub` (v2.12.2, "Antigravity 2.0" multi-agent desktop hub) and `antigravity-cli` (v1.2.9, `agy` CLI tool) to [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix) alongside existing `antigravity-ide`.
+
 ## 2026-09-27 — OpenCode Diff Row Wash & Wallust Matugen Compatibility Removal
 
 - **OpenCode `+/-` Diff Row Highlight Fixed**:

@@ -65,7 +65,7 @@ ShellRoot {
 
     Timer {
         id: quitTimer
-        interval: 160
+        interval: 0
         repeat: false
         onTriggered: Qt.quit()
     }
@@ -383,7 +383,7 @@ ShellRoot {
                     anchors.fill: parent
                     source: screenRoot.isStaticWallpaper ? screenRoot.currentWallpaperPath : ""
                     fillMode: Image.PreserveAspectCrop
-                    asynchronous: false
+                    asynchronous: true
                     cache: true
                     visible: screenRoot.isStaticWallpaper
                 }
@@ -641,7 +641,11 @@ ShellRoot {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    screenRoot.mediaStatus = (screenRoot.mediaStatus === "Playing" ? "Paused" : "Playing");
+                                    // Do NOT optimistically toggle mediaStatus here.
+                                    // The FileView watcher on music_info.json will
+                                    // update screenRoot.mediaStatus when the real
+                                    // MPRIS state changes, preventing visual
+                                    // divergence from actual playback status.
                                     Quickshell.execDetached(["playerctl", "play-pause"]);
                                 }
                             }

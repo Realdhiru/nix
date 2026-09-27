@@ -64,6 +64,8 @@ in
     file gsettings-desktop-schemas
 
     antigravity-ide
+    antigravity-hub
+    antigravity-cli
   ];
 
   programs.appimage = {

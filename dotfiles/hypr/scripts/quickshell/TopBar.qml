@@ -694,11 +694,32 @@ Variants {
                     Rectangle {
                         id: mediaBox
                         color: barWindow.pillBg
-                        radius: barWindow.s(14); border.width: Config.borderWidth; border.color: barWindow.pillBorder
+                        radius: barWindow.s(14)
+                        border.width: Math.max(1, Config.borderWidth)
+                        border.color: Config.borderWidth > 0 ? barWindow.pillBorder : Qt.rgba(255, 255, 255, Config.glassSpecular)
                         Behavior on color { ColorAnimation { duration: 250 } }
                         Behavior on border.color { ColorAnimation { duration: 250 } }
                         height: barWindow.barHeight
                         clip: true
+
+                        // Anti-bleed base layer
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: parent.radius
+                            color: Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, Config.antiBleedOpacity)
+                            z: -1
+                        }
+
+                        // Top specular reflection highlight
+                        Rectangle {
+                            anchors.top: parent.top
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: Math.max(0, parent.width - parent.radius * 2)
+                            anchors.topMargin: 1
+                            height: 1
+                            color: Qt.rgba(255, 255, 255, 0.16)
+                            radius: 1
+                        }
 
                         readonly property bool activeNow: barWindow.musicData.status === "Playing" && barWindow.hasVisibleMedia
                         width: activeNow ? infoLayout.implicitWidth + barWindow.s(24) : 0
@@ -889,10 +910,31 @@ Variants {
                             id: centerBox
                             property bool isHovered: centerMouse.containsMouse
                             property bool notifActive: NotifTicker.tickerVisible
-                            color: isHovered ? barWindow.pillBgHover : barWindow.pillBg
-                            radius: barWindow.s(14); border.width: Config.borderWidth; border.color: isHovered ? barWindow.pillBorderHover : barWindow.pillBorder
+                            color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
+                            radius: barWindow.s(14)
+                            border.width: Math.max(1, Config.borderWidth)
+                            border.color: Config.borderWidth > 0 ? (isHovered ? barWindow.pillBorderHover : barWindow.pillBorder) : Qt.rgba(255, 255, 255, Config.glassSpecular)
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                            // Anti-bleed base layer
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, Config.antiBleedOpacity)
+                                z: -1
+                            }
+
+                            // Top specular reflection highlight
+                            Rectangle {
+                                anchors.top: parent.top
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: Math.max(0, parent.width - parent.radius * 2)
+                                anchors.topMargin: 1
+                                height: 1
+                                color: Qt.rgba(255, 255, 255, 0.16)
+                                radius: 1
+                            }
                         height: barWindow.barHeight
                         width: (centerBox.notifActive ? notifLayout.implicitWidth : centerLayout.implicitWidth) + barWindow.s(36)
                         Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutExpo } }
@@ -1238,12 +1280,31 @@ Variants {
                         Rectangle {
                             height: barWindow.barHeight
                             radius: barWindow.s(14)
-                            border.color: barWindow.pillBorder
-                            border.width: Config.borderWidth
-                            color: barWindow.pillBg
+                            border.width: Math.max(1, Config.borderWidth)
+                            border.color: Config.borderWidth > 0 ? barWindow.pillBorder : Qt.rgba(255, 255, 255, Config.glassSpecular)
+                            color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
                             clip: true
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                            // Anti-bleed base layer
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, Config.antiBleedOpacity)
+                                z: -1
+                            }
+
+                            // Top specular reflection highlight
+                            Rectangle {
+                                anchors.top: parent.top
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: Math.max(0, parent.width - parent.radius * 2)
+                                anchors.topMargin: 1
+                                height: 1
+                                color: Qt.rgba(255, 255, 255, 0.16)
+                                radius: 1
+                            }
 
                             width: sysLayout.implicitWidth + barWindow.s(20)
 
@@ -1307,10 +1368,29 @@ Variants {
 
                             color: isHovered ? barWindow.pillBgHover : barWindow.pillBg
                             radius: barWindow.s(14)
-                            border.width: Config.borderWidth
-                            border.color: isHovered ? barWindow.pillBorderHover : barWindow.pillBorder
+                            border.width: Math.max(1, Config.borderWidth)
+                            border.color: Config.borderWidth > 0 ? (isHovered ? barWindow.pillBorderHover : barWindow.pillBorder) : Qt.rgba(255, 255, 255, Config.glassSpecular)
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                            // Anti-bleed base layer
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                color: Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, Config.antiBleedOpacity)
+                                z: -1
+                            }
+
+                            // Top specular reflection highlight
+                            Rectangle {
+                                anchors.top: parent.top
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: Math.max(0, parent.width - parent.radius * 2)
+                                anchors.topMargin: 1
+                                height: 1
+                                color: Qt.rgba(255, 255, 255, 0.16)
+                                radius: 1
+                            }
 
                             property real targetWidth: barWindow.isRecording ? barWindow.barHeight : 0
                             width: targetWidth

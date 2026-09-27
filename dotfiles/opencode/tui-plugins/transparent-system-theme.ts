@@ -1,6 +1,19 @@
-const PANEL_KEYS = ["backgroundPanel", "backgroundElement", "backgroundMenu"]
+// backgroundMenu is deliberately NOT here. It is the one panel key that is a
+// floating surface rather than an inline one, so it needs its own backdrop.
+const PANEL_KEYS = ["backgroundPanel", "backgroundElement"]
 const DIFF_KEYS = ["diffContextBg"]
 const PANEL_ALPHA = 0
+
+// component/prompt/autocomplete.tsx:735 paints the menu with
+// theme.backgroundMenu, so alpha 0 leaves it floating straight over transcript
+// text and unreadable. Derive an opaque backdrop from the live theme instead: a
+// light mix of theme.text over theme.background, no hardcoded RGB and no
+// partial alpha. Assigned as a NEW RGBA instance rather than mutated in place,
+// because generateSystem aliases these keys onto shared instances upstream -
+// writing the shared object would drag backgroundPanel/backgroundElement opaque
+// along with it. See the note on `decided` below.
+const MENU_KEY = "backgroundMenu"
+const MENU_LIGHT_MIX = 0.07
 
 // Upstream generateSystem builds the +/- row backgrounds as
 // tint(bg, ansiColors.green|red, 0.22), and tint() returns RGBA.fromInts(...)
@@ -81,6 +94,31 @@ export default {
       return true
     }
 
+    // Replaces the menu colour with a brand new opaque instance, so the panel
+    // pass above can never reach it through a shared upstream reference.
+    const setMenu = (theme: Theme) => {
+      const base = theme.background
+      const light = theme.text
+      if (!base || !light) return false
+      const RGBA = Object.getPrototypeOf(base).constructor
+      if (typeof RGBA?.fromValues !== "function") return false
+      const mix = (i: 0 | 1 | 2) => (base[i] ?? 0) + ((light[i] ?? 0) - (base[i] ?? 0)) * MENU_LIGHT_MIX
+      const target = [mix(0), mix(1), mix(2)]
+      const current = theme[MENU_KEY]
+      // Idempotent: re-deriving the same floats must not retrigger a render.
+      if (
+        current &&
+        current.a === 1 &&
+        Math.abs(current.r - target[0]) < 0.002 &&
+        Math.abs(current.g - target[1]) < 0.002 &&
+        Math.abs(current.b - target[2]) < 0.002
+      )
+        return false
+      theme[MENU_KEY] = RGBA.fromValues(target[0], target[1], target[2], 1)
+      decided.add(theme[MENU_KEY]!)
+      return true
+    }
+
     // Only alpha and a theme-derived RGB blend are touched: every hue still
     // comes from the live terminal palette, so Wallust/WezTerm colors keep
     // working and a wallpaper change re-derives the wash automatically.
@@ -99,6 +137,8 @@ export default {
       // no-op; kept so the context rows stay fully transparent even if a
       // future opencode release decouples the two.
       for (const key of DIFF_KEYS) changed = setAlpha(theme, key, PANEL_ALPHA) || changed
+      // Last, so it cannot be flattened by the panel pass above.
+      changed = setMenu(theme) || changed
 
       if (changed) api.renderer.requestRender()
       return changed
