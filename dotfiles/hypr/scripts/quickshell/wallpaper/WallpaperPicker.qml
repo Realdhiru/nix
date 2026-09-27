@@ -137,22 +137,34 @@ Item {
                 let output = this.text;
                 if (!output || output.trim().length === 0) return;
                 let lines = output.trim().split("\n");
-                let map = {};
+                let catMap = {};
+                let colorMap = {};
                 for (let i = 0; i < lines.length; i++) {
                     let line = lines[i].trim();
                     if (line.length === 0) continue;
-                    let catMatch = line.match(/_CAT_([a-z]+)_HEX_/);
-                    if (!catMatch) continue;
-                    let category = catMatch[1];
-                    let firstUnderscore = line.indexOf("_");
-                    let catIdx = line.indexOf("_CAT_");
-                    if (firstUnderscore < 0 || catIdx < 0) continue;
-                    let wallpaperName = line.substring(firstUnderscore + 1, catIdx);
-                    if (wallpaperName.length > 0) {
-                        map[wallpaperName] = category;
+                    let m = line.match(/^(.*?)_(?:CAT_([a-zA-Z0-9]+)_)?HEX_([0-9a-fA-F]{6})$/);
+                    if (m) {
+                        let flatName = m[1];
+                        let category = m[2] || "";
+                        let hex = m[3];
+                        if (flatName.length > 0) {
+                            if (category.length > 0) catMap[flatName] = category;
+                            colorMap[flatName] = hex;
+                            let clean = window.getCleanName(flatName);
+                            if (clean.length > 0) {
+                                if (category.length > 0) catMap[clean] = category;
+                                colorMap[clean] = hex;
+                            }
+                        }
                     }
                 }
-                window.wallpaperCategoryMap = map;
+                window.wallpaperCategoryMap = catMap;
+                window.wallpaperColorMap = colorMap;
+                if (localProxyModel.count > 0) {
+                    window.sortListModel(localProxyModel);
+                    window.sortListModel(gifsProxyModel);
+                    window.sortListModel(videosProxyModel);
+                }
             }
         }
     }
@@ -385,19 +397,41 @@ Item {
 
 
     property var wallpaperCategoryMap: ({})
+    property var wallpaperColorMap: ({})
 
-    function getCategoryRank(fileName) {
-        if (!fileName) return 7;
-        let fn = String(fileName);
-        if (fn.toLowerCase().endsWith(".gif")) return 0;
-        if (window.isVideoFile(fn)) return 8;
+    function getFileTypeRank(fileName) {
+        if (!fileName) return 1;
+        let fn = String(fileName).toLowerCase();
+        if (fn.endsWith(".gif")) return 0; // 1. First all GIFs
+        if (window.isVideoFile(fileName)) return 2; // 3. All videos last
+        return 1; // 2. All static images in between
+    }
 
-        if (window.wallpaperCategoryMap[fn] !== undefined) {
-            let cat = window.wallpaperCategoryMap[fn];
-            return window.categoryRankMap[cat] !== undefined ? window.categoryRankMap[cat] : 7;
+    function hexToColorScore(hex) {
+        if (!hex || hex.length < 6) return { band: 2, key: 999 };
+        let r = parseInt(hex.substring(0, 2), 16) / 255.0;
+        let g = parseInt(hex.substring(2, 4), 16) / 255.0;
+        let b = parseInt(hex.substring(4, 6), 16) / 255.0;
+        let max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let d = max - min;
+        let l = (max + min) / 2.0;
+        let s = 0.0;
+        let h = 0.0;
+        if (d !== 0) {
+            s = l > 0.5 ? d / (2.0 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = ((g - b) / d + (g < b ? 6.0 : 0.0)); break;
+                case g: h = ((b - r) / d + 2.0); break;
+                case b: h = ((r - g) / d + 4.0); break;
+            }
+            h *= 60.0;
         }
-
-        return 7;
+        // Achromatic / neutral (very low saturation or near black/white): sort band 0 by lightness
+        if (s < 0.14 || l < 0.08 || l > 0.92) {
+            return { band: 0, key: l * 100.0 };
+        }
+        // Chromatic: sort band 1 by hue wheel (0° to 360°)
+        return { band: 1, key: h };
     }
 
     function sortListModel(model) {
@@ -411,11 +445,19 @@ Item {
             }
         }
         arr.sort(function(a, b) {
-            let aRank = window.getCategoryRank(a.fileName);
-            let bRank = window.getCategoryRank(b.fileName);
+            let aType = window.getFileTypeRank(a.fileName);
+            let bType = window.getFileTypeRank(b.fileName);
+            if (aType !== bType) return aType - bType;
 
-            if (aRank !== bRank) return aRank - bRank;
-            
+            let aHex = window.wallpaperColorMap[a.fileName] || window.wallpaperColorMap[window.getCleanName(a.fileName)] || "";
+            let bHex = window.wallpaperColorMap[b.fileName] || window.wallpaperColorMap[window.getCleanName(b.fileName)] || "";
+
+            let aScore = window.hexToColorScore(aHex);
+            let bScore = window.hexToColorScore(bHex);
+
+            if (aScore.band !== bScore.band) return aScore.band - bScore.band;
+            if (Math.abs(aScore.key - bScore.key) > 0.5) return aScore.key - bScore.key;
+
             let aName = window.getCleanName(a.fileName).toLowerCase();
             let bName = window.getCleanName(b.fileName).toLowerCase();
             return aName.localeCompare(bName);
@@ -1212,10 +1254,30 @@ Item {
         z: 20
         height: window.s(56)
         width: filterRow.width + window.s(24)
-        radius: window.s(14)
-        color: Qt.rgba(_theme.mantle.r, _theme.mantle.g, _theme.mantle.b, 0.90)
-        border.color: _theme.surface2
-        border.width: 1
+        radius: window.s(16)
+        clip: true
+        color: Qt.rgba(_theme.base.r, _theme.base.g, _theme.base.b, Config.effectivePopupOpacity)
+        border.color: Config.borderWidth > 0 ? Qt.rgba(255, 255, 255, Config.borderOpacity) : Qt.rgba(255, 255, 255, Config.glassSpecular)
+        border.width: Math.max(1, Config.borderWidth)
+
+        // Anti-bleed base layer
+        Rectangle {
+            anchors.fill: parent
+            radius: parent.radius
+            color: Qt.rgba(_theme.crust.r, _theme.crust.g, _theme.crust.b, Config.antiBleedOpacity)
+            z: -1
+        }
+
+        // Top specular reflection highlight
+        Rectangle {
+            anchors.top: parent.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: Math.max(0, parent.width - parent.radius * 2)
+            anchors.topMargin: 1
+            height: 1
+            color: Qt.rgba(255, 255, 255, 0.16)
+            radius: 1
+        }
 
         Row {
             id: filterRow
@@ -1427,14 +1489,14 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         radius: window.s(10)
-                        color: window.currentFilter === modelData.name ? _theme.surface2 : "transparent"
-                        border.color: window.currentFilter === modelData.name ? _theme.text : _theme.surface1
+                        color: window.currentFilter === modelData.name ? Qt.rgba(_theme.primary.r, _theme.primary.g, _theme.primary.b, 0.22) : (filterMouse.containsMouse ? Qt.rgba(_theme.surface1.r, _theme.surface1.g, _theme.surface1.b, 0.30) : "transparent")
+                        border.color: window.currentFilter === modelData.name ? _theme.primary : (filterMouse.containsMouse ? Qt.rgba(255, 255, 255, 0.20) : "transparent")
                         border.width: window.currentFilter === modelData.name ? window.s(2) : 1
-                        scale: window.currentFilter === modelData.name ? 1.15 : (filterMouse.containsMouse ? 1.08 : 1.0)
+                        scale: window.currentFilter === modelData.name ? 1.12 : (filterMouse.containsMouse ? 1.05 : 1.0)
                         
-                        Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
-                        Behavior on border.color { ColorAnimation { duration: 300 } }
-                        Behavior on color { ColorAnimation { duration: 300 } }
+                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+                        Behavior on border.color { ColorAnimation { duration: 250 } }
+                        Behavior on color { ColorAnimation { duration: 250 } }
 
                         Text {
                             id: filterText

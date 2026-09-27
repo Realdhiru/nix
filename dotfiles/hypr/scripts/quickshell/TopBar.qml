@@ -518,14 +518,33 @@ Variants {
 
                     Rectangle {
                         id: workspacesBox
-                        color: barWindow.pillBg
+                        color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
                         radius: barWindow.s(14)
-                        border.width: Config.borderWidth
-                        border.color: barWindow.pillBorder
+                        border.width: Math.max(1, Config.borderWidth)
+                        border.color: Config.borderWidth > 0 ? barWindow.pillBorder : Qt.rgba(255, 255, 255, Config.glassSpecular)
                         Behavior on color { ColorAnimation { duration: 250 } }
                         Behavior on border.color { ColorAnimation { duration: 250 } }
                         height: barWindow.barHeight
                         clip: true
+
+                        // Anti-bleed base layer
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: parent.radius
+                            color: Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, Config.antiBleedOpacity)
+                            z: -1
+                        }
+
+                        // Top specular reflection highlight
+                        Rectangle {
+                            anchors.top: parent.top
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: Math.max(0, parent.width - parent.radius * 2)
+                            anchors.topMargin: 1
+                            height: 1
+                            color: Qt.rgba(255, 255, 255, 0.16)
+                            radius: 1
+                        }
 
                         width: workspacesModel.count > 0 ? wsLayout.implicitWidth + barWindow.s(20) : 0
 

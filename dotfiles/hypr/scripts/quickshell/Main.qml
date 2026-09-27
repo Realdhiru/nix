@@ -160,7 +160,7 @@ PanelWindow {
         masterWindow.applySettings(settingsFileView.text());
     }
 
-    property var _preloadQueue: ["battery", "network", "music", "clipboard", "monitors", "focustime", "weather_setup", "calendar", "wallpaper"]
+    property var _preloadQueue: ["sunset", "battery", "network", "music", "clipboard", "monitors", "focustime", "weather_setup", "calendar", "wallpaper"]
     property int _preloadIndex: 0
 
     // Defer preloading until 6 seconds after boot so startup is 100% instantaneous with 0ms hitching
@@ -431,8 +431,9 @@ PanelWindow {
         } else {
             delayedClear.stop();
             if (currentActive === "hidden" || !masterWindow.isWindowActive) {
+                morphReenableTimer.stop();
                 masterWindow.morphDuration = 140;
-                masterWindow.disableMorph = false;
+                masterWindow.disableMorph = true;
 
                 let t = getLayout(newWidget);
                 let cachedWidget = widgetCache[newWidget];
@@ -461,6 +462,7 @@ PanelWindow {
 
                 teleportTimer.restart();
             } else {
+                morphReenableTimer.stop();
                 masterWindow.morphDuration = masterWindow.morphDurationShift;
                 masterWindow.disableMorph = false;
                 executeSwitch(newWidget, arg, false);
@@ -563,14 +565,21 @@ PanelWindow {
         }
     }
 
+    Timer {
+        id: morphReenableTimer
+        interval: 180
+        repeat: false
+        onTriggered: masterWindow.disableMorph = false
+    }
+
     property string _pendingWidget: ""
     property string _pendingArg: ""
     Timer {
         id: teleportTimer
-        interval: 32
+        interval: 16
         onTriggered: {
-            masterWindow.disableMorph = false;
-            executeSwitch(masterWindow._pendingWidget, masterWindow._pendingArg, false);
+            executeSwitch(masterWindow._pendingWidget, masterWindow._pendingArg, true);
+            morphReenableTimer.restart();
         }
     }
 }

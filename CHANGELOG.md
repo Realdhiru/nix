@@ -1,18 +1,77 @@
 # CHANGELOG
 
+## 2026-09-27 — OpenCode Diff Row Wash & Wallust Matugen Compatibility Removal
+
+- **OpenCode `+/-` Diff Row Highlight Fixed**:
+  - Diagnosed the opaque black bar on added/removed rows to an upstream defect, not a local one: `generateSystem` builds `diffAddedBg`/`diffRemovedBg` as `tint(bg, ansiColors.green|red, 0.22)`, and `tint()` returns `RGBA.fromInts(...)` with **no alpha channel** — the hue is pre-multiplied into the terminal background at full opacity. Combined with this system's desaturated Wallust `dark16` ANSI ramp (green `#5E5E60`, red `#484849`) over a `#000000` WezTerm background, the rows resolved to `rgb(21,21,21)` / `rgb(16,16,16)` at `a=1.0`.
+  - In [`dotfiles/opencode/tui-plugins/transparent-system-theme.ts`](file:///home/realdhiru/nix/dotfiles/opencode/tui-plugins/transparent-system-theme.ts), replaced the blanket `DIFF_ALPHA` alpha-only pass with a derived `setWash()` that rebuilds the four row keys (`diffAddedBg`, `diffRemovedBg`, `diffAddedLineNumberBg`, `diffRemovedLineNumberBg`) as a translucent wash of `theme.text` over `theme.background`, carrying a light pull toward the row's own `diffAdded`/`diffRemoved` hue so `+`/`-` stay distinguishable.
+  - Result: `rgb(21,21,21) a=1.00` → `#545250 a=0.16` (added) and `rgb(16,16,16) a=1.00` → `#4E4D4A a=0.16` (removed). Line-number gutter keys are derived identically to their row, so there is no two-tone seam.
+  - Zero hardcoded colors — every component is read from `api.theme.current` on each pass, so a wallpaper change re-derives the wash automatically. The wash is idempotent (second pass reports 0 changes), so the 2s guard interval does not spin the renderer.
+  - The wash pass deliberately runs **before** the panel pass so it also wins if a future OpenCode release aliases a row key onto a panel key. `diffContextBg` is explicitly excluded and left fully transparent per the "not the general diff panels" requirement.
+- **Dead Matugen Compat Layer Removed**:
+  - Diagnosis: `~/.cache/matugen` had **zero live consumers**. Every active theme consumer was already migrated to `~/.cache/theme` — GTK/Qt stylesheets ([`modules/home/theme.nix:33,35,58,60,67,75`](file:///home/realdhiru/nix/modules/home/theme.nix)), WezTerm ([`dotfiles/wezterm.lua:21`](file:///home/realdhiru/nix/dotfiles/wezterm.lua)), and QuickShell ([`Theme.qml:37`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Theme.qml)). Remaining `matugen` hits were VSCodium local-history snapshots and Brave IndexedDB caches, not live config.
+  - In [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), removed the `MATUGEN_COMPAT` variable, its `mkdir`, and both blocks of 5 backward-compat symlink creation (neutral path and normal path) — 17 lines deleted.
+  - Deleted the stale `~/.cache/matugen` directory, including 5 orphaned `matugen`-era artifacts from the retired generator (`foot-theme.ini`, `fuzzel-colors.ini`, `swaync.css`, `waybar.css`, `wlogout.css`, `color_worker.lock`) whose target apps are no longer installed.
+  - Verified in an isolated `$HOME` sandbox that Wallust still emits exactly the 6 active `~/.cache/theme` outputs and no longer recreates `~/.cache/matugen`. No change to active color generation.
+
+## 2026-09-27 — Global Consistency Rule, Fuzzel Menu Switching & Glass Translucency Recovery
+
+- **Global Consistency Rule Enforcement**:
+  - Added invariant architectural rule to [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md), [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md), and [`~/.gemini/config/skills/nixos-hyprland/SKILL.md`](file:///home/realdhiru/.gemini/config/skills/nixos-hyprland/SKILL.md) prohibiting isolated, per-widget styling edits and enforcing systemic token-level visual changes across all QuickShell widgets simultaneously.
+- **Fuzzel Single-Press Seamless Menu Switching**:
+  - In [`dotfiles/hypr/scripts/fuzzel_menu.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/fuzzel_menu.sh), implemented mode-aware switching (`$XDG_RUNTIME_DIR/fuzzel_mode`). Pressing the same menu keybind toggles Fuzzel closed, while pressing a different menu keybind (e.g. `SUPER + SPACE` for file search while `app` is open) immediately replaces and switches to the target menu in a single press without closing or requiring a second keypress.
+- **QuickShell Global Glass Translucency & Black Tint Resolution**:
+  - Diagnosed dark/black cast across all QuickShell popups: composite stacking of Wallust's dark `base` at 0.20 opacity over an opaque 0.18 `crust` underlayer created a 35% dark neutral density filter that muted Hyprland's Kawase blur.
+  - In [`dotfiles/hypr/scripts/quickshell/Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml) and [`dotfiles/hypr/settings.json`](file:///home/realdhiru/nix/dotfiles/hypr/settings.json), introduced centralized `Config.antiBleedOpacity` (`0.04`) and updated `popupOpacity` (`0.14`).
+  - Standardized all QuickShell popups (Network, Battery, Music, Calendar, WeatherSetup, FocusTime, Sunset, Monitors, Clipboard, TopBar, Lock) to use the unified token formula, allowing wallpaper vibrancy to shine through clearly.
+
+- **Wallpaper Picker Control Bar & TopBar Leftmost Cluster Glass Alignment**:
+  - In [`dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml), replaced hardcoded 90% solid `_theme.mantle` background on `filterBarBackground` with standard `_theme.base` at `Config.effectivePopupOpacity`, added subtle anti-bleed underlayer (`_theme.crust` at 0.18), specular highlight, and wired active filter indicators to `_theme.primary`.
+  - In [`dotfiles/hypr/scripts/quickshell/TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml), updated `workspacesBox` leftmost cluster to utilize `mocha.base` at `Config.effectivePopupOpacity` with anti-bleed underlayer and specular top hairline instead of opaque `surface1` pill background.
+- **Sunset/Night Light Widget Blur Recovery**:
+  - In [`dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml), resolved 91% composite opacity drowning out Hyprland Kawase blur by standardizing outer card to `root.base` at `Config.effectivePopupOpacity`, a subtle anti-bleed base layer (`root.crust` at 0.18), and specular reflection highlight.
+- **Lockscreen (`Lock.qml`) Complete Redesign**:
+  - **Clock Corner Pill**: Relocated time/date presentation from center vertical card to a top-right frosted glass pill (`36 * sc` height, `cornerMargin = 28 * sc`), hours accented with `root.primary`.
+  - **Bottom-Left Status Text**: Aligned to `cornerMargin` and scaled to `14 * sc` (`Font.DemiBold`), matching QuickShell body type scale tokens.
+  - **Bottom-Right Cluster**: Symmetrically positioned at `cornerMargin` with height `36 * sc`:
+    - **Play/Pause Control**: Frosted glass button bound via native inotify `FileView` watching `Caching.getRunDir('music') + "/music_info.json"` (0ms latency, zero polling), dispatching `playerctl play-pause` on click.
+    - **Password Pill**: Resized from stretched 220px bar to compact `140 * sc` width optimized for 4–8 characters, styled with frosted glass and `root.primary` active dot accents, zero border.
+    - **Battery Indicator**: Pill-styled telemetry displaying charging bolt icon / capacity icon and percentage matching TopBar logic via existing native `FileView` (`BAT0/capacity` + `status`).
+  - **Zero Polling / Process Verification**: Guaranteed zero new `Timer` or `Process` instances; all updates event-driven via sysfs/tmpfs inotify watchers.
+- **Glass Standard Audit — Remaining Popups**:
+  - Applied anti-bleed crust underlayer (`0.18`), specular top highlight (`rgba(255,255,255,0.16)`), and zero border to [`ClipboardManager.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml), [`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml), and [`MonitorPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml).
+  - All QuickShell popups now conform to the unified glass standard: `base` at `Config.effectivePopupOpacity`, crust anti-bleed, specular hairline, zero border.
+
+## 2026-09-26 — QuickShell Animation Stability, Lockscreen Video Warmup, Sunset Redesign & Color Sorting
+
+- **QuickShell Cold-Start First-Open Animation Stabilization**:
+  - In [`dotfiles/hypr/scripts/quickshell/Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml), fixed root cause of the violent shape snap/shrink glitch on the very first popup open after reload: `animW` and `animH` initialized to `1x1` while `disableMorph` was set to `false`, causing an unintended 140ms morph from 1x1 that was cut short by `teleportTimer`.
+  - Enforced `disableMorph = true` during cold open from `hidden`, immediate stack replacement, and deferred morph re-enabling for subsequent open-to-open switches. Added `sunset` to `_preloadQueue`.
+- **Lockscreen Video Wallpaper Instant Warmup & Polling Cleanup**:
+  - In [`dotfiles/hypr/scripts/power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh) and [`dotfiles/hypr/scripts/quickshell/Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml), resolved the ~1s black screen flicker when locking with a video wallpaper: underlaid `bgVideoPoster` (`Image`) displaying the cached JPEG thumbnail frame immediately beneath `VideoOutput`. Frame 0 renders at 0ms latency with zero black flicker while GStreamer initializes.
+  - Eliminated dead 1-second `mediaPoller` process loop (`playerctl status`) and migrated battery monitoring from 5-second bash subshell polling to native inotify-driven `FileView` on `/sys/class/power_supply/BAT0/`.
+- **Wallpaper Picker Sorting by File Type & Aesthetic Hue Wheel**:
+  - In [`dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml), restructured list sorting: first all GIFs (`Rank 0`), then all static images (`Rank 1`), then all videos (`Rank 2`).
+  - Extracted dominant hex colors from cached color markers and converted them to perceptual HSL hue angles ($0^\circ \to 360^\circ$). Neutrals/monochrome sort by lightness band 0, chromatic wallpapers flow across the color wheel in band 1.
+- **Sunset Popup UI Redesign & Anti-Bleed Frost Layering**:
+  - In [`dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml) and [`dotfiles/hypr/scripts/quickshell/WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js), compacted card height from 530px to 420px, eliminating trailing dead space.
+  - Added dark crust underlayer and inner frosted card panels, diffusing background high-contrast wallpaper sketches and lines.
+  - Standardized preset buttons into a symmetrical 4-column grid across all 3 controls (Temperature, Gamma, Saturation) with balanced widths and aligned sliders.
+
 ## 2026-09-26 — Full System Audit, MIME Hardening, Bootloader Safety & Daemon Cleanup
 
 - **Wallust 16-Color Genuine ANSI Dynamic Palette & Contrast Engine**:
   - Switched Wallust backend configuration in [`dotfiles/wallust/wallust.toml`](file:///home/realdhiru/nix/dotfiles/wallust/wallust.toml) and [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh) from `ansidark16` + `lchansi` (which forced fixed default ANSI hues) to `dark16` + `lch` with `--check-contrast`.
   - Terminal 16 ANSI colors are now 100% extracted directly from the active wallpaper without hardcoded ANSI blue/cyan/red defaults.
-  - Added WezTerm hot reload hook in `generate.sh` (`touch` notification on config and `pkill -HUP wezterm-gui`), ensuring instant theme switching across all open transparent terminals.
+  - Added WezTerm inotify file-watch hot reload in `generate.sh` (`touch` notification on config), eliminating lethal `pkill -HUP` signals and ensuring instant theme switching across all open transparent terminals without process termination.
 - **Elimination of Static Blue & Sapphire Color Leaks Across QuickShell Popups**:
-  - Replaced hardcoded `root.blue` in all 10 equalizer slider fills and timeline progress bar gradients in [`dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml) with dynamic `root.primary`.
+  - Replaced hardcoded `root.blue` in all 10 equalizer slider fills and timeline progress bar gradients in [`dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml) with dynamic `root.primary`. Also replaced `root.blue` in the delegate pulse aura `catColors`.
   - Replaced static `window.sapphire` with dynamic `window.primary` in [`dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml).
   - Replaced static `window.blue` with `window.primary` in [`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml) (balanced power profile and action buttons), [`dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml) (charts and progress bars), and [`dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml).
-- **Sunset QuickShell Popup Liquid Glass Styling & Layer Blur**:
+- **Sunset QuickShell Popup Liquid Glass Styling, Layer Blur & Keyboard Arrow Navigation**:
   - Refactored [`dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml) background to use standard `Rectangle` with `root.base` and `Config.effectivePopupOpacity`, enabling Hyprland Kawase layer blur matching all other desktop popups.
-  - Replaced static `root.peach` with dynamic `root.primary` on temperature slider and preset buttons.
+  - Implemented complete keyboard navigation (`Keys.onPressed`): Up/Down cycles focus across Temperature, Gamma, and Saturation with dynamic visual focus indicators and glowing handle rings; Left/Right adjusts active values (Kelvin step 250K, Gamma/Sat step 5%); Digits 1–4 activate respective presets; R/0 resets all; Escape closes popup.
+  - Replaced static `root.peach` with dynamic `root.primary` on temperature slider and preset buttons, purging all remaining peach references.
   - Clamped gamma slider strictly to $\le 100\%$ with clean background daemon termination on default settings.
 - **Spotify Lyrics Window Rule & Geometry**:
   - In [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), corrected class regex to `^(chromium-browser)$` and added a floating window rule for `title = ".*•.*"` (`size = { 320, 110 }`, `no_shadow = true`), eliminating letterbox canvas padding. Global `border_size = 0` governs window borders.

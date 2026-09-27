@@ -105,7 +105,7 @@ Item {
     // Popup & Card Appearance
     property string popupBackgroundSource: config.getSetting("popupBackgroundSource", "base")
     // Opacity options: 0.0 (transparent glass) to 1.0 (solid)
-    property real popupOpacity: config.getSetting("popupOpacity", 0.20)
+    property real popupOpacity: config.getSetting("popupOpacity", 0.14)
     property real cardOpacity: config.getSetting("cardOpacity", 0.04)
     property real topbarPillOpacity: config.getSetting("topbarPillOpacity", 0.35)
     property real topbarPillHoverOpacity: config.getSetting("topbarPillHoverOpacity", 0.60)
@@ -125,6 +125,7 @@ Item {
     property bool isSolidMode: false
     readonly property real effectivePopupOpacity: config.isSolidMode ? 1.0 : config.popupOpacity
     readonly property real effectiveCardOpacity: config.isSolidMode ? 0.40 : config.cardOpacity
+    readonly property real antiBleedOpacity: config.isSolidMode ? 0.0 : 0.04
     property bool topbarHelpIcon: true
     property int workspaceCount: 8
     property int initialWorkspaceCount: 8

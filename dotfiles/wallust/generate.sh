@@ -8,9 +8,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_CACHE="$HOME/.cache/theme"
-MATUGEN_COMPAT="$HOME/.cache/matugen"
 
-mkdir -p "$TARGET_CACHE" "$MATUGEN_COMPAT"
+mkdir -p "$TARGET_CACHE"
 
 if [ $# -lt 1 ]; then
     echo "Usage: $0 <path-to-wallpaper|--neutral> [dark|light]"
@@ -115,13 +114,6 @@ EOF
 # 1. Handle Neutral Theme Mode (pure pitch-black OLED desktop state)
 if [ "$WALLPAPER" = "--neutral" ]; then
     emit_neutral_theme
-
-    # Backward compatibility symlinks
-    ln -sf "$TARGET_CACHE/colors.json" "$MATUGEN_COMPAT/qs_colors.json"
-    ln -sf "$TARGET_CACHE/wezterm-colors.lua" "$MATUGEN_COMPAT/wezterm-colors.lua"
-    ln -sf "$TARGET_CACHE/gtk.css" "$MATUGEN_COMPAT/gtk.css"
-    ln -sf "$TARGET_CACHE/qtct.conf" "$MATUGEN_COMPAT/qtct.conf"
-    ln -sf "$TARGET_CACHE/qt-style.qss" "$MATUGEN_COMPAT/qt-style.qss"
 
     # Notify client applications
     pkill -USR2 cava 2>/dev/null || true
@@ -310,18 +302,10 @@ if len(c) >= 6:
     fi
 fi
 
-# Backward compatibility symlinks for apps expecting legacy paths
-ln -sf "$TARGET_CACHE/colors.json" "$MATUGEN_COMPAT/qs_colors.json"
-ln -sf "$TARGET_CACHE/wezterm-colors.lua" "$MATUGEN_COMPAT/wezterm-colors.lua"
-ln -sf "$TARGET_CACHE/gtk.css" "$MATUGEN_COMPAT/gtk.css"
-ln -sf "$TARGET_CACHE/qtct.conf" "$MATUGEN_COMPAT/qtct.conf"
-ln -sf "$TARGET_CACHE/qt-style.qss" "$MATUGEN_COMPAT/qt-style.qss"
-
 # Notify client applications if running
 pkill -USR2 cava 2>/dev/null || true
 touch "$TARGET_CACHE/wezterm-colors.lua" 2>/dev/null || true
 touch "$HOME/nix/dotfiles/wezterm.lua" 2>/dev/null || true
-pkill -HUP wezterm-gui 2>/dev/null || true
 if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
     hyprctl reload >/dev/null 2>&1 || true
 fi

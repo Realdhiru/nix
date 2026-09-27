@@ -62,12 +62,29 @@
     force = true;
   };
 
-  xdg.configFile."opencode/ponytail".source =
-    config.lib.file.mkOutOfStoreSymlink "${inputs.ponytail}";
+  xdg.configFile."opencode/ponytail" = {
+    source = config.lib.file.mkOutOfStoreSymlink "${inputs.ponytail}";
+    force = true;
+  };
 
   xdg.configFile."opencode/opencode.jsonc" = {
     source = config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/nix/dotfiles/opencode/opencode.jsonc";
+    force = true;
+  };
+
+  # TUI-only plugins live in a "tui-plugins" dir on purpose: the server-side
+  # auto-scan of "opencode/plugin" would try to load them and fail, because
+  # they export a tui() hook instead of server().
+  xdg.configFile."opencode/tui.json" = {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/opencode/tui.json";
+    force = true;
+  };
+
+  xdg.configFile."opencode/tui-plugins" = {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/opencode/tui-plugins";
     force = true;
   };
 

@@ -541,12 +541,33 @@ Item {
         opacity: introMain
 
         Rectangle {
+            id: mainCardRect
             anchors.fill: parent
             radius: window.s(20)
             color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
-            border.color: Config.borderWidth > 0 ? window.surface1 : "transparent"
-            border.width: Config.borderWidth
+            border.color: "transparent"
+            border.width: 0
             clip: true
+
+            // Anti-bleed base
+            Rectangle {
+                anchors.fill: parent
+                radius: parent.radius
+                color: Qt.rgba(window.crust.r, window.crust.g, window.crust.b, Config.antiBleedOpacity)
+                z: -1
+            }
+
+            // Top specular highlight
+            Rectangle {
+                anchors.top: parent.top
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.max(0, parent.width - parent.radius * 2)
+                anchors.topMargin: 1
+                height: 1
+                color: Qt.rgba(255, 255, 255, 0.16)
+                radius: 1
+                z: 10
+            }
 
             Rectangle {
                 width: parent.width * 1.2; height: width; radius: width / 2

@@ -32,9 +32,19 @@ cmd_lock() {
     fi
 
     # Reset any stale compositor crash state before launching
-    hyprctl dispatch eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
+    hyprctl eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
 
-    export CURRENT_WALLPAPER="$(head -n 1 "$HOME/.cache/current_wallpaper.txt" 2>/dev/null || true)"
+    local wp="$(head -n 1 "$HOME/.cache/current_wallpaper.txt" 2>/dev/null || true)"
+    export CURRENT_WALLPAPER="$wp"
+    export CURRENT_WALLPAPER_THUMB=""
+    if [[ "$wp" =~ \.(mp4|mkv|mov|webm)$ ]]; then
+        local base="$(basename "$wp")"
+        local thumb="$(find "$HOME/.cache/quickshell/wallpaper_picker/thumbs" -name "*_${base}.jpg" -print -quit 2>/dev/null || true)"
+        if [ -z "$thumb" ] && [ -f "/tmp/thumb_${base}.jpg" ]; then
+            thumb="/tmp/thumb_${base}.jpg"
+        fi
+        export CURRENT_WALLPAPER_THUMB="$thumb"
+    fi
     export SYS_KERNEL="$(uname -r 2>/dev/null || true)"
     export SYS_LOAD="$(awk '{print $1, $2, $3}' /proc/loadavg 2>/dev/null || true)"
     export SYS_UPTIME="$(awk '{h=int($1/3600); m=int(($1%3600)/60); printf "%dh %02dm", h, m}' /proc/uptime 2>/dev/null || true)"
@@ -53,11 +63,25 @@ cmd_lock() {
         fi
     fi
 
-    "$qs_bin" -p "$LOCK_QML"
+    local crash_log="/run/user/${UID:-1000}/quickshell/lock_crash.log"
+    mkdir -p "$(dirname "$crash_log")"
+
+    # Watchdog cleanup trap: clear crashed session lock if process terminates abnormally
+    cleanup_lock() {
+        local code=$?
+        if [ $code -ne 0 ]; then
+            echo "[power.sh $(date '+%Y-%m-%d %H:%M:%S')] Lock process exited with code $code. Executing emergency clear_crashed_lockscreen failsafe." >> "$crash_log"
+            hyprctl eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
+        fi
+    }
+    trap cleanup_lock EXIT INT TERM HUP
+
+    "$qs_bin" -p "$LOCK_QML" 2> >(tee -a "$crash_log" >&2)
     local exit_code=$?
     if [ $exit_code -ne 0 ]; then
-        hyprctl dispatch eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
+        hyprctl eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
     fi
+    trap - EXIT INT TERM HUP
     exit $exit_code
 }
 

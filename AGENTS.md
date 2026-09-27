@@ -23,6 +23,10 @@ After successfully resolving any issue, bug, or feature implementation:
   - `import Quickshell.Hyprland` (`focusedWorkspace`, `workspaces`, `rawEvent`) for 6ms workspace IPC.
   - `import Quickshell.Services.Pipewire` (`Pipewire.defaultAudioSink.audio`) for 8ms volume/mute D-Bus signals.
   - `Quickshell.Io.FileWatcher` for direct sysfs state changes.
+- **Global Consistency & Mandatory Confirmation Rule**:
+  - **System-Wide Scope**: Applies to ANY visual/theme change across the entire system — QuickShell widgets, Fuzzel, hyprlock, waybar/topbar, window borders, `rules.lua` opacity/blur rules, or any other app/window whose appearance is part of this desktop system (not just QuickShell).
+  - **Zero One-Off Overrides**: NEVER make a change scoped to a single widget/app's look in isolation. Any visual change (opacity, blur, color token, border, radius, spacing) must be applied consistently across every widget/app that shares that visual category in the same pass, using shared Theme/Config tokens.
+  - **Mandatory Check-In Before UI Changes**: Before applying ANY UI/visual/theme change — whether explicitly requested or proposed as a side effect of a fix — you MUST stop and ask the user for guidance first. Present the exact proposed changes, file paths, line numbers, and whether changes are scoped or system-wide. Do NOT proceed until the user explicitly confirms. (Exception: pure functional bug fixes with zero visual/behavioral changes do not require pre-confirmation).
 - **Single-Pass Popup Scaler Bounds**: In popup QML components, `Scaler` must use `currentWidth: Screen.width` (single-pass reference). Never pass device-pixel bounds (`Config.masterWidth`) to popup `Scaler` instances, as it causes double-scaling multiplication (`1.33x x 1.33x = 1.77x`) that clips content off-screen.
 - **Dynamic Workspace Tracking**: Workspace tracking in `TopBar.qml` must be dynamic (`Math.max(6, focusedId, maxOccupiedId)`) without arbitrary upper caps (no `<= 10` limits), preserving the 1–6 layout for standard workspaces.
 - **Content-Minimum Music Geometry**: TopBar music widget column width (`mediaInfoColumn`) must be derived from non-negotiable content (`timeText.implicitWidth`). Short song titles (e.g. `命盤`) must **never** shrink the column or clip the timeline (`01:24 / 06:45`), and long titles must marquee scroll inside the title area.
@@ -38,6 +42,10 @@ After successfully resolving any issue, bug, or feature implementation:
 - **Read-Only First**: Always perform a read-only investigation and geometry/code trace before modifying files.
 - **Pre-Deletion Audit**: Document what information an old script provided and its native replacement before retiring it.
 - **Live Empirical Verification**: Editing a file does not equal completing a task. Always restart/rebuild and measure actual runtime behavior, latency, and power metrics.
+- **QuickShell Visual & Cold-Start Protocol**: Before declaring any QuickShell widget done:
+  - Verify layout proportions and check for leftover/dead space or mismatched button grids.
+  - Verify anti-bleed layering so high-contrast wallpaper sketches/lines do not show through translucent glass panels.
+  - Empirically test the **FIRST open** immediately after a fresh cold `forceReload` to ensure no shape snap, shrink, or uninitialized geometry glitch occurs.
 
 ---
 

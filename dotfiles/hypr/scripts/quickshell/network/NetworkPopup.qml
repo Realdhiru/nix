@@ -940,6 +940,26 @@ Item {
             border.width: Config.borderWidth
             clip: true
 
+            // Anti-bleed base
+            Rectangle {
+                anchors.fill: parent
+                radius: parent.radius
+                color: Qt.rgba(window.crust.r, window.crust.g, window.crust.b, Config.antiBleedOpacity)
+                z: -1
+            }
+
+            // Top specular highlight
+            Rectangle {
+                anchors.top: parent.top
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.max(0, parent.width - parent.radius * 2)
+                anchors.topMargin: 1
+                height: 1
+                color: Qt.rgba(255, 255, 255, 0.16)
+                radius: 1
+                z: 10
+            }
+
             Rectangle {
                 width: parent.width * 0.8; height: width; radius: width / 2
                 x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)

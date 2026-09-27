@@ -6,10 +6,23 @@
 #
 set -euo pipefail
 
-# If fuzzel is already open, toggle it closed immediately
-if pkill -x fuzzel; then
-    exit 0
+MODE="${1:-app}"
+MODE_FILE="${XDG_RUNTIME_DIR:-/tmp}/fuzzel_mode"
+
+# If fuzzel is already open: toggle off if same mode, or switch seamlessly if different mode
+if pgrep -x fuzzel >/dev/null 2>&1; then
+    ACTIVE_MODE="$(cat "$MODE_FILE" 2>/dev/null || echo "")"
+    if [ "$ACTIVE_MODE" = "$MODE" ]; then
+        pkill -x fuzzel || true
+        rm -f "$MODE_FILE"
+        exit 0
+    fi
+    pkill -x fuzzel || true
+    # Brief yield to let Wayland layer surface release before re-spawning
+    sleep 0.05
 fi
+
+echo "$MODE" > "$MODE_FILE"
 
 # Detect power & compositor state for solid background fallback
 CURRENT_PROFILE="$(cat "$HOME/.cache/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
@@ -19,8 +32,6 @@ if [ -f "$HOME/.cache/wallpaper_killed" ] || \
    [ "$CURRENT_PROFILE" = "power-saver" ]; then
     SOLID_BG=true
 fi
-
-MODE="${1:-app}"
 
 case "$MODE" in
     app|apps)
