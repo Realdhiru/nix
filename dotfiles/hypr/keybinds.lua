@@ -92,8 +92,6 @@ hl.bind(mainMod .. " + ALT + D", hl.dsp.exec_cmd('brave  --profile-directory="De
 -- Screenshots & Recording
 -- ======================================================
 
-hl.bind(mainMod .. " + CTRL + S", hl.dsp.exec_cmd(scripts .. "cycle-shader.sh"))
-
 hl.bind(mainMod .. " + SHIFT + Z", hl.dsp.exec_cmd(scripts .. "screenshot.sh area"))
 hl.bind(mainMod .. " + CTRL + SHIFT + Z", hl.dsp.exec_cmd(scripts .. "screenshot.sh freeze"))
 hl.bind("Print", hl.dsp.exec_cmd(scripts .. "screenshot.sh screen"))

@@ -535,16 +535,6 @@ Variants {
                             z: -1
                         }
 
-                        // Top specular reflection highlight
-                        Rectangle {
-                            anchors.top: parent.top
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: Math.max(0, parent.width - parent.radius * 2)
-                            anchors.topMargin: 1
-                            height: 1
-                            color: Qt.rgba(255, 255, 255, 0.16)
-                            radius: 1
-                        }
 
                         width: workspacesModel.count > 0 ? wsLayout.implicitWidth + barWindow.s(20) : 0
 
@@ -710,16 +700,6 @@ Variants {
                             z: -1
                         }
 
-                        // Top specular reflection highlight
-                        Rectangle {
-                            anchors.top: parent.top
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: Math.max(0, parent.width - parent.radius * 2)
-                            anchors.topMargin: 1
-                            height: 1
-                            color: Qt.rgba(255, 255, 255, 0.16)
-                            radius: 1
-                        }
 
                         readonly property bool activeNow: barWindow.musicData.status === "Playing" && barWindow.hasVisibleMedia
                         width: activeNow ? infoLayout.implicitWidth + barWindow.s(24) : 0
@@ -925,16 +905,6 @@ Variants {
                                 z: -1
                             }
 
-                            // Top specular reflection highlight
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: Math.max(0, parent.width - parent.radius * 2)
-                                anchors.topMargin: 1
-                                height: 1
-                                color: Qt.rgba(255, 255, 255, 0.16)
-                                radius: 1
-                            }
                         height: barWindow.barHeight
                         width: (centerBox.notifActive ? notifLayout.implicitWidth : centerLayout.implicitWidth) + barWindow.s(36)
                         Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutExpo } }
@@ -1295,16 +1265,6 @@ Variants {
                                 z: -1
                             }
 
-                            // Top specular reflection highlight
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: Math.max(0, parent.width - parent.radius * 2)
-                                anchors.topMargin: 1
-                                height: 1
-                                color: Qt.rgba(255, 255, 255, 0.16)
-                                radius: 1
-                            }
 
                             width: sysLayout.implicitWidth + barWindow.s(20)
 
@@ -1381,16 +1341,6 @@ Variants {
                                 z: -1
                             }
 
-                            // Top specular reflection highlight
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: Math.max(0, parent.width - parent.radius * 2)
-                                anchors.topMargin: 1
-                                height: 1
-                                color: Qt.rgba(255, 255, 255, 0.16)
-                                radius: 1
-                            }
 
                             property real targetWidth: barWindow.isRecording ? barWindow.barHeight : 0
                             width: targetWidth

@@ -26,7 +26,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - Layer surface dismissals must be two-phase: keep `visible = true` while running exit transitions (130ms fade/scale), setting `visible = false` only when opacity reaches 0. Never unmap the layer surface on frame 0.
   - QuickShell widgets must remain in separate modular files. Lazy QML compilation ensures inactive widgets consume zero CPU cycles, RAM, or timers.
   - Layer blur rules in `rules.lua` must match all QuickShell namespaces (`namespace = "^(quickshell|qs-.*)$"`) with `ignore_alpha = 0.05` to guarantee hardware Kawase blur behind every surface.
-  - Frosted glass cards and floating control bars must use `root.base` at `Config.effectivePopupOpacity` backed by a subtle anti-bleed base layer (`crust` at 0.16–0.18) and specular reflection highlight. Never stack high-opacity (>0.80) solid crust fills that drown out compositor blur.
+  - Frosted glass cards and floating control bars must use `root.base` at `Config.effectivePopupOpacity` backed by a subtle anti-bleed base layer (`crust` at 0.16–0.18). Never stack high-opacity (>0.80) solid crust fills that drown out compositor blur, and do not add top specular 1px hairlines.
   - **Global Consistency & Mandatory Confirmation Rule**:
     - **Scope**: Applies to ANY visual/theme change across the entire system (QuickShell widgets, Fuzzel, hyprlock, topbar, window borders, `rules.lua` layer rules, etc.).
     - **No Local Overrides**: Visual properties (opacity, blur, tokens, borders, radius, spacing) must be applied across every widget/app sharing that visual category in a single pass using shared tokens.
@@ -35,6 +35,8 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - Music geometry derives from `timeText.implicitWidth` minimum bounds; long titles marquee scroll.
   - Lockscreen live wallpaper draws inside `Lock.qml` via `WlSessionLock`. Lockscreen telemetry and media controls must remain 100% zero-polling, bound exclusively via kernel/tmpfs inotify `FileView` watchers (`/sys/class/power_supply/BAT0/`, `music_info.json`).
   - **Theme Singleton Attempt & Constraint**: Attempted `Theme.qml` `pragma Singleton` consolidation on 2026-09-27 — caused system-wide black/undefined color rendering across all widgets simultaneously, root cause suspected to be a load-order race unique to singleton lifecycle (`FileView` not resolved before first property access), not fully diagnosed before reverting. Reverted to per-widget `Theme {}` instantiation, confirmed working. Do not retry without first writing a minimal isolated test case for singleton + `FileView` load-order behavior in QML before touching the real widget suite again.
+  - **Display & Shader Architecture Split**: `hyprsunset` daemon owns Temperature + Gamma (hardware CTM/gamma LUT). Hyprland's single `decoration:screen_shader` slot owns Saturation + Paper Grain + CRT Curvature together in one unified GLSL file, since Hyprland only supports one active `screen_shader` at a time. These two systems are fully independent.
+
 
 ### 4. Hardware Quirks Modularization (`hosts/nixos/hardware/`)
 - **ASUS Vivobook OLED (`asus.nix`):**

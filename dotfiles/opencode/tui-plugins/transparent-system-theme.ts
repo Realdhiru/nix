@@ -94,34 +94,49 @@ export default {
       return true
     }
 
-    // Installs a brand new RGBA instance for the menu so the panel pass above
-    // can never reach it through a shared upstream reference, and so an aliased
-    // backgroundPanel/backgroundElement object can never be dragged opaque with
-    // it. The base RGB is snapshotted into plain numbers FIRST: this runs after
-    // the panel pass, and reading theme.background/theme.text live here would
-    // mix in whatever those objects were just mutated into.
+    // Writes the opaque menu shade onto the LIVE backgroundMenu object in place.
+    //
+    // Reassigning `theme[MENU_KEY] = ...` looks correct but is a silent no-op:
+    // context/theme.tsx:275 hands plugins `new Proxy(values(), { get })` with NO
+    // set trap, so an assignment lands on the Proxy's target - the object
+    // captured when the Proxy was built - and is never read again. The memo
+    // keeps handing out resolveTheme()'s fresh object instead, so the menu
+    // stayed transparent. In-place field writes go through the get trap to the
+    // current generation and are the only form that survives.
+    //
+    // Distinctness still has to be established here rather than by allocating a
+    // new RGBA: a fresh instance can never be handed back to the renderer. The
+    // live object is claimed for the menu via `decided` and never enters the
+    // panel pass, so it cannot alias background/backgroundPanel/backgroundElement
+    // - each of those is a separate resolveTheme() instance for a named theme.
+    // Base RGB is snapshotted to plain numbers first: this runs after the panel
+    // pass, and reading theme.background live would mix in what it just became.
     const setMenu = (theme: Theme) => {
+      const current = theme[MENU_KEY]
       const src = theme.background
       const light = theme.text
-      if (!src || !light) return false
-      const RGBA = Object.getPrototypeOf(src).constructor
-      if (typeof RGBA?.fromValues !== "function") return false
+      if (!current || !src || !light) return false
+      // Refuse to paint the menu onto a surface the panel pass owns; that would
+      // make the whole window opaque, which is the exact failure being fixed.
+      for (const key of [WASH_KEYS[0], "background", ...PANEL_KEYS, ...DIFF_KEYS]) {
+        if (theme[key] === current) return false
+      }
       const base = [src.r ?? 0, src.g ?? 0, src.b ?? 0]
       const lit = [light.r ?? 0, light.g ?? 0, light.b ?? 0]
       const target = [0, 1, 2].map((i) => base[i]! + (lit[i]! - base[i]!) * MENU_LIGHT_MIX)
-      const current = theme[MENU_KEY]
       // Idempotent: re-deriving the same floats must not retrigger a render.
       if (
-        current &&
         current.a === 1 &&
         Math.abs(current.r - target[0]!) < 0.002 &&
         Math.abs(current.g - target[1]!) < 0.002 &&
         Math.abs(current.b - target[2]!) < 0.002
       )
         return false
-      const menu = RGBA.fromValues(target[0]!, target[1]!, target[2]!, 1)
-      theme[MENU_KEY] = menu
-      decided.add(menu)
+      current.r = target[0]!
+      current.g = target[1]!
+      current.b = target[2]!
+      current.a = 1
+      decided.add(current)
       return true
     }
 
@@ -130,12 +145,18 @@ export default {
     // working and a wallpaper change re-derives the wash automatically.
     const apply = () => {
       const theme = api.theme.current as unknown as Theme
-      const system = api.theme.selected === "system" && theme.background?.a === 0
       decided.clear()
       let changed = false
 
       for (const key of WASH_KEYS) changed = setWash(theme, key) || changed
-      if (!system && theme.background && theme.selectedListItemText !== theme.background) {
+      // No `system` gate here. api.theme.selected is "wallust", not "system",
+      // so gating on it left theme.background at alpha 1 and the window stayed
+      // solid black. The guard is identity-based instead: if background is the
+      // very same object as a wash key it is already tinted, and if it is shared
+      // with the selection text there is nothing safe to zero. Everything else
+      // gets PANEL_ALPHA so the wallpaper shows through.
+      const bg = theme.background
+      if (bg && WASH_KEYS.every((key) => theme[key] !== bg)) {
         changed = setAlpha(theme, "background", PANEL_ALPHA) || changed
       }
       for (const key of PANEL_KEYS) changed = setAlpha(theme, key, PANEL_ALPHA) || changed

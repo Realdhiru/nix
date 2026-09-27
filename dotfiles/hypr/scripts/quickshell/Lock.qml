@@ -463,21 +463,21 @@ ShellRoot {
                 Item {
                     anchors.fill: parent
 
-                    // Top Right: Clock Pill (Scaled 3x length with proportional height/typography)
+                    // Top Right: Clock Pill (Tight content geometry)
                     Rectangle {
                         id: clockCornerPill
                         anchors.top: parent.top
                         anchors.topMargin: screenRoot.cornerMargin
                         anchors.right: parent.right
                         anchors.rightMargin: screenRoot.cornerMargin
-                        height: Math.round(56 * screenRoot.sc)
-                        width: Math.max(Math.round(420 * screenRoot.sc), clockInnerRow.implicitWidth + Math.round(52 * screenRoot.sc))
+                        height: Math.round(48 * screenRoot.sc)
+                        width: clockInnerRow.implicitWidth + Math.round(28 * screenRoot.sc)
                         radius: height / 2
                         clip: true
 
-                        color: Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity + 0.12)
-                        border.width: 0
-                        border.color: "transparent"
+                        color: Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity)
+                        border.width: Config.borderWidth
+                        border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(255, 255, 255, Config.borderOpacity) : "transparent"
                         opacity: screenRoot.introState
 
                         // Anti-bleed base
@@ -488,21 +488,10 @@ ShellRoot {
                             z: -1
                         }
 
-                        // Top specular highlight
-                        Rectangle {
-                            anchors.top: parent.top
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: Math.max(0, parent.width - clockCornerPill.radius * 2)
-                            anchors.topMargin: 1
-                            height: 1
-                            color: Qt.rgba(255, 255, 255, 0.16)
-                            radius: 1
-                        }
-
                         Row {
                             id: clockInnerRow
                             anchors.centerIn: parent
-                            spacing: Math.round(18 * screenRoot.sc)
+                            spacing: Math.round(14 * screenRoot.sc)
 
                             Row {
                                 anchors.verticalCenter: parent.verticalCenter
@@ -512,7 +501,7 @@ ShellRoot {
                                     id: clockHours
                                     text: Qt.formatDateTime(new Date(), "hh")
                                     font.family: "JetBrains Mono"
-                                    font.pixelSize: Math.round(26 * screenRoot.sc)
+                                    font.pixelSize: Math.round(22 * screenRoot.sc)
                                     font.weight: Font.Black
                                     color: root.primary
                                 }
@@ -520,7 +509,7 @@ ShellRoot {
                                 Text {
                                     text: ":"
                                     font.family: "JetBrains Mono"
-                                    font.pixelSize: Math.round(26 * screenRoot.sc)
+                                    font.pixelSize: Math.round(22 * screenRoot.sc)
                                     font.weight: Font.Black
                                     color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.5)
                                 }
@@ -529,7 +518,7 @@ ShellRoot {
                                     id: clockMinutes
                                     text: Qt.formatDateTime(new Date(), "mm")
                                     font.family: "JetBrains Mono"
-                                    font.pixelSize: Math.round(26 * screenRoot.sc)
+                                    font.pixelSize: Math.round(22 * screenRoot.sc)
                                     font.weight: Font.Black
                                     color: root.lockText
                                 }
@@ -539,7 +528,7 @@ ShellRoot {
                             Rectangle {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 1
-                                height: Math.round(22 * screenRoot.sc)
+                                height: Math.round(18 * screenRoot.sc)
                                 color: Qt.rgba(255, 255, 255, 0.18)
                             }
 
@@ -548,9 +537,9 @@ ShellRoot {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: Qt.formatDateTime(new Date(), "ddd, MMM d")
                                 font.family: "JetBrains Mono"
-                                font.pixelSize: Math.round(18 * screenRoot.sc)
-                                font.weight: 600
-                                color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.8)
+                                font.pixelSize: Math.round(15 * screenRoot.sc)
+                                font.weight: Font.DemiBold
+                                color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.85)
                             }
                         }
 
@@ -568,7 +557,7 @@ ShellRoot {
                         }
                     }
 
-                    // Bottom Left: Status / Quote Text (Clean 14px Theme token)
+                    // Bottom Left: Status / Quote Text (Clean 15px Theme token)
                     Text {
                         anchors.bottom: parent.bottom
                         anchors.bottomMargin: screenRoot.cornerMargin
@@ -576,9 +565,9 @@ ShellRoot {
                         anchors.leftMargin: screenRoot.cornerMargin
                         text: screenRoot.splashQuote !== "" ? screenRoot.splashQuote : "Have a nice day!"
                         font.family: "JetBrains Mono"
-                        font.pixelSize: Math.round(14 * screenRoot.sc)
-                        font.weight: 600
-                        color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.75)
+                        font.pixelSize: Math.round(15 * screenRoot.sc)
+                        font.weight: Font.DemiBold
+                        color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.85)
                         width: Math.min(implicitWidth, parent.width * 0.45)
                         elide: Text.ElideRight
                         opacity: screenRoot.introState
@@ -592,7 +581,7 @@ ShellRoot {
                         anchors.right: parent.right
                         anchors.rightMargin: screenRoot.cornerMargin
                         spacing: Math.round(10 * screenRoot.sc)
-                        height: Math.round(36 * screenRoot.sc)
+                        height: Math.round(38 * screenRoot.sc)
                         opacity: screenRoot.introState
 
                         // 1. Play/Pause Media Control Button (Leftmost in cluster)
@@ -608,9 +597,9 @@ ShellRoot {
                                 ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.35)
                                 : (mediaMouse.containsMouse
                                     ? Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.35)
-                                    : Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity + 0.12))
-                            border.width: 0
-                            border.color: "transparent"
+                                    : Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity))
+                            border.width: Config.borderWidth
+                            border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(255, 255, 255, Config.borderOpacity) : "transparent"
 
                             scale: mediaMouse.pressed ? 0.94 : (mediaMouse.containsMouse ? 1.05 : 1.0)
                             Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
@@ -622,17 +611,6 @@ ShellRoot {
                                 radius: parent.radius
                                 color: Qt.rgba(root.crust.r, root.crust.g, root.crust.b, Config.antiBleedOpacity)
                                 z: -1
-                            }
-
-                            // Specular highlight
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: Math.max(0, parent.width - parent.radius * 2)
-                                anchors.topMargin: 1
-                                height: 1
-                                color: Qt.rgba(255, 255, 255, 0.16)
-                                radius: 1
                             }
 
                             Text {
@@ -660,7 +638,7 @@ ShellRoot {
                         // 2. Password Input Pill (Center in cluster, compact fixed width)
                         Rectangle {
                             id: pinPill
-                            width: Math.round(140 * screenRoot.sc)
+                            width: Math.round(150 * screenRoot.sc)
                             height: parent.height
                             radius: height / 2
                             clip: true
@@ -671,9 +649,9 @@ ShellRoot {
                                     ? Qt.rgba(root.peach.r, root.peach.g, root.peach.b, 0.22)
                                     : (passModel.count > 0
                                         ? Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.32)
-                                        : Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity + 0.12)))
-                            border.width: 0
-                            border.color: "transparent"
+                                        : Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity)))
+                            border.width: Config.borderWidth
+                            border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(255, 255, 255, Config.borderOpacity) : "transparent"
 
                             scale: pinMouse.containsMouse ? 1.02 : (lockUI.authenticating ? 0.98 : 1.0)
                             Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
@@ -685,17 +663,6 @@ ShellRoot {
                                 radius: parent.radius
                                 color: Qt.rgba(root.crust.r, root.crust.g, root.crust.b, Config.antiBleedOpacity)
                                 z: -1
-                            }
-
-                            // Specular highlight
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: Math.max(0, parent.width - pinPill.radius * 2)
-                                anchors.topMargin: 1
-                                height: 1
-                                color: Qt.rgba(255, 255, 255, 0.16)
-                                radius: 1
                             }
 
                             transform: Translate { id: shakeTranslate; x: 0 }
@@ -726,8 +693,8 @@ ShellRoot {
                                 font.family: "JetBrains Mono"
                                 font.italic: true
                                 font.weight: Font.Medium
-                                font.pixelSize: Math.round(11 * screenRoot.sc)
-                                color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.45)
+                                font.pixelSize: Math.round(12 * screenRoot.sc)
+                                color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.50)
                                 Behavior on opacity { NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
                             }
 
@@ -739,7 +706,7 @@ ShellRoot {
                                 text: "Verifying..."
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: Math.round(11 * screenRoot.sc)
+                                font.pixelSize: Math.round(12 * screenRoot.sc)
                                 color: root.peach
 
                                 SequentialAnimation on opacity {
@@ -758,7 +725,7 @@ ShellRoot {
                                 text: "Access Denied"
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: Math.round(11 * screenRoot.sc)
+                                font.pixelSize: Math.round(12 * screenRoot.sc)
                                 color: root.red
                             }
 
@@ -916,9 +883,9 @@ ShellRoot {
                             radius: height / 2
                             clip: true
 
-                            color: Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity + 0.12)
-                            border.width: 0
-                            border.color: "transparent"
+                            color: Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity)
+                            border.width: Config.borderWidth
+                            border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(255, 255, 255, Config.borderOpacity) : "transparent"
 
                             // Anti-bleed base
                             Rectangle {
@@ -926,17 +893,6 @@ ShellRoot {
                                 radius: parent.radius
                                 color: Qt.rgba(root.crust.r, root.crust.g, root.crust.b, Config.antiBleedOpacity)
                                 z: -1
-                            }
-
-                            // Specular highlight
-                            Rectangle {
-                                anchors.top: parent.top
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: Math.max(0, parent.width - parent.radius * 2)
-                                anchors.topMargin: 1
-                                height: 1
-                                color: Qt.rgba(255, 255, 255, 0.16)
-                                radius: 1
                             }
 
                             Row {

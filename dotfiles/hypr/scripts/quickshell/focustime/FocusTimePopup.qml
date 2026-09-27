@@ -557,17 +557,6 @@ Item {
                 z: -1
             }
 
-            // Top specular highlight
-            Rectangle {
-                anchors.top: parent.top
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: Math.max(0, parent.width - parent.radius * 2)
-                anchors.topMargin: 1
-                height: 1
-                color: Qt.rgba(255, 255, 255, 0.16)
-                radius: 1
-                z: 10
-            }
 
             Rectangle {
                 width: parent.width * 1.2; height: width; radius: width / 2

@@ -354,17 +354,6 @@ Item {
             border.color: "transparent"
             radius: root.s(10)
 
-            // Top specular highlight
-            Rectangle {
-                anchors.top: parent.top
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: Math.max(0, parent.width - parent.radius * 2)
-                anchors.topMargin: 1
-                height: 1
-                color: Qt.rgba(255, 255, 255, 0.16)
-                radius: 1
-                z: 10
-            }
 
             layer.enabled: true
 

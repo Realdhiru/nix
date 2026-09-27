@@ -1,6 +1,21 @@
 # CHANGELOG
 
-## 2026-09-27 — TopBar Glass Consistency, Lockscreen Media Fix & Antigravity Toolchain
+## 2026-09-28 — Display & Night Light Paper Grain & CRT Curvature Shaders
+
+- **Paper Grain & CRT Curvature Sliders Added**:
+  - Integrated 2 new sliders (Paper Grain and CRT Window Curvature) into [`dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml).
+  - **Paper Grain Slider** (0% to 100%): Maps to `paper_grain(uv0)` procedural film grain derived from [`paper-tv.frag`](file:///home/realdhiru/nix/dotfiles/hypr/shaders/paper-tv.frag).
+  - **CRT Curvature Slider** (0% to 100%): Maps to CRT curvature strength (`CRT_STRENGTH`) from `paper-tv.frag`, preserving the exact `ZOOM` compensation (`mix(1.0, 1.015, crtStrength)`) to eliminate black corners.
+  - **Curvature-Only Scope**: Scanlines (`SCANLINE_STRENGTH = 0.0`), chromatic aberration (`ABERRATION = 0.00`), vignette darkening (`VIGNETTE_RADIUS = 2.0`), and glow (`GLOW = 0.0`) are locked at zero visual impact regardless of CRT slider position.
+  - **Zero-Cost Unload**: Returning Saturation to 100%, Grain to 0%, and CRT to 0% unloads `screen_shader` (`decoration:screen_shader = ''`) and removes cached shader files (`~/.cache/screen_shader.frag`), ensuring zero GPU pass overhead when inactive.
+  - **Debounced Updates & Layout**: Added a 50ms QML timer debounce (`applyTimer`) to prevent Hyprland shader recompilation spam during smooth slider dragging. Expanded popup height to `630px` in [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js#L18) and `SunsetPopup.qml` to accommodate all 5 controls with full keybindings (1-4 presets, Arrow keys, 0/R reset).
+- **Retired Legacy Static Shaders & Helpers**:
+  - Removed obsolete static `.frag` files (`dotfiles/hypr/shaders/`), manual cycling script (`dotfiles/hypr/scripts/cycle-shader.sh`), keybind `SUPER + CTRL + S` in [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), and legacy `apply_shader()` hook in [`hyprland.lua`](file:///home/realdhiru/nix/dotfiles/hypr/hyprland.lua). Full dynamic control is now owned by `SunsetPopup.qml`.
+- **Lockscreen Glass Styling & Tight Geometry Overhaul**:
+  - In [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml), eliminated hardcoded `420px` minimum width floor on `clockCornerPill`, deriving container bounds tightly from `clockInnerRow.implicitWidth + 28px`.
+  - Standardized glass treatment across all lockscreen pills (`clockCornerPill`, `mediaBtn`, `pinPill`, `batteryPill`) using system-wide tokens: `root.base` fill at `Config.effectivePopupOpacity`, anti-bleed `crust` base layer at `Config.antiBleedOpacity`, and frameless border fallback (`border.width: Config.borderWidth`, `border.color: "transparent"`).
+  - Scaled bottom-left status quote text to `15px` (`Font.DemiBold`) with `root.text` color at `0.85` opacity for high readability.
+
 
 - **TopBar 3-Layer Glass Pass Completed**:
   - Added anti-bleed `crust` base layer, specular top hairline (`rgba(255,255,255,0.16)`), and specular fallback border (`Config.glassSpecular` when `borderWidth == 0`) to `mediaBox` and `recButton` pills in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml).
