@@ -7,6 +7,7 @@ STATE_FILE="$STATE_DIR/state.json"
 SHADER_FILE="$HOME/.cache/screen_shader.frag"
 
 mkdir -p "$STATE_DIR"
+hyprctl monitors -j > "$STATE_DIR/monitors.json" 2>/dev/null || true
 
 # Initialize default state JSON if missing
 if [ ! -f "$STATE_FILE" ]; then

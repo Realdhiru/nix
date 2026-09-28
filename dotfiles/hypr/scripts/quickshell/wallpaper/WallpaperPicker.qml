@@ -115,6 +115,11 @@ Item {
         }
     }
 
+    property var wallpaperCategoryMap: ({})
+    property var wallpaperColorMap: ({})
+    property var wallpaperScoreMap: ({})
+    property bool hasPendingOrganize: false
+
     Process {
         id: markersProc
         command: ["bash", "-c", "ls -1 \"$HOME/.cache/quickshell/wallpaper_picker/colors_markers/\" 2>/dev/null || true"]
@@ -126,6 +131,7 @@ Item {
                 let lines = output.trim().split("\n");
                 let catMap = {};
                 let colorMap = {};
+                let scoreMap = {};
                 for (let i = 0; i < lines.length; i++) {
                     let line = lines[i].trim();
                     if (line.length === 0) continue;
@@ -137,16 +143,20 @@ Item {
                         if (flatName.length > 0) {
                             if (category.length > 0) catMap[flatName] = category;
                             colorMap[flatName] = hex;
+                            let score = window.hexToColorScore(hex);
+                            scoreMap[flatName] = score;
                             let clean = window.getCleanName(flatName);
                             if (clean.length > 0) {
                                 if (category.length > 0) catMap[clean] = category;
                                 colorMap[clean] = hex;
+                                scoreMap[clean] = score;
                             }
                         }
                     }
                 }
                 window.wallpaperCategoryMap = catMap;
                 window.wallpaperColorMap = colorMap;
+                window.wallpaperScoreMap = scoreMap;
                 if (localProxyModel.count > 0) {
                     window.sortListModel(localProxyModel);
                     window.sortListModel(gifsProxyModel);
@@ -288,7 +298,12 @@ Item {
             if (window.hasSearched) {
                 window.isSearchPaused = true;
             }
-            Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; python3 ~/Pictures/Wallpapers/scripts/auto_organize.py"]);
+            if (window.hasPendingOrganize) {
+                window.hasPendingOrganize = false;
+                Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; python3 ~/Pictures/Wallpapers/scripts/auto_organize.py"]);
+            } else {
+                Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
+            }
         } else {
             Quickshell.execDetached(["bash", "-c", "mkdir -p '" + Caching.getRunDir("wallpaper_picker") + "'; touch '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
             window.isFilterAnimating = true;
@@ -389,8 +404,6 @@ Item {
     })
 
 
-    property var wallpaperCategoryMap: ({})
-    property var wallpaperColorMap: ({})
 
     function getFileTypeRank(fileName) {
         if (!fileName) return 1;
@@ -442,21 +455,46 @@ Item {
             let bType = window.getFileTypeRank(b.fileName);
             if (aType !== bType) return aType - bType;
 
-            let aHex = window.wallpaperColorMap[a.fileName] || window.wallpaperColorMap[window.getCleanName(a.fileName)] || "";
-            let bHex = window.wallpaperColorMap[b.fileName] || window.wallpaperColorMap[window.getCleanName(b.fileName)] || "";
+            let aClean = window.getCleanName(a.fileName);
+            let bClean = window.getCleanName(b.fileName);
 
-            let aScore = window.hexToColorScore(aHex);
-            let bScore = window.hexToColorScore(bHex);
+            let aScore = window.wallpaperScoreMap[a.fileName] || window.wallpaperScoreMap[aClean] || null;
+            if (!aScore) {
+                let aHex = window.wallpaperColorMap[a.fileName] || window.wallpaperColorMap[aClean] || "";
+                aScore = window.hexToColorScore(aHex);
+            }
+
+            let bScore = window.wallpaperScoreMap[b.fileName] || window.wallpaperScoreMap[bClean] || null;
+            if (!bScore) {
+                let bHex = window.wallpaperColorMap[b.fileName] || window.wallpaperColorMap[bClean] || "";
+                bScore = window.hexToColorScore(bHex);
+            }
 
             if (aScore.band !== bScore.band) return aScore.band - bScore.band;
             if (Math.abs(aScore.key - bScore.key) > 0.5) return aScore.key - bScore.key;
 
-            let aName = window.getCleanName(a.fileName).toLowerCase();
-            let bName = window.getCleanName(b.fileName).toLowerCase();
+            let aName = aClean.toLowerCase();
+            let bName = bClean.toLowerCase();
             return aName.localeCompare(bName);
         });
-        model.clear();
-        model.append(arr);
+
+        // Skip clear/append if order has not changed (prevents delegate churn and scroll reset)
+        let changed = false;
+        if (arr.length !== model.count) {
+            changed = true;
+        } else {
+            for (let j = 0; j < arr.length; j++) {
+                if (model.get(j).fileName !== arr[j].fileName) {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        if (changed) {
+            model.clear();
+            model.append(arr);
+        }
     }
 
     // Previously "is this a video" was inferred from a "000_" filename
@@ -1762,7 +1800,11 @@ Item {
     }
 
     Component.onDestruction: {
-        Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; python3 ~/Pictures/Wallpapers/scripts/auto_organize.py &"]);
+        if (window.hasPendingOrganize) {
+            Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; python3 ~/Pictures/Wallpapers/scripts/auto_organize.py &"]);
+        } else {
+            Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
+        }
         if (window.hasSearched) {
             searchState.query = searchInput.text;
             searchState.searched = window.hasSearched;

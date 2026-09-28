@@ -963,6 +963,7 @@ Variants {
 
                             Text {
                                 text: barWindow.timeStr
+                                renderType: Text.NativeRendering
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: barWindow.s(18)
                                 font.weight: Font.Black
@@ -976,6 +977,7 @@ Variants {
 
                                 Text {
                                     text: barWindow.dateStr.split(',')[0] || ""
+                                    renderType: Text.NativeRendering
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(10)
                                     font.weight: Font.Black
@@ -986,6 +988,7 @@ Variants {
 
                                 Text {
                                     text: (barWindow.dateStr.split(',')[1] || "").trim()
+                                    renderType: Text.NativeRendering
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(10)
                                     font.weight: Font.Bold

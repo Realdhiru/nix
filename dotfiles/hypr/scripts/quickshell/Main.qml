@@ -255,9 +255,50 @@ PanelWindow {
     property var    _layoutCache:    ({})
     property string _layoutCacheKey: ""
 
+    FileView {
+        id: monitorsFileView
+        path: Quickshell.env("HOME") + "/.cache/quickshell/monitors.json"
+        watchChanges: true
+    }
+
+    property int monitorPhysWidth: {
+        try {
+            let t = monitorsFileView.text();
+            if (t && t.length > 0) {
+                let m = JSON.parse(t);
+                if (Array.isArray(m) && m.length > 0 && m[0].width) return m[0].width;
+            }
+        } catch(e) {}
+        return 2880;
+    }
+
+    property int monitorPhysHeight: {
+        try {
+            let t = monitorsFileView.text();
+            if (t && t.length > 0) {
+                let m = JSON.parse(t);
+                if (Array.isArray(m) && m.length > 0 && m[0].height) return m[0].height;
+            }
+        } catch(e) {}
+        return 1620;
+    }
+
+    property real monitorScale: {
+        try {
+            let t = monitorsFileView.text();
+            if (t && t.length > 0) {
+                let m = JSON.parse(t);
+                if (Array.isArray(m) && m.length > 0 && m[0].scale) return m[0].scale;
+            }
+        } catch(e) {}
+        return 2.0;
+    }
+
     function getLayout(name) {
-        let mw = (Quickshell.screens && Quickshell.screens.length > 0 && Quickshell.screens[0].width > 0) ? Quickshell.screens[0].width : (masterWindow.width > 1440 ? masterWindow.width : 2880);
-        let mh = (Quickshell.screens && Quickshell.screens.length > 0 && Quickshell.screens[0].height > 0) ? Quickshell.screens[0].height : (masterWindow.height > 810 ? masterWindow.height : 1620);
+        let logicalW = Math.round(masterWindow.monitorPhysWidth / (masterWindow.monitorScale > 0 ? masterWindow.monitorScale : 1.0));
+        let logicalH = Math.round(masterWindow.monitorPhysHeight / (masterWindow.monitorScale > 0 ? masterWindow.monitorScale : 1.0));
+        let mw = masterWindow.width > 0 ? masterWindow.width : logicalW;
+        let mh = masterWindow.height > 0 ? masterWindow.height : logicalH;
 
         let key = name + "|" + mw + "|" + mh + "|" + masterWindow.globalUiScale;
         if (_layoutCacheKey === key) return _layoutCache[key];
@@ -447,7 +488,7 @@ PanelWindow {
                 masterWindow.disableMorph = true;
 
                 let t = getLayout(newWidget);
-                console.log("[COLD_OPEN_DEBUG] switchWidget frame-0:", newWidget, "mw:", masterWindow.width, "mh:", masterWindow.height, "t.rx:", t ? t.rx : 0, "t.ry:", t ? t.ry : 0, "t.w:", t ? t.w : 0, "t.h:", t ? t.h : 0);
+                console.log("[COLD_OPEN_DEBUG] switchWidget frame-0:", newWidget, "phys:", masterWindow.monitorPhysWidth + "x" + masterWindow.monitorPhysHeight, "scale:", masterWindow.monitorScale, "mw:", masterWindow.width, "mh:", masterWindow.height, "t.rx:", t ? t.rx : 0, "t.ry:", t ? t.ry : 0, "t.w:", t ? t.w : 0, "t.h:", t ? t.h : 0);
                 let cachedWidget = widgetCache[newWidget];
                 let initW = (cachedWidget && cachedWidget.targetMasterWidth !== undefined) ? cachedWidget.targetMasterWidth : t.w;
                 let initH = (cachedWidget && cachedWidget.targetMasterHeight !== undefined) ? cachedWidget.targetMasterHeight : t.h;
@@ -484,7 +525,7 @@ PanelWindow {
 
     function executeSwitch(newWidget, arg, immediate) {
         let t = getLayout(newWidget);
-        console.log("[COLD_OPEN_DEBUG] executeSwitch frame-0:", newWidget, "mw:", masterWindow.width, "mh:", masterWindow.height, "t.rx:", t ? t.rx : 0, "t.ry:", t ? t.ry : 0, "t.w:", t ? t.w : 0, "t.h:", t ? t.h : 0);
+        console.log("[COLD_OPEN_DEBUG] executeSwitch settled:", newWidget, "mw:", masterWindow.width, "mh:", masterWindow.height, "t.rx:", t ? t.rx : 0, "t.ry:", t ? t.ry : 0, "t.w:", t ? t.w : 0, "t.h:", t ? t.h : 0);
         masterWindow.currentActive = newWidget;
         masterWindow.activeArg = arg;
         if (!t || !t.comp) return;

@@ -1252,14 +1252,8 @@ Item {
                                 }
                             }
 
-                            border.color: {
-                                if (!window.currentPower) return window.surface1;
-                                if (isMyDisconnecting) return window.surface0;
-                                if (centralCore.isDangerState && window.currentConn && !showPassword) return window.maroon;
-                                return window.currentConn || showPassword ? Qt.lighter(window.activeColor, 1.1) : window.surface1;
-                            }
-                            border.width: window.s(2)
-                            Behavior on border.color { ColorAnimation { duration: 300 } }
+                            border.color: "transparent"
+                            border.width: 0
 
                             Rectangle {
                                 anchors.fill: parent
@@ -1854,10 +1848,9 @@ Item {
                                     anchors.fill: parent
                                     radius: window.s(14)
                                     color: "transparent"
-                                    border.width: Config.borderWidth
-                                    border.color: floatCard.isFailed ? window.red : Qt.rgba(window.activeColor.r, window.activeColor.g, window.activeColor.b, 0.3)
+                                    border.width: 0
+                                    border.color: "transparent"
                                     visible: !floatCard.isHighlighted && !floatCard.locksList
-                                    Behavior on border.color { ColorAnimation { duration: 300 } }
                                 }
 
                                 Rectangle {
@@ -1865,7 +1858,7 @@ Item {
                                     radius: window.s(14)
                                     opacity: floatCard.locksList || floatCard.isHighlighted ? 1.0 : 0.0
                                     color: "transparent"
-                                    border.width: floatCard.isHighlighted && !floatCard.locksList ? 1 : window.s(2)
+                                    border.width: floatCard.isFailed ? (floatCard.isHighlighted && !floatCard.locksList ? 1 : window.s(2)) : 0
                                     border.color: floatCard.isFailed ? window.red : "transparent"
                                     Behavior on opacity { NumberAnimation { duration: 250 } }
 
@@ -2202,8 +2195,8 @@ Item {
                 height: window.s(54)
                 radius: window.s(14)
                 color: "#1affffff"
-                border.color: "#1affffff"
-                border.width: Config.borderWidth
+                border.color: "transparent"
+                border.width: 0
                 visible: window.ethPresent || window.wifiPresent || window.btPresent
 
                 Rectangle {
@@ -2399,9 +2392,8 @@ Item {
                         GradientStop { position: 1.0; color: window.currentPower ? "transparent" : Qt.rgba(window.primary.r, window.primary.g, window.primary.b, 0.28) }
                     }
 
-                    border.color: window.currentPowerPending ? window.activeColor : (window.currentPower ? "transparent" : window.surface2)
-                    border.width: window.s(2)
-                    Behavior on border.color { enabled: window.powerAnimAllowed; ColorAnimation { duration: 800; easing.type: Easing.InOutQuint } }
+                    border.color: "transparent"
+                    border.width: 0
 
                     Rectangle {
                         anchors.fill: parent

@@ -13,6 +13,10 @@ config.window_background_opacity = 0.1
 -- (ecode 12:1:859ffffb) on this Alder Lake Iris Xe; the Vulkan path is clean.
 config.front_end = "WebGpu"
 
+-- Grayscale antialiasing for OLED panel (disables LCD RGB subpixel fringing)
+config.freetype_load_target = "Normal"
+config.freetype_render_target = "Normal"
+
 -- Default font size (1.5x WezTerm's 12pt baseline). The `af` fetch UI may
 -- temporarily override this via ~/.cache/af_font_size (removed on exit).
 config.font_size = 9

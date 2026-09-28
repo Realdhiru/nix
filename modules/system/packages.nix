@@ -63,11 +63,10 @@ in
     # System / Desktop Integration
     file gsettings-desktop-schemas
 
-    antigravity-ide
     antigravity-hub
     antigravity-cli
-    kdePackages.kate
     gram
+    opencode
   ];
 
   programs.appimage = {

@@ -121,3 +121,16 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### 16. Projects Directory Deletion Protection Policy
 - **Decision:** Files and directories inside `~/Projects/` are strictly protected from deletion.
 - **Rationale:** `~/Projects/` contains user backups, reference repositories, and uncommitted project workspaces. Agents must never issue `rm` or delete operations against `~/Projects/` or any of its subdirectories.
+
+### 17. OLED Typography & Antialiasing Invariants
+- **Decision:** On high-DPI OLED panels with non-standard subpixel layouts (Samsung OLED `eDP-1`), LCD RGB subpixel antialiasing produces red/blue chromatic fringing and edge ghosting.
+- **Rules:**
+  - In WezTerm ([`dotfiles/wezterm.lua`](file:///home/realdhiru/nix/dotfiles/wezterm.lua)), FreeType load and render targets must be set to `"Normal"` to force clean grayscale antialiasing.
+  - In QuickShell / Qt Quick widgets ([`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml)), high-contrast text must use `renderType: Text.NativeRendering` to avoid Qt distance-field texture filtering chromatic fringing.
+
+### 18. Wayland Layer-Shell Geometry & Scaling Invariants
+- **Decision:** All QuickShell `PanelWindow` overlay surfaces operate strictly in compositor logical coordinates (`1440x810` on `2880x1620` @ scale 2.0).
+- **Rules:**
+  - Never configure layer surfaces or popup positioning with raw physical pixel bounds (`2880x1620`). Sizing coordinates using physical dimensions places elements past the logical surface boundary, clipping them off-screen.
+  - Sizing fallback in `Main.qml` must derive logical screen space from monitor physical dimensions divided by monitor scale (`Math.round(physWidth / scale)`), ensuring frame-0 and settled coordinates are identical with zero pixel displacement.
+

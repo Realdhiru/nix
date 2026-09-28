@@ -1,5 +1,11 @@
 # CHANGELOG
 
+- **Display, Geometry & Stability Sweep (NetworkPopup, Typography, WallpaperPicker, Main)**:
+  - **NetworkPopup Borders**: Removed static outlines on power button, bottom tab pill container, info pills, and central core disc (`border.width: 0`, `border.color: "transparent"`). Strictly preserved interactive/animated orbital rings, status pulse, scan wave animations, and password focus outline.
+  - **Typography Fringing**: Configured WezTerm FreeType antialiasing to `Normal` (grayscale) in [`dotfiles/wezterm.lua`](file:///home/realdhiru/nix/dotfiles/wezterm.lua) and added `renderType: Text.NativeRendering` to clock and date items in [`dotfiles/hypr/scripts/quickshell/TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml) to eliminate OLED RGB subpixel chromatic aberration.
+  - **Startup Displacement**: Derived Wayland logical resolution (`1440x810`) directly from physical resolution (`2880x1620`) and scale (`2.0`) via `monitors.json` in [`dotfiles/hypr/scripts/quickshell/Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml). Frame-0 geometry matches settled geometry identically with zero displacement.
+  - **WallpaperPicker Optimization**: Pre-cached HSL color scores in `markersProc` to eliminate $O(N \log N)$ recalculations, eliminated delegate churn in `sortListModel()` when sort order is unchanged, and gated background `auto_organize.py` execution. Verified 10 rapid toggle cycles with zero warnings/errors.
+
 - **Projects Directory Protection Policy**:
   - Established persistent invariant forbidding deletion of files or directories inside `~/Projects/` across [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md#L44), [`docs/advisor-context.md`](file:///home/realdhiru/nix/docs/advisor-context.md#L16), and [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md#L121).
 - **OpenCode Removal & System Purge**:
