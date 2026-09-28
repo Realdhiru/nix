@@ -48,6 +48,7 @@ Item {
     readonly property color green: _theme.green
     readonly property color sapphire: _theme.sapphire
     readonly property color blue: _theme.blue
+    readonly property color primary: _theme.primary
 
     readonly property var monthNames: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
@@ -168,6 +169,12 @@ Item {
         requestDataUpdate();
     }
 
+    onVisibleChanged: {
+        if (visible) {
+            window.parseLiveState();
+        }
+    }
+
     // Clean, unified exit animation for when an action is clicked
     ParallelAnimation {
         id: exitAnim
@@ -285,7 +292,7 @@ Item {
         path: window.stateFilePath
         watchChanges: true
         onTextChanged: {
-            if (window.visible && window.selectedAppClass === "" && getIsoDate(window.activeDate) === getIsoDate(new Date())) {
+            if (window.selectedAppClass === "" && getIsoDate(window.activeDate) === getIsoDate(new Date())) {
                 window.parseLiveState();
             }
         }

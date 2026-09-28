@@ -31,6 +31,7 @@ Item {
     readonly property color surface1: _theme.surface1
     readonly property color surface2: _theme.surface2
     readonly property color mauve: _theme.mauve || "#cba6f7"
+    readonly property color primary: _theme.primary || "#cba6f7"
 
     property var allClips: []
     

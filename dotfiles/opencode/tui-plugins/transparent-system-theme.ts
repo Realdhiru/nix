@@ -1,19 +1,17 @@
-// backgroundMenu is deliberately NOT here. It is the one panel key that is a
-// floating surface rather than an inline one, so it needs its own backdrop.
-const PANEL_KEYS = ["backgroundPanel", "backgroundElement"]
+// Transparency for the root background, backgroundPanel, backgroundElement and
+// diffContextBg is now expressed in the generated theme itself as the literal
+// "none", which theme/index.ts:246 resolves to RGBA.fromInts(0,0,0,0). That is
+// deliberate: the theme JSON has no alpha channel, but "none" is a supported
+// value, and it is applied by resolveTheme() at construction time. Doing it here
+// instead was never reliable - the objects handed to plugins go through a
+// get-only Proxy (context/theme.tsx:275) and are replaced wholesale every time
+// the values() memo re-runs, so any post-hoc write was either discarded or
+// reverted within a frame.
+//
+// That leaves exactly one job here that theme data cannot express: the +/- diff
+// row fills need PARTIAL alpha (WASH_ALPHA), and the theme format has no way to
+// say that. Everything else in this file used to be surface transparency.
 const DIFF_KEYS = ["diffContextBg"]
-const PANEL_ALPHA = 0
-
-// component/prompt/autocomplete.tsx:735 paints the menu with
-// theme.backgroundMenu, so alpha 0 leaves it floating straight over transcript
-// text and unreadable. Derive an opaque backdrop from the live theme instead: a
-// light mix of theme.text over theme.background, no hardcoded RGB and no
-// partial alpha. Assigned as a NEW RGBA instance rather than mutated in place,
-// because generateSystem aliases these keys onto shared instances upstream -
-// writing the shared object would drag backgroundPanel/backgroundElement opaque
-// along with it. See the note on `decided` below.
-const MENU_KEY = "backgroundMenu"
-const MENU_LIGHT_MIX = 0.07
 
 // Upstream generateSystem builds the +/- row backgrounds as
 // tint(bg, ansiColors.green|red, 0.22), and tint() returns RGBA.fromInts(...)
@@ -47,21 +45,10 @@ type Theme = Record<string, Color | undefined>
 export default {
   id: "transparent-system-theme",
   tui: (api: any) => {
-    // generateSystem reuses one RGBA instance for several keys, e.g.
-    // backgroundPanel and diffContextBg are both grays[2]. Writing alpha
-    // through the last key wins, so the first decision for a given object is
-    // final. The wash runs before the panel pass so it also wins in the event
-    // that a future opencode release aliases a wash key onto a panel key.
+    // generateSystem reuses one RGBA instance for several keys, so the first
+    // decision for a given object is final and later writes through an alias
+    // would be lost. The wash claims its keys here.
     const decided = new Set<object>()
-
-    const setAlpha = (theme: Theme, key: string, alpha: number) => {
-      const color = theme[key]
-      if (!color || decided.has(color)) return false
-      decided.add(color)
-      if (color.a === alpha) return false
-      color.a = alpha
-      return true
-    }
 
     // Light wash of theme.text over the terminal background, then a light
     // pull toward the row's diff hue. Written straight onto the existing RGBA
@@ -94,52 +81,6 @@ export default {
       return true
     }
 
-    // Writes the opaque menu shade onto the LIVE backgroundMenu object in place.
-    //
-    // Reassigning `theme[MENU_KEY] = ...` looks correct but is a silent no-op:
-    // context/theme.tsx:275 hands plugins `new Proxy(values(), { get })` with NO
-    // set trap, so an assignment lands on the Proxy's target - the object
-    // captured when the Proxy was built - and is never read again. The memo
-    // keeps handing out resolveTheme()'s fresh object instead, so the menu
-    // stayed transparent. In-place field writes go through the get trap to the
-    // current generation and are the only form that survives.
-    //
-    // Distinctness still has to be established here rather than by allocating a
-    // new RGBA: a fresh instance can never be handed back to the renderer. The
-    // live object is claimed for the menu via `decided` and never enters the
-    // panel pass, so it cannot alias background/backgroundPanel/backgroundElement
-    // - each of those is a separate resolveTheme() instance for a named theme.
-    // Base RGB is snapshotted to plain numbers first: this runs after the panel
-    // pass, and reading theme.background live would mix in what it just became.
-    const setMenu = (theme: Theme) => {
-      const current = theme[MENU_KEY]
-      const src = theme.background
-      const light = theme.text
-      if (!current || !src || !light) return false
-      // Refuse to paint the menu onto a surface the panel pass owns; that would
-      // make the whole window opaque, which is the exact failure being fixed.
-      for (const key of [WASH_KEYS[0], "background", ...PANEL_KEYS, ...DIFF_KEYS]) {
-        if (theme[key] === current) return false
-      }
-      const base = [src.r ?? 0, src.g ?? 0, src.b ?? 0]
-      const lit = [light.r ?? 0, light.g ?? 0, light.b ?? 0]
-      const target = [0, 1, 2].map((i) => base[i]! + (lit[i]! - base[i]!) * MENU_LIGHT_MIX)
-      // Idempotent: re-deriving the same floats must not retrigger a render.
-      if (
-        current.a === 1 &&
-        Math.abs(current.r - target[0]!) < 0.002 &&
-        Math.abs(current.g - target[1]!) < 0.002 &&
-        Math.abs(current.b - target[2]!) < 0.002
-      )
-        return false
-      current.r = target[0]!
-      current.g = target[1]!
-      current.b = target[2]!
-      current.a = 1
-      decided.add(current)
-      return true
-    }
-
     // Only alpha and a theme-derived RGB blend are touched: every hue still
     // comes from the live terminal palette, so Wallust/WezTerm colors keep
     // working and a wallpaper change re-derives the wash automatically.
@@ -149,23 +90,6 @@ export default {
       let changed = false
 
       for (const key of WASH_KEYS) changed = setWash(theme, key) || changed
-      // No `system` gate here. api.theme.selected is "wallust", not "system",
-      // so gating on it left theme.background at alpha 1 and the window stayed
-      // solid black. The guard is identity-based instead: if background is the
-      // very same object as a wash key it is already tinted, and if it is shared
-      // with the selection text there is nothing safe to zero. Everything else
-      // gets PANEL_ALPHA so the wallpaper shows through.
-      const bg = theme.background
-      if (bg && WASH_KEYS.every((key) => theme[key] !== bg)) {
-        changed = setAlpha(theme, "background", PANEL_ALPHA) || changed
-      }
-      for (const key of PANEL_KEYS) changed = setAlpha(theme, key, PANEL_ALPHA) || changed
-      // diffContextBg aliases backgroundPanel upstream, so this is normally a
-      // no-op; kept so the context rows stay fully transparent even if a
-      // future opencode release decouples the two.
-      for (const key of DIFF_KEYS) changed = setAlpha(theme, key, PANEL_ALPHA) || changed
-      // Last, so it cannot be flattened by the panel pass above.
-      changed = setMenu(theme) || changed
 
       if (changed) api.renderer.requestRender()
       return changed

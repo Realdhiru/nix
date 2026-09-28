@@ -161,22 +161,44 @@ Item {
     FileView {
         id: batCapView
         path: "/sys/class/power_supply/BAT0/capacity"
-        watchChanges: true
-        onTextChanged: root._syncSysfsBattery()
     }
 
     FileView {
         id: batStatView
         path: "/sys/class/power_supply/BAT0/status"
-        watchChanges: true
-        onTextChanged: root._syncSysfsBattery()
     }
 
     FileView {
         id: acOnlineView
         path: "/sys/class/power_supply/AC0/online"
-        watchChanges: true
-        onTextChanged: root._syncSysfsBattery()
+    }
+
+    Process {
+        id: udevBatteryWatcher
+        command: ["udevadm", "monitor", "--subsystem-match=power_supply"]
+        running: true
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: (line) => {
+                batCapView.reload();
+                batStatView.reload();
+                acOnlineView.reload();
+                root._syncSysfsBattery();
+            }
+        }
+    }
+
+    Timer {
+        id: batteryFailsafeTimer
+        interval: 30000
+        running: true
+        repeat: true
+        onTriggered: {
+            batCapView.reload();
+            batStatView.reload();
+            acOnlineView.reload();
+            root._syncSysfsBattery();
+        }
     }
 
     function _syncSysfsBattery() {

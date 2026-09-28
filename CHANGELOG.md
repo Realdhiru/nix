@@ -6,10 +6,19 @@
   - Gated background intro animations (`introAnim.running: window.visible`) in [`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L448), preventing preloaded invisible popups from running 800ms parallel/sequential intro timelines on boot/reload.
 - **NetworkPopup.qml Glass Fills**:
   - Replaced solid dark/mantle/crust fills on `centralCore` gradient (lines 1215-1234), `coreWave` canvas (line 1304), and `powerBtnRect` gradient (line 2381) in [`dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml) with standard glass base tokens (`Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)` / `surface0` / `surface1`).
-- **FocusTimePopup.qml Gradient Fills**:
-  - Replaced multi-color gradients on the Mon–Sun bar chart (line 926) and per-app progress bars (lines 1140, 1536) in [`dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml) with solid `window.primary` fills.
-- **System-Wide Gradient Audit**:
-  - Replaced crust/mantle gradient in `centralCore` ring of [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L1520) with standard glass base token.
+- **FocusTimePopup.qml Primary Accent & Data Preload**:
+  - Re-exported `readonly property color primary: _theme.primary` in [`dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml#L51), resolving flat white bars to sky blue accent (`#75bde5`).
+  - Added `onVisibleChanged` hook and removed `window.visible` gate in `FileView` to parse live state from `focustime_state.json` on initial preload/show, eliminating zero rendering on cold open.
+  - Replaced `python3 get_stats.py` subprocess execution in `requestDataUpdate()` with direct `parseLiveState()` call.
+- **Primary Accent Token Re-Exports & Systemic Theme Sweep**:
+  - Added missing `readonly property color primary: _theme.primary` re-export to [`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml#L195), [`WeatherSetupPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/WeatherSetupPopup.qml#L39), [`ClipboardManager.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml#L34), and [`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml#L68).
+  - Resolved `window.primary` from `undefined` to `#cba6f7` (and `#75bde5` dynamically), eliminating per-frame `TypeError: Cannot read property 'r' of undefined` QML warnings.
+  - Added startup validation in [`Theme.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Theme.qml#L74) to issue `console.warn` for any undefined theme tokens.
+  - Restored active tab pill labels and icons to dark-on-accent (`window.crust`), bound floatCard borders to `window.activeColor`, and kept `MultiEffect` shadows off (`shadowEnabled: false`).
+- **Cold-Open Geometry Resolution**:
+  - Updated `getLayout()` in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml#L259) to derive screen width and height from `Quickshell.screens` instead of unmapped `masterWindow.width/height` (1440x810 at frame 0).
+  - Cold-open popup geometry now computes frame-0 target `(x: 732, y: 47, w: 705, h: 548)` on logical 1440p canvas identically to second-open geometry without stretching across screen center.
+  - Added snap-without-morph logic (`masterWindow.disableMorph = true`) on native window width/height resize events in `handleNativeScreenChange()`.
 
 ## 2026-09-28 — Battery Keybind Fix & Ultra-Fast Animation Pass
 

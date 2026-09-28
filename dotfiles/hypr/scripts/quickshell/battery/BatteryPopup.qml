@@ -20,6 +20,12 @@ Item {
     property var liveNotifs: NotifTicker.liveNotifs
 
     onNotifModelChanged: Qt.callLater(window.enforceNotificationSort)
+
+    onVisibleChanged: {
+        if (visible) {
+            window.syncBrightness();
+        }
+    }
     
     Connections {
         target: window.notifModel
@@ -328,21 +334,35 @@ Item {
     FileView {
         id: briView
         path: "/sys/class/backlight/intel_backlight/actual_brightness"
-        watchChanges: true
-        onTextChanged: {
-            if (!window.isDraggingBri) {
-                let cur = parseInt((briView.text() || "").trim());
-                let max = parseInt((maxBriView.text() || "").trim()) || 400;
-                if (!isNaN(cur) && max > 0) {
-                    window.sysBrightness = Math.round((cur / max) * 100);
-                }
-            }
-        }
     }
 
     FileView {
         id: maxBriView
         path: "/sys/class/backlight/intel_backlight/max_brightness"
+    }
+
+    function syncBrightness() {
+        if (!window.isDraggingBri) {
+            briView.reload();
+            maxBriView.reload();
+            let cur = parseInt((briView.text() || "").trim());
+            let max = parseInt((maxBriView.text() || "").trim()) || 400;
+            if (!isNaN(cur) && max > 0) {
+                window.sysBrightness = Math.round((cur / max) * 100);
+            }
+        }
+    }
+
+    Process {
+        id: udevBriWatcher
+        command: ["udevadm", "monitor", "--subsystem-match=backlight"]
+        running: window.visible
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: (line) => {
+                window.syncBrightness();
+            }
+        }
     }
 
     Connections {
@@ -1520,7 +1540,7 @@ Item {
                             border.color: Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.40)
                             border.width: 1
 
-                            color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
+                            color: Qt.rgba(window.primary.r, window.primary.g, window.primary.b, 0.28)
 
                             Rectangle {
                                 anchors.fill: parent

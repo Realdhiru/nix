@@ -132,6 +132,14 @@ Item {
     }
 
     Component.onCompleted: {
+        console.log("=== NETWORK POPUP COLOR TOKEN DEBUG ===");
+        console.log("window.primary:", window.primary);
+        console.log("window.sharedAccent:", window.sharedAccent);
+        console.log("window.btAccent:", window.btAccent);
+        console.log("window.activeColor:", window.activeColor);
+        console.log("window.activeGradientSecondary:", window.activeGradientSecondary);
+        console.log("========================================");
+
         window.powerAnimAllowed = false;
         powerAnimBlocker.restart();
         window.syncModeFromState();
@@ -184,6 +192,7 @@ Item {
     readonly property color pink: _theme.pink
     readonly property color sapphire: _theme.sapphire
     readonly property color blue: _theme.blue
+    readonly property color primary: _theme.primary
     readonly property color red: _theme.red
     readonly property color maroon: _theme.maroon
     readonly property color peach: _theme.peach
@@ -1183,7 +1192,8 @@ Item {
                         MultiEffect {
                             source: centralCore
                             anchors.fill: centralCore
-                            shadowEnabled: true
+                            shadowEnabled: false
+                            visible: false
                             shadowColor: "#000000"
                             shadowOpacity: window.currentPower ? 0.5 : 0.0
                             shadowBlur: 1.2
@@ -1215,20 +1225,20 @@ Item {
                                 GradientStop {
                                     position: 0.0
                                     color: {
-                                        if (!window.currentPower) return Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity);
+                                        if (!window.currentPower) return Qt.rgba(window.primary.r, window.primary.g, window.primary.b, 0.28);
                                         if (isMyDisconnecting) return window.surface0;
                                         if (centralCore.isDangerState && window.currentConn && !showPassword) return Qt.lighter(window.red, 1.15);
-                                        return window.currentConn || showPassword ? Qt.lighter(window.activeColor, 1.15) : window.surface0;
+                                        return window.currentConn || showPassword ? Qt.lighter(window.activeColor, 1.15) : Qt.rgba(window.primary.r, window.primary.g, window.primary.b, 0.28);
                                     }
                                     Behavior on color { ColorAnimation { duration: 300 } }
                                 }
                                 GradientStop {
                                     position: 1.0
                                     color: {
-                                        if (!window.currentPower) return Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity);
+                                        if (!window.currentPower) return Qt.rgba(window.primary.r, window.primary.g, window.primary.b, 0.28);
                                         if (isMyDisconnecting) return window.surface0;
                                         if (centralCore.isDangerState && window.currentConn && !showPassword) return window.red;
-                                        return window.currentConn || showPassword ? window.activeColor : window.surface0;
+                                        return window.currentConn || showPassword ? window.activeColor : Qt.rgba(window.primary.r, window.primary.g, window.primary.b, 0.28);
                                     }
                                     Behavior on color { ColorAnimation { duration: 300 } }
                                 }
@@ -1837,7 +1847,7 @@ Item {
                                     radius: window.s(14)
                                     color: "transparent"
                                     border.width: Config.borderWidth
-                                    border.color: floatCard.isFailed ? window.red : window.surface2
+                                    border.color: floatCard.isFailed ? window.red : Qt.rgba(window.activeColor.r, window.activeColor.g, window.activeColor.b, 0.3)
                                     visible: !floatCard.isHighlighted && !floatCard.locksList
                                     Behavior on border.color { ColorAnimation { duration: 300 } }
                                 }
@@ -2227,8 +2237,8 @@ Item {
 
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: Qt.lighter(window.activeColor, 1.15) }
-                        GradientStop { position: 1.0; color: window.activeColor }
+                        GradientStop { position: 0.0; color: Qt.rgba(window.primary.r, window.primary.g, window.primary.b, 0.28) }
+                        GradientStop { position: 1.0; color: Qt.rgba(window.primary.r, window.primary.g, window.primary.b, 0.28) }
                     }
                 }
 
@@ -2360,7 +2370,7 @@ Item {
                 MultiEffect {
                     source: powerBtnRect
                     anchors.fill: powerBtnRect
-                    shadowEnabled: true
+                    shadowEnabled: false
                     shadowColor: "#000000"
                     shadowOpacity: 0.4
                     shadowBlur: 1.2
@@ -2377,8 +2387,8 @@ Item {
 
                     gradient: Gradient {
                         orientation: Gradient.Vertical
-                        GradientStop { position: 0.0; color: window.currentPower ? "transparent" : window.surface1 }
-                        GradientStop { position: 1.0; color: window.currentPower ? "transparent" : window.surface0 }
+                        GradientStop { position: 0.0; color: window.currentPower ? "transparent" : Qt.rgba(window.primary.r, window.primary.g, window.primary.b, 0.28) }
+                        GradientStop { position: 1.0; color: window.currentPower ? "transparent" : Qt.rgba(window.primary.r, window.primary.g, window.primary.b, 0.28) }
                     }
 
                     border.color: window.currentPowerPending ? window.activeColor : (window.currentPower ? "transparent" : window.surface2)

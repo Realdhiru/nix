@@ -36,6 +36,7 @@ Item {
     
     property color lavender: _theme.mauve
     property color blue: _theme.blue
+    property color primary: _theme.primary
 
     Process {
         id: searchCityProc

@@ -256,9 +256,12 @@ PanelWindow {
     property string _layoutCacheKey: ""
 
     function getLayout(name) {
-        let key = name + "|" + masterWindow.width + "|" + masterWindow.height + "|" + masterWindow.globalUiScale;
+        let mw = (Quickshell.screens && Quickshell.screens.length > 0 && Quickshell.screens[0].width > 0) ? Quickshell.screens[0].width : (masterWindow.width > 1440 ? masterWindow.width : 2880);
+        let mh = (Quickshell.screens && Quickshell.screens.length > 0 && Quickshell.screens[0].height > 0) ? Quickshell.screens[0].height : (masterWindow.height > 810 ? masterWindow.height : 1620);
+
+        let key = name + "|" + mw + "|" + mh + "|" + masterWindow.globalUiScale;
         if (_layoutCacheKey === key) return _layoutCache[key];
-        let result = Registry.getLayout(name, 0, 0, masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
+        let result = Registry.getLayout(name, 0, 0, mw, mh, masterWindow.globalUiScale);
 
         if (result && result.comp && typeof result.comp === "string") {
             result.comp = resolveComponent(result.comp);
@@ -282,6 +285,7 @@ PanelWindow {
         let t = getLayout(masterWindow.currentActive);
         if (!t) return;
 
+        masterWindow.disableMorph = true;
         let currentItem = widgetStack.currentItem;
         let finalW = (currentItem && currentItem.targetMasterWidth  !== undefined) ? currentItem.targetMasterWidth  : t.w;
         let finalH = (currentItem && currentItem.targetMasterHeight !== undefined) ? currentItem.targetMasterHeight : t.h;
@@ -301,6 +305,7 @@ PanelWindow {
             if (currentItem.layoutWidth !== undefined) currentItem.layoutWidth = t.w;
             if (currentItem.layoutHeight !== undefined) currentItem.layoutHeight = t.h;
         }
+        morphReenableTimer.restart();
     }
 
     onGlobalUiScaleChanged: { handleNativeScreenChange(); }
@@ -442,6 +447,7 @@ PanelWindow {
                 masterWindow.disableMorph = true;
 
                 let t = getLayout(newWidget);
+                console.log("[COLD_OPEN_DEBUG] switchWidget frame-0:", newWidget, "mw:", masterWindow.width, "mh:", masterWindow.height, "t.rx:", t ? t.rx : 0, "t.ry:", t ? t.ry : 0, "t.w:", t ? t.w : 0, "t.h:", t ? t.h : 0);
                 let cachedWidget = widgetCache[newWidget];
                 let initW = (cachedWidget && cachedWidget.targetMasterWidth !== undefined) ? cachedWidget.targetMasterWidth : t.w;
                 let initH = (cachedWidget && cachedWidget.targetMasterHeight !== undefined) ? cachedWidget.targetMasterHeight : t.h;
@@ -477,11 +483,10 @@ PanelWindow {
     }
 
     function executeSwitch(newWidget, arg, immediate) {
-        console.log("executeSwitch:", newWidget)
+        let t = getLayout(newWidget);
+        console.log("[COLD_OPEN_DEBUG] executeSwitch frame-0:", newWidget, "mw:", masterWindow.width, "mh:", masterWindow.height, "t.rx:", t ? t.rx : 0, "t.ry:", t ? t.ry : 0, "t.w:", t ? t.w : 0, "t.h:", t ? t.h : 0);
         masterWindow.currentActive = newWidget;
         masterWindow.activeArg = arg;
-
-        let t = getLayout(newWidget);
         if (!t || !t.comp) return;
 
         masterWindow.animX = t.rx;

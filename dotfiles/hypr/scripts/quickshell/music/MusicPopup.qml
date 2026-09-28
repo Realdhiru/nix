@@ -65,6 +65,7 @@ Item {
     readonly property color pink: _theme.pink
     readonly property color red: _theme.red
     readonly property color yellow: _theme.yellow
+    readonly property color primary: _theme.primary
 
     property var musicData: {
         "title": "Loading...", "artist": "", "status": "Stopped", "percent": 0,

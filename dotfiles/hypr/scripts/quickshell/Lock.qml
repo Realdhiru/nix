@@ -253,32 +253,53 @@ ShellRoot {
                 FileView {
                     id: batCapView
                     path: "/sys/class/power_supply/BAT0/capacity"
-                    watchChanges: true
-                    onTextChanged: {
-                        let t = safeFileText(batCapView);
-                        if (t.length > 0) {
-                            let p = parseInt(t);
-                            if (!isNaN(p)) {
-                                screenRoot.batPct = "" + p;
-                                screenRoot.hasBattery = true;
-                            }
-                        }
-                    }
-                    onFileChanged: {
-                        batCapView.reload();
-                    }
                 }
 
                 FileView {
                     id: batStatView
                     path: "/sys/class/power_supply/BAT0/status"
-                    watchChanges: true
-                    onTextChanged: {
-                        let t = safeFileText(batStatView);
-                        if (t.length > 0) screenRoot.batStatus = t;
+                }
+
+                function syncLockBattery() {
+                    let c = safeFileText(batCapView);
+                    if (c.length > 0) {
+                        let p = parseInt(c);
+                        if (!isNaN(p)) {
+                            screenRoot.batPct = "" + p;
+                            screenRoot.hasBattery = true;
+                        }
                     }
-                    onFileChanged: {
+                    let s = safeFileText(batStatView);
+                    if (s.length > 0) screenRoot.batStatus = s;
+                }
+
+                Process {
+                    id: udevLockBatteryWatcher
+                    command: ["udevadm", "monitor", "--subsystem-match=power_supply"]
+                    running: true
+                    stdout: SplitParser {
+                        splitMarker: "\n"
+                        onRead: (line) => {
+                            batCapView.reload();
+                            batStatView.reload();
+                            syncLockBattery();
+                        }
+                    }
+                    Component.onDestruction: {
+                        running = false;
+                        kill();
+                    }
+                }
+
+                Timer {
+                    id: lockBatteryFailsafeTimer
+                    interval: 30000
+                    running: true
+                    repeat: true
+                    onTriggered: {
+                        batCapView.reload();
                         batStatView.reload();
+                        syncLockBattery();
                     }
                 }
 
