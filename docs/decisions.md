@@ -117,3 +117,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Rule & Standardized Write Pattern:**
   - **QuickShell `FileView` Contracts (`colors.json`, `music_info.json`)**: Use atomic move (`.tmp` -> `mv`). Atomic move is 100% safe for `Quickshell.Io.FileView` path watchers and eliminates partial-read JSON parse errors during concurrent reads.
   - **Raw Bash / External Script Watchers (`inotifywait -e close_write ...`)**: Raw bash scripts using `inotifywait` on a single explicit file target (rather than watching an entire directory) attach to the underlying Linux inode. Executing `mv` replaces the inode, breaking single-file `inotifywait` handles. For legacy single-file script watchers, use in-place writes (`cat > target`).
+
+### 16. Projects Directory Deletion Protection Policy
+- **Decision:** Files and directories inside `~/Projects/` are strictly protected from deletion.
+- **Rationale:** `~/Projects/` contains user backups, reference repositories, and uncommitted project workspaces. Agents must never issue `rm` or delete operations against `~/Projects/` or any of its subdirectories.

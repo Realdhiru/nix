@@ -1,5 +1,7 @@
 # CHANGELOG
 
+- **Projects Directory Protection Policy**:
+  - Established persistent invariant forbidding deletion of files or directories inside `~/Projects/` across [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md#L44), [`docs/advisor-context.md`](file:///home/realdhiru/nix/docs/advisor-context.md#L16), and [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md#L121).
 - **OpenCode Removal & System Purge**:
   - Removed `opencode` package from [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix#L61) and `ponytail` flake input from [`flake.nix`](file:///home/realdhiru/nix/flake.nix).
   - Purged `xdg.configFile."opencode/..."` entries from [`home.nix`](file:///home/realdhiru/nix/home.nix).

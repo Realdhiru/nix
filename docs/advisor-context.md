@@ -15,4 +15,9 @@
 
 - **Never test/spawn lockscreen directly/autonomously**: Testing or executing the lockscreen manually breaks the PAM session and session lock state when attempting to log back in.
 
+## Projects Directory Protection Rule
+
+- **Never delete files or directories inside `~/Projects/`**: `~/Projects/` and its subdirectories contain user backups, reference repositories, and independent projects. Never run `rm` or delete paths under `~/Projects/`.
+
+
 
