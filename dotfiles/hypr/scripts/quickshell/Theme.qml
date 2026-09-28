@@ -27,6 +27,7 @@ Item {
     property color yellow: "#f9e2af"
     property color maroon: "#eba0ac"
     property color teal: "#94e2d5"
+    property color lavender: "#b4befe"
     property color primary: "#cba6f7"
 
     // Dynamic wallpaper lightness indicators for adaptive widget styling

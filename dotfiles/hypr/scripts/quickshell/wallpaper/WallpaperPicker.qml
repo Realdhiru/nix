@@ -35,13 +35,6 @@ Item {
     property string currentFilter: "All"
     property string _lastFilter: "All"
 
-    onCurrentFilterChanged: {
-        if (_lastFilter !== currentFilter) {
-            _lastFilter = currentFilter;
-            Quickshell.execDetached(["bash", "-c", "bash '" + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh' set ui.wallpaperFilter '" + currentFilter + "'"]);
-        }
-    }
-
     Process {
         id: filterStateReader
         command: ["bash", "-c", "bash '" + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh' get ui.wallpaperFilter"]
@@ -92,31 +85,6 @@ Item {
     ]
 
     ListModel { id: monitorModel }
-
-    Process {
-        id: monitorProc
-        command: ["hyprctl", "monitors", "-j"]
-        running: false
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let response = this.text;
-                if (response && response.trim().length > 0) {
-                    try {
-                        var monitors = JSON.parse(response);
-                        monitorModel.clear();
-                        var monitorBatch = [];
-                        for (var i = 0; i < monitors.length; i++) {
-                           monitorBatch.push({ "name": monitors[i].name, "selected": true });
-                        }
-                        monitorModel.append(monitorBatch);
-                    } catch(e) {
-                        console.log("[MonitorSync] ERROR parsing JSON: " + e);
-                    }
-                }
-            }
-        }
-    } // FIXED: Missing closing bracket for Process block
 
     property var downloadedSearchMap: ({})
 
@@ -193,7 +161,13 @@ Item {
     }
 
     function loadMonitors() {
-        monitorProc.running = true;
+        monitorModel.clear();
+        let screens = Quickshell.screens;
+        let batch = [];
+        for (let i = 0; i < screens.length; i++) {
+            batch.push({ "name": screens[i].name, "selected": true });
+        }
+        monitorModel.append(batch);
     }
 
     function getMonitorOutputs() {
@@ -333,9 +307,9 @@ Item {
     onCurrentFilterChanged: {
         window.isFilterAnimating = true;
         filterAnimationTimer.restart();
-        window.isModelChanging = true;
         let returningFromSearch = (window._lastFilter === "Search" && window.currentFilter !== "Search");
         window._lastFilter = window.currentFilter;
+        Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh", "set", "ui.wallpaperFilter", window.currentFilter]);
         
         if (returningFromSearch) window.searchIndexRestored = false;
         

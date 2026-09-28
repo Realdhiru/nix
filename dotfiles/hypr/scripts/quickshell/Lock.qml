@@ -1,7 +1,5 @@
 import QtQuick
 import QtQuick.Window
-import QtQuick.Controls
-import QtQuick.Layouts
 import QtQuick.Effects
 import QtMultimedia
 import QtCore
@@ -46,12 +44,6 @@ ShellRoot {
         } catch(e) {
             return "";
         }
-    }
-
-    QtObject {
-        id: lockSettings
-        property bool hidePassword: false
-        property int revealDuration: 300
     }
 
     QtObject {
@@ -162,70 +154,6 @@ ShellRoot {
 
                 property string batPct: "100"
                 property string batStatus: "AC"
-                property string currentUser: {
-                    let u = Quickshell.env("USER");
-                    return (u && u.trim() !== "") ? u.trim() : "User";
-                }
-                property string techStatusText: ""
-
-                function getDynamicTechStatus() {
-                    let kernel = Quickshell.env("SYS_KERNEL") || "Linux";
-                    let load = Quickshell.env("SYS_LOAD") || "0.00 0.00 0.00";
-                    let uptime = Quickshell.env("SYS_UPTIME") || "0h 00m";
-
-                    let pool = [
-                        "[SYS_KERNEL] Linux " + kernel + " // Load: " + load + " // Up: " + uptime,
-                        "[SEC_GATEWAY] Hyprland [ext-session-lock-v1] // Load: " + load,
-                        "[SYSTEM_UPTIME] Uptime: " + uptime + " // Host status: ISOLATED",
-                        "[NIXOS_STABLE] Kernel " + kernel + " // Functional generation sealed",
-                        "[SEC_GATEWAY] Awaiting passphrase verification to unmask buffer",
-                        "[PAM_AUTH] Dynamic token required for session elevation",
-                        "[WAYLAND] Framebuffer masked. Compositor in secure mode.",
-                        "[CRYPT_CORE] Asymmetric challenge ready. Awaiting input.",
-                        "[NIXOS] Pure functional system state preserved in immutable store",
-                        "[HYPRLAND_IPC] Workspaces unmapped. Compositing suspended.",
-                        "[SYS_DAEMON] Zero privilege escalation detected. Session intact.",
-                        "[IO_PIPELINE] Input events restricted to authentication pipe",
-                        "[MEMORY_MAP] Virtual memory boundaries sealed. Swap clean.",
-                        "[SEC_CORE] Protocol v1 handshake active. Enter credentials.",
-                        "[SECURITY] Workstation locked. Physical presence required.",
-                        "[HYPR_DISPATCH] Display pipeline paused. Awaiting unlock signal.",
-                        "[AUTH_BROKER] Privilege drop verified. Host in restricted state.",
-                        "[KERNEL] Workstation idle. Security subsystem standing by.",
-                        "[SYS_CONTROL] Session isolated. Cryptographic response required.",
-                        "chmod 000 /dev/display -- Authenticate to restore permissions",
-                        "sudo !! -- Enter passphrase to continue",
-                        "git commit -m 'Workstation locked: WIP'",
-                        "echo $PASSWORD > /dev/null -- Enter authentication token",
-                        "SIGSTOP sent to all desktop foreground threads",
-                        "401 Unauthorized: Session credentials required",
-                        "cat /dev/urandom > /dev/lockscreen -- Entropy pool primed",
-                        "ssh-keygen -t ed25519: Host identity verified",
-                        "nix-store --verify: All system hashes match",
-                        "kill -CONT when credentials match",
-                        "Hyprland running on Wayland ext-session-lock-v1",
-                        "Warning: Unauthorized access attempts will be logged to journald",
-                        "Process tree frozen. Awaiting user resumption.",
-                        "Hardware RNG seeded. Crypto context initialized.",
-                        "Zero packet drops. Local interface in stealth mode.",
-                        "systemd[1]: Reached target Session-Lock.target",
-                        "Mount namespace isolated. Display buffer shielded.",
-                        "Display server: Wayland // Compositor: Hyprland",
-                        "State: RESTRICTED // Clearance: ROOT_REQUIRED",
-                        "Kernel ring buffer clean. No anomalies detected.",
-                        "Terminal sessions persistent in background tmux",
-                        "Deterministic builds, immutable system, locked workstation",
-                        "Hash verification passed. Awaiting cryptographic unlock.",
-                        "Direct Rendering Manager (DRM) locked to session buffer",
-                        "IPC socket listening: /run/user/1000/hypr/lock.sock",
-                        "Pipeline encrypted via libpam_unix authentication",
-                        "Workstation secured. Verify identity to resume execution."
-                    ];
-
-                    let idx = Math.floor(Math.random() * pool.length);
-                    return pool[idx];
-                }
-
                 property string splashQuote: ""
 
                 Process {
@@ -304,12 +232,10 @@ ShellRoot {
                 }
 
                 property real introState: 0.0
-                property bool inputActive: false 
                 property bool isPlayingIntro: true
                 property bool hasBattery: false
                 
                 Component.onCompleted: {
-                    techStatusText = getDynamicTechStatus();
                     let initCap = safeFileText(batCapView);
                     if (initCap.length > 0) {
                         let p = parseInt(initCap);
@@ -322,14 +248,6 @@ ShellRoot {
                     if (initStat.length > 0) screenRoot.batStatus = initStat;
                     screenRoot.updateMedia();
                     introSequence.start();
-                }
-
-                Timer {
-                    id: idleTimer
-                    interval: 15000
-                    running: screenRoot.inputActive && inputField.text.length === 0
-                    repeat: false
-                    onTriggered: screenRoot.inputActive = false
                 }
 
                 FileView {

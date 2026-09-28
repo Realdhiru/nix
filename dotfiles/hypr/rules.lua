@@ -11,11 +11,23 @@ local function check_file(path)
     return false, nil
 end
 
+local function check_state_json()
+    local f = io.open(home .. "/.cache/quickshell/state.json", "r")
+    if not f then return false end
+    local content = f:read("*a")
+    f:close()
+    if not content then return false end
+    if content:match('"gaming"%s*:%s*true') or content:match('"wallpaperKilled"%s*:%s*true') or content:match('"profile"%s*:%s*"power%-saver"') then
+        return true
+    end
+    return false
+end
+
 local killed_ok, _ = check_file(home .. "/.cache/wallpaper_killed")
 local game_ok, _ = check_file(home .. "/.cache/gaming_mode")
 local prof_ok, prof_val = check_file(home .. "/.cache/qs_power_profile")
 
-if killed_ok or game_ok or (prof_ok and prof_val and prof_val:match("power%-saver")) then
+if check_state_json() or killed_ok or game_ok or (prof_ok and prof_val and prof_val:match("power%-saver")) then
     is_opaque = true
 end
 
@@ -139,10 +151,3 @@ hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, animation = "fade
 hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, blur = true })
 hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, ignore_alpha = 0.05 })
 hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, animation = "none" })
-
--- ======================================================
--- Counter-Strike 2
--- ======================================================
-
--- hl.window_rule({ match = { class = "^cs2$" }, immediate = true })
--- hl.window_rule({ match = { class = "^cs2$" }, keep_aspect_ratio = true })

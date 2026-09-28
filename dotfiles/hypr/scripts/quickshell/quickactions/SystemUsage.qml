@@ -44,19 +44,20 @@ Item {
     function cellW(mx, mw) { return (mw * orientedRoot.width) - ((mx > 0 ? sp / 2 : 0) + ((mx + mw) < 0.99 ? sp / 2 : 0)); }
     function cellH(my, mh) { return (mh * orientedRoot.height) - ((my > 0 ? sp / 2 : 0) + ((my + mh) < 0.99 ? sp / 2 : 0)); }
 
-    // Unified Matugen Theming (Strict Type Binding)
-    property color cBase: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.base : "#1e1e2e"
-    property color cCrust: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.crust : "#11111b"
-    property color cSurface0: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.surface0 : "#313244"
-    property color cSurface1: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.surface1 : "#45475a"
-    property color cText: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.text : "#cdd6f4"
-    property color cSubtext0: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.subtext0 : "#a6adc8"
-    property color cMauve: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.mauve : "#cba6f7"
-    property color cSapphire: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.sapphire : "#74c7ec"
-    property color cGreen: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.green : "#a6e3a1"
-    property color cPeach: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.peach : "#fab387"
-    property color cYellow: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.yellow : "#f9e2af"
-    property color cRed: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.red : "#f38ba8"
+    // Unified Matugen Theming (Strict Type Binding via Theme.qml)
+    Theme { id: _theme }
+    property color cBase: _theme.base
+    property color cCrust: _theme.crust
+    property color cSurface0: _theme.surface0
+    property color cSurface1: _theme.surface1
+    property color cText: _theme.text
+    property color cSubtext0: _theme.subtext0
+    property color cMauve: _theme.mauve
+    property color cSapphire: _theme.sapphire
+    property color cGreen: _theme.green
+    property color cPeach: _theme.peach
+    property color cYellow: _theme.yellow
+    property color cRed: _theme.red
 
     property color accent: cMauve
     property color textPrimary: cText

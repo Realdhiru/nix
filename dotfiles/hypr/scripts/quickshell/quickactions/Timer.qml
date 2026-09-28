@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import "../"
 
 Item {
     id: root
@@ -39,13 +40,14 @@ Item {
     // =========================================================
     // --- MATUGEN THEMING & STYLING (MINIMALIST)
     // =========================================================
-    property color cBase: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.base : "#1e1e2e"
-    property color cMantle: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.mantle : "#181825"
-    property color cSurface0: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.surface0 : "#313244"
-    property color cSurface1: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.surface1 : "#45475a"
-    property color cText: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.text : "#cdd6f4"
-    property color cSubtext0: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.subtext0 : "#a6adc8"
-    property color cMauve: typeof mochaColors !== "undefined" && mochaColors ? mochaColors.mauve : "#cba6f7"
+    Theme { id: _theme }
+    property color cBase: _theme.base
+    property color cMantle: _theme.mantle
+    property color cSurface0: _theme.surface0
+    property color cSurface1: _theme.surface1
+    property color cText: _theme.text
+    property color cSubtext0: _theme.subtext0
+    property color cMauve: _theme.mauve
 
     function alpha(color, a) { return Qt.rgba(color.r, color.g, color.b, a); }
 

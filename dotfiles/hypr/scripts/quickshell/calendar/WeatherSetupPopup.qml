@@ -22,19 +22,20 @@ Item {
 
     readonly property string scriptsDir: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/calendar"
 
-    // Colors
-    property color base: "#1e1e2e"
-    property color mantle: "#181825"
-    property color crust: "#11111b"
-    property color text: "#cdd6f4"
-    property color subtext0: "#a6adc8"
-    property color overlay0: "#6c7086"
-    property color surface0: "#313244"
-    property color surface1: "#45475a"
-    property color surface2: "#585b70"
+    // Colors (Dynamic Matugen Theme)
+    Theme { id: _theme }
+    property color base: _theme.base
+    property color mantle: _theme.mantle
+    property color crust: _theme.crust
+    property color text: _theme.text
+    property color subtext0: _theme.subtext0
+    property color overlay0: _theme.overlay0
+    property color surface0: _theme.surface0
+    property color surface1: _theme.surface1
+    property color surface2: _theme.surface2
     
-    property color lavender: "#b4befe"
-    property color blue: "#89b4fa"
+    property color lavender: _theme.mauve
+    property color blue: _theme.blue
 
     Process {
         id: searchCityProc

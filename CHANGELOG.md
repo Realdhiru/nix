@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 2026-09-28 — QuickShell Startup Optimization & Dark Fill Cleanup
+
+- **QuickShell Startup & Preload Lag Fix**:
+  - Gated background intro animations (`introAnim.running: window.visible`) in [`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L448), preventing preloaded invisible popups from running 800ms parallel/sequential intro timelines on boot/reload.
+- **NetworkPopup.qml Glass Fills**:
+  - Replaced solid dark/mantle/crust fills on `centralCore` gradient (lines 1215-1234), `coreWave` canvas (line 1304), and `powerBtnRect` gradient (line 2381) in [`dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml) with standard glass base tokens (`Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)` / `surface0` / `surface1`).
+- **FocusTimePopup.qml Gradient Fills**:
+  - Replaced multi-color gradients on the Mon–Sun bar chart (line 926) and per-app progress bars (lines 1140, 1536) in [`dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml) with solid `window.primary` fills.
+- **System-Wide Gradient Audit**:
+  - Replaced crust/mantle gradient in `centralCore` ring of [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L1520) with standard glass base token.
+
+## 2026-09-28 — Battery Keybind Fix & Ultra-Fast Animation Pass
+
+- **Battery Popup Crash & Keybind Fix**:
+  - Removed dead `avStatePoller.running` calls from `showWidget()` in [`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L162-L180), which threw `ReferenceError: avStatePoller is not defined` on every open attempt, preventing the popup from rendering.
+  - Added missing `readonly property color primary: _theme.primary` property binding in `BatteryPopup.qml` and native `property color lavender: "#b4befe"` in [`dotfiles/hypr/scripts/quickshell/Theme.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Theme.qml#L30).
+  - Converted `batColorStart`, `profileStart`, and `ambientSecondary` block functions to native declarative expressions, eliminating `Unable to assign [undefined] to QColor` QML warnings.
+  - Force-reloaded QuickShell to update running in-memory instances. Keybind `Super + U` now instantly opens/toggles `BatteryPopup.qml`.
+- **Blazingly Fast Animation & IPC Optimization**:
+  - Reduced window morph transition durations (`morphDuration`, `morphDurationShift`) to `110ms`, exit duration to `90ms`, and scale/opacity durations to `100ms` in [`dotfiles/hypr/scripts/quickshell/Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml#L206-L208).
+  - Set `teleportTimer.interval` to `0ms` in `Main.qml` for instantaneous frame-0 popup presentation.
+  - Guarded `borderColors` array indexing in [`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml#L215-L218) to prevent per-frame warning log spam on event loops.
+
 ## 2026-09-28 — Display & Night Light Paper Grain & CRT Curvature Shaders
 
 - **Paper Grain & CRT Curvature Sliders Added**:
@@ -15,6 +38,20 @@
   - Established single canonical state file `~/.cache/quickshell/state.json` storing all active user toggle state (`sunset`, `modes`, `power`, `ui`).
   - Created [`dotfiles/hypr/scripts/quickshell/restore_state.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh) and [`state_ctl.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/state_ctl.sh) to automatically re-apply active shader pipelines (`hyprsunset`, `screen_shader.frag`), Gaming Mode parameters, DND state, and power profiles on QuickShell boot/reload via [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml).
   - Migrated state readers/writers in [`SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml), [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml), [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml), and [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml). Purged obsolete `~/.cache/hyprsunset_state.json`.
+- **System-Wide Repo Health & Zero-Polling Architecture Pass**:
+  - **Dead Code Purge**: Deleted orphaned directories (`dotfiles/wallpaper/widget/`), unused scripts ([`osd_watcher.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/osd_watcher.sh), [`av_fetch.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/av_fetch.sh), [`av_event_stream.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/av_event_stream.sh), [`battery_wait.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/watchers/battery_wait.sh)), obsolete commented window rules in [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), dead keybindings in [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), and unused properties/imports across [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml), [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml), [`ClipboardManager.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml), and [`MonitorPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml).
+  - **Zero-Polling Native Event Bindings**: Replaced recurring bash Process and Timer polling with native C++ bindings:
+    - [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml): `updateReader` subshell replaced with native `FileView` watching `update_pending`; `chassisDetector` replaced with `SysData.hasBattery`; `mprisWatcher` looping subshell replaced with persistent `playerctl --follow` with `SplitParser` and native `FileView` on `music_info.json`.
+    - [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml): `batteryWaiter` / `battery_wait.sh` process loop replaced with native `FileView` watching sysfs `/sys/class/power_supply/BAT0/capacity`, `status`, and `/sys/class/power_supply/AC0/online`.
+    - [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml): Replaced `avStatePoller` and FIFO subprocess with native `Quickshell.Services.Pipewire` audio bindings and sysfs backlight `FileView`.
+    - [`FocusTimePopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml): Eliminated 1s `cat` subprocess polling in favor of native `FileView` watching `focustime_state.json`.
+    - [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml): Replaced `hyprctl monitors -j` Process with native `Quickshell.screens`.
+  - **Logic Consolidation & Theming Integrity**:
+    - [`qs_manager.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/qs_manager.sh): Delegated thumbnail preparation to `wallpaper.sh thumb`.
+    - [`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml) & [`toggle_gaming_mode.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/toggle_gaming_mode.sh): Routed active network tab and gaming mode through canonical `state.json` via `state_ctl.sh`.
+    - `quickactions/` ([`DrawAction.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/DrawAction.qml), [`SystemUsage.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/SystemUsage.qml), [`Timer.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/Timer.qml)): Standardized on `Theme.qml`, eliminating un-namespaced `mochaColors` references.
+    - Purged hardcoded `#cdd6f4` fallbacks in [`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml) and [`WeatherSetupPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/WeatherSetupPopup.qml).
+    - [`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh): Dynamically injects live `$ACCENT` into `fuzzel.ini` match colors.
 
 
 - **TopBar 3-Layer Glass Pass Completed**:

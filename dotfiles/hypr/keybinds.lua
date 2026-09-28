@@ -117,7 +117,6 @@ hl.bind(mainMod .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:mag
 hl.bind(mainMod .. " + D", hl.dsp.workspace.toggle_special("music"))
 hl.bind(mainMod .. " + SHIFT + D", hl.dsp.window.move({ workspace = "special:music" }))
 hl.bind(mainMod .. " + F", hl.dsp.workspace.toggle_special("notes"))
--- hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.move({ workspace = "special:notes" }))
 hl.bind(mainMod .. " + G", hl.dsp.workspace.toggle_special("misc"))
 hl.bind(mainMod .. " + SHIFT + G", hl.dsp.exec_cmd(scripts .. "toggle_gaming_mode.sh"))
 
@@ -131,11 +130,6 @@ hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 hl.bind("SHIFT + F3", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true, description = "pause media" })
 hl.bind("SHIFT + F4", hl.dsp.exec_cmd("playerctl previous"), { locked = true, description = "previous media" })
 hl.bind("SHIFT + F5", hl.dsp.exec_cmd("playerctl next"), { locked = true, description = "next media" })
-
--- hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true, description = "next media" })
--- hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true, description = "pause media" })
--- hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true, description = "play media" })
--- hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true, description = "previous media" })
 
 -- ======================================================
 -- Audio & Brightness
@@ -211,6 +205,3 @@ hl.bind(mainMod .. " + mouse_up", hl.dsp.exec_cmd("hyprctl eval \"hl.config({cur
 hl.bind(mainMod .. " + mouse_down", hl.dsp.exec_cmd("hyprctl eval \"hl.config({cursor={zoom_factor=1.0}})\""), { non_consuming = true })
 
 
--- hl.bind(mainMod .. " + comma", hl.dsp.exec_cmd("pkill -x rofi || hyde-shell emoji-picker"))
--- hl.bind(mainMod .. " + period", hl.dsp.exec_cmd("pkill -x rofi || hyde-shell glyph-picker"))
--- hl.bind(mainMod .. " + SHIFT + P", hl.dsp.exec_cmd("hyprpicker -an"))

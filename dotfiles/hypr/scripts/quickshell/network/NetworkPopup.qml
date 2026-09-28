@@ -58,7 +58,6 @@ Item {
     }
 
     readonly property string cacheDir: Caching.getCacheDir("network")
-    readonly property string modeFilePath: cacheDir + "/mode"
 
     property bool ethPresent: false
     property bool wifiPresent: false
@@ -105,41 +104,37 @@ Item {
     }
 
     property bool ignoreNextModeFileUpdate: false
-    Process {
-        id: modeReader
-        command: ["bash", "-c", "cat '" + window.modeFilePath + "' 2>/dev/null"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let mode = this.text.trim();
-                if ((mode === "wifi" || mode === "bt" || mode === "eth") && window.activeMode !== mode) {
-                    if ((mode === "eth" && window.ethPresent) ||
-                        (mode === "wifi" && window.wifiPresent) ||
-                        (mode === "bt" && window.btPresent)) {
-                        window.powerAnimAllowed = false;
-                        powerAnimBlocker.restart();
-                        window.ignoreNextModeFileUpdate = true;
-                        window.activeMode = mode;
-                    }
-                }
-            }
-        }
+
+    FileView {
+        id: stateFileView
+        path: Quickshell.env("HOME") + "/.cache/quickshell/state.json"
+        watchChanges: true
+        onTextChanged: window.syncModeFromState()
     }
 
-    // Read mode file reactively when popup opens, and poll lightly (1s) while visible
-    // to catch any external mode changes (e.g. from qs_manager.sh) without CPU/process churn.
-    Timer { interval: 1000; running: window.visible; repeat: true; onTriggered: modeReader.running = true }
-
-    Connections {
-        target: window
-        function onVisibleChanged() {
-            if (window.visible) modeReader.running = true;
-        }
+    function syncModeFromState() {
+        let txt = (stateFileView.text() || "").trim();
+        if (!txt) return;
+        try {
+            let state = JSON.parse(txt);
+            let mode = state.ui && state.ui.networkMode ? state.ui.networkMode : "";
+            if ((mode === "wifi" || mode === "bt" || mode === "eth") && window.activeMode !== mode) {
+                if ((mode === "eth" && window.ethPresent) ||
+                    (mode === "wifi" && window.wifiPresent) ||
+                    (mode === "bt" && window.btPresent)) {
+                    window.powerAnimAllowed = false;
+                    powerAnimBlocker.restart();
+                    window.ignoreNextModeFileUpdate = true;
+                    window.activeMode = mode;
+                }
+            }
+        } catch(e) {}
     }
 
     Component.onCompleted: {
         window.powerAnimAllowed = false;
         powerAnimBlocker.restart();
-        Quickshell.execDetached(["bash", "-c", "mkdir -p '" + window.cacheDir + "'; if [ ! -f '" + window.modeFilePath + "' ]; then echo '" + activeMode + "' > '" + window.modeFilePath + "'; fi"]);
+        window.syncModeFromState();
 
         let hasCache = false;
         if (cache.lastEthJson !== "") { processEthJson(cache.lastEthJson, true); hasCache = true; }
@@ -376,7 +371,7 @@ Item {
 
     onActiveModeChanged: {
         if (!window.ignoreNextModeFileUpdate) {
-            Quickshell.execDetached(["bash", "-c", "mkdir -p '" + window.cacheDir + "' && echo '" + window.activeMode + "' > '" + window.modeFilePath + "'"]);
+            Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh", "set", "ui.networkMode", window.activeMode]);
         }
         window.ignoreNextModeFileUpdate = false;
 
@@ -1220,7 +1215,7 @@ Item {
                                 GradientStop {
                                     position: 0.0
                                     color: {
-                                        if (!window.currentPower) return window.mantle;
+                                        if (!window.currentPower) return Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity);
                                         if (isMyDisconnecting) return window.surface0;
                                         if (centralCore.isDangerState && window.currentConn && !showPassword) return Qt.lighter(window.red, 1.15);
                                         return window.currentConn || showPassword ? Qt.lighter(window.activeColor, 1.15) : window.surface0;
@@ -1230,17 +1225,17 @@ Item {
                                 GradientStop {
                                     position: 1.0
                                     color: {
-                                        if (!window.currentPower) return window.crust;
-                                        if (isMyDisconnecting) return window.base;
+                                        if (!window.currentPower) return Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity);
+                                        if (isMyDisconnecting) return window.surface0;
                                         if (centralCore.isDangerState && window.currentConn && !showPassword) return window.red;
-                                        return window.currentConn || showPassword ? window.activeColor : window.base;
+                                        return window.currentConn || showPassword ? window.activeColor : window.surface0;
                                     }
                                     Behavior on color { ColorAnimation { duration: 300 } }
                                 }
                             }
 
                             border.color: {
-                                if (!window.currentPower) return window.crust;
+                                if (!window.currentPower) return window.surface1;
                                 if (isMyDisconnecting) return window.surface0;
                                 if (centralCore.isDangerState && window.currentConn && !showPassword) return window.maroon;
                                 return window.currentConn || showPassword ? Qt.lighter(window.activeColor, 1.1) : window.surface1;
@@ -1306,7 +1301,7 @@ Item {
 
                                     var grad = ctx.createLinearGradient(0, 0, 0, height);
                                     grad.addColorStop(0, window.surface1.toString());
-                                    grad.addColorStop(1, window.crust.toString());
+                                    grad.addColorStop(1, window.surface0.toString());
                                     ctx.fillStyle = grad;
                                     ctx.fill();
                                     ctx.restore();
@@ -2383,7 +2378,7 @@ Item {
                     gradient: Gradient {
                         orientation: Gradient.Vertical
                         GradientStop { position: 0.0; color: window.currentPower ? "transparent" : window.surface1 }
-                        GradientStop { position: 1.0; color: window.currentPower ? "transparent" : window.crust }
+                        GradientStop { position: 1.0; color: window.currentPower ? "transparent" : window.surface0 }
                     }
 
                     border.color: window.currentPowerPending ? window.activeColor : (window.currentPower ? "transparent" : window.surface2)

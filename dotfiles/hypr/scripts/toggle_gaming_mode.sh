@@ -2,11 +2,18 @@
 set -euo pipefail
 
 STATE_FILE="$HOME/.cache/gaming_mode"
+STATE_CTL="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
 NOTIF_TITLE="Efficiency / Gaming Mode"
 
-if [ -f "$STATE_FILE" ]; then
+IS_GAMING="false"
+if [ -f "$STATE_CTL" ]; then
+    IS_GAMING="$(bash "$STATE_CTL" get modes.gaming 2>/dev/null || echo "false")"
+fi
+
+if [ -f "$STATE_FILE" ] || [ "$IS_GAMING" = "true" ]; then
     # Disable Gaming Mode
     rm -f "$STATE_FILE"
+    [ -f "$STATE_CTL" ] && bash "$STATE_CTL" set modes.gaming false 2>/dev/null || true
 
     # Reset compositor gaming flags to defaults
     hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, general = { allow_tearing = false } })" >/dev/null 2>&1 || true
@@ -22,6 +29,7 @@ if [ -f "$STATE_FILE" ]; then
 else
     # Enable Gaming Mode
     touch "$STATE_FILE"
+    [ -f "$STATE_CTL" ] && bash "$STATE_CTL" set modes.gaming true 2>/dev/null || true
 
     # 1. 100% opaque windows across all applications (eliminates GPU alpha-blending and triggers occlusion culling)
     hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0 } })" >/dev/null 2>&1 || true

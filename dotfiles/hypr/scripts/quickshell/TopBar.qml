@@ -5,7 +5,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import Quickshell.Services.SystemTray
 
 Variants {
     model: Quickshell.screens
@@ -76,14 +75,11 @@ Variants {
 
             readonly property color pillBorderHover: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, Config.borderOpacity * 2) : "transparent"
 
-            property bool showHelpIcon: true
             property bool isRecording: false
 
             property bool updateAvailable: false
             property bool forceUpdateShow: false
             property bool isUpdateVisible: updateAvailable || forceUpdateShow
-
-            property int workspaceCount: 69
 
             FileView {
                 id: recFileView
@@ -98,29 +94,15 @@ Variants {
                 barWindow.isRecording = (txt.length > 0);
             }
 
-            Process {
-                id: updateReader
-                running: true
-                command: ["bash", "-c", "if [ -f '" + Caching.getCacheDir('updater') + "/update_pending' ]; then echo '1'; else echo '0'; fi"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        barWindow.updateAvailable = (this.text.trim() === "1");
-                    }
-                }
+            FileView {
+                id: updateFileView
+                path: Caching.getCacheDir('updater') + "/update_pending"
+                watchChanges: true
+                onLoadedChanged: barWindow.updateAvailable = updateFileView.loaded
+                onTextChanged: barWindow.updateAvailable = updateFileView.loaded
             }
 
-            property bool isDesktop: false
-
-            Process {
-                id: chassisDetector
-                running: true
-                command: ["bash", "-c", "if ls /sys/class/power_supply/BAT* 1> /dev/null 2>&1; then echo 'laptop'; else echo 'desktop'; fi"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        barWindow.isDesktop = (this.text.trim() === "desktop");
-                    }
-                }
-            }
+            readonly property bool isDesktop: !SysData.hasBattery
 
             property bool isStartupReady: false
             Timer { interval: 10; running: true; onTriggered: barWindow.isStartupReady = true }
@@ -347,6 +329,29 @@ Variants {
                 }
             }
 
+            FileView {
+                id: musicFileView
+                path: Caching.getRunDir('music') + "/music_info.json"
+                watchChanges: true
+                onLoadedChanged: barWindow.parseMusicFile()
+                onTextChanged: barWindow.parseMusicFile()
+            }
+
+            function parseMusicFile() {
+                let txt = (musicFileView.text() || "").trim();
+                if (txt !== "") {
+                    try { 
+                        let newData = JSON.parse(txt);
+                        let oldData = barWindow.musicData || {};
+                        let posDiff = Math.abs(newData.position - (oldData.position || 0));
+
+                        if (oldData.title !== newData.title || oldData.status !== newData.status || oldData.artUrl !== newData.artUrl || posDiff > 3) {
+                            barWindow.musicData = newData;
+                        }
+                    } catch(e) {}
+                }
+            }
+
             Timer {
                 interval: 1000
                 running: barWindow.musicData !== null && barWindow.musicData.status === "Playing"
@@ -418,12 +423,13 @@ Variants {
             Process {
                 id: mprisWatcher
                 running: true
-                command: ["bash", "-c", "dbus-monitor --session \"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',arg0='org.mpris.MediaPlayer2.Player'\" \"type='signal',interface='org.mpris.MediaPlayer2.Player',member='Seeked'\" 2>/dev/null | grep -m 1 'member=' > /dev/null || sleep 2"]
-                onExited: {
-                    musicForceRefresh.running = false;
-                    musicForceRefresh.running = true;
-                    running = false;
-                    running = true;
+                command: ["playerctl", "--follow", "metadata", "--format", "{{status}}|{{title}}"]
+                stdout: SplitParser {
+                    splitMarker: "\n"
+                    onRead: (line) => {
+                        musicForceRefresh.running = false;
+                        musicForceRefresh.running = true;
+                    }
                 }
             }
 

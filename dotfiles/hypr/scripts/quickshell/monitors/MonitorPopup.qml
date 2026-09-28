@@ -49,13 +49,10 @@ Item {
 
     readonly property color mauve: _theme.mauve
     readonly property color blue: _theme.blue
-    readonly property color pink: _theme.pink
-    readonly property color teal: _theme.teal
     readonly property color yellow: _theme.yellow
     readonly property color peach: _theme.peach
     readonly property color green: _theme.green
     readonly property color red: _theme.red
-    readonly property color sapphire: _theme.sapphire
 
     // -------------------------------------------------------------------------
     // STATE & MATH

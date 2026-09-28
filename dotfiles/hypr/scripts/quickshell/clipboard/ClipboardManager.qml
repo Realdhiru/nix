@@ -31,7 +31,6 @@ Item {
     readonly property color surface1: _theme.surface1
     readonly property color surface2: _theme.surface2
     readonly property color mauve: _theme.mauve || "#cba6f7"
-    readonly property color blue: _theme.blue
 
     property var allClips: []
     
@@ -47,7 +46,6 @@ Item {
     property int pendingIndex: -1
 
     property real layoutWidth: width
-    property real layoutHeight: height
 
     property bool isInitialLoad: true
 

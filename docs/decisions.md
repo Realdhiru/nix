@@ -21,7 +21,10 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** Native C++ event-driven bindings only (`Quickshell.Hyprland`, `Quickshell.Services.Pipewire`, `FileView { watchChanges: true }`, `FileWatcher`).
 - **Rationale:** No periodic bash polling loops or subprocess chains in QML. Eliminates fork storms, process starvation, and CPU wakeups, delivering instantaneous frame-0 startup and zero idle CPU overhead.
 - **Rules:**
-  - Never fork bash `Process` to read files or watch file state (`colors_wait.sh`, `settings_wait.sh`, `solidModeDetector`). Use native `Quickshell.Io.FileView`.
+  - Never fork bash `Process` to read files or watch file state (`colors_wait.sh`, `settings_wait.sh`, `solidModeDetector`, `battery_wait.sh`, `av_event_stream.sh`). Use native `Quickshell.Io.FileView` on kernel/tmpfs files.
+  - Never loop-respawn one-shot bash processes (`dbus-monitor | grep -m 1`) inside QML. Use persistent streaming daemons (`playerctl --follow`) with `SplitParser` or native D-Bus bindings.
+  - Monitor enumeration must use native `Quickshell.screens` instead of shelling out to `hyprctl monitors -j`.
+  - Volume and mute monitoring must use native `Quickshell.Services.Pipewire` (`Pipewire.defaultAudioSink.audio`), delivering 8ms D-Bus latency without subprocesses.
   - In QuickShell C++, `FileView` maintains an internal text buffer; any `onFileChanged` handler must explicitly call `fileView.reload()` to refresh `text()`.
   - Layer surface dismissals must be two-phase: keep `visible = true` while running exit transitions (130ms fade/scale), setting `visible = false` only when opacity reaches 0. Never unmap the layer surface on frame 0.
   - QuickShell widgets must remain in separate modular files. Lazy QML compilation ensures inactive widgets consume zero CPU cycles, RAM, or timers.

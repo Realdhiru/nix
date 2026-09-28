@@ -263,7 +263,7 @@ Item {
     // --- DATA FETCHING ROUTING ---
     function requestDataUpdate() {
         if (window.selectedAppClass === "" && getIsoDate(window.activeDate) === getIsoDate(new Date())) {
-            liveFileReader.running = true;
+            window.parseLiveState();
         } else {
             let cmd = ["python3", window.scriptsDir + "/get_stats.py", getIsoDate(window.activeDate)];
             if (window.selectedAppClass !== "") {
@@ -278,46 +278,35 @@ Item {
     }
 
     // --- LIVE FILE READER (For Global Today) ---
-    // When the daemon is down the state file still holds yesterday's
-    // snapshot; never render that stale data as "Today". Requests from
-    // this reader are only forwarded to updateFromData when the file's
-    // selected_date is actually today. Otherwise the DB truth for today
-    // is polled instead (throttled so a dead daemon cannot hammer
-    // python/chart rebuilds once a second).
     property real liveStaleFallbackAt: 0
 
-    Process {
-        id: liveFileReader
-        command: ["cat", window.stateFilePath]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let raw = this.text.trim();
-                if (raw === "") return;
-                try {
-                    let data = JSON.parse(raw);
-                    if (data.selected_date === getIsoDate(new Date())) {
-                        window.updateFromData(data);
-                    } else if ((Date.now() - window.liveStaleFallbackAt) > 15000) {
-                        window.liveStaleFallbackAt = Date.now();
-                        let cmd = ["python3", window.scriptsDir + "/get_stats.py", getIsoDate(new Date())];
-                        cmd.push("--db-dir");
-                        cmd.push(Caching.getStateDir("focustime"));
-                        statsPoller.command = cmd;
-                        statsPoller.running = true;
-                    }
-                } catch(e) {}
+    FileView {
+        id: liveStateFileView
+        path: window.stateFilePath
+        watchChanges: true
+        onTextChanged: {
+            if (window.visible && window.selectedAppClass === "" && getIsoDate(window.activeDate) === getIsoDate(new Date())) {
+                window.parseLiveState();
             }
         }
     }
 
-    Timer {
-        interval: 1000
-        // Cached-popup leak fix: isTodaySelected stays true while this
-        // widget sits in Main.qml's widgetCache, so a bare isTodaySelected
-        // gate kept spawning the stats fetcher every second after close.
-        running: window.visible && window.isTodaySelected
-        repeat: true
-        onTriggered: window.requestDataUpdate()
+    function parseLiveState() {
+        let raw = (liveStateFileView.text() || "").trim();
+        if (raw === "") return;
+        try {
+            let data = JSON.parse(raw);
+            if (data.selected_date === getIsoDate(new Date())) {
+                window.updateFromData(data);
+            } else if ((Date.now() - window.liveStaleFallbackAt) > 15000) {
+                window.liveStaleFallbackAt = Date.now();
+                let cmd = ["python3", window.scriptsDir + "/get_stats.py", getIsoDate(new Date())];
+                cmd.push("--db-dir");
+                cmd.push(Caching.getStateDir("focustime"));
+                statsPoller.command = cmd;
+                statsPoller.running = true;
+            }
+        } catch(e) {}
     }
 
     // --- PYTHON STATS FETCHER (For History & Specific Apps) ---
@@ -934,10 +923,7 @@ Item {
                                                     radius: window.s(4) 
                                                     visible: model.isTarget
                                                     opacity: barMa.containsMouse ? 0.7 : 1.0
-                                                    gradient: Gradient {
-                                                        GradientStop { position: 0.0; color: window.mauve }
-                                                        GradientStop { position: 1.0; color: window.primary }
-                                                    }
+                                                    color: window.primary
                                                 }
                                             }
 
@@ -1151,11 +1137,7 @@ Item {
                                                     // Tied to the synchronized app bars state
                                                     width: Math.max(window.s(10), parent.width * (model.percent / 100.0) * window.introAppBars)
                                                     radius: window.s(5)
-                                                    gradient: Gradient {
-                                                        orientation: Gradient.Horizontal
-                                                        GradientStop { position: 0.0; color: window.mauve }
-                                                        GradientStop { position: 1.0; color: window.primary }
-                                                    }
+                                                    color: window.primary
                                                     Behavior on width { 
                                                         enabled: window.introAppBars === 1.0
                                                         NumberAnimation { duration: 600; easing.type: Easing.OutQuint } 
@@ -1552,11 +1534,7 @@ Item {
                                                 height: parent.height
                                                 width: Math.max(window.s(10), parent.width * (model.percent / 100.0) * window.introAppBars)
                                                 radius: window.s(5)
-                                                gradient: Gradient {
-                                                    orientation: Gradient.Horizontal
-                                                    GradientStop { position: 0.0; color: window.mauve }
-                                                    GradientStop { position: 1.0; color: window.primary }
-                                                }
+                                                color: window.primary
                                                 Behavior on width { 
                                                     enabled: window.introAppBars === 1.0
                                                     NumberAnimation { duration: 600; easing.type: Easing.OutQuint } 

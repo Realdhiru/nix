@@ -203,9 +203,9 @@ PanelWindow {
     property string activeArg: ""
     property bool disableMorph: false
 
-    property int morphDuration: 160
-    property int morphDurationShift: 160
-    property int exitDuration: 130
+    property int morphDuration: 110
+    property int morphDurationShift: 110
+    property int exitDuration: 90
 
     property real animW: 1
     property real animH: 1
@@ -353,7 +353,7 @@ PanelWindow {
         Behavior on scale {
             enabled: !masterWindow.disableMorph
             NumberAnimation {
-                duration: masterWindow.isWindowActive ? 140 : 120
+                duration: 100
                 easing.type: masterWindow.isWindowActive ? Easing.OutCubic : Easing.InCubic
             }
         }
@@ -361,7 +361,7 @@ PanelWindow {
         opacity: masterWindow.isWindowActive ? 1.0 : 0.0
         Behavior on opacity {
             NumberAnimation {
-                duration: masterWindow.isWindowActive ? 140 : 120
+                duration: 100
                 easing.type: masterWindow.isWindowActive ? Easing.OutCubic : Easing.InCubic
             }
         }
@@ -559,7 +559,7 @@ PanelWindow {
 
     Timer {
         id: delayedClear
-        interval: 135
+        interval: 100
 
         onTriggered: {
             if (!masterWindow.isWindowActive && !widgetStack.busy) {
@@ -573,7 +573,7 @@ PanelWindow {
 
     Timer {
         id: morphReenableTimer
-        interval: 180
+        interval: 120
         repeat: false
         onTriggered: masterWindow.disableMorph = false
     }
@@ -582,7 +582,7 @@ PanelWindow {
     property string _pendingArg: ""
     Timer {
         id: teleportTimer
-        interval: 16
+        interval: 0
         onTriggered: {
             executeSwitch(masterWindow._pendingWidget, masterWindow._pendingArg, true);
             morphReenableTimer.restart();

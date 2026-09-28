@@ -83,6 +83,7 @@ Item {
     readonly property color teal: _theme.teal
     readonly property color sapphire: _theme.sapphire
     readonly property color blue: _theme.blue
+    readonly property color primary: _theme.primary
 
     // Single source of truth: SysData.qml (a persistent singleton that
     // keeps polling and running profile automation even while this popup
@@ -170,8 +171,6 @@ Item {
         window.showHotspotMenu = false;
         window.editingHotspotSsid = false;
         window.editingHotspotPass = false;
-        avStatePoller.running = false;
-        avStatePoller.running = true;
         for (var i = 0; i < actionRowRepeater.count; i++) {
             let cap = actionRowRepeater.itemAt(i);
             if (cap) {
@@ -203,29 +202,14 @@ Item {
     // once it hits the cap even while plugged in.
     readonly property bool isCharging: SysData.acOnline
 
-    readonly property color batColorStart: {
-        if (isCharging) return window.green;
-        if (batCapacity >= 70) return window.primary;
-        if (batCapacity >= 30) return window.yellow;
-        return window.red;
-    }
+    readonly property color batColorStart: isCharging ? window.green : (batCapacity >= 70 ? window.primary : (batCapacity >= 30 ? window.yellow : window.red))
     readonly property color batColorEnd: Qt.lighter(batColorStart, 1.15)
 
-    readonly property color profileStart: {
-        if (powerProfile === "performance") return window.red;
-        if (powerProfile === "balanced") return window.primary;
-        if (powerProfile === "power-saver") return window.green;
-        return window.surface2;
-    }
+    readonly property color profileStart: powerProfile === "performance" ? window.red : (powerProfile === "balanced" ? window.primary : (powerProfile === "power-saver" ? window.green : window.surface2))
     readonly property color profileEnd: Qt.lighter(profileStart, 1.15)
 
     readonly property color ambientPrimary: window.batColorStart
-    readonly property color ambientSecondary: {
-        if (isCharging) return window.primary;
-        if (batCapacity >= 70) return window.mauve;
-        if (batCapacity >= 30) return window.peach;
-        return window.maroon; 
-    }
+    readonly property color ambientSecondary: isCharging ? window.primary : (batCapacity >= 70 ? window.mauve : (batCapacity >= 30 ? window.peach : window.maroon))
 
     property real animCapacity: 0
     Behavior on animCapacity { NumberAnimation { duration: 1200; easing.type: Easing.OutQuint } }
@@ -241,7 +225,14 @@ Item {
     }
     Component.onCompleted: {
         window.animCapacity = SysData.batCapacity;
-        avStatePoller.running = true;
+        let curBri = parseInt((briView.text() || "").trim());
+        let maxBri = parseInt((maxBriView.text() || "").trim()) || 400;
+        if (!isNaN(curBri) && maxBri > 0) window.sysBrightness = Math.round((curBri / maxBri) * 100);
+        let a = Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null;
+        if (a) {
+            window.sysVolume = Math.round(a.volume * 100);
+            window.sysMuted = a.muted;
+        }
     }
 
     // =========================================================================
@@ -334,28 +325,51 @@ Item {
         }
     }
 
-    Process {
-        id: avStatePoller
-        command: ["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/av_event_stream.sh"]
-        running: window.visible
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: (line) => {
-                let txt = line.trim();
-                if (!txt) return;
-                let p = txt.split("|");
-                if (p.length >= 3) {
-                    let v = parseInt(p[0]);
-                    let m = (p[1] === "1");
-                    let b = parseInt(p[2]);
-                    if (!window.isDraggingVol && !isNaN(v)) {
-                        window.sysVolume = v;
-                        window.sysMuted = m;
-                    }
-                    if (!window.isDraggingBri && !isNaN(b)) {
-                        window.sysBrightness = b;
-                    }
+    FileView {
+        id: briView
+        path: "/sys/class/backlight/intel_backlight/actual_brightness"
+        watchChanges: true
+        onTextChanged: {
+            if (!window.isDraggingBri) {
+                let cur = parseInt((briView.text() || "").trim());
+                let max = parseInt((maxBriView.text() || "").trim()) || 400;
+                if (!isNaN(cur) && max > 0) {
+                    window.sysBrightness = Math.round((cur / max) * 100);
                 }
+            }
+        }
+    }
+
+    FileView {
+        id: maxBriView
+        path: "/sys/class/backlight/intel_backlight/max_brightness"
+    }
+
+    Connections {
+        target: Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null
+        function onVolumeChanged() {
+            let a = Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null;
+            if (a && !window.isDraggingVol) {
+                window.sysVolume = Math.round(a.volume * 100);
+            }
+        }
+        function onMutedChanged() {
+            let a = Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null;
+            if (a) {
+                window.sysMuted = a.muted;
+            }
+        }
+    }
+
+    Connections {
+        target: Pipewire
+        function onDefaultAudioSinkChanged() {
+            let a = Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null;
+            if (a) {
+                if (!window.isDraggingVol) {
+                    window.sysVolume = Math.round(a.volume * 100);
+                }
+                window.sysMuted = a.muted;
             }
         }
     }
@@ -431,7 +445,7 @@ Item {
     // invisible) and is replayed on every show via showWidget().
     ParallelAnimation {
         id: introAnim
-        running: true
+        running: window.visible
         NumberAnimation { target: window; property: "introMain"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutQuart }
         SequentialAnimation {
             PauseAnimation { duration: 100 }
@@ -1506,11 +1520,7 @@ Item {
                             border.color: Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.40)
                             border.width: 1
 
-                            gradient: Gradient {
-                                orientation: Gradient.Vertical
-                                GradientStop { position: 0.0; color: Qt.rgba(window.crust.r, window.crust.g, window.crust.b, 0.85) }
-                                GradientStop { position: 1.0; color: Qt.rgba(window.mantle.r, window.mantle.g, window.mantle.b, 0.65) }
-                            }
+                            color: Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity)
 
                             Rectangle {
                                 anchors.fill: parent

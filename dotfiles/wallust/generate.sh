@@ -150,6 +150,12 @@ $active_border_col_2 = rgb(C9BFB5)
 $inactive_border_col = rgb(282828)
 EOF
 
+    for f in "$HOME/.config/fuzzel/fuzzel.ini" "$HOME/nix/dotfiles/fuzzel/fuzzel.ini"; do
+        if [ -f "$f" ]; then
+            sed -i -E "s/^(match = ).*/\1EDE6DCff/; s/^(selection-match = ).*/\1EDE6DCff/" "$f" 2>/dev/null || true
+        fi
+    done
+
     emit_opencode_theme
 }
 
@@ -343,6 +349,13 @@ if len(c) >= 6:
         print(f"gradient_color_{i+1} = \"#{int(r * t * 255):02x}{int(g * t * 255):02x}{int(b * t * 255):02x}\"")
 ' "$ACCENT" > "$HOME/.config/cava/themes/wallust" 2>/dev/null || true
     fi
+
+    HEX_ACCENT="${ACCENT#'#'}"
+    for f in "$HOME/.config/fuzzel/fuzzel.ini" "$HOME/nix/dotfiles/fuzzel/fuzzel.ini"; do
+        if [ -f "$f" ]; then
+            sed -i -E "s/^(match = ).*/\1${HEX_ACCENT}ff/; s/^(selection-match = ).*/\1${HEX_ACCENT}ff/" "$f" 2>/dev/null || true
+        fi
+    done
 fi
 
 # Notify client applications if running

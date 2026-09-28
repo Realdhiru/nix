@@ -81,10 +81,13 @@ Item {
         return s(2) + (currentSizeRatio * s(30));
     }
 
-    // FIXED: Strict color resolution to prevent undefined QString warnings
-    property color baseTextColor: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.text) ? mochaColors.text : "#cdd6f4"
-    property color solidBgColor: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.mantle) ? mochaColors.mantle : "#181825"
-    property color themeBaseColor: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.base) ? mochaColors.base : "#1e1e2e"
+    Theme { id: _theme }
+    readonly property var mochaColors: _theme
+
+    // Strict color resolution bound to Theme.qml
+    property color baseTextColor: _theme.text
+    property color solidBgColor: _theme.mantle
+    property color themeBaseColor: _theme.base
 
     // Universal Panel Styling
     property color panelBgColor: Qt.rgba(themeBaseColor.r, themeBaseColor.g, themeBaseColor.b, 0.85)

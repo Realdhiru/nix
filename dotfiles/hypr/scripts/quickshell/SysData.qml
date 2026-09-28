@@ -9,7 +9,6 @@ Item {
 
     readonly property string scriptPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/sys_fetcher.sh"
     readonly property string batteryFetchPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_fetch.sh"
-    readonly property string batteryWaitPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_wait.sh"
 
     // --- Centralized Properties (CPU/RAM/temp/net -- subscribe-gated, unchanged) ---
     readonly property bool onBattery: !root.acOnline
@@ -155,22 +154,63 @@ Item {
                 }
 
                 root._handleAcTransition(wasOnline, root.acOnline);
-
-                // Restart the event-wait loop for the next change.
-                batteryWaiter.running = false;
-                batteryWaiter.running = true;
             }
         }
     }
 
-    Process {
-        id: batteryWaiter
-        running: false
-        command: ["bash", "-c", root.batteryWaitPath]
-        onExited: {
-            batteryProc.running = false;
-            batteryProc.running = true;
+    FileView {
+        id: batCapView
+        path: "/sys/class/power_supply/BAT0/capacity"
+        watchChanges: true
+        onTextChanged: root._syncSysfsBattery()
+    }
+
+    FileView {
+        id: batStatView
+        path: "/sys/class/power_supply/BAT0/status"
+        watchChanges: true
+        onTextChanged: root._syncSysfsBattery()
+    }
+
+    FileView {
+        id: acOnlineView
+        path: "/sys/class/power_supply/AC0/online"
+        watchChanges: true
+        onTextChanged: root._syncSysfsBattery()
+    }
+
+    function _syncSysfsBattery() {
+        let capTxt = batCapView.text ? (typeof batCapView.text === "function" ? batCapView.text() : batCapView.text).trim() : "";
+        let statTxt = batStatView.text ? (typeof batStatView.text === "function" ? batStatView.text() : batStatView.text).trim() : "";
+        let acTxt = acOnlineView.text ? (typeof acOnlineView.text === "function" ? acOnlineView.text() : acOnlineView.text).trim() : "";
+
+        root.hasBattery = batCapView.loaded && capTxt.length > 0;
+        if (root.hasBattery) {
+            let cap = parseInt(capTxt);
+            if (!isNaN(cap)) root.batCapacity = cap;
+            root.batStatus = statTxt || "Unknown";
         }
+
+        let wasOnline = root.acOnline;
+        if (acOnlineView.loaded && acTxt.length > 0) {
+            root.acOnline = (acTxt === "1");
+        }
+
+        if (root.hasBattery) {
+            if (root.batStatus === "Discharging" && root.batCapacity <= 20) {
+                if (!root._lowBatteryNotified) {
+                    root._lowBatteryNotified = true;
+                    Quickshell.execDetached([
+                        "notify-send", "-u", "critical", "-a", "System", "-i", "battery-empty",
+                        "Low Battery", "Battery is at " + root.batCapacity + "%"
+                    ]);
+                }
+            } else {
+                root._lowBatteryNotified = false;
+            }
+        }
+
+        root._handleAcTransition(wasOnline, root.acOnline);
     }
 
     // Event-driven direct sysfs reader for ACPI platform_profile (replaces power_state_watcher.sh & subshell leaks)
@@ -201,7 +241,7 @@ Item {
     }
 
     Component.onCompleted: {
-        batteryWaiter.running = true;
+        root._syncSysfsBattery();
     }
 
     // =========================================================================

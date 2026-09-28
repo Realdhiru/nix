@@ -66,6 +66,8 @@ in
     antigravity-ide
     antigravity-hub
     antigravity-cli
+    kdePackages.kate
+    gram
   ];
 
   programs.appimage = {

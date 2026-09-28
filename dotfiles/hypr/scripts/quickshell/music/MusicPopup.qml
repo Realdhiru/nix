@@ -70,7 +70,7 @@ Item {
         "title": "Loading...", "artist": "", "status": "Stopped", "percent": 0,
         "lengthStr": "00:00", "positionStr": "00:00", "timeStr": "--:-- / --:--",
         "source": "Offline", "playerName": "", "blur": "", "grad": "",
-        "textColor": "#cdd6f4", "deviceIcon": "󰓃", "deviceName": "Speaker",
+        "textColor": _theme.text.toString(), "deviceIcon": "󰓃", "deviceName": "Speaker",
         "artUrl": ""
     }
 
@@ -212,10 +212,10 @@ Item {
         return defaultColors;
     }
 
-    property color bc1: borderColors[0] || root.mauve
-    property color bc2: borderColors[1] || root.primary
-    property color bc3: borderColors[2] || root.red
-    property color bc4: borderColors[3] || root.mauve
+    property color bc1: (borderColors && borderColors.length > 0) ? borderColors[0] : root.mauve
+    property color bc2: (borderColors && borderColors.length > 1) ? borderColors[1] : root.primary
+    property color bc3: (borderColors && borderColors.length > 2) ? borderColors[2] : root.red
+    property color bc4: (borderColors && borderColors.length > 3) ? borderColors[3] : root.mauve
 
     property color dynamicTextColor: {
         if (root.musicData && root.musicData.textColor) {
