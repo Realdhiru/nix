@@ -41,6 +41,7 @@ After successfully resolving any issue, bug, or feature implementation:
 
 - **Read-Only First**: Always perform a read-only investigation and geometry/code trace before modifying files.
 - **Pre-Deletion Audit**: Document what information an old script provided and its native replacement before retiring it.
+- **Never Test Lockscreen**: Never test or execute the lockscreen (`Lock.qml`) directly/autonomously, as it breaks the PAM session and session lock state upon logging back in.
 - **Live Empirical Verification**: Editing a file does not equal completing a task. Always restart/rebuild and measure actual runtime behavior, latency, and power metrics.
 - **QuickShell Visual & Cold-Start Protocol**: Before declaring any QuickShell widget done:
   - Verify layout proportions and check for leftover/dead space or mismatched button grids.

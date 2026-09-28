@@ -17,6 +17,13 @@ Item {
     width: layoutWidth
     height: layoutHeight
 
+    onVisibleChanged: {
+        if (visible) {
+            if (!musicProc.running) musicProc.running = true;
+            if (!eqProc.running) eqProc.running = true;
+        }
+    }
+
     property var presetList: ["Flat", "Bass", "Treble", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
 
     Keys.onPressed: (event) => {

@@ -1,7 +1,9 @@
 # CHANGELOG
 
-## 2026-09-28 — QuickShell Startup Optimization & Dark Fill Cleanup
-
+- **OpenCode Removal & System Purge**:
+  - Removed `opencode` package from [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix#L61) and `ponytail` flake input from [`flake.nix`](file:///home/realdhiru/nix/flake.nix).
+  - Purged `xdg.configFile."opencode/..."` entries from [`home.nix`](file:///home/realdhiru/nix/home.nix).
+  - Deleted all opencode dotfiles (`dotfiles/opencode`), caches (`~/.cache/opencode`), state files (`~/.local/state/opencode`), user data (`~/.local/share/opencode`), config (`~/.config/opencode`), and skill documents (`~/Projects/opencode-nixos-rice-skill.md`).
 - **QuickShell Startup & Preload Lag Fix**:
   - Gated background intro animations (`introAnim.running: window.visible`) in [`dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L448), preventing preloaded invisible popups from running 800ms parallel/sequential intro timelines on boot/reload.
 - **NetworkPopup.qml Glass Fills**:
@@ -15,6 +17,12 @@
   - Resolved `window.primary` from `undefined` to `#cba6f7` (and `#75bde5` dynamically), eliminating per-frame `TypeError: Cannot read property 'r' of undefined` QML warnings.
   - Added startup validation in [`Theme.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Theme.qml#L74) to issue `console.warn` for any undefined theme tokens.
   - Restored active tab pill labels and icons to dark-on-accent (`window.crust`), bound floatCard borders to `window.activeColor`, and kept `MultiEffect` shadows off (`shadowEnabled: false`).
+- **Live Battery Event Stream & Sysfs Inotify Fixes**:
+  - Replaced passive `FileView` sysfs watchers on `/sys/class/power_supply/...` with `udevadm monitor --subsystem-match=power_supply` event streams and 30s failsafe timers in [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml) and [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml).
+  - Ensured `udevadm` process in `Lock.qml` is terminated on surface destruction (`Component.onDestruction: udevProc.running = false`).
+  - Replaced backlight `FileView` watcher in [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml) with `udevadm monitor --subsystem-match=backlight`.
+  - Added `onVisibleChanged` immediate data refresh hooks across [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml), [`FocusTimePopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml), [`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml), [`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml), and [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml).
+  - Updated architectural invariants in [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md) documenting sysfs inotify incompatibility and event source requirements.
 - **Cold-Open Geometry Resolution**:
   - Updated `getLayout()` in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml#L259) to derive screen width and height from `Quickshell.screens` instead of unmapped `masterWindow.width/height` (1440x810 at frame 0).
   - Cold-open popup geometry now computes frame-0 target `(x: 732, y: 47, w: 705, h: 548)` on logical 1440p canvas identically to second-open geometry without stretching across screen center.

@@ -11,7 +11,15 @@ Item {
     id: window
     focus: true
 
-    onVisibleChanged: { if (visible) window.showInfoView = false; }
+    onVisibleChanged: {
+        if (visible) {
+            window.showInfoView = false;
+            if (window.activeMode === "eth") ethPoller.running = true;
+            else if (window.activeMode === "wifi") wifiPoller.running = true;
+            else if (window.activeMode === "bt") btPoller.running = true;
+            syncCores();
+        }
+    }
 
     property real layoutWidth
     property real layoutHeight

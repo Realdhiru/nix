@@ -58,7 +58,7 @@ in
     # Desktop Integration
     libnotify polkit_gnome hypridle hyprlock quickshellWrapped qt6Packages.qtmultimedia wallust
 
-    powertop psmisc hyprsunset usbutils opencode repomix
+    powertop psmisc hyprsunset usbutils repomix
 
     # System / Desktop Integration
     file gsettings-desktop-schemas

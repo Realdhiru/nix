@@ -55,11 +55,28 @@ ShellRoot {
 
     property string queuedPassword: ""
 
+    signal batteryUpdated()
+
+    Process {
+        id: udevLockBatteryWatcher
+        command: ["udevadm", "monitor", "--subsystem-match=power_supply"]
+        running: true
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: (line) => root.batteryUpdated()
+        }
+    }
+
+    function performQuit() {
+        udevLockBatteryWatcher.running = false;
+        Qt.quit();
+    }
+
     Timer {
         id: quitTimer
         interval: 100
         repeat: false
-        onTriggered: Qt.quit()
+        onTriggered: root.performQuit()
     }
 
     Timer {
@@ -273,21 +290,12 @@ ShellRoot {
                     if (s.length > 0) screenRoot.batStatus = s;
                 }
 
-                Process {
-                    id: udevLockBatteryWatcher
-                    command: ["udevadm", "monitor", "--subsystem-match=power_supply"]
-                    running: true
-                    stdout: SplitParser {
-                        splitMarker: "\n"
-                        onRead: (line) => {
-                            batCapView.reload();
-                            batStatView.reload();
-                            syncLockBattery();
-                        }
-                    }
-                    Component.onDestruction: {
-                        running = false;
-                        kill();
+                Connections {
+                    target: root
+                    function onBatteryUpdated() {
+                        batCapView.reload();
+                        batStatView.reload();
+                        syncLockBattery();
                     }
                 }
 

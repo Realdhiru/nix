@@ -22,6 +22,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Rationale:** No periodic bash polling loops or subprocess chains in QML. Eliminates fork storms, process starvation, and CPU wakeups, delivering instantaneous frame-0 startup and zero idle CPU overhead.
 - **Rules:**
   - Never fork bash `Process` to read files or watch file state (`colors_wait.sh`, `settings_wait.sh`, `solidModeDetector`, `battery_wait.sh`, `av_event_stream.sh`). Use native `Quickshell.Io.FileView` on kernel/tmpfs files.
+  - **Sysfs Inotify Incompatibility Rule**: `FileView` on `/sys` or `/proc` virtual files (e.g. `BAT0/capacity`, `status`, `actual_brightness`) never fires because sysfs pseudo-files emit zero `inotify` events (`IN_MODIFY`). Use `udevadm monitor` (`--subsystem-match=power_supply`, `--subsystem-match=backlight`), UPower D-Bus, or a slow timer. Never replace a udev-based watcher with a `FileView` on sysfs. Before replacing any watcher, prove the new event source fires by logging timestamps on a real state change.
   - Never loop-respawn one-shot bash processes (`dbus-monitor | grep -m 1`) inside QML. Use persistent streaming daemons (`playerctl --follow`) with `SplitParser` or native D-Bus bindings.
   - Monitor enumeration must use native `Quickshell.screens` instead of shelling out to `hyprctl monitors -j`.
   - Volume and mute monitoring must use native `Quickshell.Services.Pipewire` (`Pipewire.defaultAudioSink.audio`), delivering 8ms D-Bus latency without subprocesses.
@@ -101,19 +102,6 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### 12. Host MIME Isolation & Container Application Sanitization
 - **Decision:** Permanent declarative browser authority in `home.nix` (`http`, `https`, `text/html` locked to `brave-browser.desktop`) and mandatory sanitization in [`distrobox-install-deb.sh`](file:///home/realdhiru/nix/dotfiles/scripts/distrobox-install-deb.sh).
 - **Rationale:** Containerized packages (`.deb` files exported via Distrobox) must never inject or alter system-wide web protocols or office document associations. Exported desktop files are strictly filtered to custom schemas (e.g. `x-scheme-handler/codex`) and desktop databases are resynced immediately.
-
-
-### 13. OpenCode TUI Theme Derivation (Transparency & Diff Wash)
-- **Decision:** OpenCode TUI appearance is governed by two declarative TUI-only plugins in [`dotfiles/opencode/tui-plugins/`](file:///home/realdhiru/nix/dotfiles/opencode/tui-plugins), wired through `tui.json` and `home.nix`. TUI plugins live in a dedicated `tui-plugins` dir and are listed explicitly in `tui.json` because the server-side auto-scan of `opencode/plugin` would try to load them and fail (they export `tui()`, not `server()`).
-- **Transparency Rule:** Panel surfaces (`backgroundPanel`, `backgroundElement`, `backgroundMenu`) and `diffContextBg` are forced to alpha `0` so the compositor/wallpaper shows through. `generateSystem` already ships `background` as fully transparent; the plugins exist to extend that to the remaining opaque surfaces.
-- **Diff Row Wash Rule:** `diffAddedBg`, `diffRemovedBg`, `diffAddedLineNumberBg`, and `diffRemovedLineNumberBg` are **rebuilt**, not merely alpha-adjusted. Upstream `tint()` returns `RGBA.fromInts(...)` with no alpha channel, so it pre-multiplies the ANSI hue into the terminal background at full opacity; against a desaturated Wallust ramp over a black terminal this yields `rgb(21,21,21)` — an opaque black bar. The wash mixes `theme.text` over `theme.background`, then pulls lightly toward the row's own `diffAdded`/`diffRemoved` hue.
-- **Rules:**
-  - **No hardcoded colors in theme plugins.** Every component must be read from `api.theme.current` on each pass so a wallpaper change re-derives the appearance automatically. Fixed RGB/hex literals are a defect.
-  - **Idempotence is mandatory.** Each derivation pass must report `changed === false` when nothing moved, otherwise the slow guard interval spins the renderer. Compare derived floats with a tolerance rather than exact equality.
-  - **Shared-RGBA first-write-wins.** `generateSystem` reuses one RGBA instance across multiple theme keys (e.g. `backgroundPanel` and `diffContextBg` are both `grays[2]`). Any pass that mutates colors must dedupe by object identity and respect first-write-wins ordering.
-  - Higher-priority passes (e.g. the diff row wash) must run *before* lower-priority ones (panels) so they win if a future OpenCode release aliases their keys.
-  - Gutter/line-number background keys must derive identically to their corresponding row key so no two-tone seam appears.
-  - Comments citing upstream OpenCode source must reference **symbolic** names (`tint()`, `generateSystem`), never hard line numbers — those drift on every release.
 
 ### 14. Nix Context Delivery (AGENTS.md as Router)
 - **Decision:** [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md) is an always-loaded **router**, not an archive. It carries only architecture facts an agent needs to navigate plus a pointer table from intent to file.

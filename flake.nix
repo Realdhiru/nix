@@ -29,10 +29,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    ponytail = {
-      url = "github:DietrichGebert/ponytail";
-      flake = false;
-    };
   };
 
   outputs = inputs@{ nixpkgs, home-manager, ... }:
