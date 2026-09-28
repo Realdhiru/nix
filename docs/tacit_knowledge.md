@@ -107,11 +107,14 @@
 - **Single-Radio Wi-Fi Hardware Constraint:** The ASUS Wi-Fi adapter has a single frequency synthesizer (`#channels <= 1`). It cannot maintain a simultaneous Wi-Fi station connection and Wi-Fi hotspot on 5 GHz DFS networks without connection drops. The hotspot setup is architected to share Ethernet/USB tethering over Wi-Fi.
 - **Sonix FHD Webcam Loopback Pass-Through:** The webcam controller experiences USB babble crashes when non-native resolutions or MJPEG compression are requested. Fixed via `v4l2loopback` `/dev/video10` fed by an on-demand FFmpeg native YUYV pass-through, while WirePlumber's conflicting `libcamera` monitor is disabled (`50-disable-libcamera.conf`).
 
+### Resolved & Completed Threads
+- **Wallpaper Picker Multi-Level Sorting:** Completed. Reorganized the wallpaper picker widget to display GIFs first (sorted by dominant aesthetic color), static images second (sorted by dominant aesthetic color), and video wallpapers last (`getFileTypeRank` + HSL score band map).
+- **Sunset / Night Light Widget Redesign:** Completed. UI layout overhauled to eliminate dead space, continuous slider controls, clamped gamma $\le 100\%$, and integrated daemon lifecycle control (`hyprsunset`).
+- **Video Wallpaper Lockscreen Flicker:** Fixed. Eliminated 1-second flicker when locking during `mpvpaper` playback by utilizing a poster frame underlay beneath the lockscreen surface.
+- **Spotify Lyrics Floating Window Rule:** Applied in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) matching class `^(chromium-browser)$` and title `.*•.*` with `float = true`, `pin = true`, `size = {300, 95}`, and `opacity = "1.0 override 1.0 override"`, properly scoped from general chromium 0.85 opacity.
+
 ### In-Progress & Unresolved Threads
-- **Spotify Lyrics Floating Window Padding:** Investigating whether top-line text ghosting is a Spotify CSS mask or container padding bleed, with the goal of dynamically sizing the floating window in `rules.lua` to eliminate outer letterboxing.
-- **Video Wallpaper Lockscreen Flicker:** A 1-second flicker occurs when locking the screen while an `mpvpaper` video wallpaper is running, caused by a race condition between video daemon layer rendering and the lock overlay compositing.
-- **Wallpaper Picker Multi-Level Sorting:** Reorganizing the wallpaper picker widget to display GIFs first (sorted by dominant aesthetic color), static images second (sorted by dominant aesthetic color), and video wallpapers last.
-- **Sunset / Night Light Widget Redesign:** Completing the UI layout overhaul to eliminate dead space, clamp gamma $\le 100\%$, and integrate daemon lifecycle control (`hyprsunset`).
+- None currently open.
 
 ---
 

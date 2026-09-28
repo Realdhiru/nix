@@ -66,7 +66,8 @@ in
     antigravity-hub
     antigravity-cli
     gram
-    opencode
+    nil
+    vscode-langservers-extracted
   ];
 
   programs.appimage = {

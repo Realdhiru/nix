@@ -84,6 +84,10 @@ Item {
     Theme { id: _theme }
     readonly property var mochaColors: _theme
 
+    Component.onCompleted: {
+        console.log("DRAWACTION_TOKEN_CHECK: _theme.mauve=" + _theme.mauve + " _theme.red=" + _theme.red);
+    }
+
     // Strict color resolution bound to Theme.qml
     property color baseTextColor: _theme.text
     property color solidBgColor: _theme.mantle
@@ -614,13 +618,13 @@ Item {
                         width: parent.width * root.currentSizeRatio
                         height: parent.height
                         radius: parent.radius
-                        color: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.mauve) ? mochaColors.mauve : "#cba6f7"
+                        color: _theme.mauve
                     }
 
                     Rectangle {
                         width: s(18); height: s(18)
                         radius: width/2
-                        color: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.mauve) ? mochaColors.mauve : "#cba6f7"
+                        color: _theme.mauve
                         x: (parent.width * root.currentSizeRatio) - (width/2)
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -1043,7 +1047,7 @@ Item {
                                     text: modelData.icon
                                     font.family: root.iconFont
                                     font.pixelSize: s(14)
-                                    color: root.currentTool === modelData.id ? ((typeof mochaColors !== "undefined" && mochaColors && mochaColors.mauve) ? mochaColors.mauve : "#cba6f7") : root.baseTextColor
+                                    color: root.currentTool === modelData.id ? _theme.mauve : root.baseTextColor
                                     opacity: root.currentTool === modelData.id ? 1.0 : (toolMouseArea.containsMouse ? 0.8 : 0.5)
                                     Behavior on color { ColorAnimation { duration: 250 } }
                                 }
@@ -1146,7 +1150,7 @@ Item {
                         verticalAlignment: Text.AlignVCenter
                         text: "\uF1F8" // fa-trash
                         font.family: root.iconFont
-                        color: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.red) ? mochaColors.red : "#f38ba8"
+                        color: _theme.red
                         font.pixelSize: s(14)
                         opacity: clearMouse.pressed ? 0.5 : (clearMouse.containsMouse ? 1.0 : 0.7)
                     }

@@ -106,7 +106,7 @@ Item {
     property bool sysMuted: false
     property real sysBrightness: 0
     
-    property string currentUserName: ""
+    property string currentUserName: Quickshell.env("USER") || ""
     property bool dndEnabled: false
 
     property bool hotspotActive: false
@@ -263,16 +263,6 @@ Item {
         }
     }
 
-    Process {
-        id: userPoller
-        command: ["bash", "-c", "echo $USER"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                window.currentUserName = this.text.trim();
-            }
-        }
-    }
 
     Process {
         id: sysPoller

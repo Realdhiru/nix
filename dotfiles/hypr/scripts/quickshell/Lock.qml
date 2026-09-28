@@ -72,6 +72,10 @@ ShellRoot {
         Qt.quit();
     }
 
+    Component.onDestruction: {
+        udevLockBatteryWatcher.running = false;
+    }
+
     Timer {
         id: quitTimer
         interval: 100
@@ -171,6 +175,7 @@ ShellRoot {
 
                 property string batPct: "100"
                 property string batStatus: "AC"
+                property bool acOnline: false
                 property string splashQuote: ""
 
                 Process {
@@ -195,7 +200,7 @@ ShellRoot {
                 property string mediaStatus: "Stopped"
 
                 readonly property real cornerMargin: Math.max(24, Math.round(28 * screenRoot.sc))
-                readonly property bool isCharging: screenRoot.batStatus === "Charging"
+                readonly property bool isCharging: screenRoot.acOnline || screenRoot.batStatus === "Charging"
                 readonly property string batIcon: {
                     let pct = parseInt(screenRoot.batPct) || 0;
                     if (screenRoot.isCharging) {
@@ -253,28 +258,9 @@ ShellRoot {
                 property bool hasBattery: false
                 
                 Component.onCompleted: {
-                    let initCap = safeFileText(batCapView);
-                    if (initCap.length > 0) {
-                        let p = parseInt(initCap);
-                        if (!isNaN(p)) {
-                            screenRoot.batPct = "" + p;
-                            screenRoot.hasBattery = true;
-                        }
-                    }
-                    let initStat = safeFileText(batStatView);
-                    if (initStat.length > 0) screenRoot.batStatus = initStat;
+                    screenRoot.syncLockBattery();
                     screenRoot.updateMedia();
                     introSequence.start();
-                }
-
-                FileView {
-                    id: batCapView
-                    path: "/sys/class/power_supply/BAT0/capacity"
-                }
-
-                FileView {
-                    id: batStatView
-                    path: "/sys/class/power_supply/BAT0/status"
                 }
 
                 function syncLockBattery() {
@@ -288,6 +274,32 @@ ShellRoot {
                     }
                     let s = safeFileText(batStatView);
                     if (s.length > 0) screenRoot.batStatus = s;
+
+                    let ac = safeFileText(acOnlineView);
+                    if (ac.length > 0) screenRoot.acOnline = (ac === "1");
+
+                    console.log("LOCK_BATTERY_PILL: visible=" + screenRoot.hasBattery + " pct=" + screenRoot.batPct + "% status=" + screenRoot.batStatus + " acOnline=" + screenRoot.acOnline);
+                }
+
+                FileView {
+                    id: batCapView
+                    path: "/sys/class/power_supply/BAT0/capacity"
+                    onLoadedChanged: screenRoot.syncLockBattery()
+                    onTextChanged: screenRoot.syncLockBattery()
+                }
+
+                FileView {
+                    id: batStatView
+                    path: "/sys/class/power_supply/BAT0/status"
+                    onLoadedChanged: screenRoot.syncLockBattery()
+                    onTextChanged: screenRoot.syncLockBattery()
+                }
+
+                FileView {
+                    id: acOnlineView
+                    path: "/sys/class/power_supply/AC0/online"
+                    onLoadedChanged: screenRoot.syncLockBattery()
+                    onTextChanged: screenRoot.syncLockBattery()
                 }
 
                 Connections {
@@ -295,7 +307,8 @@ ShellRoot {
                     function onBatteryUpdated() {
                         batCapView.reload();
                         batStatView.reload();
-                        syncLockBattery();
+                        acOnlineView.reload();
+                        screenRoot.syncLockBattery();
                     }
                 }
 
@@ -307,7 +320,8 @@ ShellRoot {
                     onTriggered: {
                         batCapView.reload();
                         batStatView.reload();
-                        syncLockBattery();
+                        acOnlineView.reload();
+                        screenRoot.syncLockBattery();
                     }
                 }
 

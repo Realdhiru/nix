@@ -26,10 +26,9 @@ Item {
         return scaler.s(val);
     }
 
-    // Custom File Logger
+    // Custom Logger
     function debugLog(msg) {
-        let safeMsg = msg.replace(/'/g, "'\\''");
-        Quickshell.execDetached(["sh", "-c", "echo '" + safeMsg + "' >> " + Caching.logDir + "/monitor_popup.log"]);
+        console.log("[MonitorPopup]", msg);
     }
 
     // -------------------------------------------------------------------------

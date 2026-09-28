@@ -96,6 +96,7 @@ Item {
     property real lastEqUpdate: 0
 
     Component.onCompleted: {
+        console.log("MUSICPOPUP_TOKEN_CHECK: root.base=" + root.base);
         root.execCmd("$HOME/.config/hypr/scripts/quickshell/music/equalizer.sh --init");
     }
 
@@ -1265,7 +1266,7 @@ Item {
         property bool isActivePreset: root.eqData && root.eqData.preset === name
         property bool isHovered: hoverMa.containsMouse
 
-        color: isActivePreset ? root.mauve : (isHovered ? root.surface1 : "#BF1E1E2E")
+        color: isActivePreset ? root.mauve : (isHovered ? root.surface1 : Qt.rgba(root.base.r, root.base.g, root.base.b, 0.75))
         scale: isHovered && !isActivePreset ? 1.05 : 1.0
 
         Behavior on color { ColorAnimation { duration: 200 } }

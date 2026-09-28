@@ -8,7 +8,6 @@ Item {
 
 
     readonly property string scriptPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/sys_fetcher.sh"
-    readonly property string batteryFetchPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/battery_fetch.sh"
 
     // --- Centralized Properties (CPU/RAM/temp/net -- subscribe-gated, unchanged) ---
     readonly property bool onBattery: !root.acOnline
@@ -102,61 +101,9 @@ Item {
     }
 
     // =========================================================================
-    // ALWAYS-ON BATTERY + AC WATCHER (replaces the old fixed-60s-interval
-    // batteryWatchTimer/batteryWatchProc). Event-driven via battery_wait.sh
-    // (udevadm monitor --subsystem-match=power_supply), so plug/unplug is
-    // reflected within a beat instead of up to 60 seconds later -- and,
-    // unlike the subscribe-gated fetchProc above, this NEVER stops running,
-    // so profile automation keeps working even with every panel closed.
-    // battery_wait.sh has its own internal 300s failsafe timeout, so this
-    // also self-heals if a udev event is ever missed.
+    // ALWAYS-ON BATTERY + AC WATCHER
+    // Event-driven via udevadm monitor and 30s failsafe timer syncing sysfs.
     // =========================================================================
-
-    Process {
-        id: batteryProc
-        running: true
-        command: ["bash", "-c", root.batteryFetchPath]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let text = this.text ? this.text.trim() : "";
-                if (!text) return;
-
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (e) {
-                    batteryWaiter.running = false;
-                    batteryWaiter.running = true;
-                    return;
-                }
-
-                root.hasBattery = (data.has === "1");
-
-                let cap = parseInt(data.percent);
-                if (!isNaN(cap)) root.batCapacity = cap;
-                root.batStatus = data.status || "Unknown";
-
-                let wasOnline = root.acOnline;
-                root.acOnline = (data.online === "1");
-
-                if (root.hasBattery) {
-                    if (root.batStatus === "Discharging" && root.batCapacity <= 20) {
-                        if (!root._lowBatteryNotified) {
-                            root._lowBatteryNotified = true;
-                            Quickshell.execDetached([
-                                "notify-send", "-u", "critical", "-a", "System", "-i", "battery-empty",
-                                "Low Battery", "Battery is at " + root.batCapacity + "%"
-                            ]);
-                        }
-                    } else {
-                        root._lowBatteryNotified = false;
-                    }
-                }
-
-                root._handleAcTransition(wasOnline, root.acOnline);
-            }
-        }
-    }
 
     FileView {
         id: batCapView
@@ -180,6 +127,7 @@ Item {
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: (line) => {
+                console.log("SYSDATA_UDEV_EVENT: " + line);
                 batCapView.reload();
                 batStatView.reload();
                 acOnlineView.reload();
@@ -194,6 +142,7 @@ Item {
         running: true
         repeat: true
         onTriggered: {
+            console.log("SYSDATA_FAILSAFE_TIMER: 30s tick sync");
             batCapView.reload();
             batStatView.reload();
             acOnlineView.reload();
@@ -217,6 +166,7 @@ Item {
         if (acOnlineView.loaded && acTxt.length > 0) {
             root.acOnline = (acTxt === "1");
         }
+        console.log("SYSDATA_BATTERY_SYNC: cap=" + root.batCapacity + "% status=" + root.batStatus + " acOnline=" + root.acOnline);
 
         if (root.hasBattery) {
             if (root.batStatus === "Discharging" && root.batCapacity <= 20) {

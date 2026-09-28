@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 QUERY="$1"
-SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+WALLPAPER_DIR="$(dirname "$(realpath "$0")")"
 
 # Import dynamic caching system
-source "$SCRIPT_DIR/../../caching.sh"
+source "$WALLPAPER_DIR/../../caching.sh"
 qs_ensure_cache "wallpaper_picker"
 
 CACHE_DIR="$QS_CACHE_WALLPAPER_PICKER"
@@ -23,7 +23,7 @@ ACTIVE_TMP=""
 trap 'rm -f "$ACTIVE_TMP" 2>/dev/null' EXIT INT TERM
 
 # 3. The Pipe: Python provides links, OS provides backpressure
-python3 -u "$SCRIPT_DIR/quickshell/wallpaper/get_ddg_links.py" "$QUERY" | while IFS='|' read -r thumb_url full_url; do
+python3 -u "$WALLPAPER_DIR/get_ddg_links.py" "$QUERY" | while IFS='|' read -r thumb_url full_url; do
 
     # Safely read control file
     state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')

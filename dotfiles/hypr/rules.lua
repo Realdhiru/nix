@@ -58,7 +58,8 @@ hl.window_rule({
     match = { class = "^(chromium-browser)$", title = ".*•.*" },
     float = true,
     pin = true,
-    size = { 320, 110 },
+    size = { 300, 95 },
+    opacity = "1.0 override 1.0 override",
     no_shadow = true,
 })
 

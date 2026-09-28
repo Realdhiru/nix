@@ -146,6 +146,7 @@ Item {
         console.log("window.btAccent:", window.btAccent);
         console.log("window.activeColor:", window.activeColor);
         console.log("window.activeGradientSecondary:", window.activeGradientSecondary);
+        console.log("NETWORKPOPUP_TOKEN_CHECK: window.crust=" + window.crust + " window.text=" + window.text);
         console.log("========================================");
 
         window.powerAnimAllowed = false;
@@ -1503,7 +1504,7 @@ Item {
                                     Text {
                                         Layout.alignment: Qt.AlignHCenter
                                         font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(11)
-                                        color: isMyDisconnecting ? window.overlay1 : (coreMa.containsMouse ? window.crust : "#99000000")
+                                        color: isMyDisconnecting ? window.overlay1 : (coreMa.containsMouse ? window.crust : Qt.rgba(window.crust.r, window.crust.g, window.crust.b, 0.60))
                                         text: isMyDisconnecting ? "Disconnecting..." : (centralCore.disconnectFill > 0.01 ? "Hold..." : "Connected")
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                     }
@@ -2194,7 +2195,7 @@ Item {
                 width: window.s(360)
                 height: window.s(54)
                 radius: window.s(14)
-                color: "#1affffff"
+                color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.10)
                 border.color: "transparent"
                 border.width: 0
                 visible: window.ethPresent || window.wifiPresent || window.btPresent
@@ -2278,7 +2279,7 @@ Item {
                         }
                     }
 
-                    Rectangle { visible: window.ethPresent && (window.wifiPresent || window.btPresent); width: 1; Layout.fillHeight: true; Layout.margins: window.s(5); color: "#33ffffff" }
+                    Rectangle { visible: window.ethPresent && (window.wifiPresent || window.btPresent); width: 1; Layout.fillHeight: true; Layout.margins: window.s(5); color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.20) }
 
                     Rectangle {
                         id: wifiTabRect
@@ -2310,7 +2311,7 @@ Item {
                         }
                     }
 
-                    Rectangle { visible: window.wifiPresent && window.btPresent; width: 1; Layout.fillHeight: true; Layout.margins: window.s(5); color: "#33ffffff" }
+                    Rectangle { visible: window.wifiPresent && window.btPresent; width: 1; Layout.fillHeight: true; Layout.margins: window.s(5); color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.20) }
 
                     Rectangle {
                         id: btTabRect
