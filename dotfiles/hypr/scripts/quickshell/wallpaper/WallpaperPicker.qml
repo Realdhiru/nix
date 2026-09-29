@@ -316,6 +316,7 @@ Item {
                 window.trySearchFocus();
                 window.syncSearchModel();
             }
+            Qt.callLater(() => { view.forceActiveFocus(); });
         }
     }
 

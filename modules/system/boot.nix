@@ -51,16 +51,4 @@
   };
 
   boot.supportedFilesystems = [ "ntfs" ];
-
-  fileSystems."/mnt/Windows_C" = {
-    device = "/dev/disk/by-uuid/CCEADC54EADC3D00";
-    fsType = "ntfs3";
-    options = [ "nofail" "rw" "uid=1000" "gid=100" "umask=022" "ignore_case" "remove_hiberfile" ];
-  };
-
-  fileSystems."/mnt/Windows_D" = {
-    device = "/dev/disk/by-uuid/AC7C0A8C7C0A518E";
-    fsType = "ntfs3";
-    options = [ "nofail" "rw" "uid=1000" "gid=100" "umask=022" "ignore_case" ];
-  };
 }

@@ -10,12 +10,13 @@
   - Adapted hero gauge track stroke in [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L1598) to use `_theme.crust` in light mode.
 - **TopBar Music Pill Fill Unification**:
   - Unified [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml#L692) `mediaBox` background color to `Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)`, matching the clock and workspace pills.
-- **QuickShell Light/Dark Glass Theme Tuning**:
-  - Updated [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml#L125-L128) light mode glass recipe to Option 2 (`effectivePopupOpacity = 0.20`, `antiBleedOpacity = 0.10`), delivering a subtle ~28% translucent glass appearance.
-- **PCManFM-Qt Info Shower & ToolTip Dark Contrast Fix**:
-  - Updated [`dotfiles/wallust/templates/qt-style.qss`](file:///home/realdhiru/nix/dotfiles/wallust/templates/qt-style.qss#L14-L25) with explicit dark background `#161720` and high-contrast `#EDE6DC` text styling for `QToolTip`, `Fm--InfoShower`, `QFrame#infoShower`, `QStatusBar`, and file information popups.
-- **Permanent Declarative Windows Partition Mounts & Hibernation Recovery**:
-  - Registered `boot.supportedFilesystems = [ "ntfs" ]` and declared permanent mount points `/mnt/Windows_C` and `/mnt/Windows_D` in [`modules/system/boot.nix`](file:///home/realdhiru/nix/modules/system/boot.nix#L52-L65) with `ntfs3` driver options `[ "nofail" "rw" "uid=1000" "gid=100" "umask=022" "ignore_case" "remove_hiberfile" ]`. Resolves dirty bit hibernation lock error on Windows C: drive and guarantees instant access.
+- **QuickShell Light/Dark Glass Theme Tuning (Option 1 Applied)**:
+  - Set [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml#L125-L128) light mode glass recipe to Option 1 (`effectivePopupOpacity = 0.30`, `antiBleedOpacity = 0.18`), providing a balanced ~40% translucent glass shade.
+- **PCManFM-Qt & Qt Hover Info Shower Palette Fix**:
+  - Updated [`dotfiles/wallust/templates/qtct.conf`](file:///home/realdhiru/nix/dotfiles/wallust/templates/qtct.conf#L2-L6) QPalette `ToolTipBase` role (slot 18) to dark slate `#1a1b24` (was light `#C9BFB5`). Combined with `#EDE6DC` `ToolTipText`, all hover popups and info shower boxes in PCManFM-Qt now render with crystal-clear white text on dark slate.
+- **QuickShell Wallpaper Widget Displacement & Key Focus Fix**:
+  - Removed dynamic `anchors.margins` animation on [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml#L1089) `ListView` (replaced with static `anchors.fill: parent` and `scale` animation). Prevents width recalculation during open/refresh transitions, eliminating horizontal displacement and side-clipping.
+  - Added `Qt.callLater(() => { view.forceActiveFocus(); });` to `onVisibleChanged` when `visible = true` in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml#L319), guaranteeing keyboard arrow key navigation works immediately every time the picker is opened.
 - **KDE Connect Autostart**:
   - Added `hl.exec_cmd("kdeconnectd")` to [`dotfiles/hypr/startup.lua`](file:///home/realdhiru/nix/dotfiles/hypr/startup.lua#L18) so the background service launches automatically on desktop login for instant mobile connection.
 

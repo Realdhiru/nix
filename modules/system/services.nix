@@ -90,8 +90,8 @@
   services.udisks2.enable = true;
   environment.etc."udisks2/mount_options.conf".text = ''
     [defaults]
-    ntfs_defaults=uid=$UID,gid=$GID
-    ntfs_allow=uid=$UID,gid=$GID,umask,dmask,fmask,locale,norecover,ignore_case,windows_names,compression,nocompression,nocache,force
+    ntfs_defaults=uid=$UID,gid=$GID,rw
+    ntfs_allow=uid=$UID,gid=$GID,umask,dmask,fmask,locale,norecover,nocase,windows_names,compression,nocompression,nocache,force,rw,remove_hiberfile
   '';
 
   # Desktop settings.
