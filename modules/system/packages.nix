@@ -26,7 +26,6 @@ in
     tmux
     wezterm
     fastfetch
-    neovim
     htop
 
     # Browsers
@@ -68,6 +67,7 @@ in
     gram
     nil
     vscode-langservers-extracted
+    lua-language-server
   ];
 
   programs.appimage = {

@@ -1491,7 +1491,7 @@ Item {
                             height: width
                             radius: width / 2
                             color: centralCore.isDangerState ? window.red : window.ambientPrimary
-                            opacity: centralCore.isDangerState ? 0.25 : 0.15
+                            opacity: centralCore.isDangerState ? 0.25 : 0.0
                             z: 0 
                             Behavior on color { ColorAnimation { duration: 400 } }
                             SequentialAnimation on scale {
@@ -1530,7 +1530,7 @@ Item {
                             border.color: Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.40)
                             border.width: 1
 
-                            color: Qt.rgba(window.primary.r, window.primary.g, window.primary.b, 0.28)
+                            color: "transparent"
 
                             Rectangle {
                                 anchors.fill: parent

@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-09-30 — Fuzzel Crash Resolution, Kickstart Neovim & Gram LSP Fixes
+
+- **Fuzzel Core Dump Resolution**:
+  - Set `image-size-ratio = 0.5` in [`dotfiles/fuzzel/fuzzel.ini`](file:///home/realdhiru/nix/dotfiles/fuzzel/fuzzel.ini) and `~/.config/fuzzel/fuzzel.ini` (was `0.0`). Prevents Rust `libresvg` 0x0 viewport dimension panic (`Signal 6 (ABRT)`) when launcher items match SVG icons (e.g., `gra` matching Gram's SVG icon).
+- **Neovim Package & Configuration Purge**:
+  - Removed `neovim` package from [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix#L29).
+  - Purged all Neovim config, data, state, and cache directories (`~/.config/nvim`, `~/.config/nvim.bak`, `~/.local/share/nvim`, `~/.cache/nvim`, `~/.local/state/nvim`), leaving system default `vim` untouched.
+- **BatteryPopup Center Disc Transparency**:
+  - Removed central hero gauge color fill (`color: "transparent"`) and background pulse glow (`opacity: 0.0`) in [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L1494-L1533), matching surrounding frosted glass surface.
+
 - **System Health Audit & Optimization Pass**:
   - **SysData.qml Cleanup**: Removed dead `batteryProc` and its associated `batteryFetchPath` property; deleted orphaned `watchers/battery_fetch.sh` script; eliminated undefined `batteryWaiter` reference from JSON catch block. Verified native `udevBatteryWatcher` (`udevadm monitor`) and 30s failsafe timer update `batCapacity` and `acOnline` in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml).
   - **Wallpaper Search Path Fix**: Fixed `get_ddg_links.py` path invocation in [`wallpaper/ddg_search.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/ddg_search.sh) by isolating `WALLPAPER_DIR` to avoid namespace clobbering from sourced `caching.sh`. Verified successful execution and thumbnail caching.
