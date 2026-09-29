@@ -161,6 +161,23 @@ Item {
                     window.sortListModel(localProxyModel);
                     window.sortListModel(gifsProxyModel);
                     window.sortListModel(videosProxyModel);
+
+                    let targetModel = window.getModelForFilter(window.currentFilter);
+                    if (targetModel && targetModel.count > 0 && window.targetWallName !== "") {
+                        let cleanTarget = window.getCleanName(window.targetWallName);
+                        let foundIdx = -1;
+                        for (let i = 0; i < targetModel.count; i++) {
+                            let fn = targetModel.get(i).fileName || "";
+                            if (fn === window.targetWallName || window.getCleanName(fn) === cleanTarget) {
+                                foundIdx = i;
+                                break;
+                            }
+                        }
+                        if (foundIdx !== -1) {
+                            view.currentIndex = foundIdx;
+                            view.positionViewAtIndex(foundIdx, ListView.Center);
+                        }
+                    }
                 }
             }
         }
@@ -193,8 +210,35 @@ Item {
         return selected.join(",");
     }
 
+    readonly property string activeWallpaperFile: Quickshell.env("HOME") + "/.cache/current_wallpaper.txt"
+    property string activeWallpaperPath: ""
+    property string activeWallpaperName: {
+        if (!activeWallpaperPath) return "";
+        let parts = activeWallpaperPath.split("/");
+        return parts[parts.length - 1];
+    }
+
+    FileView {
+        id: activeWallWatcher
+        path: window.activeWallpaperFile
+        watchChanges: true
+        onLoadedChanged: window.activeWallpaperPath = (activeWallWatcher.text() || "").trim()
+        onTextChanged: window.activeWallpaperPath = (activeWallWatcher.text() || "").trim()
+        onFileChanged: {
+            activeWallWatcher.reload();
+            window.activeWallpaperPath = (activeWallWatcher.text() || "").trim();
+        }
+    }
+
     function applyWallpaper(safeFileName, isVideo) {
         if (!safeFileName || window.isApplying) return;
+        
+        let cleanTarget = window.getCleanName(safeFileName);
+        let cleanActive = window.getCleanName(window.activeWallpaperName);
+        if (cleanTarget !== "" && cleanTarget === cleanActive) {
+            console.log("[WALLPAPER_PICKER] Clicked wallpaper is already active, ignoring re-apply:", safeFileName);
+            return;
+        }
         
         let outputs = window.getMonitorOutputs();
         if (outputs === "none") return;
@@ -493,8 +537,28 @@ Item {
         }
 
         if (changed) {
-            model.clear();
-            model.append(arr);
+            window.isModelChanging = true;
+            if (arr.length === model.count) {
+                for (let i = 0; i < arr.length; i++) {
+                    let targetFn = arr[i].fileName;
+                    if (model.get(i).fileName !== targetFn) {
+                        let foundIdx = -1;
+                        for (let j = i + 1; j < model.count; j++) {
+                            if (model.get(j).fileName === targetFn) {
+                                foundIdx = j;
+                                break;
+                            }
+                        }
+                        if (foundIdx !== -1) {
+                            model.move(foundIdx, i, 1);
+                        }
+                    }
+                }
+            } else {
+                model.clear();
+                model.append(arr);
+            }
+            window.isModelChanging = false;
         }
     }
 
@@ -904,12 +968,12 @@ Item {
 
     Shortcut { 
         sequence: "Left"; 
-        enabled: !window.isApplying
+        enabled: window.visible && !window.isApplying && !searchInput.activeFocus
         onActivated: window.stepToNextValidIndex(-1) 
     }
     Shortcut { 
         sequence: "Right"; 
-        enabled: !window.isApplying
+        enabled: window.visible && !window.isApplying && !searchInput.activeFocus
         onActivated: window.stepToNextValidIndex(1) 
     }
     Shortcut { 
@@ -1003,7 +1067,7 @@ Item {
         }
 
         let isReady = localFolderModel.status === FolderListModel.Ready;
-        if (isReady && window._localSyncedCount > 0) {
+        if (isReady && window._localSyncedCount > 0 && !window.initialFocusSet) {
             window.isModelChanging = true;
             window.sortListModel(localProxyModel);
             window.sortListModel(gifsProxyModel);
@@ -1014,7 +1078,7 @@ Item {
         if (window.currentFilter !== "Search") window.updateVisibleCount();
         
         let targetModel = window.getModelForFilter(window.currentFilter);
-        if (targetModel && targetModel.count > 0 && window.currentFilter !== "Search") {
+        if (targetModel && targetModel.count > 0 && window.currentFilter !== "Search" && !window.initialFocusSet) {
             let foundIndex = -1;
             if (preservedTarget !== "") {
                 let cleanTarget = window.getCleanName(preservedTarget);
@@ -1089,10 +1153,10 @@ Item {
         id: view
         anchors.fill: parent
         opacity: window.isReady ? 1.0 : 0.0
-        anchors.margins: window.isReady ? 0 : window.s(40)
+        scale: window.isReady ? 1.0 : 0.96
         
-        Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutQuart } }
-        Behavior on anchors.margins { NumberAnimation { duration: 700; easing.type: Easing.OutExpo } }
+        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+        Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
 
         spacing: 0
         orientation: ListView.Horizontal
@@ -1101,9 +1165,9 @@ Item {
         cacheBuffer: 2000
 
         highlightRangeMode: ListView.StrictlyEnforceRange
-        preferredHighlightBegin: (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2)
-        preferredHighlightEnd: (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2)
-        highlightMoveDuration: window.initialFocusSet ? 500 : 0
+        preferredHighlightBegin: Math.max(0, (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2))
+        preferredHighlightEnd: Math.max(0, (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2))
+        highlightMoveDuration: window.initialFocusSet ? 350 : 0
         focus: true
         
         onCurrentIndexChanged: {
@@ -1134,8 +1198,8 @@ Item {
             NumberAnimation { property: "x"; duration: 400; easing.type: Easing.OutCubic }
         }
 
-        header: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5) / 2)) }
-        footer: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5) / 2)) }
+        header: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2)) }
+        footer: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2)) }
         model: window.activeModel
 
         MouseArea {
@@ -1216,10 +1280,10 @@ Item {
             anchors.verticalCenterOffset: window.s(15)
             z: isVisuallyEnlarged ? 10 : 1
             
-            Behavior on scale { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-            Behavior on width { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-            Behavior on height { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
-            Behavior on opacity { enabled: window.initialFocusSet; NumberAnimation { duration: 500; easing.type: Easing.InOutQuad } }
+            Behavior on scale { enabled: window.initialFocusSet; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
+            Behavior on width { enabled: window.initialFocusSet; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
+            Behavior on height { enabled: window.initialFocusSet; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
+            Behavior on opacity { enabled: window.initialFocusSet; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
 
             Item {
                 anchors.centerIn: parent

@@ -53,18 +53,23 @@
     size = 32;
   };
   
-  # Wallust writes the color values to ~/.cache/theme/qtct.conf
+  # Wallust writes the color values to ~/.cache/theme/qtct.conf and qt-style.qss
   xdg.configFile."qt5ct/colors/theme.conf".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.cache/theme/qtct.conf";
   xdg.configFile."qt6ct/colors/theme.conf".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.cache/theme/qtct.conf";
+
+  xdg.configFile."qt5ct/qss/qt-style.qss".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.cache/theme/qt-style.qss";
+  xdg.configFile."qt6ct/qss/qt-style.qss".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.cache/theme/qt-style.qss";
 
   xdg.configFile."qt5ct/qt5ct.conf".text = ''
     [Appearance]
     color_scheme_path=${config.home.homeDirectory}/.config/qt5ct/colors/theme.conf
     custom_palette=true
     icon_theme=buuf-nestort
-    stylesheets=${config.home.homeDirectory}/.cache/theme/qt-style.qss
+    stylesheets=qt-style.qss
     style=Fusion
   '';
   xdg.configFile."qt6ct/qt6ct.conf".text = ''
@@ -72,7 +77,7 @@
     color_scheme_path=${config.home.homeDirectory}/.config/qt6ct/colors/theme.conf
     custom_palette=true
     icon_theme=buuf-nestort
-    stylesheets=${config.home.homeDirectory}/.cache/theme/qt-style.qss
+    stylesheets=qt-style.qss
     style=Fusion
   '';
 

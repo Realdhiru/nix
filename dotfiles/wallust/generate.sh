@@ -276,11 +276,33 @@ if [ -f "$TARGET_CACHE/colors.json" ]; then
     mv "$TARGET_CACHE/colors.json.tmp" "$TARGET_CACHE/colors.json"
 fi
 
-# 5. Inject dynamic wallpaper accent into GTK, Qt, WezTerm, and Cava
+# 5. Inject dynamic wallpaper palette into GTK, Qt, WezTerm, and Cava
 if [ -n "$ACCENT" ]; then
+    BG=$(jq -r '.base // "#121318"' "$TARGET_CACHE/colors.json" 2>/dev/null || echo "#121318")
+    FG=$(jq -r '.text // "#EDE6DC"' "$TARGET_CACHE/colors.json" 2>/dev/null || echo "#EDE6DC")
+    SURF0=$(jq -r '.surface0 // "#16171f"' "$TARGET_CACHE/colors.json" 2>/dev/null || echo "#16171f")
+    SURF1=$(jq -r '.surface1 // "#2b2d3a"' "$TARGET_CACHE/colors.json" 2>/dev/null || echo "#2b2d3a")
+
     sed "s/{{color4}}/$ACCENT/g" "$SCRIPT_DIR/templates/gtk.css" > "$TARGET_CACHE/gtk.css"
-    sed -e "s/{{color4}}/$ACCENT/g" -e "s/{{color2}}/${SUBTEXT0:-#5E5E60}/g" -e "s/{{color3}}/${SUBTEXT1:-#747576}/g" "$SCRIPT_DIR/templates/qtct.conf" > "$TARGET_CACHE/qtct.conf"
-    sed "s/{{color4}}/$ACCENT/g" "$SCRIPT_DIR/templates/qt-style.qss" > "$TARGET_CACHE/qt-style.qss"
+
+    sed -e "s/{{color4}}/$ACCENT/g" \
+        -e "s/{{color2}}/${SUBTEXT0:-#5E5E60}/g" \
+        -e "s/{{color3}}/${SUBTEXT1:-#747576}/g" \
+        -e "s/{{background}}/${BG}/g" \
+        -e "s/{{foreground}}/${FG}/g" \
+        -e "s/{{color0}}/${SURF0}/g" \
+        -e "s/{{color8}}/${SURF1}/g" \
+        "$SCRIPT_DIR/templates/qtct.conf" > "$TARGET_CACHE/qtct.conf"
+
+    sed -e "s/{{color4}}/$ACCENT/g" \
+        -e "s/{{color2}}/${SUBTEXT0:-#5E5E60}/g" \
+        -e "s/{{color3}}/${SUBTEXT1:-#747576}/g" \
+        -e "s/{{background}}/${BG}/g" \
+        -e "s/{{foreground}}/${FG}/g" \
+        -e "s/{{color0}}/${SURF0}/g" \
+        -e "s/{{color8}}/${SURF1}/g" \
+        "$SCRIPT_DIR/templates/qt-style.qss" > "$TARGET_CACHE/qt-style.qss"
+
     cat <<EOF > "$TARGET_CACHE/hyprland-colors.conf"
 \$active_border_col_1 = rgb(${ACCENT#'#'})
 \$active_border_col_2 = rgb(${SUBTEXT0#'#'})

@@ -297,8 +297,8 @@ PanelWindow {
     function getLayout(name) {
         let logicalW = Math.round(masterWindow.monitorPhysWidth / (masterWindow.monitorScale > 0 ? masterWindow.monitorScale : 1.0));
         let logicalH = Math.round(masterWindow.monitorPhysHeight / (masterWindow.monitorScale > 0 ? masterWindow.monitorScale : 1.0));
-        let mw = masterWindow.width > 0 ? masterWindow.width : logicalW;
-        let mh = masterWindow.height > 0 ? masterWindow.height : logicalH;
+        let mw = logicalW > 0 ? logicalW : 1920;
+        let mh = logicalH > 0 ? logicalH : 1080;
 
         let key = name + "|" + mw + "|" + mh + "|" + masterWindow.globalUiScale;
         if (_layoutCacheKey === key) return _layoutCache[key];
@@ -526,13 +526,20 @@ PanelWindow {
             } else {
                 morphReenableTimer.stop();
                 masterWindow.morphDuration = masterWindow.morphDurationShift;
-                masterWindow.disableMorph = false;
+                if (newWidget === "wallpaper") {
+                    masterWindow.disableMorph = true;
+                } else {
+                    masterWindow.disableMorph = false;
+                }
                 executeSwitch(newWidget, arg, false);
             }
         }
     }
 
     function executeSwitch(newWidget, arg, immediate) {
+        if (newWidget === "wallpaper") {
+            masterWindow.disableMorph = true;
+        }
         let t = getLayout(newWidget);
         console.log("[COLD_OPEN_DEBUG] executeSwitch settled:", newWidget, "mw:", masterWindow.width, "mh:", masterWindow.height, "t.rx:", t ? t.rx : 0, "t.ry:", t ? t.ry : 0, "t.w:", t ? t.w : 0, "t.h:", t ? t.h : 0);
         masterWindow.currentActive = newWidget;
