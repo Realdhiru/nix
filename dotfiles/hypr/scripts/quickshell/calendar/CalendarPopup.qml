@@ -128,15 +128,16 @@ Item {
     // -------------------------------------------------------------------------
     // STARTUP ANIMATION STATES
     // -------------------------------------------------------------------------
-    property bool startupComplete: false
-    property real introMain: 0
-    property real introAmbient: 0
-    property real introClock: 0
-    property real introCalendar: 0
-    property real introWeather: 0
+    property bool startupComplete: true
+    property real introMain: 1.0
+    property real introAmbient: 1.0
+    property real introClock: 1.0
+    property real introCalendar: 1.0
+    property real introWeather: 1.0
 
+    // Staggered intro animation disabled to prevent double-refresh and opening jitter.
     SequentialAnimation {
-        running: true
+        running: false
         
         PauseAnimation { duration: 20 }
 

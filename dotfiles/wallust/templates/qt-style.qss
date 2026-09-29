@@ -11,12 +11,17 @@ QMainWindow, QDialog {
     background-color: #121318;
 }
 
-QToolTip {
-    background-color: #1a1b24;
+QToolTip, Fm--InfoShower, QFrame#infoShower, QWidget#FmInfoShower {
+    background-color: #161720;
     color: #EDE6DC;
     border: 1px solid #282a36;
     border-radius: 6px;
     padding: 6px;
+}
+
+QStatusBar, QStatusBar QLabel, QFrame QLabel {
+    background-color: #121318;
+    color: #EDE6DC;
 }
 
 /* =========================================================

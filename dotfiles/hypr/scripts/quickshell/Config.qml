@@ -122,10 +122,11 @@ Item {
     // CAVA gradient options: "soft" (monochrome intensity glow), "warm" (peach/mauve to primary), "ivory" (ivory to primary), "sapphire"
     property string cavaGradient: config.getSetting("cavaGradient", "soft")
 
+    Theme { id: _theme }
     property bool isSolidMode: false
-    readonly property real effectivePopupOpacity: config.isSolidMode ? 1.0 : config.popupOpacity
+    readonly property real effectivePopupOpacity: config.isSolidMode ? 1.0 : (_theme.isLightMode ? 0.20 : config.popupOpacity)
     readonly property real effectiveCardOpacity: config.isSolidMode ? 0.40 : config.cardOpacity
-    readonly property real antiBleedOpacity: config.isSolidMode ? 0.0 : 0.04
+    readonly property real antiBleedOpacity: config.isSolidMode ? 0.0 : (_theme.isLightMode ? 0.10 : 0.04)
     property bool topbarHelpIcon: true
     property int workspaceCount: 8
     property int initialWorkspaceCount: 8

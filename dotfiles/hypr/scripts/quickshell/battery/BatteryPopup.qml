@@ -217,7 +217,7 @@ Item {
     readonly property color ambientPrimary: window.batColorStart
     readonly property color ambientSecondary: isCharging ? window.primary : (batCapacity >= 70 ? window.mauve : (batCapacity >= 30 ? window.peach : window.maroon))
 
-    property real animCapacity: 0
+    property real animCapacity: SysData.batCapacity
     Behavior on animCapacity { NumberAnimation { duration: 1200; easing.type: Easing.OutQuint } }
     
     onAnimCapacityChanged: batCanvas.requestPaint()
@@ -443,19 +443,19 @@ Item {
         from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: window.visible
     }
 
-    property real introMain: 0
-    property real introTop: 0
-    property real introNotifs: 0
-    property real introCore: 0
-    property real introSliders: 0
-    property real introActions: 0
-    property real introProfiles: 0
+    property real introMain: 1.0
+    property real introTop: 1.0
+    property real introNotifs: 1.0
+    property real introCore: 1.0
+    property real introSliders: 1.0
+    property real introActions: 1.0
+    property real introProfiles: 1.0
 
-    // Entry animation. Runs once at component birth (during preload, while
-    // invisible) and is replayed on every show via showWidget().
+    // Staggered intro animation disabled to prevent double-refresh and frame hitching on open.
+    // Master container in Main.qml provides single-pass hardware-accelerated 100ms fade/scale.
     ParallelAnimation {
         id: introAnim
-        running: window.visible
+        running: false
         NumberAnimation { target: window; property: "introMain"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutQuart }
         SequentialAnimation {
             PauseAnimation { duration: 100 }
@@ -1595,7 +1595,7 @@ Item {
                                         ctx.lineWidth = window.s(10);
                                         ctx.beginPath();
                                         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-                                        ctx.strokeStyle = Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.35).toString();
+                                        ctx.strokeStyle = _theme.isLightMode ? Qt.rgba(window.crust.r, window.crust.g, window.crust.b, 0.40).toString() : Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.35).toString();
                                         ctx.stroke();
                                         
                                         var fillGrad = ctx.createLinearGradient(0, height, width, 0);

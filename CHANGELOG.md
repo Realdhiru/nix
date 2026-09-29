@@ -1,6 +1,23 @@
 # CHANGELOG
 
-## 2026-09-30 — Fuzzel Crash Resolution, Kickstart Neovim & Gram LSP Fixes
+## 2026-09-30 — QuickShell Light/Dark Glass Theme Toggle & Music Pill Unification
+
+- **QuickShell Light/Dark Glass Theme Toggle (`SUPER + L`)**:
+  - Added [`dotfiles/hypr/scripts/quickshell/toggle_theme_mode.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/toggle_theme_mode.sh) to switch `ui.themeMode` between `"dark"` and `"light"` in `~/.cache/quickshell/state.json`.
+  - Bound `SUPER + L` in [`dotfiles/hypr/keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua#L48).
+  - Updated [`Theme.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Theme.qml) to monitor `state.json` via native `FileView` and expose `themeMode` and `isLightMode`.
+  - Updated [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml#L125-L128) to dynamically adjust `effectivePopupOpacity` (`0.55` in light mode) and `antiBleedOpacity` (`0.35` in light mode) to maintain high visual contrast over bright wallpapers.
+  - Adapted hero gauge track stroke in [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L1598) to use `_theme.crust` in light mode.
+- **TopBar Music Pill Fill Unification**:
+  - Unified [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml#L692) `mediaBox` background color to `Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)`, matching the clock and workspace pills.
+- **QuickShell Light/Dark Glass Theme Tuning**:
+  - Updated [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml#L125-L128) light mode glass recipe to Option 2 (`effectivePopupOpacity = 0.20`, `antiBleedOpacity = 0.10`), delivering a subtle ~28% translucent glass appearance.
+- **PCManFM-Qt Info Shower & ToolTip Dark Contrast Fix**:
+  - Updated [`dotfiles/wallust/templates/qt-style.qss`](file:///home/realdhiru/nix/dotfiles/wallust/templates/qt-style.qss#L14-L25) with explicit dark background `#161720` and high-contrast `#EDE6DC` text styling for `QToolTip`, `Fm--InfoShower`, `QFrame#infoShower`, `QStatusBar`, and file information popups.
+- **Permanent Declarative Windows Partition Mounts & Hibernation Recovery**:
+  - Registered `boot.supportedFilesystems = [ "ntfs" ]` and declared permanent mount points `/mnt/Windows_C` and `/mnt/Windows_D` in [`modules/system/boot.nix`](file:///home/realdhiru/nix/modules/system/boot.nix#L52-L65) with `ntfs3` driver options `[ "nofail" "rw" "uid=1000" "gid=100" "umask=022" "ignore_case" "remove_hiberfile" ]`. Resolves dirty bit hibernation lock error on Windows C: drive and guarantees instant access.
+- **KDE Connect Autostart**:
+  - Added `hl.exec_cmd("kdeconnectd")` to [`dotfiles/hypr/startup.lua`](file:///home/realdhiru/nix/dotfiles/hypr/startup.lua#L18) so the background service launches automatically on desktop login for instant mobile connection.
 
 - **Fuzzel Core Dump Resolution**:
   - Set `image-size-ratio = 0.5` in [`dotfiles/fuzzel/fuzzel.ini`](file:///home/realdhiru/nix/dotfiles/fuzzel/fuzzel.ini) and `~/.config/fuzzel/fuzzel.ini` (was `0.0`). Prevents Rust `libresvg` 0x0 viewport dimension panic (`Signal 6 (ABRT)`) when launcher items match SVG icons (e.g., `gra` matching Gram's SVG icon).
@@ -9,6 +26,18 @@
   - Purged all Neovim config, data, state, and cache directories (`~/.config/nvim`, `~/.config/nvim.bak`, `~/.local/share/nvim`, `~/.cache/nvim`, `~/.local/state/nvim`), leaving system default `vim` untouched.
 - **BatteryPopup Center Disc Transparency**:
   - Removed central hero gauge color fill (`color: "transparent"`) and background pulse glow (`opacity: 0.0`) in [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L1494-L1533), matching surrounding frosted glass surface.
+- **QuickShell Popup Displacement Bug Fix**:
+  - Resolved popup displacement issue in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml#L490-L605) where `StackView.currentItem` in `executeSwitch` referenced stale previous widget instances (e.g. `CalendarPopup`). Bound `targetMasterWidth`/`targetMasterHeight` geometry calculations directly to `targetObj` (`widgetCache[newWidget]`) and gated horizontal alignment (`initX`/`finalX`) to respect widget anchor configurations (`top-right`, `top-center`, `center`).
+- **System-Wide QuickShell Opening Animation Audit & Optimization**:
+  - Audited all QML popup components (`CalendarPopup`, `FocusTimePopup`, `MusicPopup`, `BatteryPopup`) for internal staggered `PauseAnimation` entry timelines (`running: true`).
+  - Disabled internal multi-stage intro animations (`running: false`) and initialized all component `intro*` properties to `1.0` in [`CalendarPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/CalendarPopup.qml#L130-L167), [`FocusTimePopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml#L118-L166), and [`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml#L161-L209).
+  - All popups now initialize 100% rendered on frame 0, eliminating double-fade visual conflicts, staggered pop-in stutter, and opening frame drops across the entire desktop suite.
+- **TopBar Music Position Sync & Clipboard Grid Navigation Mode & Tab Toggle**:
+  - Updated position refresh threshold from `posDiff > 3` to `posDiff >= 1` in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml#L323), syncing TopBar's music timeline text with [`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml).
+  - Resolved text search filtering in [`ClipboardManager.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml#L248-L289) so images are excluded when searching non-matching text queries.
+  - Set default opening focus in [`ClipboardManager.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml#L300-L308) to Grid Navigation Mode (`clipList.forceActiveFocus()`), highlighting item 0 for instant arrow key navigation.
+  - Updated `Tab` shortcut in [`ClipboardManager.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml#L57-L67) to toggle active focus between Grid Navigation Mode (`clipList`) and Search Mode (`searchInput`).
+  - Configured `Down` and `Tab` keys in `searchInput` to jump focus down to `clipList`, while `Up` from the top row of grid items returns focus to `searchInput`.
 
 - **System Health Audit & Optimization Pass**:
   - **SysData.qml Cleanup**: Removed dead `batteryProc` and its associated `batteryFetchPath` property; deleted orphaned `watchers/battery_fetch.sh` script; eliminated undefined `batteryWaiter` reference from JSON catch block. Verified native `udevBatteryWatcher` (`udevadm monitor`) and 30s failsafe timer update `batCapacity` and `acOnline` in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml).

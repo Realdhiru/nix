@@ -158,17 +158,18 @@ Item {
         }
     }
 
-    property real introMain: 0
-    property real introCover: 0
-    property real introText: 0
-    property real introControls: 0
-    property real introSeparator: 0
-    property real introEqHeader: 0
-    property real introEqSliders: 0
-    property real introPresets: 0
+    property real introMain: 1.0
+    property real introCover: 1.0
+    property real introText: 1.0
+    property real introControls: 1.0
+    property real introSeparator: 1.0
+    property real introEqHeader: 1.0
+    property real introEqSliders: 1.0
+    property real introPresets: 1.0
 
+    // Staggered intro animation disabled to eliminate opening jitter and pop-in lag.
     ParallelAnimation {
-        running: true
+        running: false
 
         NumberAnimation { target: root; property: "introMain"; from: 0; to: 1.0; duration: 760; easing.type: Easing.OutQuart }
 

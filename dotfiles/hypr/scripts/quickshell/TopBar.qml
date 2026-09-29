@@ -320,7 +320,7 @@ Variants {
                                 let oldData = barWindow.musicData || {};
                                 let posDiff = Math.abs(newData.position - (oldData.position || 0));
 
-                                if (oldData.title !== newData.title || oldData.status !== newData.status || oldData.artUrl !== newData.artUrl || posDiff > 3) {
+                                if (oldData.title !== newData.title || oldData.status !== newData.status || oldData.artUrl !== newData.artUrl || posDiff >= 1) {
                                     barWindow.musicData = newData;
                                 }
                             } catch(e) {}
@@ -689,7 +689,7 @@ Variants {
 
                     Rectangle {
                         id: mediaBox
-                        color: barWindow.pillBg
+                        color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
                         radius: barWindow.s(14)
                         border.width: Math.max(1, Config.borderWidth)
                         border.color: Config.borderWidth > 0 ? barWindow.pillBorder : Qt.rgba(255, 255, 255, Config.glassSpecular)

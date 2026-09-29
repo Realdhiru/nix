@@ -15,6 +15,7 @@ hl.on("hyprland.start", function()
 
     -- 4. Idle & Utilities
     hl.exec_cmd("hypridle")
+    hl.exec_cmd("kdeconnectd")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
     hl.exec_cmd(scripts .. "quickshell/music/equalizer.sh --init")

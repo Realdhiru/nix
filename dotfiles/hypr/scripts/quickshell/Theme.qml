@@ -36,6 +36,10 @@ Item {
 
     // Dynamically resolve HOME instead of hardcoding the user profile
     readonly property string colorsFile: Quickshell.env("HOME") + "/.cache/theme/colors.json"
+    readonly property string stateFile: Quickshell.env("HOME") + "/.cache/quickshell/state.json"
+
+    property string themeMode: "dark"
+    property bool isLightMode: themeMode === "light"
 
     // Internal state cache to prevent redundant processing
     property string _lastJson: ""
@@ -45,7 +49,7 @@ Item {
         try {
             let data = JSON.parse(txt);
             for (let key in data) {
-                if (root.hasOwnProperty(key) && key !== "colorsFile" && key !== "_lastJson") {
+                if (root.hasOwnProperty(key) && key !== "colorsFile" && key !== "stateFile" && key !== "_lastJson") {
                     root[key] = data[key];
                 }
             }
@@ -53,9 +57,20 @@ Item {
         } catch(e) {}
     }
 
+    function parseStateJson(txt) {
+        if (!txt || txt === "" || txt === "{}") return;
+        try {
+            let data = JSON.parse(txt);
+            if (data.ui && data.ui.themeMode) {
+                root.themeMode = data.ui.themeMode;
+            }
+        } catch(e) {}
+    }
+
     function reload() {
         root._lastJson = "";
         fileView.reload();
+        stateFileView.reload();
     }
 
     // Instant C++ native file loader & live inotify watcher (0ms startup, zero subprocess overhead)
@@ -71,7 +86,20 @@ Item {
         }
     }
 
+    FileView {
+        id: stateFileView
+        path: root.stateFile
+        watchChanges: true
+        onLoadedChanged: root.parseStateJson(stateFileView.text())
+        onTextChanged: root.parseStateJson(stateFileView.text())
+        onFileChanged: {
+            stateFileView.reload();
+            root.parseStateJson(stateFileView.text());
+        }
+    }
+
     Component.onCompleted: {
         root.applyJson(fileView.text());
+        root.parseStateJson(stateFileView.text());
     }
 }

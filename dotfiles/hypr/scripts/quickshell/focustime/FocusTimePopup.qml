@@ -114,17 +114,18 @@ Item {
     readonly property string scriptsDir: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/focustime"
     readonly property string stateFilePath: Caching.getRunDir("focustime") + "/focustime_state.json"
 
-    // --- ENHANCED CHOREOGRAPHED STARTUP STATES ---
-    property real introMain: 0.0
-    property real introHeader: 0.0
-    property real introStats: 0.0
-    property real introMidLeft: 0.0
-    property real introMidRight: 0.0
-    property real introBottom: 0.0
-    property real introAppBars: 0.0
+    // --- INSTANTaneous INITIALIZATION FOR SMOOTH OPENING ---
+    property real introMain: 1.0
+    property real introHeader: 1.0
+    property real introStats: 1.0
+    property real introMidLeft: 1.0
+    property real introMidRight: 1.0
+    property real introBottom: 1.0
+    property real introAppBars: 1.0
 
+    // Staggered intro animation disabled to eliminate opening jitter and pop-in lag.
     ParallelAnimation {
-        running: true
+        running: false
 
         // Base window fades, scales slightly
         NumberAnimation { target: window; property: "introMain"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutQuart }

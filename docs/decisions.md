@@ -134,3 +134,12 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - Never configure layer surfaces or popup positioning with raw physical pixel bounds (`2880x1620`). Sizing coordinates using physical dimensions places elements past the logical surface boundary, clipping them off-screen.
   - Sizing fallback in `Main.qml` must derive logical screen space from monitor physical dimensions divided by monitor scale (`Math.round(physWidth / scale)`), ensuring frame-0 and settled coordinates are identical with zero pixel displacement.
 
+### 19. QuickShell Light/Dark Glass Theme State Management
+- **Decision:** Theme mode is controlled explicitly by the user via keybind (`SUPER + L`) rather than automatic wallpaper luminance classification.
+- **Rationale:** Automatic wallpaper luminance detection fails on complex illustrations (e.g. bright artwork with dark accents) and forces unintended theme flips. Persisting `ui.themeMode` in `~/.cache/quickshell/state.json` provides user control across reloads and cold boots.
+- **Rules:**
+  - `SUPER + L` triggers [`dotfiles/hypr/scripts/quickshell/toggle_theme_mode.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/toggle_theme_mode.sh) to toggle `ui.themeMode` between `"dark"` and `"light"`.
+  - `Theme.qml` reads `state.json` via native `FileView` watcher and exposes `isLightMode`.
+  - Light mode increases `antiBleedOpacity` to `0.35` and `effectivePopupOpacity` to `0.55` in [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml) to guarantee high visual contrast over light background illustrations.
+
+

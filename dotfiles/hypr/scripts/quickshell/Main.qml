@@ -492,7 +492,16 @@ PanelWindow {
                 let cachedWidget = widgetCache[newWidget];
                 let initW = (cachedWidget && cachedWidget.targetMasterWidth !== undefined) ? cachedWidget.targetMasterWidth : t.w;
                 let initH = (cachedWidget && cachedWidget.targetMasterHeight !== undefined) ? cachedWidget.targetMasterHeight : t.h;
-                let initX = (cachedWidget && cachedWidget.targetMasterWidth !== undefined) ? Math.floor((masterWindow.width / 2) - (initW / 2)) : t.rx;
+                let initX = t.rx;
+                if (cachedWidget && cachedWidget.targetMasterWidth !== undefined && initW !== t.w) {
+                    let cfg = Registry.WIDGETS[newWidget];
+                    if (cfg && (cfg.anchor === "top-center" || cfg.anchor === "center" || cfg.anchor === "bottom-center")) {
+                        initX = Math.floor((masterWindow.width / 2) - (initW / 2));
+                    } else if (cfg && cfg.anchor === "top-right") {
+                        let scale = Registry.getScale(masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
+                        initX = masterWindow.width - initW - Registry.s(cfg.mr, scale);
+                    }
+                }
 
                 masterWindow.animX = initX;
                 masterWindow.animY = t.ry;
@@ -530,32 +539,25 @@ PanelWindow {
         masterWindow.activeArg = arg;
         if (!t || !t.comp) return;
 
-        masterWindow.animX = t.rx;
-        masterWindow.animY = t.ry;
-        masterWindow.animW = t.w;
-        masterWindow.animH = t.h;
-        masterWindow.targetW = t.w;
-        masterWindow.targetH = t.h;
-
         let props = {};
         if (newWidget === "wallpaper") props["widgetArg"] = arg;
 
-        let cached = widgetCache[newWidget];
-        if (cached) {
-            if (cached.notifModel   !== undefined) cached.notifModel   = masterWindow.notifModel;
-            if (cached.liveNotifs   !== undefined) cached.liveNotifs   = masterWindow.liveNotifs;
-            if (cached.layoutWidth  !== undefined) cached.layoutWidth  = t.w;
-            if (cached.layoutHeight !== undefined) cached.layoutHeight = t.h;
-            if (newWidget === "wallpaper" && cached.widgetArg !== undefined) cached.widgetArg = arg;
-            if (arg !== "" && cached.activeMode !== undefined) cached.activeMode = arg;
+        let targetObj = widgetCache[newWidget];
+        if (targetObj) {
+            if (targetObj.notifModel   !== undefined) targetObj.notifModel   = masterWindow.notifModel;
+            if (targetObj.liveNotifs   !== undefined) targetObj.liveNotifs   = masterWindow.liveNotifs;
+            if (targetObj.layoutWidth  !== undefined) targetObj.layoutWidth  = t.w;
+            if (targetObj.layoutHeight !== undefined) targetObj.layoutHeight = t.h;
+            if (newWidget === "wallpaper" && targetObj.widgetArg !== undefined) targetObj.widgetArg = arg;
+            if (arg !== "" && targetObj.activeMode !== undefined) targetObj.activeMode = arg;
 
-            cached.visible = true;
+            targetObj.visible = true;
             if (immediate) {
-                widgetStack.replace(cached, {}, StackView.Immediate);
+                widgetStack.replace(targetObj, {}, StackView.Immediate);
             } else {
-                widgetStack.replace(cached, {});
+                widgetStack.replace(targetObj, {});
             }
-            if (cached.showWidget) cached.showWidget();
+            if (targetObj.showWidget) targetObj.showWidget();
         } else {
             let obj = t.comp.createObject(masterWindow, props);
             if (obj) {
@@ -564,6 +566,7 @@ PanelWindow {
                 if (obj.layoutWidth  !== undefined) obj.layoutWidth  = t.w;
                 if (obj.layoutHeight !== undefined) obj.layoutHeight = t.h;
                 widgetCache[newWidget] = obj;
+                targetObj = obj;
                 if (immediate) {
                     widgetStack.replace(obj, {}, StackView.Immediate);
                 } else {
@@ -579,19 +582,25 @@ PanelWindow {
             }
         }
 
-        let currentItem = widgetStack.currentItem;
-        if (currentItem) {
-            if (currentItem.targetMasterWidth !== undefined) {
-                let dynW = currentItem.targetMasterWidth;
-                masterWindow.animW = dynW;
-                masterWindow.targetW = dynW;
-                masterWindow.animX = Math.floor((masterWindow.width / 2) - (dynW / 2));
-            }
-            if (currentItem.targetMasterHeight !== undefined) {
-                masterWindow.animH = currentItem.targetMasterHeight;
-                masterWindow.targetH = currentItem.targetMasterHeight;
+        let finalW = (targetObj && targetObj.targetMasterWidth  !== undefined) ? targetObj.targetMasterWidth  : t.w;
+        let finalH = (targetObj && targetObj.targetMasterHeight !== undefined) ? targetObj.targetMasterHeight : t.h;
+        let finalX = t.rx;
+        if (targetObj && targetObj.targetMasterWidth !== undefined && finalW !== t.w) {
+            let cfg = Registry.WIDGETS[newWidget];
+            if (cfg && (cfg.anchor === "top-center" || cfg.anchor === "center" || cfg.anchor === "bottom-center")) {
+                finalX = Math.floor((masterWindow.width / 2) - (finalW / 2));
+            } else if (cfg && cfg.anchor === "top-right") {
+                let scale = Registry.getScale(masterWindow.width, masterWindow.height, masterWindow.globalUiScale);
+                finalX = masterWindow.width - finalW - Registry.s(cfg.mr, scale);
             }
         }
+
+        masterWindow.animX = finalX;
+        masterWindow.animY = t.ry;
+        masterWindow.animW = finalW;
+        masterWindow.animH = finalH;
+        masterWindow.targetW = finalW;
+        masterWindow.targetH = finalH;
 
         masterWindow.isVisible = true;
         masterWindow.isWindowActive = true;
