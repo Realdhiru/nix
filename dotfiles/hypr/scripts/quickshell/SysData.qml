@@ -174,7 +174,7 @@ Item {
                     root._lowBatteryNotified = true;
                     Quickshell.execDetached([
                         "notify-send", "-u", "critical", "-a", "System", "-i", "battery-empty",
-                        "Low Battery", "Battery is at " + root.batCapacity + "%"
+                        "Low Battery (" + root.batCapacity + "%)", ""
                     ]);
                 }
             } else {

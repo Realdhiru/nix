@@ -108,6 +108,33 @@ Item {
     
     property string currentUserName: Quickshell.env("USER") || ""
     property bool dndEnabled: false
+    property bool coffeeActive: false
+
+    function syncCoffeeState() {
+        let t = (stateJsonView.text() || "").trim();
+        if (!t) {
+            window.coffeeActive = false;
+            return;
+        }
+        try {
+            let d = JSON.parse(t);
+            window.coffeeActive = !!(d.modes && d.modes.coffee);
+        } catch(e) {
+            window.coffeeActive = false;
+        }
+    }
+
+    FileView {
+        id: stateJsonView
+        path: Quickshell.env("HOME") + "/.cache/quickshell/state.json"
+        watchChanges: true
+        onLoadedChanged: window.syncCoffeeState()
+        onTextChanged: window.syncCoffeeState()
+        onFileChanged: {
+            stateJsonView.reload();
+            window.syncCoffeeState();
+        }
+    }
 
     property bool hotspotActive: false
     property string hotspotSsid: "NixOS-Hotspot"
@@ -239,6 +266,7 @@ Item {
             window.sysVolume = Math.round(a.volume * 100);
             window.sysMuted = a.muted;
         }
+        window.syncCoffeeState();
     }
 
     // =========================================================================
@@ -728,7 +756,8 @@ Item {
                                     return res;
                                 }
 
-                                property real targetWidth: trayPopupRepeater.count > 0 ? (trayPopupRepeater.count * window.s(22) + (trayPopupRepeater.count - 1) * window.s(8) + window.s(20)) : 0
+                                readonly property int totalItemCount: filteredTrayItems.length + (window.coffeeActive ? 1 : 0)
+                                property real targetWidth: totalItemCount > 0 ? (totalItemCount * window.s(22) + (totalItemCount - 1) * window.s(8) + window.s(20)) : 0
                                 Layout.preferredWidth: targetWidth
                                 visible: targetWidth > 0
 
@@ -737,6 +766,41 @@ Item {
                                 Row {
                                     anchors.centerIn: parent
                                     spacing: window.s(8)
+
+                                    Item {
+                                        id: coffeeTrayItem
+                                        visible: window.coffeeActive
+                                        width: visible ? window.s(18) : 0
+                                        height: window.s(18)
+                                        anchors.verticalCenter: parent.verticalCenter
+
+                                        property bool isHovered: coffeeTrayMouse.containsMouse
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: ""
+                                            font.family: "Iosevka Nerd Font"
+                                            font.pixelSize: window.s(16)
+                                            color: coffeeTrayItem.isHovered ? window.primary : window.text
+                                            Behavior on color { ColorAnimation { duration: 150 } }
+                                        }
+
+                                        opacity: isHovered ? 1.0 : 0.8
+                                        scale: isHovered ? 1.15 : 1.0
+                                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                                        Behavior on scale { NumberAnimation { duration: 150 } }
+
+                                        MouseArea {
+                                            id: coffeeTrayMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                window.coffeeActive = false;
+                                                Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/power.sh inhibit off"])
+                                            }
+                                        }
+                                    }
 
                                     Repeater {
                                         id: trayPopupRepeater

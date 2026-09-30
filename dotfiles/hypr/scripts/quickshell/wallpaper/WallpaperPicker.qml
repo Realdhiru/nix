@@ -10,6 +10,7 @@ import "../"
 Item {
     id: window
     width: Screen.width
+    height: parent ? parent.height : Screen.height
 
     Scaler {
         id: scaler
@@ -163,19 +164,20 @@ Item {
                     window.sortListModel(videosProxyModel);
 
                     let targetModel = window.getModelForFilter(window.currentFilter);
-                    if (targetModel && targetModel.count > 0 && window.targetWallName !== "") {
-                        let cleanTarget = window.getCleanName(window.targetWallName);
+                    let wallToFind = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
+                    if (targetModel && targetModel.count > 0 && wallToFind !== "" && window.visible && view.width > 0) {
+                        let cleanTarget = window.getCleanName(wallToFind);
                         let foundIdx = -1;
                         for (let i = 0; i < targetModel.count; i++) {
                             let fn = targetModel.get(i).fileName || "";
-                            if (fn === window.targetWallName || window.getCleanName(fn) === cleanTarget) {
+                            if (fn === wallToFind || window.getCleanName(fn) === cleanTarget) {
                                 foundIdx = i;
                                 break;
                             }
                         }
                         if (foundIdx !== -1) {
-                            view.currentIndex = foundIdx;
-                            view.positionViewAtIndex(foundIdx, ListView.Center);
+                            window.targetWallName = targetModel.get(foundIdx).fileName || wallToFind;
+                            window.executeFocusRestore(foundIdx, false, true);
                         }
                     }
                 }
@@ -538,26 +540,8 @@ Item {
 
         if (changed) {
             window.isModelChanging = true;
-            if (arr.length === model.count) {
-                for (let i = 0; i < arr.length; i++) {
-                    let targetFn = arr[i].fileName;
-                    if (model.get(i).fileName !== targetFn) {
-                        let foundIdx = -1;
-                        for (let j = i + 1; j < model.count; j++) {
-                            if (model.get(j).fileName === targetFn) {
-                                foundIdx = j;
-                                break;
-                            }
-                        }
-                        if (foundIdx !== -1) {
-                            model.move(foundIdx, i, 1);
-                        }
-                    }
-                }
-            } else {
-                model.clear();
-                model.append(arr);
-            }
+            model.clear();
+            model.append(arr);
             window.isModelChanging = false;
         }
     }
@@ -732,6 +716,44 @@ Item {
         toastTimer.restart();
     }
 
+    Timer {
+        id: settleTimer
+        interval: 80
+        repeat: false
+        onTriggered: {
+            if (window.visible && view.currentIndex >= 0 && view.width > 0) {
+                view.forceLayout();
+                view.positionViewAtIndex(view.currentIndex, ListView.Center);
+                window.initialFocusSet = true;
+            }
+        }
+    }
+
+    function showWidget() {
+        if (!window.initialFocusSet) {
+            if (window.activeWallpaperName !== "") {
+                window.targetWallName = window.activeWallpaperName;
+            } else if (window.widgetArg !== "") {
+                window.targetWallName = window.widgetArg;
+            }
+            window.applyFilters(true);
+            Qt.callLater(() => {
+                view.forceActiveFocus();
+                if (view.currentIndex >= 0 && view.width > 0) {
+                    view.forceLayout();
+                    view.positionViewAtIndex(view.currentIndex, ListView.Center);
+                }
+                settleTimer.restart();
+            });
+        } else {
+            view.forceActiveFocus();
+            if (window.activeWallpaperName !== "" && window.targetWallName !== window.activeWallpaperName) {
+                window.targetWallName = window.activeWallpaperName;
+                window.applyFilters(false);
+            }
+        }
+    }
+
     onWidgetArgChanged: {
         if (widgetArg !== "") {
             targetWallName = widgetArg;
@@ -744,7 +766,7 @@ Item {
         let targetModel = window.getModelForFilter(window.currentFilter);
         if (targetIndex !== -1 && targetIndex < targetModel.count) {
             window.isModelChanging = true;
-            if (requirePositioning) {
+            if (requirePositioning && window.visible && view.width > 0) {
                 view.forceLayout();
                 view.positionViewAtIndex(targetIndex, ListView.Center);
             }
@@ -753,7 +775,11 @@ Item {
                 window.searchIndexRestored = true;
             }
             window.isModelChanging = false;
-            window.initialFocusSet = true;
+            if (requirePositioning && window.visible) {
+                settleTimer.restart();
+            } else if (!requirePositioning) {
+                window.initialFocusSet = true;
+            }
             allowAddAnimationTimer.restart();
         } else if (isSearchRestore) {
             window.searchIndexRestored = true;
@@ -1078,7 +1104,7 @@ Item {
         if (window.currentFilter !== "Search") window.updateVisibleCount();
         
         let targetModel = window.getModelForFilter(window.currentFilter);
-        if (targetModel && targetModel.count > 0 && window.currentFilter !== "Search" && !window.initialFocusSet) {
+        if (targetModel && targetModel.count > 0 && window.currentFilter !== "Search" && window.visible && view.width > 0) {
             let foundIndex = -1;
             if (preservedTarget !== "") {
                 let cleanTarget = window.getCleanName(preservedTarget);
@@ -1152,11 +1178,8 @@ Item {
     ListView {
         id: view
         anchors.fill: parent
-        opacity: window.isReady ? 1.0 : 0.0
-        scale: window.isReady ? 1.0 : 0.96
-        
-        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
-        Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+        opacity: 1.0
+        scale: 1.0
 
         spacing: 0
         orientation: ListView.Horizontal
@@ -1164,11 +1187,19 @@ Item {
         interactive: !window.isApplying
         cacheBuffer: 2000
 
-        highlightRangeMode: ListView.StrictlyEnforceRange
+        highlightRangeMode: window.initialFocusSet ? ListView.StrictlyEnforceRange : ListView.NoHighlightRange
         preferredHighlightBegin: Math.max(0, (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2))
         preferredHighlightEnd: Math.max(0, (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2))
         highlightMoveDuration: window.initialFocusSet ? 350 : 0
         focus: true
+        
+        onWidthChanged: {
+            if (width > 0 && currentIndex >= 0 && window.visible) {
+                settleTimer.restart();
+            }
+        }
+        
+        onContentXChanged: {}
         
         onCurrentIndexChanged: {
             window.isItemAnimating = true;
@@ -1241,8 +1272,11 @@ Item {
                 window.scrollAccum += delta;
                 if (Math.abs(window.scrollAccum) >= window.scrollThreshold) {
                     let steps = Math.abs(delta) >= 90 ? window.scrollVelocity : 1;
-                    for (let i = 0; i < steps; i++) {
-                        window.stepToNextValidIndex(dir > 0 ? -1 : 1);
+                    let targetModel = window.getModelForFilter(window.currentFilter);
+                    if (targetModel && targetModel.count > 0) {
+                        let stepDelta = (dir > 0 ? -steps : steps);
+                        let nextIdx = Math.max(0, Math.min(targetModel.count - 1, view.currentIndex + stepDelta));
+                        view.currentIndex = nextIdx;
                     }
                     window.scrollAccum = 0;
                     if (window.scrollVelocity === 1) {

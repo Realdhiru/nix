@@ -97,7 +97,24 @@ Item {
             let isTransientOsd = (notifAppName === "System" &&
                 (notifSummary === "Volume" || notifSummary === "Brightness" || notifSummary === "Microphone"));
 
-            if (!isTransientOsd) {
+            let isTransientSignal = isTransientOsd ||
+                (notifAppName === "System" && (
+                    notifSummary.indexOf("Coffee mode") !== -1 ||
+                    notifSummary.indexOf("Charger") !== -1 ||
+                    notifSummary.indexOf("Game Mode") !== -1 ||
+                    notifSummary.indexOf("Low Battery") !== -1 ||
+                    notifSummary.indexOf("Battery") !== -1
+                )) ||
+                (notifAppName === "Display" && notifSummary.indexOf("Orientation") !== -1) ||
+                (notifAppName === "Display Update") ||
+                (notifAppName === "Wi-Fi") ||
+                (notifAppName === "Bluetooth") ||
+                (notifAppName === "Webcam") ||
+                (notifAppName === "Hotspot" && (notifSummary === "Hotspot" || notifSummary === "ON" || notifSummary === "OFF")) ||
+                (notifAppName === "Game Mode") ||
+                (notifAppName.toLowerCase().indexOf("antigravity") !== -1);
+
+            if (!isTransientSignal) {
                 let existingHistIdx = -1;
                 for (let i = 0; i < globalNotificationHistory.count; i++) {
                     let e = globalNotificationHistory.get(i);
@@ -149,7 +166,7 @@ Item {
                 "notif":       n
             };
 
-            if (!isTransientOsd) globalNotificationHistory.insert(0, notifData);
+            if (!isTransientSignal) globalNotificationHistory.insert(0, notifData);
 
             if (!root.isStartup) {
                 let hasActions = extractedActions.length > 0;
@@ -163,6 +180,9 @@ Item {
                     // Incoming phone call: stays on ticker while ringing (with a 45s safety bound),
                     // but automatically disappears the exact millisecond the call is picked or hung up.
                     timeoutMs = 45000;
+                } else if (isTransientSignal) {
+                    // Ephemeral hardware or dev alerts: show for 2 seconds only on ticker, never saved to history
+                    timeoutMs = 2000;
                 } else if (hasActions) {
                     // Actions present: give 10 seconds so user can react, then expire from ticker
                     // (persists safely in the notification history).

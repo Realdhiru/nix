@@ -169,17 +169,17 @@ PanelWindow {
     property var _preloadQueue: ["sunset", "battery", "network", "music", "clipboard", "monitors", "focustime", "weather_setup", "calendar", "wallpaper"]
     property int _preloadIndex: 0
 
-    // Defer preloading until 6 seconds after boot so startup is 100% instantaneous with 0ms hitching
+    // Defer preloading until 1.5 seconds after boot so desktop compositor finishes frame-0
     Timer {
         id: preloadIdleTimer
-        interval: 6000
+        interval: 1500
         running: true
         onTriggered: preloadStaggerTimer.start()
     }
 
     Timer {
         id: preloadStaggerTimer
-        interval: 350
+        interval: 120
         repeat: true
         running: false
         onTriggered: {
@@ -297,8 +297,8 @@ PanelWindow {
     function getLayout(name) {
         let logicalW = Math.round(masterWindow.monitorPhysWidth / (masterWindow.monitorScale > 0 ? masterWindow.monitorScale : 1.0));
         let logicalH = Math.round(masterWindow.monitorPhysHeight / (masterWindow.monitorScale > 0 ? masterWindow.monitorScale : 1.0));
-        let mw = logicalW > 0 ? logicalW : 1920;
-        let mh = logicalH > 0 ? logicalH : 1080;
+        let mw = masterWindow.width > 0 ? masterWindow.width : logicalW;
+        let mh = masterWindow.height > 0 ? masterWindow.height : logicalH;
 
         let key = name + "|" + mw + "|" + mh + "|" + masterWindow.globalUiScale;
         if (_layoutCacheKey === key) return _layoutCache[key];
@@ -357,8 +357,6 @@ PanelWindow {
         onTriggered: {
             if (masterWindow.isVisible && widgetStack.currentItem) {
                 widgetStack.forceActiveFocus();
-                widgetStack.currentItem.focus = false;
-                widgetStack.currentItem.focus = true;
                 widgetStack.currentItem.forceActiveFocus();
             }
         }
@@ -525,21 +523,15 @@ PanelWindow {
                 teleportTimer.restart();
             } else {
                 morphReenableTimer.stop();
+                let isFull = (newWidget === "wallpaper");
                 masterWindow.morphDuration = masterWindow.morphDurationShift;
-                if (newWidget === "wallpaper") {
-                    masterWindow.disableMorph = true;
-                } else {
-                    masterWindow.disableMorph = false;
-                }
-                executeSwitch(newWidget, arg, false);
+                masterWindow.disableMorph = isFull;
+                executeSwitch(newWidget, arg, isFull);
             }
         }
     }
 
     function executeSwitch(newWidget, arg, immediate) {
-        if (newWidget === "wallpaper") {
-            masterWindow.disableMorph = true;
-        }
         let t = getLayout(newWidget);
         console.log("[COLD_OPEN_DEBUG] executeSwitch settled:", newWidget, "mw:", masterWindow.width, "mh:", masterWindow.height, "t.rx:", t ? t.rx : 0, "t.ry:", t ? t.ry : 0, "t.w:", t ? t.w : 0, "t.h:", t ? t.h : 0);
         masterWindow.currentActive = newWidget;
@@ -550,22 +542,7 @@ PanelWindow {
         if (newWidget === "wallpaper") props["widgetArg"] = arg;
 
         let targetObj = widgetCache[newWidget];
-        if (targetObj) {
-            if (targetObj.notifModel   !== undefined) targetObj.notifModel   = masterWindow.notifModel;
-            if (targetObj.liveNotifs   !== undefined) targetObj.liveNotifs   = masterWindow.liveNotifs;
-            if (targetObj.layoutWidth  !== undefined) targetObj.layoutWidth  = t.w;
-            if (targetObj.layoutHeight !== undefined) targetObj.layoutHeight = t.h;
-            if (newWidget === "wallpaper" && targetObj.widgetArg !== undefined) targetObj.widgetArg = arg;
-            if (arg !== "" && targetObj.activeMode !== undefined) targetObj.activeMode = arg;
-
-            targetObj.visible = true;
-            if (immediate) {
-                widgetStack.replace(targetObj, {}, StackView.Immediate);
-            } else {
-                widgetStack.replace(targetObj, {});
-            }
-            if (targetObj.showWidget) targetObj.showWidget();
-        } else {
+        if (!targetObj) {
             let obj = t.comp.createObject(masterWindow, props);
             if (obj) {
                 if (obj.notifModel   !== undefined) obj.notifModel   = masterWindow.notifModel;
@@ -574,18 +551,8 @@ PanelWindow {
                 if (obj.layoutHeight !== undefined) obj.layoutHeight = t.h;
                 widgetCache[newWidget] = obj;
                 targetObj = obj;
-                if (immediate) {
-                    widgetStack.replace(obj, {}, StackView.Immediate);
-                } else {
-                    widgetStack.replace(obj, {});
-                }
             } else {
                 console.log("Failed to create widget instance for:", newWidget);
-                if (immediate) {
-                    widgetStack.replace(t.comp, props, StackView.Immediate);
-                } else {
-                    widgetStack.replace(t.comp, props);
-                }
             }
         }
 
@@ -611,6 +578,30 @@ PanelWindow {
 
         masterWindow.isVisible = true;
         masterWindow.isWindowActive = true;
+
+        if (targetObj) {
+            if (targetObj.notifModel   !== undefined) targetObj.notifModel   = masterWindow.notifModel;
+            if (targetObj.liveNotifs   !== undefined) targetObj.liveNotifs   = masterWindow.liveNotifs;
+            if (targetObj.layoutWidth  !== undefined) targetObj.layoutWidth  = t.w;
+            if (targetObj.layoutHeight !== undefined) targetObj.layoutHeight = t.h;
+            if (newWidget === "wallpaper" && targetObj.widgetArg !== undefined) targetObj.widgetArg = arg;
+            if (arg !== "" && targetObj.activeMode !== undefined) targetObj.activeMode = arg;
+
+            targetObj.visible = true;
+            if (immediate) {
+                widgetStack.replace(targetObj, {}, StackView.Immediate);
+            } else {
+                widgetStack.replace(targetObj, {});
+            }
+            if (targetObj.showWidget) targetObj.showWidget();
+        } else {
+            if (immediate) {
+                widgetStack.replace(t.comp, props, StackView.Immediate);
+            } else {
+                widgetStack.replace(t.comp, props);
+            }
+        }
+
         focusTimer.restart();
     }
 
@@ -637,7 +628,11 @@ PanelWindow {
         id: morphReenableTimer
         interval: 120
         repeat: false
-        onTriggered: masterWindow.disableMorph = false
+        onTriggered: {
+            if (masterWindow.currentActive !== "wallpaper") {
+                masterWindow.disableMorph = false;
+            }
+        }
     }
 
     property string _pendingWidget: ""

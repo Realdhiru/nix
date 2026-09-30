@@ -25,7 +25,8 @@ if [ ! -f "$STATE_FILE" ]; then
   "modes": {
     "gaming": false,
     "wallpaperKilled": false,
-    "dnd": false
+    "dnd": false,
+    "coffee": false
   },
   "power": {
     "profile": "balanced"
@@ -48,6 +49,7 @@ if command -v jq >/dev/null 2>&1; then
     GAMING=$(jq -r '.modes.gaming // false' "$STATE_FILE")
     WP_KILLED=$(jq -r '.modes.wallpaperKilled // false' "$STATE_FILE")
     DND=$(jq -r '.modes.dnd // false' "$STATE_FILE")
+    COFFEE=$(jq -r '.modes.coffee // false' "$STATE_FILE")
     POWER_PROF=$(jq -r '.power.profile // "balanced"' "$STATE_FILE")
 else
     eval $(python3 -c "
@@ -66,9 +68,10 @@ try:
     print(f'GAMING={\"true\" if m.get(\"gaming\", False) else \"false\"}')
     print(f'WP_KILLED={\"true\" if m.get(\"wallpaperKilled\", False) else \"false\"}')
     print(f'DND={\"true\" if m.get(\"dnd\", False) else \"false\"}')
+    print(f'COFFEE={\"true\" if m.get(\"coffee\", False) else \"false\"}')
     print(f'POWER_PROF={pw.get(\"profile\", \"balanced\")}')
 except Exception:
-    print('TEMP=6500\nGAMMA=100\nSAT=100\nGRAIN=0\nCRT=0\nGAMING=false\nWP_KILLED=false\nDND=false\nPOWER_PROF=balanced')
+    print('TEMP=6500\nGAMMA=100\nSAT=100\nGRAIN=0\nCRT=0\nGAMING=false\nWP_KILLED=false\nDND=false\nCOFFEE=false\nPOWER_PROF=balanced')
 ")
 fi
 
@@ -181,5 +184,17 @@ fi
 # 6. Power Profile Synchronization
 echo "$POWER_PROF" > "$HOME/.cache/qs_power_profile"
 
-# 7. Remove obsolete hyprsunset_state.json if present
+# 7. Coffee Mode (Idle Inhibit) Synchronization
+if [ "$COFFEE" = "true" ]; then
+    if ! systemctl --user is-active --quiet coffee-mode 2>/dev/null && ! systemd-inhibit --list 2>/dev/null | grep -q "idle-inhibit-toggle"; then
+        systemd-run --user --unit=coffee-mode systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity >/dev/null 2>&1
+    fi
+else
+    if systemctl --user is-active --quiet coffee-mode 2>/dev/null || systemd-inhibit --list 2>/dev/null | grep -q "idle-inhibit-toggle"; then
+        systemctl --user stop coffee-mode 2>/dev/null || true
+        pkill -f "idle-inhibit-toggle" 2>/dev/null || true
+    fi
+fi
+
+# 8. Remove obsolete hyprsunset_state.json if present
 rm -f "$HOME/.cache/hyprsunset_state.json"

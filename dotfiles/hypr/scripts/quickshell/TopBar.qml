@@ -715,6 +715,28 @@ Variants {
                         opacity: activeNow ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
 
+                        MouseArea {
+                            id: mediaInfoMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: (event) => {
+                                Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"])
+                            }
+
+                            property real lastWheelTime: 0
+                            onWheel: (wheel) => {
+                                let now = Date.now();
+                                if (now - lastWheelTime < 50) return;
+                                lastWheelTime = now;
+                                if (wheel.angleDelta.y > 0) {
+                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/osd.sh vol-up"]);
+                                } else if (wheel.angleDelta.y < 0) {
+                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/osd.sh vol-down"]);
+                                }
+                            }
+                        }
+
                         Item {
                             id: mediaLayoutContainer
                             anchors.verticalCenter: parent.verticalCenter
@@ -723,15 +745,6 @@ Variants {
                             height: parent.height
                             width: infoLayout.implicitWidth
                             opacity: parent.activeNow ? 1.0 : 0.0
-
-                            MouseArea {
-                                id: mediaInfoMouse
-                                width: infoLayout.implicitWidth
-                                height: parent.height
-                                hoverEnabled: true
-                                onClicked: (event) => {
-                                    Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"])
-                                }
 
                                 Row {
                                     id: infoLayout
@@ -888,7 +901,6 @@ Variants {
                                 }
                             }
                         }
-                    }
 
 
 

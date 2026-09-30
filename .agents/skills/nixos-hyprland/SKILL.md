@@ -5,26 +5,47 @@ description: High-density operational reference for maintaining the user's NixOS
 
 # NixOS / Hyprland Rice & Configuration
 
-## 1. Operating Rules & Discipline
+## 1. Operating Rules & Engineering Discipline
 
-1. **Update Docs on Task Completion**:
+1. **Automatic Documentation Synchronization**:
    - Concise summary in `~/nix/CHANGELOG.md` under the current date.
    - Architectural/technical shifts in `~/nix/docs/decisions.md`.
    - Update `SKILL.md` / `AGENTS.md` only for systemic non-negotiables.
-2. **Manual Git Control**: Do **NOT** stage, commit, or push automatically. The user commits and pushes manually.
-3. **High-Density / Caveman Communication**:
-   - Zero filler, zero pleasantries, high semantic density.
-   - Exact file links (`file:///...`), exact commands, zero speculative hallucination.
-   - Final turn summaries must be brief, structured bullet points.
+2. **Manual Git Authority**: Do **NOT** stage, commit, or push automatically. The user reviews, commits, and pushes all changes manually.
+3. **High-Density / Signal-First Communication**:
+   - Zero conversational filler, zero pleasantries, pure technical signal.
+   - Exact clickable markdown links (`file:///...`), verified line ranges, and zero speculative hallucination.
+   - Final turn summaries must be compact, structured bullet points designed for instant parsing.
+4. **Verification Discipline & Anti-Patterns**:
+   - **Screenshot Verification Ban (Token & Latency Discipline)**: Never capture screenshots (`grim`, image artifacts) to verify internal logic, widget toggles, or theme states. Capturing visual buffers consumes tens of thousands of tokens, induces multi-second latency, and provides zero semantic insight into internal state machines. Verify exclusively via deterministic log assertions (`console.log`), direct file inspection (`FileView`, `jq`), and native D-Bus/IPC queries. Screenshot captures are strictly reserved for explicit user-requested UI evaluations.
+   - **Authoritative Process Recovery vs Stale Artifact Reverse-Engineering**: When QuickShell or helper daemons experience lifecycle shifts, dead PID files and abandoned IPC sockets (`/run/user/1000/quickshell/by-id/`) must not be polled or reverse-engineered. Always inspect the live daemon dynamically (`pgrep -fa quickshell`) or execute an authoritative clean reload via `reload.sh`.
+   - **Measure the Mechanism Before Writing the Fix**: Capture actual runtime values, object identities, and event sources before editing code. Disprove or confirm theories with minimal probes rather than layering speculative fallbacks.
+5. **Responsiveness is Non-Negotiable**:
+   - Never throttle CPU frequency governors (`powersave` / EPP `power` / `quiet`) to artificially stretch battery life. Crushing CPU clocks cripples application startup (IDE, browser, compilers) and induces desktop compositing stutter.
+   - Mobile power efficiency on modern silicon relies on rapid race-to-sleep (`balance_performance`, balanced platform profile, hardware ASPM `powersupersave`) paired with automated idle sleep (hypridle DPMS 120s, suspend 1800s).
+6. **Global Consistency & Mandatory Confirmation Rule**:
+   - **System-Wide Scope**: Applies to ANY visual/theme change across the entire desktop (QuickShell widgets, Fuzzel, hyprlock, topbar, window borders, `rules.lua`, etc.).
+   - **Zero One-Off Overrides**: Every visual styling change (opacity, blur, color tokens, border, radius, spacing) must be applied across all matching components using shared tokens in a single pass.
+   - **Mandatory Pre-Change Check-In**: Stop and ask the user for explicit confirmation before editing any UI/visual/theming files, detailing the exact proposed diffs, line numbers, and scope. Pure functional bug fixes with zero visual change are exempt.
+7. **Ultra-Minimal Notification Format (Zero Sentences)**:
+   - System notifications (`notify-send`) must NEVER include full sentences, paragraphs, or conversational explanations.
+   - Notification content must remain strictly minimal: 1–3 words max (e.g. `"Coffee mode ON"`, `"Game Mode OFF"`, `"Hotspot ON"`), with NO secondary body text unless delivering strictly necessary dynamic data (such as SSID or IP). TopBar ticker (`NotifTicker.qml`) and desktop popups are designed for compact telemetry signals, not sentences.
 
 ## 2. Invariant Hardware & Architecture Policies
 
-- **Power Authority**: TLP 1.9.1 is sole authority (`power.nix`). `asusd` only enforces 80% charge threshold (`charge_control_end_threshold = 80`).
-- **Lid Policy**: `HandleLidSwitch = "ignore"`. Lid never suspends. Suspend is manual (`Shift + Esc`).
-- **Balanced Battery Profile**: `balance_performance`, Turbo `1`, Platform Profile `balanced`, ASPM `powersupersave`.
-- **QuickShell IPC**: Native C++ event-driven bindings only (`Quickshell.Hyprland`, `Pipewire`, `FileWatcher`). Never use bash polling loops inside QML.
-- **Single-Pass Popup Scaler**: Scaler in popups uses `currentWidth: Screen.width`. Never use `Config.masterWidth` (causes clipping via double scaling).
-- **Out-of-Store Symlinks**: Home Manager `mkOutOfStoreSymlink` targets live `~/nix/dotfiles/` for zero-rebuild live updates.
+- **Power Authority**: TLP 1.9.1 is the sole hardware authority (`power.nix`). `asusd` only enforces the 80% charge ceiling (`charge_control_end_threshold = 80`). `asusd.ron` must keep `bat_profile = Balanced` and `change_platform_profile_on_battery = false` to prevent hardware throttling on battery.
+- **Lid Policy**: `HandleLidSwitch = "ignore"`. Laptop lid closure never triggers unannounced suspend. Suspend is manual (`Shift + Esc`) or automated via 30-minute idle sleep.
+- **Balanced Battery Profile**: `balance_performance`, Turbo `1`, Platform Profile `balanced`, ASPM `powersupersave` is empirically locked.
+- **Coffee Mode & Persistent Idle Inhibition**:
+  - `SUPER + CTRL + U` invokes `power.sh inhibit` to acquire `systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity`.
+  - State is canonically persisted in `~/.cache/quickshell/state.json` under `modes.coffee`.
+  - `restore_state.sh` checks `modes.coffee` and automatically re-engages the systemd inhibitor on QuickShell reloads, Hyprland restarts, and cold boots until explicitly toggled off.
+  - In `hypridle.conf`, idle timers enforce DPMS off at 120s, lock at 150s, and suspend at 1800s (30m) with `ignore_dbus_inhibit = false` and `ignore_systemd_inhibit = false`.
+- **QuickShell IPC & Event-Driven Architecture**:
+  - Native C++ event-driven bindings only (`Quickshell.Hyprland`, `Quickshell.Services.Pipewire`, `FileWatcher`, `FileView { watchChanges: true }`). Never fork bash polling loops or subprocess chains inside QML.
+  - Sizing in popups must use `currentWidth: Screen.width` (single-pass reference). Never pass device-pixel bounds (`Config.masterWidth`) to popup `Scaler` instances to prevent double-scaling clipping.
+  - **Scene-Visibility Gating for Positioning**: All `ListView.positionViewAtIndex()` and carousel settle passes must be strictly gated on `window.visible && view.width > 0`. Offscreen preloading (`visible: false`) creates unmapped scene graph nodes where coordinate math resolves to 0, causing negative clamp glitches on frame 0.
+- **Out-of-Store Symlinks**: Home Manager `mkOutOfStoreSymlink` targets live `~/nix/dotfiles/` for instant zero-rebuild live updates.
 - **Hardware Quirks**:
   - ASUS OLED brightness keys: rebound after hybrid-sleep in `hosts/nixos/hardware/asus.nix`.
   - Sonix Webcam: `v4l2loopback` `/dev/video10` pass-through via `hosts/nixos/hardware/sonix-webcam.nix`.
@@ -47,4 +68,8 @@ sudo nixos-rebuild dry-run --flake ~/nix#nixos
 
 # Audio subsystem recovery
 ~/.config/hypr/scripts/fix_audio.sh
+
+# Coffee mode query / toggle
+~/.config/hypr/scripts/power.sh inhibit status
+~/.config/hypr/scripts/power.sh inhibit toggle
 ```

@@ -11,7 +11,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### 2. Power Management & Hardware Authority
 - **Decision:** TLP 1.9.1 is the sole hardware authority for platform profiles, EPP, and ASPM.
 - **Rules:**
-  - `asusd.service` is enabled strictly for 80% battery ceiling enforcement (`charge_control_end_threshold = 80`). `change_platform_profile_on_battery/on_ac` must remain `false`.
+  - `asusd.service` is enabled strictly for 80% battery ceiling enforcement (`charge_control_end_threshold = 80`). `change_platform_profile_on_battery/on_ac` must remain `false`. In `asusd.ron`, `bat_profile` and `platform_profile_on_battery` must remain `Balanced` to prevent unwanted firmware throttling (`Quiet` / EPP `Power`) on battery.
   - Lid switch never suspends (`HandleLidSwitch = "ignore"`). Suspend is manual (`Shift + Esc`).
   - `apply_profile.sh` never calls `tlp ac/bat`; ASUS udev rule is sole AC/BAT authority.
   - EPP writes require governor to be set first (`set_epp.sh`).
@@ -36,6 +36,8 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
     - **No Local Overrides**: Visual properties (opacity, blur, tokens, borders, radius, spacing) must be applied across every widget/app sharing that visual category in a single pass using shared tokens.
     - **Mandatory Pre-Change Check-In**: Before executing any UI/look/theme change, the agent must pause, present the proposed changes and scope, and await explicit user confirmation before modifying files.
   - `Scaler` in popups must use `currentWidth: Screen.width` (single-pass). Never pass device-pixel bounds (`Config.masterWidth`) to prevent double-scaling clipping.
+  - **Scene Visibility Gating for Positioning Math**: Any `ListView.positionViewAtIndex()` or layout settle logic in popup components must be strictly gated on `window.visible && view.width > 0`. Offscreen preloading (`visible: false`) creates objects outside the active visual scene graph where coordinate math and view width are unmapped, causing bad clamps on frame 0.
+  - **Dynamic HighlightRangeMode for Carousel Popups**: In full-width carousels (`WallpaperPicker`), `highlightRangeMode` must be dynamically gated (`initialFocusSet ? StrictlyEnforceRange : NoHighlightRange`). Static `StrictlyEnforceRange` forces negative `contentX` clamps (`-preferredHighlightBegin`) when mounting or unmounting in `StackView` before delegate items finish layout, causing viewport truncation and horizontal card displacement.
   - Music geometry derives from `timeText.implicitWidth` minimum bounds; long titles marquee scroll.
   - Lockscreen live wallpaper draws inside `Lock.qml` via `WlSessionLock`. Lockscreen telemetry and media controls must remain 100% zero-polling, bound exclusively via kernel/tmpfs inotify `FileView` watchers (`/sys/class/power_supply/BAT0/`, `music_info.json`).
 
@@ -141,5 +143,30 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - `SUPER + L` triggers [`dotfiles/hypr/scripts/quickshell/toggle_theme_mode.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/toggle_theme_mode.sh) to toggle `ui.themeMode` between `"dark"` and `"light"`.
   - `Theme.qml` reads `state.json` via native `FileView` watcher and exposes `isLightMode`.
   - Light mode increases `antiBleedOpacity` to `0.35` and `effectivePopupOpacity` to `0.55` in [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml) to guarantee high visual contrast over light background illustrations.
+
+### 20. Operational Verification Invariants & Anti-Patterns
+- **Screenshot Debugging Ban (Token & Latency Discipline):**
+  - Capturing full-screen screenshots via `grim` to verify UI states burns excessive context tokens, inflates turnaround latency, and provides zero semantic insight into internal state machines.
+  - Verification must rely on deterministic log assertions (`console.log`), direct file inspection via `FileView` / `jq`, and native IPC queries. Screenshots are strictly reserved for user-requested visual design evaluations.
+- **Authoritative Process Recovery vs Stale Artifact Reverse-Engineering:**
+  - When QuickShell or helper daemons experience lifecycle shifts, dead PID files and abandoned IPC sockets (`/run/user/1000/quickshell/by-id/`) must not be reverse-engineered or polled.
+  - Always query the live daemon dynamically (`pgrep -fa quickshell`) or execute an authoritative clean reload via [`reload.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/reload.sh).
+- **Responsive Compute over Artificial Throttling:**
+  - Power conservation must never degrade interactive responsiveness. Throttling CPU governors (EPP `power` / `quiet`) degrades application launch times (IDE, browser) and induces UI compositing stutter.
+  - True mobile efficiency is achieved via rapid race-to-sleep (`balance_performance`, balanced platform profile, hardware ASPM `powersupersave`) paired with automated idle suspension.
+
+### 21. Coffee Mode & Persistent Idle Inhibition
+- **Decision:** Coffee Mode (`SUPER + CTRL + U`) acts as an authoritative, persistent systemd inhibitor against idle blanking and system suspend.
+- **Architecture:**
+  - In [`dotfiles/hypr/hypridle.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hypridle.conf), idle timeouts enforce DPMS off at 120s, lock-session at 150s, and system suspend at 1800s (30 minutes). Inhibitor flags (`ignore_dbus_inhibit = false`, `ignore_systemd_inhibit = false`) ensure full compliance with systemd inhibitor locks.
+  - [`power.sh inhibit`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh) engages `systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity`.
+  - State is canonically persisted in `~/.cache/quickshell/state.json` under `modes.coffee`.
+  - [`restore_state.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh) re-acquires the inhibitor on QuickShell reloads, Hyprland restarts, and cold boots whenever `modes.coffee == true`, ensuring Coffee Mode survives desktop lifecycle events until explicitly deactivated by the user.
+
+### 22. Minimal Notification Signal Architecture (Zero Sentence Body Text)
+- **Decision:** Desktop notifications (`notify-send`) across all scripts and services must adhere strictly to ultra-minimal signal length (1–3 words maximum, e.g. `"Coffee mode ON"`, `"Game Mode OFF"`, `"Hotspot ON"`).
+- **Rationale:** The TopBar ticker ([`NotifTicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifTicker.qml)) and desktop popup overlays are tuned for concise, glanceable telemetry. Emitting conversational sentences or descriptive bodies clutters the UI layout, clips typography, and destroys the minimalist desktop aesthetic. Body strings are banned unless strictly conveying essential dynamic data (such as SSID or IP address).
+
+
 
 

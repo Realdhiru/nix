@@ -15,7 +15,7 @@ After successfully resolving any issue, bug, or feature implementation:
 
 ### A. Power & Performance Policy
 - **Responsiveness is Non-Negotiable**: Never introduce artificial CPU/GPU frequency caps, delayed polling, or sluggish profile settings that make desktop interactions, browser/IDE tasks, or compositing laggy.
-- **TLP Hardware Authority**: TLP 1.9.1 is the sole authority for hardware power profiles (`PLATFORM_PROFILE_ON_*`, EPP, ASPM). In `asusd.ron`, `change_platform_profile_on_battery/on_ac` must remain `false`. `asusd.service` is enabled strictly to enforce the 80% battery charge ceiling (`charge_control_end_threshold = 80`).
+- **TLP Hardware Authority**: TLP 1.9.1 is the sole authority for hardware power profiles (`PLATFORM_PROFILE_ON_*`, EPP, ASPM). In `asusd.ron`, `change_platform_profile_on_battery/on_ac` must remain `false`. `asusd.service` is enabled strictly to enforce the 80% battery charge ceiling (`charge_control_end_threshold = 80`). `asusd.ron` must keep `bat_profile = Balanced` to prevent hardware firmware throttling on battery.
 - **Balanced Profile Integrity**: The Balanced battery profile (`balance_performance`, Turbo `1`, Platform Profile `balanced`, ASPM `powersupersave`) is empirically validated and must remain untouched.
 
 ### B. QuickShell Architecture & Scaling Rules
@@ -23,6 +23,7 @@ After successfully resolving any issue, bug, or feature implementation:
   - `import Quickshell.Hyprland` (`focusedWorkspace`, `workspaces`, `rawEvent`) for 6ms workspace IPC.
   - `import Quickshell.Services.Pipewire` (`Pipewire.defaultAudioSink.audio`) for 8ms volume/mute D-Bus signals.
   - `Quickshell.Io.FileWatcher` for direct sysfs state changes.
+- **Scene-Visibility Gating for Positioning**: All `ListView.positionViewAtIndex()` and carousel centering passes must be strictly gated on `window.visible && view.width > 0`. Offscreen preloading (`visible: false`) creates objects outside the active visual scene graph where coordinate math and view width are unmapped, causing bad clamps on frame 0.
 - **Global Consistency & Mandatory Confirmation Rule**:
   - **System-Wide Scope**: Applies to ANY visual/theme change across the entire system — QuickShell widgets, Fuzzel, hyprlock, waybar/topbar, window borders, `rules.lua` opacity/blur rules, or any other app/window whose appearance is part of this desktop system (not just QuickShell).
   - **Zero One-Off Overrides**: NEVER make a change scoped to a single widget/app's look in isolation. Any visual change (opacity, blur, color token, border, radius, spacing) must be applied consistently across every widget/app that shares that visual category in the same pass, using shared Theme/Config tokens.
@@ -34,6 +35,9 @@ After successfully resolving any issue, bug, or feature implementation:
 ### C. Media & Application Integrations
 - **MPV MPRIS Integration**: `mpv` requires `(mpv.override { scripts = [ mpvScripts.mpris ]; })` in `modules/system/packages.nix` and `mpris.so` in `~/.config/mpv/scripts/` to broadcast D-Bus `org.mpris.MediaPlayer2` signals for local media tracking.
 - **Native Wayland Environment**: Electron and Chromium apps must use native Wayland (`NIXOS_OZONE_WL = "1"`, `--ozone-platform-hint=wayland`) for native touchpad gestures.
+
+### D. Notification Length & Formatting Policy
+- **Minimum Length Only (Zero Sentences)**: System notifications (`notify-send`) must NEVER emit conversational sentences, explanatory bodies, or descriptive prose. Notification text must be ultra-minimal: 1–3 words max (e.g., `"Coffee mode ON"`, `"Game Mode OFF"`, `"Hotspot ON"`), with NO secondary body text unless delivering strictly essential dynamic telemetry (e.g. connection SSID or IP). TopBar ticker (`NotifTicker.qml`) and minimal notification cards are constrained visual elements designed for concise state signals only.
 
 ---
 

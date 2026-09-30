@@ -2,6 +2,38 @@
 
 ## 2026-09-30 — QuickShell Light/Dark Glass Theme Toggle & Music Pill Unification
 
+- **Hypridle 30-Minute Idle Suspend Restoration**:
+  - Restored the 30-minute idle suspend listener (`timeout = 1800; on-timeout = systemctl suspend`) in [`dotfiles/hypr/hypridle.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hypridle.conf).
+  - Explicitly declared `ignore_dbus_inhibit = false` and `ignore_systemd_inhibit = false` in `general` configuration to guarantee systemd inhibitor locks completely suppress display blanking, lock-session, and sleep timeouts.
+- **Coffee Mode & Persistent Idle Inhibition Architecture**:
+  - Enhanced [`dotfiles/hypr/scripts/power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh) `cmd_inhibit()` to engage `systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity`.
+  - Persisted Coffee mode state canonically in `~/.cache/quickshell/state.json` under `modes.coffee`. Fixed a boolean `false` drop bug in [`dotfiles/hypr/scripts/quickshell/state_ctl.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/state_ctl.sh) by replacing `// empty` with strict null checks.
+  - Updated [`dotfiles/hypr/scripts/quickshell/restore_state.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh) to re-acquire the systemd inhibitor lock on QuickShell reloads, Hyprland restarts, and cold boots whenever `modes.coffee == true`, ensuring Coffee Mode survives desktop lifecycle events until explicitly toggled off by the user.
+- **Engineering Discipline & Verification Anti-Patterns Documentation**:
+  - Documented operational verification invariants in [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md) (ADR 20, 21 & 22) and [`.agents/skills/nixos-hyprland/SKILL.md`](file:///home/realdhiru/nix/.agents/skills/nixos-hyprland/SKILL.md).
+  - Codified the strict ban on `grim` screenshot debugging to eliminate token burn and latency in favor of deterministic logs, direct file inspection (`FileView`, `jq`), and native IPC queries.
+  - Codified authoritative process management over dead IPC socket reverse-engineering, non-negotiable CPU responsiveness over artificial frequency caps, and scene-visibility gating for frame-0 geometry calculations.
+  - Codified the ultra-minimal notification rule banning explanatory sentence bodies from `notify-send` across all desktop scripts and daemons.
+- **Battery Widget Coffee Tray Icon Reactivity & Optimistic Dismissal**:
+  - Replaced passive `coffeeActive` binding with active `syncCoffeeState()` handler in [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L110-L135). Wired `onFileChanged` to `stateJsonView.reload()`, ensuring `state.json` updates immediately reflect without requiring a widget refresh.
+  - Implemented optimistic local dismissal (`window.coffeeActive = false`) on click, collapsing the icon and resizing `popupTrayBox` instantaneously without waiting for background script execution.
+- **TopBar Music Pill Volume Scroll & Pointer Cursor**:
+  - Added `cursorShape: Qt.PointingHandCursor` and `onWheel` volume adjustment with a 50ms rate limiter to `mediaInfoMouse` in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml#L715-L735).
+  - Hovering over the music pill and scrolling up or down now triggers `osd.sh vol-up` and `osd.sh vol-down`, adjusting PipeWire volume and invoking the TopBar Volume OSD slider overlay.
+- **Notification Drawer Transient Noise Filtering**:
+  - Extended transient signal filtering in [`NotifTicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifTicker.qml#L98-L125) to exclude `Low Battery`, `Battery`, `Antigravity`, `Display Update`, `Wi-Fi`, `Bluetooth`, and `Webcam` from entering `globalNotificationHistory`.
+  - Prioritized `isTransientSignal` over `hasActions` in [`NotifTicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifTicker.qml#L180-L188) to enforce a strict 2-second timeout for transient alerts, preventing agent task cards (`[View]`) or hardware warnings from lingering on the ticker or cluttering `BatteryPopup.qml`.
+  - Refactored `SysData.qml` low battery alert to `"Low Battery (" + batCapacity + "%)"` per Rule 2.D minimal string policy, eliminating conversational sentence bodies.
+- **Widget Cold-Start & Rapid Switching Misalignment Fix**:
+  - Reordered geometry assignment in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml#L570-L625) so `animX`, `animW`, `animH`, `isVisible`, and `isWindowActive` are finalized before invoking `targetObj.showWidget()`, ensuring child widgets calculate layout coordinates against final physical pixel dimensions rather than uninitialized frame-0 bounds.
+  - Disabled morph animations (`disableMorph = true`) and enforced `StackView.Immediate` when switching into full-screen widgets (`wallpaper`), eliminating intermediate mid-morph width clamps.
+  - Tuned `WallpaperPicker.qml` `settleTimer` to 80ms and removed the `!initialFocusSet` gate in `onWidthChanged` and `syncLocalModel`, allowing the carousel to accurately center the selected wallpaper after asynchronous directory scans finish.
+  - Reduced `preloadIdleTimer` from 6s to 1.5s and `preloadStaggerTimer` interval from 350ms to 120ms in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml#L173-L185), ensuring all desktop widgets are pre-warmed and ready within 2.5 seconds of boot.
+- **Elimination of Post-Open Micro-Refresh & Jitter**:
+  - Gated `showWidget()` teardown in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml#L730-L755) on `!initialFocusSet`. When opening an already-cached widget instance, QuickShell preserves the populated model, active focus, and `StrictlyEnforceRange` highlight state without resetting `initialFocusSet = false` or re-firing redundant multi-stage `forceLayout()` and 80ms `settleTimer` passes.
+  - Eliminated the 50ms `focus = false` then `focus = true` flicker in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml#L354-L364), calling `widgetStack.currentItem.forceActiveFocus()` directly without triggering focus-ring repaints.
+  - Prevented `morphReenableTimer` in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml#L628-L635) from re-enabling morph animations on `wallpaper` after 120ms, preventing post-open layout cutoffs.
+
 - **QuickShell Light/Dark Glass Theme Toggle (`SUPER + L`)**:
   - Added [`dotfiles/hypr/scripts/quickshell/toggle_theme_mode.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/toggle_theme_mode.sh) to switch `ui.themeMode` between `"dark"` and `"light"` in `~/.cache/quickshell/state.json`.
   - Bound `SUPER + L` in [`dotfiles/hypr/keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua#L48).
@@ -17,10 +49,13 @@
   - Updated [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh#L280-L300) to inject wallpaper background, surface, text, and accent colors into Qt themes upon every wallpaper change.
 - **QuickShell Popup Geometry & Morphing Fix**:
   - Disabled morph animation (`disableMorph = true`) when opening `wallpaper` in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml#L526-L536). Sets the container shell to 100% monitor width instantly on frame 0, eliminating horizontal condensing/expanding animations.
-- **QuickShell Wallpaper Widget Model Sorting & Center Positioning**:
-  - Implemented in-place `model.move()` reordering in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml#L471-L535) `sortListModel()`. Replaced destructive `model.clear()` and `model.append()` cycles with non-destructive in-place element shifting, keeping QML delegate instances intact and completely eliminating mid-view rigid refreshes, layout jumps, and card jitter 2 seconds after startup.
-  - Added target wallpaper index resolution and `view.positionViewAtIndex(foundIdx, ListView.Center)` in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml#L160-L177) `markersProc.onStreamFinished`. Keeps the active wallpaper centered under the filter bar (Image 2 state) whenever color spectrum sorting finishes.
-  - Enabled global `Shortcut` for `Left` and `Right` arrow keys in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml#L952-L961) (`enabled: window.visible && !window.isApplying && !searchInput.activeFocus`), guaranteeing 100% reliable carousel navigation even when the widget view does not have active item focus.
+- **QuickShell Wallpaper Carousel Startup Gating Fix**:
+  - Gated `executeFocusRestore` and `settleTimer` in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml#L720-L775) on `window.visible && view.width > 0`. Prevents offscreen background preloading from executing layout passes outside the graphics scene graph.
+  - Eliminated the `currentItem.x > 0` condition in `settleTimer` that caused infinite 40ms timer loops on index 0.
+- **ASUS Battery Power Profile & Responsiveness Fix**:
+  - Changed `platform_profile_on_battery` and `bat_profile` from `Quiet` to `Balanced` in [`hosts/nixos/hardware/asus.nix`](file:///home/realdhiru/nix/hosts/nixos/hardware/asus.nix#L23-L37). Prevents `asusd` from pinning hardware ACPI platform profile to `quiet` and CPU EPP to `power` on battery, eliminating launch delays for Antigravity and Electron apps.
+- **Battery Responsiveness & Fast Application Launch Restoration**:
+  - Restored `CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_performance"` and `CPU_BOOST_ON_BAT = 1` / `CPU_HWP_DYN_BOOST_ON_BAT = 1` in [`modules/system/power.nix`](file:///home/realdhiru/nix/modules/system/power.nix) strictly matching `AGENTS.md` Balanced profile authority. Eliminates CPU frequency caps to ensure instant application launches.
 - **KDE Connect Autostart**:
   - Added `hl.exec_cmd("kdeconnectd")` to [`dotfiles/hypr/startup.lua`](file:///home/realdhiru/nix/dotfiles/hypr/startup.lua#L18) so the background service launches automatically on desktop login for instant mobile connection.
 

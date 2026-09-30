@@ -136,30 +136,65 @@ cmd_lid() {
 }
 
 # -----------------------------------------------------------------------------
-# SUBCOMMAND: inhibit
+# SUBCOMMAND: inhibit (Coffee mode)
 # -----------------------------------------------------------------------------
 cmd_inhibit() {
-    local active=false
-    if systemd-inhibit --list 2>/dev/null | grep -q "idle-inhibit-toggle"; then
-        active=true
+    local target="${1:-toggle}"
+    local state_ctl="$SCRIPT_DIR/quickshell/state_ctl.sh"
+
+    local is_running=false
+    if systemctl --user is-active --quiet coffee-mode 2>/dev/null || systemd-inhibit --list 2>/dev/null | grep -q "idle-inhibit-toggle"; then
+        is_running=true
     fi
 
-    if [ "$active" = true ]; then
-        if [ -f "$STATE_FILE" ]; then
-            kill -- -"$(cat "$STATE_FILE")" 2>/dev/null || true
-        fi
-        pkill -x systemd-inhibit 2>/dev/null || true
+    local do_enable=false
+    case "$target" in
+        on|enable|start)
+            do_enable=true
+            ;;
+        off|disable|stop)
+            do_enable=false
+            ;;
+        status)
+            if [ "$is_running" = true ]; then
+                echo "active"
+                exit 0
+            else
+                echo "inactive"
+                exit 1
+            fi
+            ;;
+        toggle|*)
+            if [ "$is_running" = true ]; then
+                do_enable=false
+            else
+                do_enable=true
+            fi
+            ;;
+    esac
+
+    if [ "$do_enable" = true ]; then
+        systemctl --user stop coffee-mode 2>/dev/null || true
+        pkill -f "idle-inhibit-toggle" 2>/dev/null || true
         rm -f "$STATE_FILE"
-        notify-send -a "System" -r 9991 -t 1200 -u low -i "appointment-missed" "Coffee mode OFF"
+
+        systemd-run --user --unit=coffee-mode systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity >/dev/null 2>&1
+
+        if [ -x "$state_ctl" ]; then
+            "$state_ctl" set modes.coffee true 2>/dev/null || true
+        fi
+
+        notify-send -a "System" -r 9991 -t 1200 -u low -i "appointment-soon" "Coffee mode ON"
     else
-        if [ -f "$STATE_FILE" ]; then
-            kill -- -"$(cat "$STATE_FILE")" 2>/dev/null || true
-        fi
-        pkill -x systemd-inhibit 2>/dev/null || true
+        systemctl --user stop coffee-mode 2>/dev/null || true
+        pkill -f "idle-inhibit-toggle" 2>/dev/null || true
         rm -f "$STATE_FILE"
-        setsid systemd-inhibit --what=idle --who=idle-inhibit-toggle --why=manual --mode=block sleep infinity &
-        echo $! > "$STATE_FILE"
-        notify-send -a "System" -r 9991 -t 0 -u low -i "appointment-soon" "Coffee mode ON"
+
+        if [ -x "$state_ctl" ]; then
+            "$state_ctl" set modes.coffee false 2>/dev/null || true
+        fi
+
+        notify-send -a "System" -r 9991 -t 1200 -u low -i "appointment-missed" "Coffee mode OFF"
     fi
 }
 

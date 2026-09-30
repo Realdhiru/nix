@@ -22,7 +22,8 @@ if [ ! -f "$STATE_FILE" ]; then
   "modes": {
     "gaming": false,
     "wallpaperKilled": false,
-    "dnd": false
+    "dnd": false,
+    "coffee": false
   },
   "power": {
     "profile": "balanced"
@@ -42,7 +43,7 @@ case "$ACTION" in
         # Usage: state_ctl.sh get sunset.temp
         KEY="$2"
         if command -v jq >/dev/null 2>&1; then
-            jq -r ".$KEY // empty" "$STATE_FILE"
+            jq -r ".$KEY | if . != null then . else empty end" "$STATE_FILE"
         else
             python3 -c "import json, sys, os; d=json.load(open(os.path.expanduser('$STATE_FILE'))); keys='$KEY'.split('.'); v=d; [v:=v.get(k, {}) for k in keys if isinstance(v, dict)]; print(v if not isinstance(v, dict) else '')"
         fi
