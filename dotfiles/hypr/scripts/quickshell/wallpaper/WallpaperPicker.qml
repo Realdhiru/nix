@@ -78,12 +78,40 @@ Item {
     property bool isScrollingBlocked: false
     property bool jumpToLastOnFilterChange: false
 
-    readonly property var filterData: [
-        { name: "All", label: "All" },
-        { name: "GIFs", label: "GIF" },
-        { name: "Videos", label: "Vid" },
-        { name: "Search", label: "Search" } 
-    ]
+    FolderListModel {
+        id: categoryFolderModel
+        folder: "file://" + Quickshell.env("HOME") + "/Pictures/Wallpapers"
+        showDirs: true
+        showFiles: false
+        showDotAndDotDot: false
+        sortField: FolderListModel.Name
+    }
+
+    property var discoveredCategories: {
+        let list = [];
+        let excluded = ["previews", "scripts", "gifs", "videos", "flat", ".git"];
+        for (let i = 0; i < categoryFolderModel.count; i++) {
+            let fn = categoryFolderModel.get(i, "fileName");
+            if (fn && excluded.indexOf(fn.toLowerCase()) === -1 && !fn.startsWith(".")) {
+                list.push(fn);
+            }
+        }
+        return list;
+    }
+
+    readonly property var filterData: {
+        let items = [{ name: "All", label: "All" }];
+        let cats = discoveredCategories;
+        for (let i = 0; i < cats.length; i++) {
+            let cName = cats[i];
+            let cap = cName.charAt(0).toUpperCase() + cName.slice(1);
+            items.push({ name: cName, label: cap });
+        }
+        items.push({ name: "GIFs", label: "GIF" });
+        items.push({ name: "Videos", label: "Vid" });
+        items.push({ name: "Search", label: "Search" });
+        return items;
+    }
 
     ListModel { id: monitorModel }
 
@@ -453,11 +481,11 @@ Item {
 
 
     function getFileTypeRank(fileName) {
-        if (!fileName) return 1;
+        if (!fileName) return 0;
         let fn = String(fileName).toLowerCase();
-        if (fn.endsWith(".gif")) return 0; // 1. First all GIFs
-        if (window.isVideoFile(fileName)) return 2; // 3. All videos last
-        return 1; // 2. All static images in between
+        if (fn.endsWith(".gif")) return 1; // 2. GIFs second
+        if (window.isVideoFile(fileName)) return 2; // 3. Videos last
+        return 0; // 1. Static images FIRST (sorted by color score)
     }
 
     function hexToColorScore(hex) {
@@ -716,19 +744,6 @@ Item {
         toastTimer.restart();
     }
 
-    Timer {
-        id: settleTimer
-        interval: 80
-        repeat: false
-        onTriggered: {
-            if (window.visible && view.currentIndex >= 0 && view.width > 0) {
-                view.forceLayout();
-                view.positionViewAtIndex(view.currentIndex, ListView.Center);
-                window.initialFocusSet = true;
-            }
-        }
-    }
-
     function showWidget() {
         if (!window.initialFocusSet) {
             if (window.activeWallpaperName !== "") {
@@ -737,14 +752,12 @@ Item {
                 window.targetWallName = window.widgetArg;
             }
             window.applyFilters(true);
-            Qt.callLater(() => {
-                view.forceActiveFocus();
-                if (view.currentIndex >= 0 && view.width > 0) {
-                    view.forceLayout();
-                    view.positionViewAtIndex(view.currentIndex, ListView.Center);
-                }
-                settleTimer.restart();
-            });
+            view.forceActiveFocus();
+            if (!window.initialFocusSet && window.visible && view.width > 0 && view.currentIndex >= 0) {
+                view.forceLayout();
+                view.positionViewAtIndex(view.currentIndex, ListView.Center);
+                window.initialFocusSet = true;
+            }
         } else {
             view.forceActiveFocus();
             if (window.activeWallpaperName !== "" && window.targetWallName !== window.activeWallpaperName) {
@@ -766,20 +779,18 @@ Item {
         let targetModel = window.getModelForFilter(window.currentFilter);
         if (targetIndex !== -1 && targetIndex < targetModel.count) {
             window.isModelChanging = true;
+            view.currentIndex = targetIndex;
             if (requirePositioning && window.visible && view.width > 0) {
                 view.forceLayout();
                 view.positionViewAtIndex(targetIndex, ListView.Center);
+                window.initialFocusSet = true;
+            } else if (!requirePositioning) {
+                window.initialFocusSet = true;
             }
-            view.currentIndex = targetIndex;
             if (isSearchRestore) {
                 window.searchIndexRestored = true;
             }
             window.isModelChanging = false;
-            if (requirePositioning && window.visible) {
-                settleTimer.restart();
-            } else if (!requirePositioning) {
-                window.initialFocusSet = true;
-            }
             allowAddAnimationTimer.restart();
         } else if (isSearchRestore) {
             window.searchIndexRestored = true;
@@ -830,11 +841,67 @@ Item {
         }
     }
 
+    function getCategoryColors(catName) {
+        let name = String(catName).toLowerCase();
+        switch (name) {
+            case "dark": return { c1: "#1e1e2e", c2: "#45475a" };
+            case "emerald": return { c1: "#2ee6a8", c2: "#10b981" };
+            case "gruvbox": return { c1: "#fabd2f", c2: "#fe8019" };
+            case "light": return { c1: "#ffffff", c2: "#94a3b8" };
+            case "nord": return { c1: "#88c0d0", c2: "#5e81ac" };
+            case "ocean": return { c1: "#00b4d8", c2: "#0077b6" };
+            case "sakura": return { c1: "#ff79c6", c2: "#ff99c8" };
+            case "sunset": return { c1: "#ff5555", c2: "#ffb86c" };
+            case "synthwave": return { c1: "#bd93f9", c2: "#ff79c6" };
+            default: return { c1: _theme.primary, c2: _theme.mauve };
+        }
+    }
+
+    function getWallpaperCategory(fileName) {
+        if (!fileName) return "";
+        let fn = String(fileName);
+        let clean = window.getCleanName(fn);
+        let mapped = window.wallpaperCategoryMap[fn] || window.wallpaperCategoryMap[clean] || "";
+        if (mapped !== "") return mapped.toLowerCase();
+        
+        let cats = window.discoveredCategories;
+        let fnLower = fn.toLowerCase();
+        for (let i = 0; i < cats.length; i++) {
+            let cat = cats[i].toLowerCase();
+            if (fnLower.startsWith(cat + "_") || fnLower.startsWith(cat + "-") || fnLower.startsWith(cat + "/")) {
+                return cat;
+            }
+        }
+        return "";
+    }
+
+    function updateCategoryProxyModel() {
+        let cat = String(window.currentFilter).toLowerCase();
+        if (cat === "all" || cat === "gifs" || cat === "videos" || cat === "search") return;
+        
+        categoryProxyModel.clear();
+        let batch = [];
+        for (let i = 0; i < localProxyModel.count; i++) {
+            let item = localProxyModel.get(i);
+            if (item && item.fileName) {
+                let itemCat = window.getWallpaperCategory(item.fileName);
+                if (itemCat === cat) {
+                    batch.push({ "fileName": item.fileName, "fileUrl": item.fileUrl });
+                }
+            }
+        }
+        if (batch.length > 0) {
+            categoryProxyModel.append(batch);
+        }
+        window.sortListModel(categoryProxyModel);
+    }
+
     function getModelForFilter(filter) {
         if (filter === "Search") return searchProxyModel;
         if (filter === "GIFs" || filter === "GIF") return gifsProxyModel;
         if (filter === "Videos" || filter === "Video") return videosProxyModel;
-        return localProxyModel;
+        if (filter === "All") return localProxyModel;
+        return categoryProxyModel;
     }
 
     function updateVisibleCount() {
@@ -1023,6 +1090,7 @@ Item {
     Shortcut { sequence: "Backtab"; enabled: !window.isApplying; onActivated: window.cycleFilter(-1) }
 
     ListModel { id: localProxyModel }
+    ListModel { id: categoryProxyModel }
     ListModel { id: gifsProxyModel }
     ListModel { id: videosProxyModel }
     ListModel { id: searchProxyModel }
@@ -1190,12 +1258,14 @@ Item {
         highlightRangeMode: window.initialFocusSet ? ListView.StrictlyEnforceRange : ListView.NoHighlightRange
         preferredHighlightBegin: Math.max(0, (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2))
         preferredHighlightEnd: Math.max(0, (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2))
-        highlightMoveDuration: window.initialFocusSet ? 350 : 0
+        highlightMoveDuration: (window.initialFocusSet && !window.isFilterAnimating && !window.isModelChanging) ? 350 : 0
         focus: true
         
         onWidthChanged: {
-            if (width > 0 && currentIndex >= 0 && window.visible) {
-                settleTimer.restart();
+            if (!window.initialFocusSet && width > 0 && currentIndex >= 0 && window.visible) {
+                forceLayout();
+                positionViewAtIndex(currentIndex, ListView.Center);
+                window.initialFocusSet = true;
             }
         }
         
@@ -1218,14 +1288,14 @@ Item {
         }
         
         add: Transition {
-            enabled: window.allowAddAnimation
+            enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating
             ParallelAnimation {
                 NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 400; easing.type: Easing.OutCubic }
                 NumberAnimation { property: "scale"; from: 0.5; to: 1; duration: 400; easing.type: Easing.OutBack }
             }
         }
         addDisplaced: Transition {
-            enabled: window.allowAddAnimation
+            enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating
             NumberAnimation { property: "x"; duration: 400; easing.type: Easing.OutCubic }
         }
 
@@ -1314,10 +1384,10 @@ Item {
             anchors.verticalCenterOffset: window.s(15)
             z: isVisuallyEnlarged ? 10 : 1
             
-            Behavior on scale { enabled: window.initialFocusSet; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
-            Behavior on width { enabled: window.initialFocusSet; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
-            Behavior on height { enabled: window.initialFocusSet; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
-            Behavior on opacity { enabled: window.initialFocusSet; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
+            Behavior on scale { enabled: window.initialFocusSet && !window.isModelChanging && !window.isFilterAnimating; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
+            Behavior on width { enabled: window.initialFocusSet && !window.isModelChanging && !window.isFilterAnimating; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
+            Behavior on height { enabled: window.initialFocusSet && !window.isModelChanging && !window.isFilterAnimating; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
+            Behavior on opacity { enabled: window.initialFocusSet && !window.isModelChanging && !window.isFilterAnimating; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
 
             Item {
                 anchors.centerIn: parent
@@ -1368,6 +1438,20 @@ Item {
                             matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
                         }
                     }
+
+                    // Wallust Dynamic Palette Preview Badge
+                    Row {
+                        anchors.bottom: parent.bottom
+                        anchors.right: parent.right
+                        anchors.margins: window.s(6)
+                        spacing: window.s(3)
+                        z: 5
+
+                        Rectangle { width: window.s(8); height: window.s(8); radius: window.s(4); color: _theme.primary }
+                        Rectangle { width: window.s(8); height: window.s(8); radius: window.s(4); color: _theme.mauve }
+                        Rectangle { width: window.s(8); height: window.s(8); radius: window.s(4); color: _theme.blue }
+                        Rectangle { width: window.s(8); height: window.s(8); radius: window.s(4); color: _theme.peach }
+                    }
                 }
             }
         }
@@ -1411,12 +1495,12 @@ Item {
                 property real targetWidth: window.showNotification ? Math.min(notifTextDrawer.implicitWidth + paddingLeft + window.s(20), window.s(300)) : 0
                 width: targetWidth
                 visible: width > 0.1
-                radius: window.s(10)
+                radius: window.s(12)
                 clip: true
                 anchors.verticalCenter: parent.verticalCenter
-                color: window.showNotification ? _theme.surface2 : "transparent"
-                border.color: window.showNotification ? _theme.surface1 : "transparent"
-                border.width: 1
+                color: window.showNotification ? Qt.rgba(_theme.surface0.r, _theme.surface0.g, _theme.surface0.b, Config.effectiveCardOpacity > 0 ? Config.effectiveCardOpacity : 0.75) : "transparent"
+                border.color: window.showNotification ? Qt.alpha(_theme.surface1, 0.4) : "transparent"
+                border.width: Config.borderWidth
 
                 Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
                 Behavior on color { ColorAnimation { duration: 400 } }
@@ -1485,12 +1569,12 @@ Item {
                 height: window.s(44)
                 property real expandedWidth: window.s(44) + monitorListRow.width + window.s(8)
                 width: visible ? (window.isMonitorSelectorOpen ? expandedWidth : window.s(44)) : 0
-                radius: window.s(10)
+                radius: window.s(12)
                 clip: true
                 anchors.verticalCenter: parent.verticalCenter
-                color: window.isMonitorSelectorOpen ? _theme.surface2 : "transparent"
-                border.color: window.isMonitorSelectorOpen ? _theme.text : _theme.surface1
-                border.width: window.isMonitorSelectorOpen ? window.s(2) : 1
+                color: window.isMonitorSelectorOpen ? Qt.rgba(_theme.surface0.r, _theme.surface0.g, _theme.surface0.b, 0.85) : "transparent"
+                border.color: window.isMonitorSelectorOpen ? _theme.text : Qt.alpha(_theme.surface1, 0.4)
+                border.width: window.isMonitorSelectorOpen ? window.s(2) : Config.borderWidth
                 
                 Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
                 Behavior on color { ColorAnimation { duration: 400 } }
@@ -1602,32 +1686,49 @@ Item {
                 model: window.filterData
                 delegate: Item {
                     visible: modelData.name !== "Search"
-                    width: !visible ? 0 : (modelData.name === "GIFs" ? filterText.contentWidth + window.s(28) : window.s(44))
+                    width: !visible ? 0 : window.s(44)
                     height: !visible ? 0 : window.s(36)
                     anchors.verticalCenter: parent.verticalCenter
+                    
+                    readonly property bool isCategory: modelData.name !== "All" && modelData.name !== "GIFs" && modelData.name !== "Videos" && modelData.name !== "Video" && modelData.name !== "Search"
                     
                     Rectangle {
                         anchors.fill: parent
                         radius: window.s(10)
-                        color: window.currentFilter === modelData.name ? Qt.rgba(_theme.primary.r, _theme.primary.g, _theme.primary.b, 0.22) : (filterMouse.containsMouse ? Qt.rgba(_theme.surface1.r, _theme.surface1.g, _theme.surface1.b, 0.30) : "transparent")
-                        border.color: window.currentFilter === modelData.name ? _theme.primary : (filterMouse.containsMouse ? Qt.rgba(255, 255, 255, 0.20) : "transparent")
-                        border.width: window.currentFilter === modelData.name ? window.s(2) : 1
-                        scale: window.currentFilter === modelData.name ? 1.12 : (filterMouse.containsMouse ? 1.05 : 1.0)
+                        color: window.currentFilter === modelData.name ? Qt.rgba(_theme.primary.r, _theme.primary.g, _theme.primary.b, 0.28) : (filterMouse.containsMouse ? Qt.rgba(_theme.surface1.r, _theme.surface1.g, _theme.surface1.b, 0.40) : Qt.rgba(_theme.surface0.r, _theme.surface0.g, _theme.surface0.b, Config.effectiveCardOpacity))
+                        border.color: window.currentFilter === modelData.name ? _theme.primary : (filterMouse.containsMouse ? Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.25) : Qt.alpha(_theme.surface1, 0.3))
+                        border.width: window.currentFilter === modelData.name ? window.s(2) : Config.borderWidth
+                        scale: window.currentFilter === modelData.name ? 1.08 : (filterMouse.containsMouse ? 1.04 : 1.0)
                         
                         Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
                         Behavior on border.color { ColorAnimation { duration: 250 } }
                         Behavior on color { ColorAnimation { duration: 250 } }
 
+                        Rectangle {
+                            id: categorySwatch
+                            visible: isCategory
+                            width: window.s(20)
+                            height: window.s(20)
+                            radius: window.s(4)
+                            anchors.centerIn: parent
+                            border.color: window.currentFilter === modelData.name ? _theme.text : Qt.alpha(_theme.surface2, 0.6)
+                            border.width: window.currentFilter === modelData.name ? window.s(2) : 1
+                            
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: window.getCategoryColors(modelData.name).c1 }
+                                GradientStop { position: 1.0; color: window.getCategoryColors(modelData.name).c2 }
+                            }
+                        }
+
                         Text {
-                            id: filterText
-                            visible: modelData.name === "GIFs"
-                            text: modelData.label
+                            visible: modelData.name === "GIFs" || modelData.name === "GIF"
+                            text: "GIF"
                             anchors.centerIn: parent
                             color: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
                             font.family: "JetBrains Mono"
-                            font.pixelSize: window.s(14)
-                            font.bold: window.currentFilter === modelData.name
-                            Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                            font.pixelSize: window.s(12)
+                            font.bold: true
                         }
 
                         Canvas {
@@ -1637,8 +1738,6 @@ Item {
                             anchors.horizontalCenterOffset: window.s(2)
                             property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
                             onActiveColorChanged: requestPaint()
-                            property real scaleTrigger: window.s(1)
-                            onScaleTriggerChanged: requestPaint()
 
                             onPaint: {
                                 var ctx = getContext("2d");
@@ -1660,8 +1759,6 @@ Item {
                             anchors.centerIn: parent
                             property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
                             onActiveColorChanged: requestPaint()
-                            property real scaleTrigger: window.s(1)
-                            onScaleTriggerChanged: requestPaint()
 
                             onPaint: {
                                 var ctx = getContext("2d");
@@ -1745,12 +1842,12 @@ Item {
                 id: searchBox
                 height: window.s(44)
                 width: window.currentFilter === "Search" ? window.s(360) : window.s(44)
-                radius: window.s(10)
+                radius: window.s(12)
                 clip: true
                 anchors.verticalCenter: parent.verticalCenter
-                color: window.currentFilter === "Search" ? Qt.rgba(_theme.surface2.r, _theme.surface2.g, _theme.surface2.b, 0.8) : "transparent"
-                border.color: window.currentFilter === "Search" ? _theme.text : _theme.surface1
-                border.width: window.currentFilter === "Search" ? window.s(2) : 1
+                color: window.currentFilter === "Search" ? Qt.rgba(_theme.surface0.r, _theme.surface0.g, _theme.surface0.b, 0.90) : "transparent"
+                border.color: window.currentFilter === "Search" ? _theme.text : Qt.alpha(_theme.surface1, 0.4)
+                border.width: window.currentFilter === "Search" ? window.s(2) : Config.borderWidth
                 
                 Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
                 Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
@@ -1781,8 +1878,6 @@ Item {
                     Behavior on anchors.leftMargin { NumberAnimation { duration: 500; easing.type: Easing.OutExpo } }
                     property string activeColor: window.currentFilter === "Search" ? _theme.text : (searchMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
                     onActiveColorChanged: requestPaint()
-                    property real scaleTrigger: window.s(1)
-                    onScaleTriggerChanged: requestPaint()
 
                     onPaint: {
                         var ctx = getContext("2d");
@@ -1800,6 +1895,19 @@ Item {
                     }
                 }
 
+                Text {
+                    id: placeholderLabel
+                    anchors.left: searchIcon.right
+                    anchors.right: submitBtn.left
+                    anchors.rightMargin: window.s(8)
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "Type something to search..."
+                    color: Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.5)
+                    font.family: "JetBrains Mono"
+                    font.pixelSize: window.s(14)
+                    visible: window.currentFilter === "Search" && searchInput.text.length === 0 && !searchInput.activeFocus
+                }
+
                 TextInput {
                     id: searchInput
                     anchors.left: searchIcon.right
@@ -1811,7 +1919,7 @@ Item {
                     Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
                     color: _theme.text
                     font.family: "JetBrains Mono"
-                    font.pixelSize: window.s(16)
+                    font.pixelSize: window.s(15)
                     clip: true
                     
                     onTextEdited: {

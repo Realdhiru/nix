@@ -7,6 +7,7 @@ import Quickshell.Io
 import Quickshell.Services.Pipewire
 import Quickshell.Services.SystemTray
 import "../"
+import "../tray"
 
 Item {
     id: window
@@ -235,10 +236,10 @@ Item {
     // once it hits the cap even while plugged in.
     readonly property bool isCharging: SysData.acOnline
 
-    readonly property color batColorStart: isCharging ? window.green : (batCapacity >= 70 ? window.primary : (batCapacity >= 30 ? window.yellow : window.red))
+    readonly property color batColorStart: isCharging ? window.primary : (batCapacity >= 30 ? window.primary : window.red)
     readonly property color batColorEnd: Qt.lighter(batColorStart, 1.15)
 
-    readonly property color profileStart: powerProfile === "performance" ? window.red : (powerProfile === "balanced" ? window.primary : (powerProfile === "power-saver" ? window.green : window.surface2))
+    readonly property color profileStart: powerProfile === "performance" ? window.primary : (powerProfile === "balanced" ? window.primary : (powerProfile === "power-saver" ? window.subtext0 : window.surface2))
     readonly property color profileEnd: Qt.lighter(profileStart, 1.15)
 
     readonly property color ambientPrimary: window.batColorStart
@@ -669,7 +670,7 @@ Item {
                                     }
 
                                     Text {
-                                        text: window.batStatus === "Charging" ? "FULL" : "LEFT"
+                                        text: (window.batStatus === "Charging" || window.isCharging) ? "FULL" : "LEFT"
                                         font.pixelSize: window.s(10)
                                         font.family: "JetBrains Mono"
                                         font.weight: Font.Bold
@@ -1202,6 +1203,7 @@ Item {
                             }
 
                             add: Transition {
+                                enabled: window.visible
                                 ParallelAnimation {
                                     NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 400; easing.type: Easing.OutQuint }
                                     NumberAnimation { property: "x"; from: window.s(-40); to: 0; duration: 500; easing.type: Easing.OutExpo }
@@ -1215,6 +1217,7 @@ Item {
                                 }
                             }
                             displaced: Transition {
+                                enabled: window.visible
                                 NumberAnimation { properties: "y"; duration: 400; easing.type: Easing.OutExpo }
                             }
 
@@ -1759,10 +1762,10 @@ Item {
                                         font.pixelSize: window.s(13)
                                         
                                         color: window.isCharging 
-                                                ? Qt.tint(window.green, Qt.rgba(1, 1, 1, parent.textPulse * 0.4)) 
+                                                ? Qt.tint(window.primary, Qt.rgba(1, 1, 1, parent.textPulse * 0.4)) 
                                                 : (centralCore.isDangerState ? Qt.tint(window.red, Qt.rgba(1, 1, 1, parent.textPulse * 0.3)) : window.subtext0)
                                         
-                                        text: window.batStatus.toUpperCase()
+                                        text: (window.batStatus === "Not charging" && window.isCharging) ? "CHARGED" : window.batStatus.toUpperCase()
                                         Behavior on color { ColorAnimation { duration: 300 } }
                                     }
                                 }

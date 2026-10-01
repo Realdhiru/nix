@@ -2,6 +2,9 @@
 import QtQuick
 import Quickshell
 
+import "polkit"
+import "idle"
+
 ShellRoot {
     Connections {
         target: Quickshell
@@ -19,4 +22,6 @@ ShellRoot {
     Main {}
     TopBar {}
     Floating {}
+    Polkit {}
+    Idle {}
 }

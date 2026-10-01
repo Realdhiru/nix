@@ -428,7 +428,7 @@ Item {
                         transform: Translate { x: root.s(-40) * (1 - root.introCover); y: root.s(10) * (1 - root.introCover) }
 
                         scale: root.musicData.status === "Playing" ? 1.0 : 0.90
-                        Behavior on scale { NumberAnimation { duration: 800; easing.type: Easing.OutElastic; easing.overshoot: 1.2 } }
+                        Behavior on scale { enabled: root.visible; NumberAnimation { duration: 800; easing.type: Easing.OutElastic; easing.overshoot: 1.2 } }
 
                         Rectangle {
                             anchors.fill: parent
@@ -590,16 +590,30 @@ Item {
                             RowLayout {
                                 spacing: root.s(10)
                                 Rectangle {
-                                    color: "#1AFFFFFF"
+                                    id: devicePill
+                                    color: devicePillMa.containsMouse ? Qt.rgba(root.mauve.r, root.mauve.g, root.mauve.b, 0.25) : "#1AFFFFFF"
                                     radius: root.s(4)
                                     Layout.preferredHeight: root.s(24)
                                     Layout.preferredWidth: pillContent.width + root.s(20)
+
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+
                                     RowLayout {
                                         id: pillContent
                                         anchors.centerIn: parent
                                         spacing: root.s(6)
                                         Text { text: root.musicData.deviceIcon || "󰓃"; color: root.mauve; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(14) }
-                                        Text { text: root.musicData.deviceName || "Speaker"; color: root.overlay2; font.family: "JetBrains Mono"; font.pixelSize: root.s(12); font.bold: true }
+                                        Text { text: root.musicData.deviceName || "Speaker"; color: devicePillMa.containsMouse ? root.text : root.overlay2; font.family: "JetBrains Mono"; font.pixelSize: root.s(12); font.bold: true }
+                                    }
+
+                                    MouseArea {
+                                        id: devicePillMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            root.execCmd("python3 -c \"import subprocess, json; sinks = [l.split('.')[0].strip() for l in subprocess.check_output(['wpctl', 'status'], text=True).split('Sinks:')[1].split('Sources:')[0].splitlines() if '.' in l]; cur = [s for s in sinks if '*' in s]; next_sink = sinks[(sinks.index(cur[0])+1)%len(sinks)] if cur and sinks else (sinks[0] if sinks else ''); next_id = next_sink.replace('*', '').strip(); subprocess.run(['wpctl', 'set-default', next_id]) if next_id else None\"");
+                                        }
                                     }
                                 }
                                 Text {
@@ -738,9 +752,17 @@ Item {
 
                         RowLayout {
                             Layout.alignment: Qt.AlignHCenter
-                            spacing: root.s(30)
+                            spacing: root.s(20)
                             opacity: root.introControls
                             transform: Translate { y: root.s(20) * (1 - root.introControls) }
+
+                            // Seek -10s
+                            MouseArea {
+                                width: root.s(30); height: root.s(30)
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.execCmd("playerctl position 10-")
+                                Text { anchors.centerIn: parent; text: "󰑎"; color: parent.pressed ? root.text : root.overlay2; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(20) }
+                            }
 
                             MouseArea {
                                 width: root.s(30); height: root.s(30)
@@ -810,6 +832,14 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.execCmd("playerctl next")
                                 Text { anchors.centerIn: parent; text: ""; color: parent.pressed ? root.text : root.overlay2; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(24) }
+                            }
+
+                            // Seek +10s
+                            MouseArea {
+                                width: root.s(30); height: root.s(30)
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.execCmd("playerctl position 10+")
+                                Text { anchors.centerIn: parent; text: "󰑋"; color: parent.pressed ? root.text : root.overlay2; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(20) }
                             }
                         }
                     }

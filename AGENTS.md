@@ -52,6 +52,7 @@ After successfully resolving any issue, bug, or feature implementation:
   - Verify layout proportions and check for leftover/dead space or mismatched button grids.
   - Verify anti-bleed layering so high-contrast wallpaper sketches/lines do not show through translucent glass panels.
   - Empirically test the **FIRST open** immediately after a fresh cold `forceReload` to ensure no shape snap, shrink, or uninitialized geometry glitch occurs.
+- **Zero Duplicate Process Policy**: NEVER execute raw `quickshell -p ...` or `hyprctl eval "hl.exec_cmd('quickshell ...')"` when QuickShell is running. ALWAYS reload via `quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload` or `~/nix/dotfiles/hypr/scripts/qs_manager.sh reload`.
 
 ---
 

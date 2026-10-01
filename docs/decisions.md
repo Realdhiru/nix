@@ -167,6 +167,14 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** Desktop notifications (`notify-send`) across all scripts and services must adhere strictly to ultra-minimal signal length (1–3 words maximum, e.g. `"Coffee mode ON"`, `"Game Mode OFF"`, `"Hotspot ON"`).
 - **Rationale:** The TopBar ticker ([`NotifTicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifTicker.qml)) and desktop popup overlays are tuned for concise, glanceable telemetry. Emitting conversational sentences or descriptive bodies clutters the UI layout, clips typography, and destroys the minimalist desktop aesthetic. Body strings are banned unless strictly conveying essential dynamic data (such as SSID or IP address).
 
+### 23. Deterministic Single-Pass Positioning & Zero Morphing (WallpaperPicker Proof of Concept)
+- **Decision:** In full-screen popup overlays (`WallpaperPicker.qml`), container coordinates snap deterministically on frame 0 without physical size interpolation (`Behavior on x / width / height` banned). All deferred settle timers (`settleTimer`) and multi-pass repositioning chains are eliminated.
+- **Rationale:** Deferred positioning timers (e.g. 80ms) and multi-pass `forceLayout()` calls cause visible secondary refreshes, layout micro-jumps, and perceived UI lag right after opening. Snapping to final coordinates on frame 0 and executing a single positioning pass immediately upon `window.visible && view.width > 0` with `highlightMoveDuration: 0` guarantees rock-solid initial presentation while allowing smooth 350ms animated transitions for user-driven interactions thereafter.
+
+### 24. Single-Instance QuickShell IPC Reload & Visual Theme Swatches
+- **Decision:** QuickShell updates must never be applied by launching a secondary `quickshell -p ...` background process. Reloads must execute via native D-Bus IPC (`quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload`) or `qs_manager.sh reload`.
+- **Theme Swatch Buttons:** Category filter tabs in `WallpaperPicker.qml` replace text labels with dual-tone color gradient swatches (`dark`, `emerald`, `gruvbox`, `light`, `nord`, `ocean`, `sakura`, `sunset`, `synthwave`) inside 44px liquid glass capsules, filtering the carousel via `categoryProxyModel` and subfolder filename markers.
+
 
 
 

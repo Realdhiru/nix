@@ -30,6 +30,9 @@ description: High-density operational reference for maintaining the user's NixOS
 7. **Ultra-Minimal Notification Format (Zero Sentences)**:
    - System notifications (`notify-send`) must NEVER include full sentences, paragraphs, or conversational explanations.
    - Notification content must remain strictly minimal: 1–3 words max (e.g. `"Coffee mode ON"`, `"Game Mode OFF"`, `"Hotspot ON"`), with NO secondary body text unless delivering strictly necessary dynamic data (such as SSID or IP). TopBar ticker (`NotifTicker.qml`) and desktop popups are designed for compact telemetry signals, not sentences.
+8. **Zero Duplicate Process Policy for QuickShell**:
+   - NEVER execute raw `quickshell -p ...` or `hyprctl eval "hl.exec_cmd('quickshell ...')"` when QuickShell is already running. Spawning duplicate `quickshell` processes creates overlapping topbars and layer-shell collisions.
+   - ALWAYS perform clean reloads using `quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload` or `~/nix/dotfiles/hypr/scripts/qs_manager.sh reload` (which issues `pkill -9 quickshell` before spawning a fresh instance).
 
 ## 2. Invariant Hardware & Architecture Policies
 

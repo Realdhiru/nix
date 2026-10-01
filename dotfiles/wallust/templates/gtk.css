@@ -25,9 +25,25 @@
 @define-color accent_color {{color4}};
 @define-color accent_bg_color {{color4}};
 @define-color accent_fg_color #121318;
+@define-color theme_selected_bg_color {{color4}};
+@define-color theme_selected_fg_color #121318;
+@define-color selected_bg_color {{color4}};
+@define-color selected_fg_color #121318;
 @define-color destructive_color #e06c75;
 @define-color destructive_bg_color #e06c75;
 @define-color destructive_fg_color #ffffff;
+
+/* Selection Highlight */
+selection,
+*:selected,
+entry selection,
+label selection,
+textview text selection,
+.view:selected,
+.view:selected:focus {
+    background-color: {{color4}};
+    color: #121318;
+}
 
 /* Cards */
 @define-color card_bg_color #1c1e27;

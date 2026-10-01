@@ -349,4 +349,34 @@ fi
 if command -v gsettings >/dev/null 2>&1; then
     gsettings set org.gnome.desktop.interface gtk-theme "Adwaita" >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface gtk-theme "Adwaita:dark" >/dev/null 2>&1 || true
+    if [ -n "${ACCENT:-}" ]; then
+        GNOME_ACCENT=$(python3 -c '
+import sys, colorsys
+c = sys.argv[1].lstrip("#")
+if len(c) >= 6:
+    r, g, b = int(c[0:2], 16)/255.0, int(c[2:4], 16)/255.0, int(c[4:6], 16)/255.0
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    if s < 0.15:
+        print("slate")
+    elif h < 0.05 or h >= 0.95:
+        print("red")
+    elif h < 0.12:
+        print("orange")
+    elif h < 0.20:
+        print("yellow")
+    elif h < 0.45:
+        print("green")
+    elif h < 0.55:
+        print("teal")
+    elif h < 0.70:
+        print("blue")
+    elif h < 0.82:
+        print("purple")
+    else:
+        print("pink")
+else:
+    print("purple")
+' "$ACCENT" 2>/dev/null || echo "purple")
+        gsettings set org.gnome.desktop.interface accent-color "$GNOME_ACCENT" >/dev/null 2>&1 || true
+    fi
 fi

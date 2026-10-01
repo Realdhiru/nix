@@ -40,6 +40,7 @@ Item {
 
     function subscribe() {
         subscribers++;
+        console.log("[SYSDATA] subscribe count:", subscribers, "fetchTimer running:", true);
         if (subscribers === 1) {
             fetchTimer.restart();
             fetchProc.running = false;
@@ -49,6 +50,7 @@ Item {
 
     function unsubscribe() {
         subscribers = Math.max(0, subscribers - 1);
+        console.log("[SYSDATA] unsubscribe count:", subscribers, "fetchTimer running:", subscribers > 0);
         if (subscribers === 0) {
             fetchTimer.stop();
             fetchProc.running = false;

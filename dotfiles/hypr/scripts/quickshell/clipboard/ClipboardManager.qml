@@ -614,8 +614,8 @@ Item {
                     property real targetX: curIdx === -1 || clipList.model === null ? 0 : (curIdx % mainBg.cols) * clipList.cellWidth
                     property real targetY: curIdx === -1 || clipList.model === null ? 0 : Math.floor(curIdx / mainBg.cols) * clipList.cellHeight
 
-                    Behavior on x { NumberAnimation { duration: window.navDuration > 0 ? window.navDuration : 350; easing.type: Easing.OutExpo } }
-                    Behavior on y { NumberAnimation { duration: window.navDuration > 0 ? window.navDuration : 350; easing.type: Easing.OutExpo } }
+                    Behavior on x { enabled: window.navDuration > 0; NumberAnimation { duration: window.navDuration; easing.type: Easing.OutExpo } }
+                    Behavior on y { enabled: window.navDuration > 0; NumberAnimation { duration: window.navDuration; easing.type: Easing.OutExpo } }
 
                     x: targetX + window.s(5)
                     y: targetY + window.s(5)

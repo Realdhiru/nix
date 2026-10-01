@@ -847,9 +847,9 @@ Item {
                             scale: multiMonitorView.targetScale
                             transformOrigin: Item.TopLeft
 
-                            Behavior on x { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
-                            Behavior on y { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
-                            Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                            Behavior on x { enabled: window.visible; NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                            Behavior on y { enabled: window.visible; NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                            Behavior on scale { enabled: window.visible; NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
 
                             Repeater {
                                 id: monitorRepeater
@@ -874,13 +874,13 @@ Item {
                                         border.width: isActive ? window.s(2) : window.s(1)
                                         z: isActive ? 5 : 0
 
-                                        Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
-                                        Behavior on y { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
+                                        Behavior on x { enabled: window.visible; NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
+                                        Behavior on y { enabled: window.visible; NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
 
                                         Behavior on border.color { ColorAnimation { duration: 300 } }
                                         Behavior on color { ColorAnimation { duration: 300 } }
-                                        Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
-                                        Behavior on height { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                                        Behavior on width { enabled: window.visible; NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                                        Behavior on height { enabled: window.visible; NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
 
                                         Item {
                                             anchors.centerIn: parent

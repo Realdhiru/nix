@@ -1,5 +1,42 @@
 # CHANGELOG
 
+## 2026-10-01 — QuickShell WallpaperPicker Zero-Morphing & Deterministic Single-Pass Positioning
+
+- **Removal of Automatic Idle Dim & Blur Overlay**:
+  - Removed automatic `"dim"` action from `idleRoot.actions` array in [`Idle.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/idle/Idle.qml).
+  - The screen dim and blur overlay no longer activates automatically on idle timers, operating strictly via the manual `Mod + Shift + X` keybind trigger.
+- **Serpantinum-Style Color Bucket Categorization & Liquid Glass Search Bar Refinement**:
+  - Implemented `hexToBucket()` hue classifier mapping extracted wallpaper colors to signature aesthetic buckets (`dark`, `emerald`, `gruvbox`, `light`, `nord`, `ocean`, `sakura`, `sunset`, `synthwave`) in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml).
+  - Refactored `searchBox`, `notifDrawer`, and `placeholderLabel` in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml) to match the reference liquid glass look with rounded white outline (`border.color: _theme.text`, `border.width: 2`), dark glass background (`_theme.surface0`), search icon, and submit arrow button (`->`).
+- **Strict Single-Instance QuickShell Reload Enforcement & Systemic Rule**:
+  - Established system-wide policy in [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md) and [`SKILL.md`](file:///home/realdhiru/nix/.agents/skills/nixos-hyprland/SKILL.md) banning direct `quickshell -p ...` executions when QuickShell is running.
+  - All reloads now use native D-Bus IPC (`quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload`) or `qs_manager.sh reload` to guarantee zero duplicate background processes or topbar duplication.
+- **WallpaperPicker Square Theme Swatches & Strict Folder Categorization**:
+  - Updated category color swatches in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml) from circular dots to sleek 20x20 **square** gradient swatches (`radius: 4`) representing subfolder theme colors (`dark`, `emerald`, `gruvbox`, `light`, `nord`, `ocean`, `sakura`, `sunset`, `synthwave`).
+  - Strict subfolder categorization filtering maps wallpapers directly according to their folder locations in `~/Pictures/Wallpapers/`.
+  - Implemented `categoryProxyModel` and subfolder filename mapping (`dark_`, `emerald_`, etc.) so clicking a category swatch filters the carousel strictly to wallpapers matching that theme category.
+  - Re-sorted `getFileTypeRank` so static wallpapers (sorted by color score) appear first, followed by GIFs second and Videos last.
+- **Browser Text Selection Accent Color Synchronization**:
+  - Added `org.gnome.desktop.interface accent-color` mapping in [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh) to automatically compute and set the closest GNOME/GTK accent color (`purple`, `blue`, `teal`, `slate`, etc.) from Wallust dynamic wallpaper palettes, ensuring Brave/Chromium and GTK apps highlight selected text with the desktop accent color.
+
+- **Main.qml Rapid Switch Generation Cancellation Token (Step 1)**:
+  - Added `switchGeneration` monotonic counter and `_pendingGen` tracking to [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml).
+  - Discards stale deferred callbacks and asynchronous timer triggers when rapidly switching between widgets, preventing race conditions and freezing.
+- **Systemic Animation Gating Across Popup Widgets (Step 2 Batch)**:
+  - Triple-gated delegate size/opacity `Behavior` blocks and `highlightMoveDuration` in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml) behind `initialFocusSet && !isModelChanging && !isFilterAnimating`.
+  - Gated list transitions (`add`, `displaced`) in [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml) behind `window.visible`.
+  - Gated grid highlight behaviors in [`ClipboardManager.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/clipboard/ClipboardManager.qml) behind `window.navDuration > 0`.
+  - Gated year progress bar animation in [`CalendarPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/CalendarPopup.qml) behind `window.visible`.
+  - Gated album art scale animation in [`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml) behind `root.visible`.
+  - Gated monitor card spatial behaviors in [`MonitorPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml) behind `window.visible`.
+- **Native Standalone Polkit Authentication Agent (`Polkit.qml` & `PolkitService.qml`) (Step 3)**:
+  - Created standalone native PolicyKit authentication window [`polkit/Polkit.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/polkit/Polkit.qml) and singleton service [`polkit/PolkitService.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/polkit/PolkitService.qml).
+  - Registered `PolkitAgent` on D-Bus via `Quickshell.Services.Polkit` in [`Shell.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Shell.qml), replacing external GTK/Qt polkit dialogs.
+- **Redundant SysPanel Removal**: Removed redundant `SysPanel.qml`, its `WindowRegistry.js` entry, and `_preloadQueue` references across the codebase.
+- **SunsetPopup Geometry & Presets Cleanup**: Removed preset button rows across all 5 cards in [`SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml), compacting popup height to 460px. Re-anchored `sunset` in [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js) to `top-center` (`my: 60`) matching `CalendarPopup`.
+- **BatteryPopup Red Ring Bug Fix**: Diagnosed Wallust assigning crimson hue `#AB4651` to `"green"` token in `colors.json`. Rebound charging and healthy battery rings in [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml) to `window.primary`, reserving `window.red` strictly for critical low-battery states (`<15%`).
+- **Dynamic GTK/Qt Selection Highlight**: Added `@define-color theme_selected_bg_color {{color4}}` and `selection, *:selected` rules to [`dotfiles/wallust/templates/gtk.css`](file:///home/realdhiru/nix/dotfiles/wallust/templates/gtk.css) so text selection highlights update dynamically per wallpaper accent.
+
 ## 2026-09-30 — QuickShell Light/Dark Glass Theme Toggle & Music Pill Unification
 
 - **Hypridle 30-Minute Idle Suspend Restoration**:

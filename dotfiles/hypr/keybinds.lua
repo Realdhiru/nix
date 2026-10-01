@@ -45,6 +45,7 @@ hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh tog
 
 hl.bind(mainMod .. " + CTRL + SHIFT + V", hl.dsp.exec_cmd(scripts .. "fix_audio.sh"))
 hl.bind(mainMod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle sunset"))
+hl.bind(mainMod .. " + SHIFT + X", hl.dsp.exec_cmd("quickshell ipc -p " .. scripts .. "quickshell/Shell.qml call idle toggleDim"))
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(scripts .. "quickshell/toggle_theme_mode.sh"))
 
 -- Reload Hyprland & Quickshell

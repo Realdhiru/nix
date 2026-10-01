@@ -791,7 +791,7 @@ Item {
                                 height: parent.height
                                 radius: parent.radius
                                 color: window.textAccent
-                                Behavior on width { NumberAnimation { duration: 1000; easing.type: Easing.OutQuart } }
+                                Behavior on width { enabled: window.visible; NumberAnimation { duration: 1000; easing.type: Easing.OutQuart } }
                             }
                         }
                         

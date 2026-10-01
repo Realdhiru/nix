@@ -202,6 +202,8 @@ PanelWindow {
     property bool isWindowActive: false
     property string activeArg: ""
     property bool disableMorph: false
+    property int switchGeneration: 0
+    property int _pendingGen: 0
 
     property int morphDuration: 110
     property int morphDurationShift: 110
@@ -467,7 +469,10 @@ PanelWindow {
     }
 
     function switchWidget(newWidget, arg) {
-        console.log("switchWidget:", newWidget)
+        masterWindow.switchGeneration++;
+        let gen = masterWindow.switchGeneration;
+        masterWindow._pendingGen = gen;
+        console.log("switchWidget:", newWidget, "gen:", gen);
         delayedClear.stop();
 
         if (newWidget === "hidden") {
@@ -526,12 +531,13 @@ PanelWindow {
                 let isFull = (newWidget === "wallpaper");
                 masterWindow.morphDuration = masterWindow.morphDurationShift;
                 masterWindow.disableMorph = isFull;
-                executeSwitch(newWidget, arg, isFull);
+                executeSwitch(newWidget, arg, isFull, gen);
             }
         }
     }
 
-    function executeSwitch(newWidget, arg, immediate) {
+    function executeSwitch(newWidget, arg, immediate, gen) {
+        if (gen !== undefined && gen !== masterWindow.switchGeneration) return;
         let t = getLayout(newWidget);
         console.log("[COLD_OPEN_DEBUG] executeSwitch settled:", newWidget, "mw:", masterWindow.width, "mh:", masterWindow.height, "t.rx:", t ? t.rx : 0, "t.ry:", t ? t.ry : 0, "t.w:", t ? t.w : 0, "t.h:", t ? t.h : 0);
         masterWindow.currentActive = newWidget;
@@ -615,6 +621,7 @@ PanelWindow {
         interval: 100
 
         onTriggered: {
+            if (masterWindow._pendingGen !== masterWindow.switchGeneration) return;
             if (!masterWindow.isWindowActive && !widgetStack.busy) {
                 masterWindow.isVisible = false;
                 masterWindow.currentActive = "hidden";
@@ -629,6 +636,7 @@ PanelWindow {
         interval: 120
         repeat: false
         onTriggered: {
+            if (masterWindow._pendingGen !== masterWindow.switchGeneration) return;
             if (masterWindow.currentActive !== "wallpaper") {
                 masterWindow.disableMorph = false;
             }
@@ -641,7 +649,8 @@ PanelWindow {
         id: teleportTimer
         interval: 0
         onTriggered: {
-            executeSwitch(masterWindow._pendingWidget, masterWindow._pendingArg, true);
+            if (masterWindow._pendingGen !== masterWindow.switchGeneration) return;
+            executeSwitch(masterWindow._pendingWidget, masterWindow._pendingArg, true, masterWindow._pendingGen);
             morphReenableTimer.restart();
         }
     }

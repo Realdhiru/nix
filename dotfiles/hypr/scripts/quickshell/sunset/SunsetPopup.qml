@@ -10,7 +10,7 @@ Item {
     focus: true
 
     property real layoutWidth: 560
-    property real layoutHeight: 630
+    property real layoutHeight: 460
     width: layoutWidth
     height: layoutHeight
 
@@ -391,7 +391,7 @@ EOF
             // 1. TEMPERATURE CARD
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: root.s(104)
+                Layout.preferredHeight: root.s(64)
                 radius: root.s(12)
                 color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
                 border.width: 1
@@ -481,56 +481,13 @@ EOF
                             border.color: root.selectedControl === 0 ? root.primary : root.crust
                         }
                     }
-
-                    // 4 Symmetrical Presets
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: root.s(6)
-
-                        Repeater {
-                            model: [
-                                { name: "Day (6500K)", val: 6500 },
-                                { name: "Soft (4500K)", val: 4500 },
-                                { name: "Warm (3000K)", val: 3000 },
-                                { name: "Deep (1500K)", val: 1500 }
-                            ]
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: root.s(24)
-                                radius: root.s(6)
-                                color: (root.currentTemp === modelData.val)
-                                    ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.25)
-                                    : (pMa.containsMouse ? Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.45) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.35))
-                                border.width: 1
-                                border.color: (root.currentTemp === modelData.val) ? root.primary : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.3)
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: modelData.name
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: root.s(9.5)
-                                    font.weight: (root.currentTemp === modelData.val) ? Font.Bold : Font.Normal
-                                    color: (root.currentTemp === modelData.val) ? root.primary : root.text
-                                }
-
-                                MouseArea {
-                                    id: pMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.applyBackend(modelData.val, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt)
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
             // 2. GAMMA CARD
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: root.s(104)
+                Layout.preferredHeight: root.s(64)
                 radius: root.s(12)
                 color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
                 border.width: 1
@@ -620,56 +577,13 @@ EOF
                             border.color: root.selectedControl === 1 ? root.primary : root.crust
                         }
                     }
-
-                    // 4 Symmetrical Presets
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: root.s(6)
-
-                        Repeater {
-                            model: [
-                                { name: "Low (50%)", val: 50 },
-                                { name: "Dim (70%)", val: 70 },
-                                { name: "Soft (85%)", val: 85 },
-                                { name: "Full (100%)", val: 100 }
-                            ]
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: root.s(24)
-                                radius: root.s(6)
-                                color: (root.currentGamma === modelData.val)
-                                    ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.25)
-                                    : (gMa.containsMouse ? Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.45) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.35))
-                                border.width: 1
-                                border.color: (root.currentGamma === modelData.val) ? root.primary : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.3)
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: modelData.name
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: root.s(9.5)
-                                    font.weight: (root.currentGamma === modelData.val) ? Font.Bold : Font.Normal
-                                    color: (root.currentGamma === modelData.val) ? root.primary : root.text
-                                }
-
-                                MouseArea {
-                                    id: gMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.applyBackend(root.currentTemp, modelData.val, root.currentSat, root.currentGrain, root.currentCrt)
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
             // 3. SATURATION / GRAYSCALE CARD
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: root.s(104)
+                Layout.preferredHeight: root.s(64)
                 radius: root.s(12)
                 color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
                 border.width: 1
@@ -759,56 +673,13 @@ EOF
                             border.color: root.selectedControl === 2 ? root.primary : root.crust
                         }
                     }
-
-                    // 4 Symmetrical Presets
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: root.s(6)
-
-                        Repeater {
-                            model: [
-                                { name: "Mono (0%)", val: 0 },
-                                { name: "Muted (33%)", val: 33 },
-                                { name: "Vibrant (66%)", val: 66 },
-                                { name: "Full (100%)", val: 100 }
-                            ]
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: root.s(24)
-                                radius: root.s(6)
-                                color: (root.currentSat === modelData.val)
-                                    ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.25)
-                                    : (sMa.containsMouse ? Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.45) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.35))
-                                border.width: 1
-                                border.color: (root.currentSat === modelData.val) ? root.primary : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.3)
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: modelData.name
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: root.s(9.5)
-                                    font.weight: (root.currentSat === modelData.val) ? Font.Bold : Font.Normal
-                                    color: (root.currentSat === modelData.val) ? root.primary : root.text
-                                }
-
-                                MouseArea {
-                                    id: sMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.applyBackend(root.currentTemp, root.currentGamma, modelData.val, root.currentGrain, root.currentCrt)
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
             // 4. PAPER GRAIN CARD
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: root.s(104)
+                Layout.preferredHeight: root.s(64)
                 radius: root.s(12)
                 color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
                 border.width: 1
@@ -898,56 +769,13 @@ EOF
                             border.color: root.selectedControl === 3 ? root.primary : root.crust
                         }
                     }
-
-                    // 4 Symmetrical Presets
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: root.s(6)
-
-                        Repeater {
-                            model: [
-                                { name: "Off (0%)", val: 0 },
-                                { name: "Subtle (25%)", val: 25 },
-                                { name: "Medium (50%)", val: 50 },
-                                { name: "High (100%)", val: 100 }
-                            ]
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: root.s(24)
-                                radius: root.s(6)
-                                color: (root.currentGrain === modelData.val)
-                                    ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.25)
-                                    : (grMa.containsMouse ? Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.45) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.35))
-                                border.width: 1
-                                border.color: (root.currentGrain === modelData.val) ? root.primary : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.3)
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: modelData.name
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: root.s(9.5)
-                                    font.weight: (root.currentGrain === modelData.val) ? Font.Bold : Font.Normal
-                                    color: (root.currentGrain === modelData.val) ? root.primary : root.text
-                                }
-
-                                MouseArea {
-                                    id: grMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, modelData.val, root.currentCrt)
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
             // 5. CRT CURVATURE CARD
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: root.s(104)
+                Layout.preferredHeight: root.s(64)
                 radius: root.s(12)
                 color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
                 border.width: 1
@@ -1035,49 +863,6 @@ EOF
                             color: crtSlider.pressed ? root.primary : root.text
                             border.width: root.selectedControl === 4 ? root.s(2) : root.s(1)
                             border.color: root.selectedControl === 4 ? root.primary : root.crust
-                        }
-                    }
-
-                    // 4 Symmetrical Presets
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: root.s(6)
-
-                        Repeater {
-                            model: [
-                                { name: "Off (0%)", val: 0 },
-                                { name: "Soft (25%)", val: 25 },
-                                { name: "Medium (50%)", val: 50 },
-                                { name: "Retro (100%)", val: 100 }
-                            ]
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: root.s(24)
-                                radius: root.s(6)
-                                color: (root.currentCrt === modelData.val)
-                                    ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.25)
-                                    : (crtMa.containsMouse ? Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.45) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.35))
-                                border.width: 1
-                                border.color: (root.currentCrt === modelData.val) ? root.primary : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.3)
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: modelData.name
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: root.s(9.5)
-                                    font.weight: (root.currentCrt === modelData.val) ? Font.Bold : Font.Normal
-                                    color: (root.currentCrt === modelData.val) ? root.primary : root.text
-                                }
-
-                                MouseArea {
-                                    id: crtMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, modelData.val)
-                                }
-                            }
                         }
                     }
                 }
