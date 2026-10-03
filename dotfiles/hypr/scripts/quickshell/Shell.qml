@@ -21,6 +21,7 @@ ShellRoot {
 
     Main {}
     TopBar {}
+    SideBar {}
     Floating {}
     Polkit {}
     Idle {}

@@ -124,9 +124,9 @@ if [ "$WALLPAPER" = "--neutral" ]; then
     # Notify client applications
     pkill -USR2 cava 2>/dev/null || true
     pkill -HUP wezterm-gui 2>/dev/null || true
-    if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-        hyprctl reload >/dev/null 2>&1 || true
-    fi
+    RESTORE_SCRIPT="$HOME/.config/hypr/scripts/quickshell/restore_state.sh"
+    [ ! -x "$RESTORE_SCRIPT" ] && RESTORE_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh"
+    if [ -x "$RESTORE_SCRIPT" ]; then "$RESTORE_SCRIPT" >/dev/null 2>&1 || true; fi
     if command -v quickshell >/dev/null 2>&1; then
         quickshell ipc -p "$HOME/.config/hypr/scripts/quickshell/Shell.qml" call main reloadTheme >/dev/null 2>&1 || true
     fi
@@ -340,9 +340,9 @@ fi
 pkill -USR2 cava 2>/dev/null || true
 touch "$TARGET_CACHE/wezterm-colors.lua" 2>/dev/null || true
 touch "$HOME/nix/dotfiles/wezterm.lua" 2>/dev/null || true
-if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-    hyprctl reload >/dev/null 2>&1 || true
-fi
+RESTORE_SCRIPT="$HOME/.config/hypr/scripts/quickshell/restore_state.sh"
+[ ! -x "$RESTORE_SCRIPT" ] && RESTORE_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh"
+if [ -x "$RESTORE_SCRIPT" ]; then "$RESTORE_SCRIPT" >/dev/null 2>&1 || true; fi
 if command -v quickshell >/dev/null 2>&1; then
     quickshell ipc -p "$HOME/.config/hypr/scripts/quickshell/Shell.qml" call main reloadTheme >/dev/null 2>&1 || true
 fi

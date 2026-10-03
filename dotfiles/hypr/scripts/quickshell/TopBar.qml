@@ -12,8 +12,8 @@ Variants {
     delegate: Component {
         PanelWindow {
             id: barWindow
+            visible: Config.topBarVisible && Config.topBarPosition !== "left"
             property bool pendingReload: false
-
 
             IpcHandler {
                 target: "topbar"
@@ -26,7 +26,20 @@ Variants {
                 function toggleUpdate() {
                     barWindow.forceUpdateShow = !barWindow.forceUpdateShow
                 }
+                function toggle() {
+                    Config.topBarVisible = !Config.topBarVisible;
+                }
+                function hide() {
+                    Config.topBarVisible = false;
+                }
+                function show() {
+                    Config.topBarVisible = true;
+                }
+                function setPosition(pos: string): void {
+                    Config.setTopBarPosition(pos);
+                }
             }
+
 
             required property var modelData
             screen: modelData
@@ -39,7 +52,7 @@ Variants {
 
             Scaler {
                 id: scaler
-                currentWidth: barWindow.width
+                currentWidth: Screen.width
             }
 
             property real baseScale: scaler.baseScale
@@ -51,6 +64,7 @@ Variants {
             property int barHeight: s(48)
 
             implicitHeight: barHeight
+            implicitWidth: Screen.width
             margins { top: s(2); bottom: 0; left: s(4); right: s(4) }
             exclusiveZone: barHeight - s(4)
             color: "transparent"
@@ -433,6 +447,28 @@ Variants {
                 }
             }
 
+            // Catches play/pause/stop transitions that don't trigger metadata changes
+            Process {
+                id: mprisStatusWatcher
+                running: true
+                command: ["playerctl", "--follow", "status"]
+                stdout: SplitParser {
+                    splitMarker: "\n"
+                    onRead: (line) => {
+                        let status = line.trim();
+                        if (status === "Playing" || status === "Paused" || status === "Stopped") {
+                            let cur = Object.assign({}, barWindow.musicData || {});
+                            if (cur.status !== status) {
+                                cur.status = status;
+                                barWindow.musicData = cur;
+                                musicForceRefresh.running = false;
+                                musicForceRefresh.running = true;
+                            }
+                        }
+                    }
+                }
+            }
+
             // Topbar audio visualizer. Bound to status === "Playing"
             // specifically (not just "not stopped") so it only spawns
             // while media is genuinely playing — matches the visualizer's
@@ -724,6 +760,7 @@ Variants {
                                 Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"])
                             }
 
+
                             property real lastWheelTime: 0
                             onWheel: (wheel) => {
                                 let now = Date.now();
@@ -924,6 +961,7 @@ Variants {
                             }
 
                         height: barWindow.barHeight
+                        Behavior on height { NumberAnimation { duration: 260; easing.type: Easing.OutExpo } }
                         width: (centerBox.notifActive ? notifLayout.implicitWidth : centerLayout.implicitWidth) + barWindow.s(36)
                         Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutExpo } }
                         clip: true
@@ -963,6 +1001,7 @@ Variants {
                                 } else {
                                     Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle calendar"])
                                 }
+
                             }
                         }
 
@@ -970,7 +1009,7 @@ Variants {
                             id: centerLayout
                             anchors.centerIn: parent
                             spacing: barWindow.s(12)
-                            opacity: centerBox.notifActive ? 0.0 : 1.0
+                            opacity: !centerBox.notifActive ? 1.0 : 0.0
                             Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
                             Text {
@@ -1248,6 +1287,7 @@ Variants {
                                 }
                             }
                         }
+
                     }
 
 
@@ -1286,7 +1326,6 @@ Variants {
                                 z: -1
                             }
 
-
                             width: sysLayout.implicitWidth + barWindow.s(20)
 
                             Row {
@@ -1318,9 +1357,6 @@ Variants {
                                     Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
                                     Behavior on color { ColorAnimation { duration: 200 } }
 
-                                    // Was gated on its own extra 200ms Timer stacked on top of
-                                    // rightContent's reveal — pure added latency for no reason.
-                                    // Now triggers the instant rightContent itself is shown.
                                     property bool initAnimTrigger: rightContent.showLayout
                                     opacity: initAnimTrigger ? 1 : 0
                                     transform: Translate { y: sysBatPill.initAnimTrigger ? 0 : barWindow.s(10); Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } } }
@@ -1362,12 +1398,11 @@ Variants {
                                 z: -1
                             }
 
-
                             property real targetWidth: barWindow.isRecording ? barWindow.barHeight : 0
                             width: targetWidth
                             height: barWindow.barHeight
 
-                            visible: targetWidth > 0 || opacity > 0
+                            visible: width > 0 || opacity > 0
                             opacity: barWindow.isRecording ? 1.0 : 0.0
                             clip: true
 

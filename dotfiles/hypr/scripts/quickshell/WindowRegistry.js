@@ -15,7 +15,7 @@ const WIDGETS = {
     "calendar":      { w: 1450, h: 510, anchor: "top-center", mx: 0, my: 60, mr: 0, mb: 0, path: "calendar/CalendarPopup.qml" },
     "wallpaper": { w: -1,   h: 650, anchor: "center-fill",   mx: 0, my: 0,  mr: 0, mb: 0, path: "wallpaper/WallpaperPicker.qml" },
     "music":     { w: 700,  h: 650, anchor: "top-left",      mx: 5, my: 60, mr: 0, mb: 0, path: "music/MusicPopup.qml" },
-    "sunset":    { w: 560,  h: 460, anchor: "top-center",   mx: 0, my: 60, mr: 0, mb: 0, path: "sunset/SunsetPopup.qml" }
+    "sunset":    { w: 320,  h: 390, anchor: "bottom-left", mx: 52, my: 0,  mr: 0, mb: 12, path: "sunset/SunsetPopup.qml" }
 };
 
 function getScale(mw, mh, userScale) {
@@ -45,7 +45,7 @@ function s(val, scale) {
     return Math.round(val * scale);
 }
 
-function getLayout(name, mx, my, mw, mh, userScale) {
+function getLayout(name, mx, my, mw, mh, userScale, barPos) {
     if (name === "hidden") {
         return { 
             w: 1, 
@@ -65,32 +65,43 @@ function getLayout(name, mx, my, mw, mh, userScale) {
     let finalW = config.w === -1 ? mw : s(config.w, scale);
     let finalH = s(config.h, scale);
     
+    let isLeftBar = (barPos === "left");
     let rx = 0;
     let ry = 0;
 
     switch (config.anchor) {
         case "top-left":
-            rx = s(config.mx, scale);
-            ry = s(config.my, scale);
+            rx = isLeftBar ? 52 : s(config.mx, scale);
+            ry = isLeftBar ? 10 : s(config.my, scale);
+            break;
+        case "bottom-left":
+            rx = isLeftBar ? 52 : (s(config.mx, scale) || 12);
+            ry = mh - finalH - (isLeftBar ? 12 : s(config.mb, scale));
             break;
         case "top-right":
-            rx = mw - finalW - s(config.mr, scale);
-            ry = s(config.my, scale);
+            if (isLeftBar) {
+                rx = 52;
+                // battery and network pop up at bottom-left next to sidebar icons
+                ry = (name === "battery" || name === "network") ? (mh - finalH - 12) : 10;
+            } else {
+                rx = mw - finalW - s(config.mr, scale);
+                ry = s(config.my, scale);
+            }
             break;
         case "top-center":
-            rx = Math.floor((mw / 2) - (finalW / 2));
-            ry = s(config.my, scale);
+            rx = Math.floor((mw / 2) - (finalW / 2)) + (isLeftBar ? 26 : 0);
+            ry = isLeftBar ? 10 : s(config.my, scale);
             break;
         case "center":
-            rx = Math.floor((mw / 2) - (finalW / 2));
+            rx = Math.floor((mw / 2) - (finalW / 2)) + (isLeftBar ? 26 : 0);
             ry = Math.floor((mh / 2) - (finalH / 2));
             break;
         case "center-fill":
-            rx = 0;
+            rx = isLeftBar ? 48 : 0;
             ry = Math.floor((mh / 2) - (finalH / 2));
             break;
         case "bottom-center":
-            rx = Math.floor((mw / 2) - (finalW / 2));
+            rx = Math.floor((mw / 2) - (finalW / 2)) + (isLeftBar ? 26 : 0);
             ry = mh - finalH - s(config.mb, scale);
             break;
     }

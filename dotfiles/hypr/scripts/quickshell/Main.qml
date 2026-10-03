@@ -18,13 +18,17 @@ PanelWindow {
         running: true
     }
 
-    Keys.onEscapePressed: (event) => {
-        switchWidget("hidden", "");
-        event.accepted = true;
+    Shortcut {
+        sequence: "Escape"
+        context: Qt.WindowShortcut
+        enabled: masterWindow.isVisible
+        onActivated: switchWidget("hidden", "")
     }
 
     IpcHandler {
+        id: mainIpcHandler
         target: "main"
+
 
         function reloadTheme(): void {
             if (themeInstance) themeInstance.reload();
@@ -42,6 +46,19 @@ PanelWindow {
             let isClosing = (masterWindow.currentActive !== "hidden" && !masterWindow.isWindowActive);
             let effectivelyActive = isClosing ? "hidden" : masterWindow.currentActive;
             console.log("IPC", cmd, targetWidget, effectivelyActive);
+
+            if (targetWidget === "topbar") {
+                if (cmd === "toggle") Config.topBarVisible = !Config.topBarVisible;
+                else if (cmd === "open" || cmd === "show") Config.topBarVisible = true;
+                else if (cmd === "close" || cmd === "hide") Config.topBarVisible = false;
+                else if (cmd === "position" || cmd === "set_position") Config.setTopBarPosition(arg || "top");
+                return;
+            }
+
+            if (targetWidget === "autohide" || cmd === "autohide") {
+                Config.toggleBarAutohide();
+                return;
+            }
 
             if (cmd === "close") {
                 switchWidget("hidden", "");
@@ -77,14 +94,29 @@ PanelWindow {
         }
     }
 
+    Connections {
+        target: Config
+        function onRequestWidgetCommand(cmd, targetWidget, arg) {
+            mainIpcHandler.handleCommand(cmd, targetWidget, arg || "");
+        }
+    }
+
     WlrLayershell.namespace: "qs-master"
     WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: masterWindow.isVisible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+
+    anchors {
+        top: true
+        bottom: true
+        left: true
+        right: true
+    }
 
     exclusionMode: ExclusionMode.Ignore
     focusable: true
 
-    implicitWidth: masterWindow.screen.width
-    implicitHeight: masterWindow.screen.height
+    implicitWidth: masterWindow.screen ? masterWindow.screen.width : 0
+    implicitHeight: masterWindow.screen ? masterWindow.screen.height : 0
 
     visible: isVisible
 
@@ -92,20 +124,24 @@ PanelWindow {
 
     Item {
         id: topBarHole
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        height: 48
+        readonly property bool isVertical: Config.topBarPosition === "left"
+        x: (!isVertical && masterWindow.currentActive !== "hidden" && masterWindow.animX < 10 && masterWindow.animY < height) ? masterWindow.animW : 0
+        y: 0
+        width: {
+            if (isVertical) return 48;
+            let w = masterWindow.width;
+            if (masterWindow.currentActive !== "hidden" && masterWindow.animX < 10 && masterWindow.animY < 48) w -= masterWindow.animW;
+            if (masterWindow.currentActive !== "hidden" && (masterWindow.animX + masterWindow.animW) > (masterWindow.width - 10) && masterWindow.animY < 48) w -= masterWindow.animW;
+            return Math.max(0, w);
+        }
+        height: isVertical ? masterWindow.height : 48
 
-        anchors.leftMargin: (masterWindow.currentActive !== "hidden" && masterWindow.animX < 10 && masterWindow.animY < height) ? masterWindow.animW : 0
-        anchors.rightMargin: (masterWindow.currentActive !== "hidden" && (masterWindow.animX + masterWindow.animW) > (parent.width - 10) && masterWindow.animY < height) ? masterWindow.animW : 0
-
-        Behavior on anchors.leftMargin {
-            enabled: masterWindow.currentActive !== "hidden"
+        Behavior on x {
+            enabled: !topBarHole.isVertical && masterWindow.currentActive !== "hidden"
             NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
-        Behavior on anchors.rightMargin {
-            enabled: masterWindow.currentActive !== "hidden"
+        Behavior on width {
+            enabled: !topBarHole.isVertical && masterWindow.currentActive !== "hidden"
             NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
     }
@@ -200,6 +236,7 @@ PanelWindow {
 
     property bool isVisible: false
     property bool isWindowActive: false
+    onIsWindowActiveChanged: Config.isPopupOpen = isWindowActive
     property string activeArg: ""
     property bool disableMorph: false
     property int switchGeneration: 0
@@ -208,11 +245,11 @@ PanelWindow {
     property int morphDuration: 110
     property int morphDurationShift: 110
     property int exitDuration: 90
-
     property real animW: 1
     property real animH: 1
     property real animX: 0
     property real animY: 0
+
 
     property real targetW: 1
     property real targetH: 1
@@ -297,14 +334,14 @@ PanelWindow {
     }
 
     function getLayout(name) {
-        let logicalW = Math.round(masterWindow.monitorPhysWidth / (masterWindow.monitorScale > 0 ? masterWindow.monitorScale : 1.0));
-        let logicalH = Math.round(masterWindow.monitorPhysHeight / (masterWindow.monitorScale > 0 ? masterWindow.monitorScale : 1.0));
+        let logicalW = (masterWindow.screen && masterWindow.screen.width > 0) ? masterWindow.screen.width : Math.round(masterWindow.monitorPhysWidth / (masterWindow.monitorScale > 0 ? masterWindow.monitorScale : 1.0));
+        let logicalH = (masterWindow.screen && masterWindow.screen.height > 0) ? masterWindow.screen.height : Math.round(masterWindow.monitorPhysHeight / (masterWindow.monitorScale > 0 ? masterWindow.monitorScale : 1.0));
         let mw = masterWindow.width > 0 ? masterWindow.width : logicalW;
         let mh = masterWindow.height > 0 ? masterWindow.height : logicalH;
 
-        let key = name + "|" + mw + "|" + mh + "|" + masterWindow.globalUiScale;
+        let key = name + "|" + mw + "|" + mh + "|" + masterWindow.globalUiScale + "|" + Config.topBarPosition;
         if (_layoutCacheKey === key) return _layoutCache[key];
-        let result = Registry.getLayout(name, 0, 0, mw, mh, masterWindow.globalUiScale);
+        let result = Registry.getLayout(name, 0, 0, mw, mh, masterWindow.globalUiScale, Config.topBarPosition);
 
         if (result && result.comp && typeof result.comp === "string") {
             result.comp = resolveComponent(result.comp);
@@ -318,12 +355,23 @@ PanelWindow {
 
     Connections {
         target: masterWindow
-        function onWidthChanged()  { _layoutCacheKey = ""; Config.masterWidth = masterWindow.width; handleNativeScreenChange(); }
-        function onHeightChanged() { _layoutCacheKey = ""; Config.masterHeight = masterWindow.height; handleNativeScreenChange(); }
+        function onWidthChanged()  {
+            if (masterWindow.width <= 0) return;
+            _layoutCacheKey = "";
+            Config.masterWidth = masterWindow.width;
+            handleNativeScreenChange();
+        }
+        function onHeightChanged() {
+            if (masterWindow.height <= 0) return;
+            _layoutCacheKey = "";
+            Config.masterHeight = masterWindow.height;
+            handleNativeScreenChange();
+        }
     }
 
     function handleNativeScreenChange() {
-        if (masterWindow.currentActive === "hidden") return;
+        if (masterWindow.currentActive === "hidden" || masterWindow.width <= 0 || masterWindow.height <= 0) return;
+
 
         let t = getLayout(masterWindow.currentActive);
         if (!t) return;
@@ -491,7 +539,6 @@ PanelWindow {
                 masterWindow.disableMorph = true;
 
                 let t = getLayout(newWidget);
-                console.log("[COLD_OPEN_DEBUG] switchWidget frame-0:", newWidget, "phys:", masterWindow.monitorPhysWidth + "x" + masterWindow.monitorPhysHeight, "scale:", masterWindow.monitorScale, "mw:", masterWindow.width, "mh:", masterWindow.height, "t.rx:", t ? t.rx : 0, "t.ry:", t ? t.ry : 0, "t.w:", t ? t.w : 0, "t.h:", t ? t.h : 0);
                 let cachedWidget = widgetCache[newWidget];
                 let initW = (cachedWidget && cachedWidget.targetMasterWidth !== undefined) ? cachedWidget.targetMasterWidth : t.w;
                 let initH = (cachedWidget && cachedWidget.targetMasterHeight !== undefined) ? cachedWidget.targetMasterHeight : t.h;
@@ -539,8 +586,8 @@ PanelWindow {
     function executeSwitch(newWidget, arg, immediate, gen) {
         if (gen !== undefined && gen !== masterWindow.switchGeneration) return;
         let t = getLayout(newWidget);
-        console.log("[COLD_OPEN_DEBUG] executeSwitch settled:", newWidget, "mw:", masterWindow.width, "mh:", masterWindow.height, "t.rx:", t ? t.rx : 0, "t.ry:", t ? t.ry : 0, "t.w:", t ? t.w : 0, "t.h:", t ? t.h : 0);
         masterWindow.currentActive = newWidget;
+
         masterWindow.activeArg = arg;
         if (!t || !t.comp) return;
 
@@ -619,14 +666,23 @@ PanelWindow {
     Timer {
         id: delayedClear
         interval: 100
+        repeat: true
 
         onTriggered: {
-            if (masterWindow._pendingGen !== masterWindow.switchGeneration) return;
-            if (!masterWindow.isWindowActive && !widgetStack.busy) {
+            if (masterWindow._pendingGen !== masterWindow.switchGeneration) {
+                stop();
+                return;
+            }
+            if (!masterWindow.isWindowActive) {
+                stop();
                 masterWindow.isVisible = false;
                 masterWindow.currentActive = "hidden";
-                widgetStack.replace(blankContainer, {}, StackView.Immediate);
+                try {
+                    widgetStack.replace(blankContainer, {}, StackView.Immediate);
+                } catch(e) {}
                 masterWindow.disableMorph = false;
+            } else {
+                stop();
             }
         }
     }

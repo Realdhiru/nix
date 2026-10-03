@@ -32,16 +32,42 @@ if [[ "$ACTION" == "reload" ]]; then
     pkill -9 -f "quickshell" 2>/dev/null || true
     pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
     sleep 0.3
-    hyprctl eval "hl.exec_cmd('$QS_BIN -p $SHELL_QML_PATH')" >/dev/null 2>&1
+    hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('$QS_BIN -p $SHELL_QML_PATH'))" >/dev/null 2>&1 || (nohup "$QS_BIN" -p "$SHELL_QML_PATH" >/dev/null 2>&1 & disown)
+    exit 0
+fi
+
+if [[ "$ACTION" == "toggle" && "$TARGET" == "quickshell" ]]; then
+    if pgrep -f "Shell.qml" >/dev/null || pgrep -x quickshell >/dev/null || pgrep -f "\.quickshell-wra" >/dev/null; then
+        pkill -9 -f "quickshell" 2>/dev/null || true
+        pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
+        notify-send -a "QuickShell" -u low "QuickShell OFF" 2>/dev/null || true
+    else
+        hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('$QS_BIN -p $SHELL_QML_PATH'))" >/dev/null 2>&1 || (nohup "$QS_BIN" -p "$SHELL_QML_PATH" >/dev/null 2>&1 & disown)
+        notify-send -a "QuickShell" -u low "QuickShell ON" 2>/dev/null || true
+    fi
+    exit 0
+fi
+
+if [[ "$ACTION" == "toggle" && "$TARGET" == "topbar" ]]; then
+    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "toggle" "topbar" "" >/dev/null 2>&1 || "$QS_BIN" ipc -p "$SHELL_QML_PATH" call topbar toggle >/dev/null 2>&1
+    exit 0
+fi
+
+if [[ "$ACTION" == "position" && "$TARGET" == "topbar" ]]; then
+    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "position" "topbar" "$SUBTARGET" >/dev/null 2>&1 || "$QS_BIN" ipc -p "$SHELL_QML_PATH" call topbar setPosition "$SUBTARGET" >/dev/null 2>&1
+    exit 0
+fi
+
+if [[ "$ACTION" == "autohide" || ("$ACTION" == "toggle" && "$TARGET" == "autohide") ]]; then
+    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "autohide" "" "" >/dev/null 2>&1
     exit 0
 fi
 
 if [[ "$ACTION" == "open" || "$ACTION" == "toggle" || "$ACTION" == "close" ]]; then
-    if [[ "$TARGET" != "network" && "$TARGET" != "wallpaper" && "$TARGET" != "calendar" ]]; then
-        "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
-        exit 0
-    fi
+    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
+    exit 0
 fi
+
 
 if [[ "$ACTION" != "close" && "$ACTION" != "open" && "$ACTION" != "toggle" && "$ACTION" =~ ^[0-9a-zA-Z:-]+$ ]]; then
     # Send IPC command directly to Main.qml via Quickshell's native IPC handler

@@ -171,6 +171,7 @@
   services.displayManager.ly = {
     enable = true;
     settings = {
+      battery = true;
       session_log = null;
       shell = false;
       xinitrc = null;

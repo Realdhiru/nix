@@ -50,6 +50,8 @@ wait_exited() {
 }
 
 stop_daemon() {
+  systemctl --user stop awww-daemon 2>/dev/null || true
+  systemctl --user reset-failed awww-daemon 2>/dev/null || true
   local pids pid
   pids=$(daemon_pids)
   [ -z "$pids" ] && return 0
@@ -182,7 +184,15 @@ prune_frame_cache
 # which otherwise flashes the stale pre-video wallpaper before the newly
 # selected one is pushed (daemon/src/wallpaper.rs commit_surface_changes).
 # Our own restore path (--restart) and set_wallpaper.sh cover restoring.
-awww-daemon --no-cache --format xrgb >/dev/null 2>&1 &
+if command -v systemd-run >/dev/null 2>&1; then
+  systemctl --user reset-failed awww-daemon >/dev/null 2>&1 || true
+  systemd-run --user --unit=awww-daemon --description="awww wallpaper daemon" \
+    "$(command -v awww-daemon)" --no-cache --format argb >/dev/null 2>&1 || \
+    ( nohup awww-daemon --no-cache --format argb >/dev/null 2>&1 & disown $! 2>/dev/null || true )
+else
+  nohup awww-daemon --no-cache --format argb >/dev/null 2>&1 &
+  disown $! 2>/dev/null || true
+fi
 
 # Block until the daemon answers a query, then re-apply any captured wallpapers.
 for _ in $(seq 1 "$WAIT_ITERATIONS"); do

@@ -48,11 +48,29 @@ hl.bind(mainMod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd(scripts .. "qs_manager
 hl.bind(mainMod .. " + SHIFT + X", hl.dsp.exec_cmd("quickshell ipc -p " .. scripts .. "quickshell/Shell.qml call idle toggleDim"))
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(scripts .. "quickshell/toggle_theme_mode.sh"))
 
--- Reload Hyprland & Quickshell
-hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(scripts .. "reload.sh"))
+-- Toggle Quickshell
+hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle quickshell"))
 
--- Disable/Enable Quickshell
-hl.bind(mainMod .. " + ALT + ALT_R", hl.dsp.exec_cmd('bash -c "if pidof quickshell >/dev/null || pidof .quickshell-wra >/dev/null; then killall -9 quickshell .quickshell-wra; else quickshell -p ' .. scripts .. 'quickshell/Shell.qml & fi"'))
+-- Toggle TopBar only
+hl.bind(mainMod .. " + ALT + ALT_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle topbar"))
+hl.bind(mainMod .. " + ALT + ALT_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle topbar"))
+
+-- Toggle Bar Auto-Hide (CTRL + MOD + ALT)
+hl.bind(mainMod .. " + CTRL + ALT_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
+hl.bind(mainMod .. " + CTRL + ALT_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
+hl.bind(mainMod .. " + ALT + Control_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
+hl.bind(mainMod .. " + ALT + Control_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
+hl.bind("CTRL + ALT + Super_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
+hl.bind("CTRL + ALT + Super_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
+
+-- Cycle Wallpaper Left / Right
+hl.bind(mainMod .. " + ALT + Left", hl.dsp.exec_cmd(scripts .. "cycle_wallpaper.sh prev"))
+hl.bind(mainMod .. " + ALT + Right", hl.dsp.exec_cmd(scripts .. "cycle_wallpaper.sh next"))
+
+-- TopBar Position (Top / Left)
+hl.bind(mainMod .. " + ALT + Up", hl.dsp.exec_cmd(scripts .. "qs_manager.sh position topbar top"))
+hl.bind(mainMod .. " + ALT + Down", hl.dsp.exec_cmd(scripts .. "qs_manager.sh position topbar left"))
+
 
 -- ======================================================
 -- Applications

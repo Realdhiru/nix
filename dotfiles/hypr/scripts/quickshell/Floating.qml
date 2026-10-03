@@ -103,6 +103,30 @@ Variants {
                     }
                 }
 
+                function showEdge(edge: string) {
+                    floatingWidget.currentPos = floatingWidget.height / 2;
+                    floatingWidget.isPinned = true;
+                    floatingWidget.showSidebar(edge, floatingWidget.currentPos);
+                    floatingWidget.isExpanded = true;
+                }
+
+                function show() {
+                    showEdge(floatingWidget.activeEdge);
+                }
+
+                function hide() {
+                    floatingWidget.isSidebarVisible = false;
+                    floatingWidget.isExpanded = false;
+                }
+
+                function toggle() {
+                    if (floatingWidget.isSidebarVisible) {
+                        hide();
+                    } else {
+                        show();
+                    }
+                }
+
                 function forceReload() {
                     Quickshell.reload(true)
                 }
@@ -708,8 +732,11 @@ Variants {
                 height: floatingWidget.activeEdge === "bottom" ? floatingWidget.s(12) : Math.max(floatingWidget.s(20), floatingWidget.baseSidebarH - floatingWidget.s(20))
                 radius: floatingWidget.s(6)
 
-                color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 1.0)
-                border.width: 0
+                color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
+                border.width: Math.max(1, Config.borderWidth)
+                border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0)
+                    ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, Config.borderOpacity)
+                    : Qt.rgba(255, 255, 255, Config.glassSpecular)
 
                 opacity: (floatingWidget.isPeekVisible && !floatingWidget.isSidebarVisible) ? (peekMouse.containsMouse || peekMouse.pressed ? 1.0 : 0.6) : 0.0
                 scale: floatingWidget.isPeekVisible ? 1.0 : 0.6
@@ -867,9 +894,18 @@ Variants {
                         width: floatingWidget.s(15) + parent.width
                         height: parent.height
                         radius: floatingWidget.s(15)
-                        color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.95)
-                        border.width: 1
-                        border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08)
+                        color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
+                        border.width: Math.max(1, Config.borderWidth)
+                        border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0)
+                            ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, Config.borderOpacity)
+                            : Qt.rgba(255, 255, 255, Config.glassSpecular)
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: parent.radius
+                            color: Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, Config.antiBleedOpacity)
+                            z: -1
+                        }
 
                         MouseArea {
                             id: sidebarDragArea
@@ -912,7 +948,7 @@ Variants {
 
                         component EmptyBlock : Rectangle {
                             radius: floatingWidget.s(12)
-                            color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.05)
+                            color: Qt.rgba(mocha.surface0.r, mocha.surface0.g, mocha.surface0.b, 0.25)
                             border.width: 1
                             border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.08)
                             clip: true

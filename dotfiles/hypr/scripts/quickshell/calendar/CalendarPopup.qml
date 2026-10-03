@@ -28,27 +28,11 @@ Item {
     }
 
     // -------------------------------------------------------------------------
-    // DYNAMIC MASTER WINDOW SCALING (Cleaned: Locked to 510px)
+    // DYNAMIC MASTER WINDOW SCALING (Dimensions defined via WindowRegistry)
     // -------------------------------------------------------------------------
     property real targetMasterHeight: Math.round(510 * window.sf)
     property real targetMasterWidth: Math.round(1450 * window.sf)
-    
-    onTargetMasterHeightChanged: {
-        if (typeof masterWindow !== "undefined") {
-            masterWindow.animH = window.targetMasterHeight;
-            masterWindow.targetH = window.targetMasterHeight;
-        }
-    }
 
-    onTargetMasterWidthChanged: {
-        if (typeof masterWindow !== "undefined") {
-            masterWindow.animW = window.targetMasterWidth;
-            masterWindow.targetW = window.targetMasterWidth;
-            
-            let newX = Math.floor((Screen.width / 2) - (window.targetMasterWidth / 2));
-            masterWindow.animX = newX;
-        }
-    }
 
     // -------------------------------------------------------------------------
     // KEYBOARD SHORTCUTS

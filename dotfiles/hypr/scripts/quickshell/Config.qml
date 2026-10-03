@@ -21,6 +21,25 @@ Item {
     property bool dataReady: false
     property var rawSettings: ({})
     property var rawEnvs: ({})
+    property bool topBarVisible: true
+    property string topBarPosition: "top"
+    signal requestWidgetCommand(string cmd, string targetWidget, string arg)
+
+    function setTopBarPosition(pos) {
+        if (pos !== "top" && pos !== "left") pos = "top";
+        topBarPosition = pos;
+        setSetting("topbarPosition", pos);
+    }
+
+    property bool barAutohide: config.getSetting("barAutohide", false)
+    property bool isPopupOpen: false
+
+    function toggleBarAutohide() {
+        barAutohide = !barAutohide;
+        setSetting("barAutohide", barAutohide);
+        sh("notify-send -a 'QuickShell' -u low 'Auto-Hide " + (barAutohide ? "ON" : "OFF") + "'");
+    }
+
 
     // =========================================================================
     // Generic Utilities
@@ -384,6 +403,7 @@ Item {
     // Boot Initialization (Runs once on start)
     // =========================================================================
     Component.onCompleted: {
+        parseSettingsTextSync();
         sh("mkdir -p ~/.cache && touch ~/.cache/hypr_power_monitor.conf");
         settingsReader.running = false; settingsReader.running = true;
         envReader.running = false; envReader.running = true;
@@ -447,20 +467,75 @@ Item {
         config.isSolidMode = wpKilled || gamingMode || (profile === "power-saver");
     }
 
+    function applySettingsObject(cleanedSettings) {
+        if (!cleanedSettings) return;
+        config.rawSettings = cleanedSettings;
+
+        if (config.rawSettings.uiScale !== undefined) config.uiScale = config.rawSettings.uiScale;
+        if (config.rawSettings.themeMode !== undefined) config.themeMode = config.rawSettings.themeMode;
+        if (config.rawSettings.popupBackgroundSource !== undefined) config.popupBackgroundSource = config.rawSettings.popupBackgroundSource;
+        if (config.rawSettings.popupOpacity !== undefined) config.popupOpacity = config.rawSettings.popupOpacity;
+        if (config.rawSettings.cardOpacity !== undefined) config.cardOpacity = config.rawSettings.cardOpacity;
+        if (config.rawSettings.topbarPillOpacity !== undefined) config.topbarPillOpacity = config.rawSettings.topbarPillOpacity;
+        if (config.rawSettings.topbarPillHoverOpacity !== undefined) config.topbarPillHoverOpacity = config.rawSettings.topbarPillHoverOpacity;
+        if (config.rawSettings.borderWidth !== undefined) config.borderWidth = config.rawSettings.borderWidth;
+        if (config.rawSettings.borderOpacity !== undefined) config.borderOpacity = config.rawSettings.borderOpacity;
+        if (config.rawSettings.glassSpecular !== undefined) config.glassSpecular = config.rawSettings.glassSpecular;
+        if (config.rawSettings.topbarColorSource !== undefined) config.topbarColorSource = config.rawSettings.topbarColorSource;
+        if (config.rawSettings.topbarPosition !== undefined) config.topBarPosition = config.rawSettings.topbarPosition;
+        if (config.rawSettings.barAutohide !== undefined) config.barAutohide = Boolean(config.rawSettings.barAutohide);
+        if (config.rawSettings.cardColorSource !== undefined) config.cardColorSource = config.rawSettings.cardColorSource;
+        if (config.rawSettings.clockColorSource !== undefined) config.clockColorSource = config.rawSettings.clockColorSource;
+        if (config.rawSettings.textColorSource !== undefined) config.textColorSource = config.rawSettings.textColorSource;
+        if (config.rawSettings.accentColorSource !== undefined) config.accentColorSource = config.rawSettings.accentColorSource;
+        if (config.rawSettings.cavaGradient !== undefined) config.cavaGradient = config.rawSettings.cavaGradient;
+        if (config.rawSettings.topbarHelpIcon !== undefined) config.topbarHelpIcon = config.rawSettings.topbarHelpIcon;
+        if (config.rawSettings.wallpaperDir !== undefined) {
+            let wp = config.rawSettings.wallpaperDir;
+            if (wp.startsWith("~/")) wp = homeDir + wp.substring(1);
+            config.wallpaperDir = wp;
+        }
+        if (config.rawSettings.language !== undefined && config.rawSettings.language !== "") config.language = config.rawSettings.language;
+        if (config.rawSettings.kbOptions !== undefined) config.kbOptions = config.rawSettings.kbOptions;
+        if (config.rawSettings.workspaceCount !== undefined) {
+            config.workspaceCount = config.rawSettings.workspaceCount;
+            config.initialWorkspaceCount = config.rawSettings.workspaceCount;
+        }
+        config.dataReady = true;
+    }
+
+    function parseSettingsTextSync() {
+        try {
+            let raw = settingsFileWatcher.text ? settingsFileWatcher.text.trim() : "";
+            if (!raw || raw.length === 0) return;
+            let cleaned = raw.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+            if (cleaned && cleaned.length > 0 && cleaned !== "{}") {
+                let parsed = JSON.parse(cleaned);
+                applySettingsObject(parsed);
+            }
+        } catch (e) {
+            // Ignore parse errors on transient writes
+        }
+    }
+
+
     FileView {
         id: settingsFileWatcher
         path: config.settingsJsonPath
         watchChanges: true
         onLoadedChanged: {
+            config.parseSettingsTextSync();
             settingsReader.running = false;
             settingsReader.running = true;
         }
         onFileChanged: {
             settingsFileWatcher.reload();
+            config.parseSettingsTextSync();
             settingsReader.running = false;
             settingsReader.running = true;
         }
         onTextChanged: {
+            config.parseSettingsTextSync();
             settingsReader.running = false;
             settingsReader.running = true;
         }
@@ -476,20 +551,9 @@ Item {
                     let raw = this.text ? this.text.trim() : "";
                     let cleaned = raw.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
                     if (cleaned && cleaned.length > 0 && cleaned !== "{}") {
-                        config.rawSettings = JSON.parse(cleaned);
-
-                        // Map explicitly defined properties
-                        if (config.rawSettings.uiScale !== undefined) config.uiScale = config.rawSettings.uiScale;
-                        if (config.rawSettings.themeMode !== undefined) config.themeMode = config.rawSettings.themeMode;
-                        if (config.rawSettings.popupBackgroundSource !== undefined) config.popupBackgroundSource = config.rawSettings.popupBackgroundSource;
-                        if (config.rawSettings.popupOpacity !== undefined) config.popupOpacity = config.rawSettings.popupOpacity;
-                        if (config.rawSettings.cardOpacity !== undefined) config.cardOpacity = config.rawSettings.cardOpacity;
-                        if (config.rawSettings.topbarPillOpacity !== undefined) config.topbarPillOpacity = config.rawSettings.topbarPillOpacity;
-                        if (config.rawSettings.topbarPillHoverOpacity !== undefined) config.topbarPillHoverOpacity = config.rawSettings.topbarPillHoverOpacity;
-                        if (config.rawSettings.borderWidth !== undefined) config.borderWidth = config.rawSettings.borderWidth;
-                        if (config.rawSettings.borderOpacity !== undefined) config.borderOpacity = config.rawSettings.borderOpacity;
-                        if (config.rawSettings.glassSpecular !== undefined) config.glassSpecular = config.rawSettings.glassSpecular;
-                        if (config.rawSettings.topbarColorSource !== undefined) config.topbarColorSource = config.rawSettings.topbarColorSource;
+                        let parsed = JSON.parse(cleaned);
+                        config.applySettingsObject(parsed);
+                        if (config.rawSettings.barAutohide !== undefined) config.barAutohide = Boolean(config.rawSettings.barAutohide);
                         if (config.rawSettings.cardColorSource !== undefined) config.cardColorSource = config.rawSettings.cardColorSource;
                         if (config.rawSettings.clockColorSource !== undefined) config.clockColorSource = config.rawSettings.clockColorSource;
                         if (config.rawSettings.textColorSource !== undefined) config.textColorSource = config.rawSettings.textColorSource;

@@ -76,36 +76,41 @@ stop_mpvpaper() {
 }
 
 # 2. Render Wallpaper (Instant Visual Pathway)
-if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
-    "$SCRIPT_DIR/ensure_awww.sh" --stop 8>&- 2>/dev/null || true
-    stop_mpvpaper
-    
+if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then
     WALL_TARGET="$WALL"
-    if [[ "$EXT" == "gif" ]]; then
-        GIF_CACHE_DIR="$HOME/.cache/converted_gifs"
-        mkdir -p "$GIF_CACHE_DIR"
-        WALL_TARGET="$GIF_CACHE_DIR/$BASENAME.mp4"
-        if [ ! -s "$WALL_TARGET" ] && command -v ffmpeg >/dev/null 2>&1; then
-            ffmpeg -hide_banner -loglevel error -y -i "$WALL" -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" -c:v libx264 -preset veryfast -pix_fmt yuv420p -an "$WALL_TARGET" 8>&-
-            [ ! -s "$WALL_TARGET" ] && WALL_TARGET="$WALL"
-        fi
-    fi
 
-    if command -v mpvpaper >/dev/null 2>&1; then
-        mpvpaper -o "no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0 --input-ipc-server=/tmp/mpv-paper-socket" '*' "$WALL_TARGET" 8>&- > /dev/null 2>&1 &
-        disown $! 2>/dev/null || true
+    # Seamless hot-swap if mpvpaper is already running
+    if [ -S /tmp/mpv-paper-socket ] && [ -n "$(mpvpaper_pids)" ]; then
+        echo '{ "command": ["loadfile", "'"$WALL_TARGET"'"] }' | socat -t 0.5 - /tmp/mpv-paper-socket >/dev/null 2>&1 || true
+    else
+        stop_mpvpaper
+        rm -f /tmp/mpv-paper-socket
+        if command -v mpvpaper >/dev/null 2>&1; then
+            mpvpaper -o "no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0 --input-ipc-server=/tmp/mpv-paper-socket" '*' "$WALL_TARGET" 8>&- > /dev/null 2>&1 &
+            disown $! 2>/dev/null || true
+            sleep 0.15
+        fi
+        "$SCRIPT_DIR/ensure_awww.sh" --stop 8>&- 2>/dev/null || true
     fi
 else
-    stop_mpvpaper
+    # Images & GIFs: hardware-accelerated smooth transitions via awww
     "$SCRIPT_DIR/ensure_awww.sh" 8>&- 2>/dev/null || true
+
+    TRANS_TYPE="${2:-${AWWW_TRANSITION:-fade}}"
+    TRANS_DURATION="${AWWW_TRANSITION_DURATION:-0.35}"
+    TRANS_FPS="${AWWW_TRANSITION_FPS:-120}"
+    TRANS_BEZIER="${AWWW_TRANSITION_BEZIER:-.1,.9,.2,1}"
 
     if command -v awww >/dev/null 2>&1; then
         awww img "$WALL" \
-            --transition-type fade \
-            --transition-step 255 \
-            --transition-duration 0.08 \
-            --transition-fps 60 > /dev/null 2>&1
+            --transition-type "$TRANS_TYPE" \
+            --transition-duration "$TRANS_DURATION" \
+            --transition-fps "$TRANS_FPS" \
+            --transition-bezier "$TRANS_BEZIER" > /dev/null 2>&1
     fi
+
+    # Terminate mpvpaper only after awww has rendered the new wallpaper
+    stop_mpvpaper
 fi
 
 # Release lock now that wallpaper daemon has taken over

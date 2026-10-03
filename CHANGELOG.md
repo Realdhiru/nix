@@ -1,6 +1,197 @@
 # CHANGELOG
 
+## 2026-10-03 — Icon Font Unification, Zero-Flicker Wallpaper Transitions & awww-daemon Lifecycle Fix
+
+- **SideBar Icon Font Unification**:
+  - Replaced all 5 remaining hardcoded `"Iosevka Nerd Font"` references (volume, wifi, bluetooth, recording, battery) in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml) with `barWindow.iconFont` (`JetBrainsMono Nerd Font, Iosevka Nerd Font, Symbols Nerd Font` fallback chain).
+  - Ensures all Nerd Font glyphs render consistently via fontconfig fallback.
+- **Zero-Flicker Wallpaper Transitions** ([`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh)):
+  - GIFs now render natively via `awww img` with hardware fade transitions instead of ffmpeg→mpvpaper conversion pipeline. Eliminates black screen flash.
+  - Videos (mp4/mkv/webm) use mpvpaper IPC socket hot-swap (`loadfile` JSON command via `socat`) when mpvpaper is already running — seamless video-to-video switch with zero process restart.
+  - Cross-format transitions (video→image/GIF) render awww first, then stop mpvpaper — no gap frame.
+  - Cross-format transitions (image/GIF→video) start mpvpaper, sleep 150ms for first frame, then stop awww.
+- **Shader Persistence Across Wallpaper & Theme Swaps**:
+  - Removed destructive `hyprctl reload` invocations from [`wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh) and [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml). `hyprctl reload` was re-parsing `hyprland.conf` and wiping `decoration:screen_shader = ''` on every wallpaper change and power profile switch.
+  - Added state restoration handoff in `generate.sh` via [`restore_state.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh) to re-assert active screen shaders and hyprsunset settings seamlessly when changing wallpapers.
+- **Vertical SideBar Margins Alignment**:
+  - Increased `topZone.anchors.topMargin` and `bottomZone.anchors.bottomMargin` in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml) from `s(4)` to `s(16)`.
+  - Aligns vertical bar top and bottom gaps with desktop window `gaps_out` while keeping widgets grouped towards the center.
+- **Serpantinum-Style Panel Reveal Animations**:
+  - Upgraded [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L578) auto-hide reveal curve to a dual-axis `350ms Easing.OutQuint` position slide paired with a `250ms Easing.OutCubic` opacity fade.
+  - Eliminates visual pop-in and creates silky smooth elastic bar spawning.
+- **Frame-0 Synchronous Settings Load & Startup Glitch Fix**:
+  - Resolved duplicate `Component.onCompleted` declaration in [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml#L405) that prevented QuickShell from launching.
+- **Live Frosted Desktop Lock Mode**:
+  - Configured [`cmd_lock()`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh#L37-L50) in [`dotfiles/hypr/scripts/power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh) to capture an instant snapshot of active desktop windows using `grim /tmp/lock_screenshot.png` upon locking.
+  - Passes the live desktop screenshot directly to [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml#L400) where QuickShell's `MultiEffect` applies gaussian glass blur and dark frosted glass tinting.
+  - Gives the lockscreen a frosted glass feel over active desktop windows while preserving Wayland session lock security. Added cleanup on unlock.
+- **SideBar Clock & Bluetooth Palette Refinement**:
+  - Rebound Clock Minutes text color in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L626) to standard crisp white (`mocha.text`).
+  - Rebound Day of Month text (`dayNumStr`) in `SideBar.qml` to the dynamic clock accent palette (`Config.clockColorSource`).
+  - Rebound Bluetooth icon off/normal state color in `SideBar.qml` from static `mocha.sapphire` to `barWindow.accentColor`, matching Wifi, Volume, Sunset, and Battery icons.
+- **Lockscreen Capture Speed (759ms → 87ms)**:
+  - Changed [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh#L38) desktop capture from `grim` PNG to `grim -t jpeg -q 75`, reducing capture time from 759ms to ~87ms. Quality loss is invisible after `MultiEffect` gaussian blur.
+- **CAVA Visualizer Reactivity Fix** (both [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml) and [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml)):
+  - Added `mprisStatusWatcher` Process (`playerctl --follow status`) alongside existing `mprisWatcher` (`playerctl --follow metadata`). `metadata` only fires on track changes, missing pure play/pause transitions. The status watcher catches these events immediately, making CAVA appear/disappear reactively without manual reload.
+
+## 2026-10-03 — QuickActions Liquid Theme, Sunset Right-Click Toggle, Left-to-Right CAVA Equalizer & Zero-Latency MPRIS
+
+- **QuickActions Translucent Liquid Look**:
+  - Restored dynamic translucent liquid frosted glass styling to [`Floating.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Floating.qml) by replacing opaque background values (`0.95`, `1.0`) with `Config.effectivePopupOpacity`, anti-bleed background layers (`Config.antiBleedOpacity`), and specular borders (`Config.glassSpecular`).
+  - Updated [`SystemUsage.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/SystemUsage.qml) `LiquidSquare` base color to translucent alpha (`0.35`) and reinforced border clarity (`0.12`).
+  - Added `show`, `hide`, `showEdge`, and `toggle` functions to `Floating.qml` `IpcHandler`.
+- **Hyprsunset Icon (`󰖙`) & Right-Click Power Toggle**:
+  - Replaced sunset icon on the vertical bar with `󰖙` (sunset horizon icon).
+  - Wired Right-Click on `sunsetMouse` in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml) to execute [`toggle_sunset.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/toggle_sunset.sh): saves current settings and completely terminates `hyprsunset` and Hyprland screen shaders when active, or restores warm sunset state when inactive.
+  - Retained Left-Click to toggle the bottom-left 5-slider configuration popup.
+- **Zero-Latency MPRIS Reactivity & Left-to-Right CAVA Equalizer**:
+  - Enhanced `mprisWatcher` in `SideBar.qml` to parse player status and title synchronously in `SplitParser.onRead`, eliminating lag caused by disk scripts.
+  - Re-engineered `mediaBox` visualizer into an 8-row horizontal equalizer: 8 frequency bands stacked vertically, each growing horizontally from left to right across 7 LED segments with subtle resting state transparency and active accent glow.
+
+
+- **Workspaces Dead-Center Positioning**:
+  - Moved `workspacesBox` in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml) into a dedicated `centerZone` anchored to `anchors.centerIn: parent`, keeping the workspace capsule centered vertically on the screen.
+- **Clock De-condensation & Chunky CAVA Repositioning**:
+  - Enlarged Clock card typography to `s(19)` JetBrains Mono Black for hours and minutes, `s(14)` for day, and `s(12)` for month, adding generous vertical spacing (`s(4)`) and `s(24)` card padding to remove condensation.
+  - Repositioned pure CAVA visualizer (`mediaBox`) directly below the Clock card in `topZone`.
+  - Reconfigured visualizer to 4 chunky vertical frequency columns (`barW: s(6.5)`, `barGap: s(2.0)`, `segH: s(2.5)`, `segGap: s(1.2)`) with rounded corners, mirroring the visual weight of TopBar's horizontal CAVA bricks.
+- **Strict Dynamic Theme Color Enforcement**:
+  - Removed hardcoded charging/percentage color overrides in `batDynamicColor` in `SideBar.qml`, binding it directly to `barWindow.accentColor`.
+  - Set default Volume icon color in `volBox` to `barWindow.accentColor`, ensuring all active icons consistently follow the dynamic wallpaper palette.
+- **Hyprsunset Night Light Widget Slim-Down & Bottom-Left Anchor**:
+  - Stripped bloated header row (title, subtitle, icon box, reset button) from [`SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml), retaining only the 5 minimal sliders (Warmth, Brightness, Saturation, Grain, CRT Curvature).
+  - Slimmed dimensions to a vertical rectangle (`320x390`) and updated [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js) to anchor at `bottom-left` next to the sidebar (`rx = 52`, `ry = mh - finalH - 12`).
+  - Added native night light toggle icon button (`sunsetBox`) in `SideBar.qml` `bottomZone` directly below `trayBox`.
+- **Fuzzel Outside-Click Dismissal Fix**:
+  - Set `exit-on-keyboard-focus-loss = yes` in [`dotfiles/fuzzel/fuzzel.ini`](file:///home/realdhiru/nix/dotfiles/fuzzel/fuzzel.ini) so clicking outside the launcher immediately closes it.
+- **OpenCode Package Integration**:
+  - Added `pkgs.opencode` to `environment.systemPackages` in [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix). Validated with `nixos-rebuild build`.
+
+## 2026-10-03 — SideBar Reordering, Pure CAVA Music Pill, Clock Fix & System Tray Integration
+
+- **Vertical SideBar Structure Reordering**:
+  - Reordered `topZone` in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml): **Clock & Date** positioned first (topmost), **Workspaces** second, and **Music Pill** third.
+- **Clock Blinking Dot Elimination**:
+  - Identified and removed the blinking notification ticker badge overlay (`NotifTicker.tickerVisible` with infinite opacity loop) from the top-right corner of the clock card, restoring a clean visual presentation.
+- **Pure CAVA Music Pill**:
+  - Simplified media widget into pure CAVA: removed thumbnail box, artist/title marquee, and progress texts.
+  - Implemented 6 thick vertical bars (`barW: s(3.8)`, `barGap: s(1.6)`, `segH: s(2.6)`, `segGap: s(1.2)`) with rounded corners and wallpaper accent gradients.
+  - Mirrored TopBar lifecycle: widget auto-appears only when `status === "Playing"` and smoothly collapses to 0 height when paused or stopped.
+  - Added `parseMusicFile()` to `Component.onCompleted` to ensure immediate reactive state sync on cold starts.
+- **Vibrant Battery Icon Palette**:
+  - Updated `batDynamicColor` in `SideBar.qml` to return `barWindow.accentColor` during normal discharge/charge states, eliminating dull fallback color and matching other active widgets.
+- **System Tray Direct Integration**:
+  - Moved system tray card in `bottomZone` directly above the network pill.
+  - Replaced broken `.length` check with filtered array using `SystemTray.items.values`, filtering out daemons (blueman, kdeconnect) while rendering native tray icons with `QsMenuAnchor` context menus.
+
+## 2026-10-03 — SideBar Soft-Refresh, PwObjectTracker & MPRIS Debounce Fixes
+
+- **PipeWire Reactivity with `PwObjectTracker`**:
+  - Integrated `PwObjectTracker { objects: Pipewire.nodes.values }` into [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml). In QuickShell, without an active `PwObjectTracker`, Pipewire node properties do not subscribe to daemon events, leaving volume/mute static.
+  - Eliminated imperative property overrides on `sysVolume` that broke declarative QML bindings, converting `sysVolume` and `isMuted` to declarative properties with `onSysVolumeChanged` and `onIsMutedChanged` handlers.
+  - Wired direct zero-latency native Pipewire volume setting (`sink.audio.volume = newVol`) on mouse wheel and right-click mute toggle.
+- **Robust MPRIS Player Detection & Multi-Player Debouncing**:
+  - Upgraded [`music_info.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/music_info.sh) to scan all players on D-Bus (`playerctl -a`) and prioritize active `"Playing"` or `"Paused"` players over idle/stopped players (e.g. Brave).
+  - Added `-a` flag to `mprisWatcher` in `SideBar.qml` (`playerctl -a --follow metadata`) so newly launched players or tracks are never missed.
+  - Added 80ms `musicRefreshDebounce` timer in `SideBar.qml` to coalesce rapid burst MPRIS property change signals into a single uninterrupted refresh pass.
+  - Resolved circular dependency in album art thumbnail where `thumbBox.visible` required `artImg.status === Image.Ready` while `artImg.source` was gated on `parent.visible`. Prefixing with `file://` scheme ensures immediate loading.
+  - Added `refreshMusic()` IPC hook to `SideBar.qml` `IpcHandler`.
+
+## 2026-10-03 — System Diagnosis & Comprehensive Fix: Input Lockup, IPC Routing & SideBar Restorations
+
+- **Full Root-Cause Diagnosis of Screen Input Lockup**:
+  - `delayedClear` in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml) had a race condition (`!widgetStack.busy`) with a single-shot timer. If the stack was transitioning when a close was triggered, `isVisible = false` was skipped forever, leaving `qs-master` mapped as a full-screen invisible layer (`1440x810, a: 1`) intercepting all mouse and keyboard events.
+  - Replaced single-shot check with repeating failsafe timer ensuring `isVisible = false` is always enforced when `!isWindowActive`.
+  - Reverted `masterWindow.requestActivate()`, `targetObj.forceActiveFocus()`, `Qt.ApplicationShortcut`, and custom MouseArea coordinates that caused focus wars and layer sticking.
+  - Scoped `topBarHole` animation behaviors in `Main.qml` to horizontal bar mode only (`!topBarHole.isVertical`), eliminating 0-width mask glitches in vertical mode.
+- **TopBar Pristine IPC Restoration**:
+  - Restored [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml) click handlers back to native `Quickshell.execDetached` IPC calls (`qs_manager.sh toggle ...`), keeping the horizontal topbar 100% decoupled and completely untouched by vertical bar changes.
+  - Fixed `TopBar.qml` `IpcHandler` signature: typed `setPosition(pos: string)` to prevent IPC variant parser errors.
+- **SideBar Restorations & Hardware Links**:
+  - **Removed App Lister / Window Focus Pill**: Eliminated the rotated title / fuzzel trigger below the workspace widget in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml) per user request.
+  - **Enlarged Themed Clock**: Increased hours and minutes typography to 17px JetBrains Mono Black; bound hours to `barWindow.accentColor` (wallust dynamic palette) and minutes to secondary palette with a delicate glowing divider.
+  - **Dynamic Hardware Volume Binding**: Replaced static/unbound pipewire calls in `SideBar.qml` with reactive `Connections` listening directly to `Pipewire.defaultAudioSink.audio` volume/mute changes and `wpctl` hardware commands for mouse clicks and wheel scrolling.
+  - **Fixed Workspace Dispatch**: Fixed Hyprland Lua syntax errors in `SideBar.qml` by routing workspace switching through `qs_manager.sh` and `hyprctl dispatch workspace`.
+- **Process Manager Hyprland-Lua Dispatch Fix**:
+  - Updated [`qs_manager.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/qs_manager.sh) reload and toggle commands to use valid Hyprland Lua syntax (`hl.dispatch(hl.dsp.exec_cmd(...))`), preventing quickshell from dying on reload.
+
+## 2026-10-02 — Auto-Hide Keybind, Popup Dismiss Fixes & Sidebar Popup Awareness
+
+- **Auto-Hide Toggle Keybind** (`CTRL + MOD + ALT`):
+  - Added `autohide` action handler in [`qs_manager.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/qs_manager.sh) routing IPC to `Config.toggleBarAutohide()`.
+  - Bound all `CTRL + SUPER + ALT_L/R`, `SUPER + ALT + Control_L/R`, and `CTRL + ALT + Super_L/R` key variants in [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua).
+  - Added `notify-send` feedback (`Auto-Hide ON/OFF`) on toggle.
+- **Sidebar Popup-Aware Auto-Hide**:
+  - Added `Config.isPopupOpen` property synced to `masterWindow.isWindowActive` so sidebar stays revealed while any popup is open in auto-hide mode.
+  - Updated `SideBar.qml` `isRevealed` and `checkHideTimer()` to include `Config.isPopupOpen` in the reveal condition, preventing the sidebar from sliding away while interacting with popups.
+
+## 2026-10-02 — Root-Cause Fix for Popup Displacement Bug & Wallpaper Active Preview Centering
+
+- **Vertical SideBar Redesign, Modular Layout & Perpendicular CAVA Visualizer**:
+  - Upgraded [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml) with comprehensive Serpantinum modular architecture:
+    - **Music Widget Redesign**: Maintained album art thumbnail (clickable to toggle Music popup); removed `prev`, `pause`, and `next` buttons; implemented continuous horizontal marquee moving song title (`SequentialAnimation on x` with pause); added horizontal moving timeline text (`01:23 / 03:45`); added vertical CAVA visualizer with 8 frequency rows shooting segmented horizontal waves from the left edge toward the right edge styled identically to TopBar using `cavaBarColor`.
+    - **Independent Media & Telemetry Processes**: Added dedicated `mprisWatcher`, `musicForceRefresh`, 1-second timeline increment timer, and `cavaProcess` directly to `SideBar.qml` so media, thumbnails, and visualizers update live independently of `TopBar.qml`.
+    - **Clock & Date Readability**: Enlarged typography (Hours/Minutes: 15.5px Black, Day: 13px Bold, Month: 11px Bold) for high contrast and legibility inside the 46px capsule.
+    - **Battery Capsule**: Removed percentage text, displaying only the dynamic charging/capacity icon (`batIcon`) with live status coloring (`batDynamicColor`).
+    - **Integrated Modules**: Added vertical System Tray (`SystemTray.items` with native `QsMenuAnchor` context menus), vertical System Monitor (`SysData` CPU, RAM, Temp meters), Quick Status indicators (Pipewire Volume, Wifi, Bluetooth), and Weather pill (icon + temp).
+    - **Auto-Hide Architecture**: Implemented smooth hover-driven auto-hide (`barHover` + `hideTimer`), reserving zero exclusive zone and sliding smoothly into view when touching the monitor's 4px left screen edge.
+- **Orientation-Aware Popup Geometry in WindowRegistry**:
+  - Updated `getLayout()` in [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js) to resolve anchors based on bar orientation:
+    - When `barPos === "left"`, `battery` and `network` popups anchor to `bottom-left` next to the battery widget (`rx = 52`, `ry = mh - finalH - 12`), and `music` anchors to `top-left` (`rx = 52`, `ry = 10`), eliminating awkward top-right displacement in vertical mode.
+- **Global Window Escape Key Dismissal**:
+  - Replaced item-level `Keys.onEscapePressed` in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml) with `Shortcut { sequence: "Escape"; context: Qt.WindowShortcut }`, ensuring `Escape` reliably closes open popups regardless of child item focus.
+
+- **Dedicated Serpantinum-Style Vertical SideBar & Architecture Decoupling**:
+  - Implemented [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml) adopting Serpantinum's 3-zone vertical bar architecture:
+    - **Top Zone**: Vertical workspace capsule with smooth gliding `activeHighlight` slider (`OutQuint` easing) and kanji numbers (`一` through `六`), occupied indicators, and mouse wheel cycling.
+    - **Center Zone**: Media widget with album thumbnail/note icon, prev/play-pause/next controls (`playerctl`), alongside classic stacked clock (hours over minutes, thin divider line, date, short month).
+    - **Bottom Zone**: Red pulsing recording indicator (``) and battery capsule (`batIcon` + percentage) with dynamic charging/capacity color.
+  - Fully decoupled vertical and horizontal bars: restored [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml) to pure horizontal mode without hacky ternary layout overrides, keeping user configuration 100% intact.
+  - Registered `SideBar {}` in [`Shell.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Shell.qml), driven by `Config.topBarPosition === "left"` with LayerShell exclusive zone reserved cleanly.
+  - Seamless orientation toggles via `SUPER + ALT + Up` (top horizontal) and `SUPER + ALT + Down` (left vertical).
+
+- **GIF Priority in Wallpaper Carousel**:
+  - Updated `getFileTypeRank()` in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml) to rank GIFs first (`rank 0`), followed by static images (`rank 1`, sorted by color score/category), and videos (`rank 2`).
+- **Trash-Based Wallpaper Deletion & Zero-Scramble UI**:
+  - Replaced permanent file unlinking with `gio trash` in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml) and [`auto_organize.py`](file:///home/realdhiru/Pictures/Wallpapers/scripts/auto_organize.py), moving deleted files safely to `~/.local/share/Trash`.
+  - Suppressed disruptive `syncLocalModel` model clearing while the picker is visible (`window.visible`), keeping carousel cards and active focus stable. Deleted items are removed from memory immediately, and permanent disk state syncs cleanly on close/reopen.
+- **Global Wallpaper Cycling Keybindings & 120fps Transitions**:
+  - Created [`dotfiles/hypr/scripts/cycle_wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/cycle_wallpaper.sh) executing in 1.2ms to compute adjacent wallpapers matching the active carousel sort.
+  - Bound `SUPER + ALT + Left` (previous) and `SUPER + ALT + Right` (next) in [`dotfiles/hypr/keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua).
+  - Enhanced [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh) to accept dynamic `awww` transitions, featuring 120fps hardware-accelerated directional sweeps (`--transition-type right/left`, duration 0.4s, cubic bezier `.1,.9,.2,1`).
+
+- **TopBar Dual-Position Architecture (`Top` Horizontal vs `Left` Vertical)**:
+  - Added dynamic TopBar orientation switching between top (horizontal) and left (vertical) without process restarts, persisted to `~/.config/hypr/settings.json`.
+  - Bound `SUPER + ALT + Up` to switch TopBar to `top` and `SUPER + ALT + Down` to switch to `left` via `qs_manager.sh position topbar <top|left>`.
+  - Converted TopBar layouts from fixed `Row` to dynamic `Grid` with reactive row/column mapping (`rows: isVertical ? N : 1`, `columns: isVertical ? 1 : N`).
+  - Added vertical stacked clock (`verticalClockLayout`, hours over minutes) and compact centered music/battery icon representations in 48px vertical mode.
+  - Adjusted popup layout calculation in [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js) (`rx = 56`, `ry = 10`) and dynamic input mask `topBarHole` in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml) to preserve geometry and click-through on both orientations.
+- **Dedicated TopBar-Only Toggle Keybinding (`Mod + Alt_L + Alt_R`)**:
+  - Bound `SUPER + ALT + ALT_R` and `SUPER + ALT + ALT_L` in [`dotfiles/hypr/keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua) to `qs_manager.sh toggle topbar`.
+  - Routes via Quickshell native IPC (`topbar toggle` and `main handleCommand "toggle" "topbar"`) to toggle `Config.topBarVisible`.
+  - Unmaps the TopBar Wayland LayerShell surface and clears the 36px exclusive zone (`reserved: 0 0 0 0`) without affecting running popups, wallpaper picker, floating widgets, or polkit agent.
+- **Dedicated QuickShell Full Toggle Keybinding (`Mod + R`)**:
+  - Bound `SUPER + R` in [`dotfiles/hypr/keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua) to `qs_manager.sh toggle quickshell`.
+  - Toggles the entire quickshell process ON/OFF cleanly with Rule 2D minimal notifications (`"QuickShell ON"`, `"QuickShell OFF"`).
+- **In-Process TopBar Pill Clicks & Fast-Path IPC (Slowness Fix)**:
+  - Switched TopBar widget clicks (music, calendar, battery, quickactions) from spawning external bash subshells (`bash -c "... qs_manager.sh ..."`) to direct in-process `Config.requestWidgetCommand("toggle", ...)` (executes in <1ms without bash process forks).
+  - Bypassed legacy thumbnail generation, `flock`, and caching scripts in [`qs_manager.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/qs_manager.sh) for `network`, `wallpaper`, and `calendar`, routing all popup toggles directly through native IPC (popup launch latency dropped from ~104ms to ~25ms).
+- **WallpaperPicker Carousel Performance Tuning**:
+  - Added `reuseItems: true` and `cacheBuffer: Math.round(window.itemWidth * 3)` to `ListView id: view` in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml) to eliminate delegate re-allocations and GC stutter.
+  - Reduced `filterAnimationTimer.interval` from 800ms to 300ms and `itemAnimationTimer.interval` from 500ms to 400ms for snappier category switching.
+
+- **Resolved QuickShell 2-3 Second Displacement & Cutoff Root Cause**:
+  - Identified that [`CalendarPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/CalendarPopup.qml) contained `onTargetMasterHeightChanged` and `onTargetMasterWidthChanged` handlers that directly mutated `masterWindow.animH` (399), `masterWindow.animW` (1135), and `masterWindow.animX` (152).
+  - When `preloadStaggerTimer` loaded `calendar` off-screen at 2.46s after start, these handlers fired and forcefully reshaped `animContainer` into Calendar's geometry, shifting right-anchored widgets (Battery, Network, Monitors, Sunset) left while clipping their bottoms, shifting Music right while clipping its bottom, and clipping Wallpaper's left and right sides.
+  - Removed the destructive signal handlers from `CalendarPopup.qml`, restoring single-authority geometry sizing strictly to `Main.qml`.
+  - Added zero-dimension guards (`masterWindow.width <= 0 || masterWindow.height <= 0`) in `Main.qml` to prevent Wayland initial unmapped frames from introducing negative coordinate calculations.
+- **Wallpaper Picker Active Preview on Open**:
+  - Enforced `currentFilter = "All"` on open and removed background `filterStateReader` subprocess that restored stale filters.
+  - Added `selectedCenterOffset: (window.skewFactor * window.itemHeight) / 2` to `preferredHighlightBegin/End`, `header`, `footer`, and delegate `skewedWrapper` in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml) matching Serpantinum reference geometry.
+  - Implemented `centerActiveWallpaper()` driven by `centerOnActiveTimer` to automatically focus and center the currently applied wallpaper card on the `All` tab upon opening.
+
 ## 2026-10-01 — QuickShell WallpaperPicker Zero-Morphing & Deterministic Single-Pass Positioning
+
 
 - **Removal of Automatic Idle Dim & Blur Overlay**:
   - Removed automatic `"dim"` action from `idleRoot.actions` array in [`Idle.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/idle/Idle.qml).
@@ -11,13 +202,22 @@
 - **Strict Single-Instance QuickShell Reload Enforcement & Systemic Rule**:
   - Established system-wide policy in [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md) and [`SKILL.md`](file:///home/realdhiru/nix/.agents/skills/nixos-hyprland/SKILL.md) banning direct `quickshell -p ...` executions when QuickShell is running.
   - All reloads now use native D-Bus IPC (`quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload`) or `qs_manager.sh reload` to guarantee zero duplicate background processes or topbar duplication.
-- **WallpaperPicker Square Theme Swatches & Strict Folder Categorization**:
-  - Updated category color swatches in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml) from circular dots to sleek 20x20 **square** gradient swatches (`radius: 4`) representing subfolder theme colors (`dark`, `emerald`, `gruvbox`, `light`, `nord`, `ocean`, `sakura`, `sunset`, `synthwave`).
+- **WallpaperPicker Category Proxy Model Invocation Fix**:
+  - Wired `updateCategoryProxyModel()` to fire synchronously at the top of `applyFilters()` and `onCurrentFilterChanged` in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml).
+  - Resolved empty carousel bug when selecting square color swatches, populating `categoryProxyModel` from marker files and flat link prefixes before model counting.
+  - Added `updateDiscoveredCategories()` handler to `FolderListModel.onStatusChanged` and `onCountChanged` for live subfolder synchronization.
   - Strict subfolder categorization filtering maps wallpapers directly according to their folder locations in `~/Pictures/Wallpapers/`.
   - Implemented `categoryProxyModel` and subfolder filename mapping (`dark_`, `emerald_`, etc.) so clicking a category swatch filters the carousel strictly to wallpapers matching that theme category.
   - Re-sorted `getFileTypeRank` so static wallpapers (sorted by color score) appear first, followed by GIFs second and Videos last.
-- **Browser Text Selection Accent Color Synchronization**:
-  - Added `org.gnome.desktop.interface accent-color` mapping in [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh) to automatically compute and set the closest GNOME/GTK accent color (`purple`, `blue`, `teal`, `slate`, etc.) from Wallust dynamic wallpaper palettes, ensuring Brave/Chromium and GTK apps highlight selected text with the desktop accent color.
+- **Wallpaper Image Pixel Color Analysis & White/Dark Separation Architecture**:
+  - Implemented background Python indexer [`indexer.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.py) using ImageMagick pixel sampling and HSV hue classification to index wallpapers by true image color into `~/.cache/quickshell/wallpaper_index.json`.
+  - Separated low-saturation monochrome wallpapers into distinct **White** (`s < 0.14, v >= 0.55`) and **Dark** (`s < 0.14, v < 0.55`) swatches in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml).
+  - Merged Pink into **Purple** (`255°–340°`) and Yellow into **Orange** (`15°–75°`), consolidating color swatches into 7 clean buckets: `Dark`, `White`, `Red`, `Orange`, `Green`, `Blue`, `Purple`.
+- **Popup Initial 2-3 Second Displacement & Clipping Fix**:
+  - Fixed `Scaler.qml` (`currentHeight: Screen.height` binding) to match `WindowRegistry.js` scale calculation, eliminating scale factor mismatch between window container bounds (`0.783`) and internal popup components (`0.75`).
+  - Updated `getLayout()` in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml) to evaluate `masterWindow.screen.width` and `height` synchronously on frame 0, preventing post-boot layout shifts across Battery, Sunset, Network, Monitor, and Music popups.
+- **Wallpaper Picker Default All-Tab Active Wallpaper Center Preview**:
+  - Updated `showWidget()` in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml) to automatically reset filter state to `All` tab upon opening, locate the currently applied wallpaper in `localProxyModel`, and center-scroll directly to it.
 
 - **Main.qml Rapid Switch Generation Cancellation Token (Step 1)**:
   - Added `switchGeneration` monotonic counter and `_pendingGen` tracking to [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml).

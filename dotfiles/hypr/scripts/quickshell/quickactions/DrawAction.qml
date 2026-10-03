@@ -20,8 +20,8 @@ Item {
     // ADDED: Track whether this tab is currently the active one to isolate inputs
     property bool isActiveTab: typeof isCurrentTarget !== "undefined" ? isCurrentTarget : true
 
-    // FIXED: Added missing iconFont property to prevent 'undefined to QString' warnings
-    property string iconFont: "Font Awesome 6 Free Solid"
+    // FIXED: Use installed Nerd Font with Symbols fallback
+    property string iconFont: "JetBrainsMono Nerd Font, Symbols Nerd Font, Iosevka Nerd Font"
 
     // =========================================================
     // --- SCALING & DIMENSIONS

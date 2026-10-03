@@ -183,7 +183,7 @@ Item {
     component LiquidSquare: Item {
         id: ls
         property real value: 0.0
-        property color colorBase: root.cSurface0
+        property color colorBase: Qt.rgba(root.cSurface0.r, root.cSurface0.g, root.cSurface0.b, 0.35)
         property color colorFill: root.cMauve
         property string icon: ""
         property string title: ""
@@ -201,7 +201,7 @@ Item {
             anchors.fill: parent
             radius: root.s(12)
             color: ls.colorBase
-            border.color: root.alpha(root.cText, 0.08)
+            border.color: root.alpha(root.cText, 0.12)
             border.width: 1
         }
 

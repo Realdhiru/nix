@@ -14,7 +14,21 @@ if [ ! -f "$PLACEHOLDER" ]; then
     convert -size 500x500 xc:"#313244" "$PLACEHOLDER"
 fi
 
-STATUS=$($PT status 2>/dev/null)
+# Detect active/current player name and status (prioritize playing > paused > any)
+ACTIVE_PLAYER=$(playerctl -a metadata -f "{{playerName}} {{status}}" 2>/dev/null | grep -i "Playing" | head -n 1 | awk '{print $1}')
+if [ -z "$ACTIVE_PLAYER" ]; then
+    ACTIVE_PLAYER=$(playerctl -a metadata -f "{{playerName}} {{status}}" 2>/dev/null | grep -i "Paused" | head -n 1 | awk '{print $1}')
+fi
+if [ -z "$ACTIVE_PLAYER" ]; then
+    ACTIVE_PLAYER=$($PT metadata -f "{{playerName}}" 2>/dev/null | head -n 1)
+fi
+
+if [ -n "$ACTIVE_PLAYER" ]; then
+    PT="timeout 1.5 playerctl -p $ACTIVE_PLAYER"
+    STATUS=$($PT metadata -f "{{status}}" 2>/dev/null)
+else
+    STATUS=$($PT status 2>/dev/null)
+fi
 
 format_time() {
     local s=$1
@@ -104,7 +118,7 @@ except Exception as e:
                 (cd "$TMP_DIR" && ls -1t | tail -n +21 | xargs -r rm -f 2>/dev/null)
             ) </dev/null >/dev/null 2>&1 &
 
-            ( sleep 0.1 && touch "$QS_RUN_WORKSPACES/workspaces.json" ) &
+            ( sleep 0.1 && [ -n "${QS_RUN_WORKSPACES:-}" ] && touch "$QS_RUN_WORKSPACES/workspaces.json" ) 2>/dev/null &
         fi
     fi
 

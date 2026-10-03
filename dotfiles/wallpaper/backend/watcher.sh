@@ -116,12 +116,13 @@ cleanup_residue() {
     if [ -f "$CURRENT_TXT" ]; then
         local cur_path
         cur_path="$(cat "$CURRENT_TXT" 2>/dev/null || echo "")"
-        if [ -z "$cur_path" ] || [ ! -f "$cur_path" ] || [[ "$cur_path" == *"/previews/"* ]] || [[ "$cur_path" == *"/scripts/"* ]]; then
-            rm -f "$CURRENT_TXT"
-            rm -f "$HOME/.cache/last_wallpaper.txt"
-            rm -f "$HOME/.cache/previous_wallpaper.txt"
-            rm -rf "$HOME/.cache/awww"/* 2>/dev/null || true
-            "$SCRIPT_DIR/../wallpaper.sh" boot &
+        if [ -n "$cur_path" ] && [ ! -f "$cur_path" ] && [[ "$cur_path" != *"/previews/"* ]]; then
+            # Debounce check to avoid racing against active wallpaper switchers
+            sleep 0.8
+            cur_path="$(cat "$CURRENT_TXT" 2>/dev/null || echo "")"
+            if [ -n "$cur_path" ] && [ ! -f "$cur_path" ]; then
+                "$SCRIPT_DIR/../wallpaper.sh" boot &
+            fi
         fi
     fi
 

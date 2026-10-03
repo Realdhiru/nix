@@ -7,8 +7,8 @@ Item {
     id: root
     visible: false
 
-    property real currentWidth: 1920.0
-    property real currentHeight: 1080.0
+    property real currentWidth: Screen.width
+    property real currentHeight: Screen.height
     property real uiScale: 1.0
 
     property real baseScale: LayoutMath.getScale(currentWidth, currentHeight, uiScale)

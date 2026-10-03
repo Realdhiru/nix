@@ -36,17 +36,6 @@ Item {
     property string currentFilter: "All"
     property string _lastFilter: "All"
 
-    Process {
-        id: filterStateReader
-        command: ["bash", "-c", "bash '" + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh' get ui.wallpaperFilter"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let f = this.text.trim();
-                if (f !== "" && f !== "null") window.currentFilter = f;
-            }
-        }
-    }
     property string searchQuery: ""
     property bool isOnlineSearch: false
     property bool isSearchPaused: false
@@ -78,6 +67,8 @@ Item {
     property bool isScrollingBlocked: false
     property bool jumpToLastOnFilterChange: false
 
+    property var discoveredCategories: ["dark", "emerald", "gruvbox", "light", "nord", "ocean", "sakura", "sunset", "synthwave"]
+
     FolderListModel {
         id: categoryFolderModel
         folder: "file://" + Quickshell.env("HOME") + "/Pictures/Wallpapers"
@@ -85,9 +76,11 @@ Item {
         showFiles: false
         showDotAndDotDot: false
         sortField: FolderListModel.Name
+        onCountChanged: window.updateDiscoveredCategories()
+        onStatusChanged: { if (status === FolderListModel.Ready) window.updateDiscoveredCategories(); }
     }
 
-    property var discoveredCategories: {
+    function updateDiscoveredCategories() {
         let list = [];
         let excluded = ["previews", "scripts", "gifs", "videos", "flat", ".git"];
         for (let i = 0; i < categoryFolderModel.count; i++) {
@@ -96,22 +89,24 @@ Item {
                 list.push(fn);
             }
         }
-        return list;
+        if (list.length > 0) {
+            window.discoveredCategories = list;
+        }
     }
 
-    readonly property var filterData: {
-        let items = [{ name: "All", label: "All" }];
-        let cats = discoveredCategories;
-        for (let i = 0; i < cats.length; i++) {
-            let cName = cats[i];
-            let cap = cName.charAt(0).toUpperCase() + cName.slice(1);
-            items.push({ name: cName, label: cap });
-        }
-        items.push({ name: "GIFs", label: "GIF" });
-        items.push({ name: "Videos", label: "Vid" });
-        items.push({ name: "Search", label: "Search" });
-        return items;
-    }
+    readonly property var filterData: [
+        { name: "All", label: "All" },
+        { name: "Dark", label: "Dark" },
+        { name: "White", label: "White" },
+        { name: "Red", label: "Red" },
+        { name: "Orange", label: "Orange" },
+        { name: "Green", label: "Green" },
+        { name: "Blue", label: "Blue" },
+        { name: "Purple", label: "Purple" },
+        { name: "GIFs", label: "GIF" },
+        { name: "Videos", label: "Vid" },
+        { name: "Search", label: "Search" }
+    ]
 
     ListModel { id: monitorModel }
 
@@ -151,63 +146,67 @@ Item {
 
     Process {
         id: markersProc
-        command: ["bash", "-c", "ls -1 \"$HOME/.cache/quickshell/wallpaper_picker/colors_markers/\" 2>/dev/null || true"]
+        command: ["bash", "-c", "python3 \"$HOME/.config/hypr/scripts/quickshell/wallpaper/indexer.py\" \"$HOME/Pictures/Wallpapers\" \"$HOME/.cache/quickshell/wallpaper_index.json\" && cat \"$HOME/.cache/quickshell/wallpaper_index.json\""]
         running: false
         stdout: StdioCollector {
             onStreamFinished: {
                 let output = this.text;
                 if (!output || output.trim().length === 0) return;
-                let lines = output.trim().split("\n");
-                let catMap = {};
-                let colorMap = {};
-                let scoreMap = {};
-                for (let i = 0; i < lines.length; i++) {
-                    let line = lines[i].trim();
-                    if (line.length === 0) continue;
-                    let m = line.match(/^(.*?)_(?:CAT_([a-zA-Z0-9]+)_)?HEX_([0-9a-fA-F]{6})$/);
-                    if (m) {
-                        let flatName = m[1];
-                        let category = m[2] || "";
-                        let hex = m[3];
-                        if (flatName.length > 0) {
-                            if (category.length > 0) catMap[flatName] = category;
-                            colorMap[flatName] = hex;
-                            let score = window.hexToColorScore(hex);
-                            scoreMap[flatName] = score;
-                            let clean = window.getCleanName(flatName);
-                            if (clean.length > 0) {
-                                if (category.length > 0) catMap[clean] = category;
-                                colorMap[clean] = hex;
-                                scoreMap[clean] = score;
+                try {
+                    let data = JSON.parse(output);
+                    let catMap = {};
+                    let colorMap = {};
+                    let scoreMap = {};
+                    if (data && data.items) {
+                        for (let i = 0; i < data.items.length; i++) {
+                            let item = data.items[i];
+                            if (item && item.fileName) {
+                                let fn = item.fileName;
+                                let clean = window.getCleanName(fn);
+                                let hex = item.hex || "#1e1e2e";
+                                let bucket = item.bucket || "Dark";
+                                catMap[fn] = bucket;
+                                colorMap[fn] = hex.replace("#", "");
+                                scoreMap[fn] = window.hexToColorScore(hex);
+                                if (clean.length > 0) {
+                                    catMap[clean] = bucket;
+                                    colorMap[clean] = hex.replace("#", "");
+                                    scoreMap[clean] = window.hexToColorScore(hex);
+                                }
                             }
                         }
                     }
-                }
-                window.wallpaperCategoryMap = catMap;
-                window.wallpaperColorMap = colorMap;
-                window.wallpaperScoreMap = scoreMap;
-                if (localProxyModel.count > 0) {
-                    window.sortListModel(localProxyModel);
-                    window.sortListModel(gifsProxyModel);
-                    window.sortListModel(videosProxyModel);
+                    window.wallpaperCategoryMap = catMap;
+                    window.wallpaperColorMap = colorMap;
+                    window.wallpaperScoreMap = scoreMap;
+                    if (localProxyModel.count > 0) {
+                        window.sortListModel(localProxyModel);
+                        window.sortListModel(gifsProxyModel);
+                        window.sortListModel(videosProxyModel);
+                        if (window.currentFilter !== "All" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "Search") {
+                            window.updateCategoryProxyModel();
+                        }
 
-                    let targetModel = window.getModelForFilter(window.currentFilter);
-                    let wallToFind = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
-                    if (targetModel && targetModel.count > 0 && wallToFind !== "" && window.visible && view.width > 0) {
-                        let cleanTarget = window.getCleanName(wallToFind);
-                        let foundIdx = -1;
-                        for (let i = 0; i < targetModel.count; i++) {
-                            let fn = targetModel.get(i).fileName || "";
-                            if (fn === wallToFind || window.getCleanName(fn) === cleanTarget) {
-                                foundIdx = i;
-                                break;
+                        let targetModel = window.getModelForFilter(window.currentFilter);
+                        let wallToFind = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
+                        if (targetModel && targetModel.count > 0 && wallToFind !== "" && window.visible && view.width > 0) {
+                            let cleanTarget = window.getCleanName(wallToFind);
+                            let foundIdx = -1;
+                            for (let i = 0; i < targetModel.count; i++) {
+                                let fn = targetModel.get(i).fileName || "";
+                                if (fn === wallToFind || window.getCleanName(fn) === cleanTarget) {
+                                    foundIdx = i;
+                                    break;
+                                }
+                            }
+                            if (foundIdx !== -1) {
+                                window.targetWallName = targetModel.get(foundIdx).fileName || wallToFind;
+                                window.executeFocusRestore(foundIdx, false, true);
                             }
                         }
-                        if (foundIdx !== -1) {
-                            window.targetWallName = targetModel.get(foundIdx).fileName || wallToFind;
-                            window.executeFocusRestore(foundIdx, false, true);
-                        }
                     }
+                } catch (e) {
+                    console.log("[WALLPAPER_PICKER] Error loading index json:", e);
                 }
             }
         }
@@ -241,10 +240,11 @@ Item {
     }
 
     readonly property string activeWallpaperFile: Quickshell.env("HOME") + "/.cache/current_wallpaper.txt"
-    property string activeWallpaperPath: ""
+    property string activeWallpaperPath: (activeWallWatcher.text() || "").trim()
     property string activeWallpaperName: {
-        if (!activeWallpaperPath) return "";
-        let parts = activeWallpaperPath.split("/");
+        let p = window.activeWallpaperPath;
+        if (!p) return "";
+        let parts = p.split("/");
         return parts[parts.length - 1];
     }
 
@@ -252,8 +252,6 @@ Item {
         id: activeWallWatcher
         path: window.activeWallpaperFile
         watchChanges: true
-        onLoadedChanged: window.activeWallpaperPath = (activeWallWatcher.text() || "").trim()
-        onTextChanged: window.activeWallpaperPath = (activeWallWatcher.text() || "").trim()
         onFileChanged: {
             activeWallWatcher.reload();
             window.activeWallpaperPath = (activeWallWatcher.text() || "").trim();
@@ -384,6 +382,7 @@ Item {
             filterAnimationTimer.restart();
             if (window.currentFilter !== "Search") {
                 window.applyFilters(true);
+                centerOnActiveTimer.restart();
             } else if (window.hasSearched) {
                 window.searchIndexRestored = false;
                 window.isSearchPaused = true;
@@ -395,6 +394,9 @@ Item {
     }
 
     onCurrentFilterChanged: {
+        if (window.currentFilter !== "Search" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "All") {
+            window.updateCategoryProxyModel();
+        }
         window.isFilterAnimating = true;
         filterAnimationTimer.restart();
         let returningFromSearch = (window._lastFilter === "Search" && window.currentFilter !== "Search");
@@ -481,11 +483,11 @@ Item {
 
 
     function getFileTypeRank(fileName) {
-        if (!fileName) return 0;
+        if (!fileName) return 1;
         let fn = String(fileName).toLowerCase();
-        if (fn.endsWith(".gif")) return 1; // 2. GIFs second
+        if (fn.endsWith(".gif")) return 0; // 1. GIFs FIRST
         if (window.isVideoFile(fileName)) return 2; // 3. Videos last
-        return 0; // 1. Static images FIRST (sorted by color score)
+        return 1; // 2. Static images second (sorted by color score)
     }
 
     function hexToColorScore(hex) {
@@ -525,6 +527,15 @@ Item {
                 arr.push({ "fileName": fn, "fileUrl": String(fu) });
             }
         }
+        const bucketOrder = {
+            "Red": 1,
+            "Orange": 2,
+            "Green": 3,
+            "Blue": 4,
+            "Purple": 5,
+            "White": 6,
+            "Dark": 7
+        };
         arr.sort(function(a, b) {
             let aType = window.getFileTypeRank(a.fileName);
             let bType = window.getFileTypeRank(b.fileName);
@@ -532,6 +543,14 @@ Item {
 
             let aClean = window.getCleanName(a.fileName);
             let bClean = window.getCleanName(b.fileName);
+
+            let aCat = window.wallpaperCategoryMap[a.fileName] || window.wallpaperCategoryMap[aClean] || "Dark";
+            let bCat = window.wallpaperCategoryMap[b.fileName] || window.wallpaperCategoryMap[bClean] || "Dark";
+
+            let aRank = bucketOrder[aCat] || 6;
+            let bRank = bucketOrder[bCat] || 6;
+
+            if (aRank !== bRank) return aRank - bRank;
 
             let aScore = window.wallpaperScoreMap[a.fileName] || window.wallpaperScoreMap[aClean] || null;
             if (!aScore) {
@@ -625,17 +644,8 @@ Item {
                 export MAP_FILE="${escapeBash(mapFile)}"
                 export FILE_NAME="${escapeBash(fileName)}"
 
-                CUR_WALL="$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null || true)"
-                if [ "$CUR_WALL" = "$DEST_FILE" ] || [[ "$CUR_WALL" == *"/$FILE_NAME" ]]; then
-                    PREV="$(cat "$HOME/.cache/previous_wallpaper.txt" 2>/dev/null || true)"
-                    if [ -n "$PREV" ] && [ -f "$PREV" ] && [ "$PREV" != "$CUR_WALL" ]; then
-                        ~/.config/hypr/scripts/set_wallpaper.sh "$PREV"
-                    else
-                        ~/.config/hypr/scripts/boot_wallpaper.sh
-                    fi
-                fi
-
-                rm -f "$DEST_FILE" "\${DEST_FILE}.tmp"
+                gio trash "$DEST_FILE" 2>/dev/null || rm -f "$DEST_FILE"
+                rm -f "${DEST_FILE}.tmp"
                 rm -f "$THUMB_PATH"
                 if [ -f "$MAP_FILE" ]; then
                     grep -v "^\$FILE_NAME|" "\$MAP_FILE" > "\${MAP_FILE}.tmp" 2>/dev/null && mv "\${MAP_FILE}.tmp" "\$MAP_FILE" || rm -f "\${MAP_FILE}.tmp"
@@ -673,15 +683,8 @@ Item {
                 REAL_PATH="$HOME/Pictures/Wallpapers/$FILE_NAME"
             fi
 
-            CUR_WALL="$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null || true)"
-            IS_ACTIVE=0
-            if [ "$CUR_WALL" = "$REAL_PATH" ] || [ "$CUR_WALL" = "$FLAT_PATH" ] || [[ "$CUR_WALL" == *"/$FILE_NAME" ]] || [[ "$CUR_WALL" == *"$FILE_NAME"* ]]; then
-                IS_ACTIVE=1
-                rm -f "$HOME/.cache/current_wallpaper.txt" "$HOME/.cache/last_wallpaper.txt"
-            fi
-
             if [ -n "$REAL_PATH" ] && [ -f "$REAL_PATH" ]; then
-                python3 "$HOME/Pictures/Wallpapers/scripts/auto_organize.py" --delete "$REAL_PATH" || rm -f "$REAL_PATH"
+                python3 "$HOME/Pictures/Wallpapers/scripts/auto_organize.py" --delete "$REAL_PATH" || gio trash "$REAL_PATH" 2>/dev/null || rm -f "$REAL_PATH"
             fi
 
             rm -f "$FLAT_PATH"
@@ -689,17 +692,6 @@ Item {
             rm -f "$HOME/.cache/quickshell/wallpaper_picker/colors_markers/\${FILE_NAME}"*
             rm -f "$HOME/.cache/converted_gifs/\${FILE_NAME}"*
             rm -f "$HOME/Pictures/Wallpapers/previews/"*"/\${FILE_NAME}"*
-            rm -rf "$HOME/.cache/awww"/* 2>/dev/null || true
-
-            if [ "$IS_ACTIVE" -eq 1 ]; then
-                PREV="$(cat "$HOME/.cache/previous_wallpaper.txt" 2>/dev/null || true)"
-                if [ -n "$PREV" ] && [ -f "$PREV" ] && [[ "$PREV" != *"$FILE_NAME"* ]] && [[ "$PREV" != *"/previews/"* ]]; then
-                    ~/.config/hypr/scripts/set_wallpaper.sh "$PREV"
-                else
-                    rm -f "$HOME/.cache/previous_wallpaper.txt"
-                    ~/.config/hypr/scripts/boot_wallpaper.sh
-                fi
-            fi
         `;
         Quickshell.execDetached(["bash", "-c", deleteLocalScript]);
 
@@ -739,33 +731,70 @@ Item {
         window._pendingDeleteTarget = nextTarget;
         window._pendingDeleteIndex = idx;
         view.currentIndex = idx;
+
+        let isCurrentActive = (window.activeWallpaperName === fileName || window.getCleanName(window.activeWallpaperName) === window.getCleanName(fileName));
+        if (isCurrentActive && nextTarget !== "") {
+            window.applyWallpaper(nextTarget, window.isVideoFile(nextTarget));
+        }
+
         window.updateVisibleCount();
         window.statusToast = "Wallpaper deleted";
         toastTimer.restart();
     }
 
-    function showWidget() {
-        if (!window.initialFocusSet) {
-            if (window.activeWallpaperName !== "") {
-                window.targetWallName = window.activeWallpaperName;
-            } else if (window.widgetArg !== "") {
-                window.targetWallName = window.widgetArg;
-            }
-            window.applyFilters(true);
-            view.forceActiveFocus();
-            if (!window.initialFocusSet && window.visible && view.width > 0 && view.currentIndex >= 0) {
-                view.forceLayout();
-                view.positionViewAtIndex(view.currentIndex, ListView.Center);
-                window.initialFocusSet = true;
-            }
-        } else {
-            view.forceActiveFocus();
-            if (window.activeWallpaperName !== "" && window.targetWallName !== window.activeWallpaperName) {
-                window.targetWallName = window.activeWallpaperName;
-                window.applyFilters(false);
+    Timer {
+        id: centerOnActiveTimer
+        interval: 35
+        repeat: false
+        onTriggered: window.centerActiveWallpaper()
+    }
+
+    function centerActiveWallpaper() {
+        if (!window.visible) return;
+        window.currentFilter = "All";
+        let activeWall = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
+        if (activeWall === "") {
+            activeWallWatcher.reload();
+            let p = (activeWallWatcher.text() || "").trim();
+            if (p !== "") {
+                window.activeWallpaperPath = p;
+                activeWall = window.activeWallpaperName;
             }
         }
+        if (activeWall === "") return;
+
+        let cleanActive = window.getCleanName(activeWall);
+        let foundIdx = -1;
+        for (let i = 0; i < localProxyModel.count; i++) {
+            let fn = localProxyModel.get(i).fileName || "";
+            if (fn === activeWall || window.getCleanName(fn) === cleanActive) {
+                foundIdx = i;
+                break;
+            }
+        }
+        if (foundIdx !== -1) {
+            view.currentIndex = foundIdx;
+            view.forceLayout();
+            view.positionViewAtIndex(foundIdx, ListView.Center);
+            window.initialFocusSet = true;
+        }
     }
+
+    function showWidget() {
+        window.processMarkers();
+        window.currentFilter = "All";
+        activeWallWatcher.reload();
+        let p = (activeWallWatcher.text() || "").trim();
+        if (p !== "") window.activeWallpaperPath = p;
+        let activeWall = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
+        if (activeWall !== "") {
+            window.targetWallName = activeWall;
+        }
+        window.applyFilters(true);
+        view.forceActiveFocus();
+        centerOnActiveTimer.restart();
+    }
+
 
     onWidgetArgChanged: {
         if (widgetArg !== "") {
@@ -845,14 +874,12 @@ Item {
         let name = String(catName).toLowerCase();
         switch (name) {
             case "dark": return { c1: "#1e1e2e", c2: "#45475a" };
-            case "emerald": return { c1: "#2ee6a8", c2: "#10b981" };
-            case "gruvbox": return { c1: "#fabd2f", c2: "#fe8019" };
-            case "light": return { c1: "#ffffff", c2: "#94a3b8" };
-            case "nord": return { c1: "#88c0d0", c2: "#5e81ac" };
-            case "ocean": return { c1: "#00b4d8", c2: "#0077b6" };
-            case "sakura": return { c1: "#ff79c6", c2: "#ff99c8" };
-            case "sunset": return { c1: "#ff5555", c2: "#ffb86c" };
-            case "synthwave": return { c1: "#bd93f9", c2: "#ff79c6" };
+            case "white": return { c1: "#ffffff", c2: "#cbd5e1" };
+            case "red": return { c1: "#ff5555", c2: "#ff79c6" };
+            case "orange": return { c1: "#ffb86c", c2: "#fabd2f" };
+            case "green": return { c1: "#50fa7b", c2: "#2ee6a8" };
+            case "blue": return { c1: "#8be9fd", c2: "#88c0d0" };
+            case "purple": return { c1: "#bd93f9", c2: "#ff79c6" };
             default: return { c1: _theme.primary, c2: _theme.mauve };
         }
     }
@@ -862,17 +889,7 @@ Item {
         let fn = String(fileName);
         let clean = window.getCleanName(fn);
         let mapped = window.wallpaperCategoryMap[fn] || window.wallpaperCategoryMap[clean] || "";
-        if (mapped !== "") return mapped.toLowerCase();
-        
-        let cats = window.discoveredCategories;
-        let fnLower = fn.toLowerCase();
-        for (let i = 0; i < cats.length; i++) {
-            let cat = cats[i].toLowerCase();
-            if (fnLower.startsWith(cat + "_") || fnLower.startsWith(cat + "-") || fnLower.startsWith(cat + "/")) {
-                return cat;
-            }
-        }
-        return "";
+        return mapped.toLowerCase();
     }
 
     function updateCategoryProxyModel() {
@@ -965,20 +982,21 @@ Item {
     readonly property real borderWidth: window.s(3)
     readonly property real spacing: window.s(10)
     readonly property real skewFactor: -0.35
+    readonly property real selectedCenterOffset: (window.skewFactor * (window.itemHeight)) / 2
 
     Timer { id: scrollThrottle; interval: 150 }
 
     property bool isFilterAnimating: false
     Timer {
         id: filterAnimationTimer
-        interval: 800
+        interval: 300
         onTriggered: window.isFilterAnimating = false
     }
 
     property bool isItemAnimating: false
     Timer {
         id: itemAnimationTimer
-        interval: 500
+        interval: 400
         onTriggered: window.isItemAnimating = false
     }
 
@@ -1019,7 +1037,7 @@ Item {
     }
 
     function cycleFilter(direction) {
-        let filterOrder = ["All", "GIFs", "Videos", "Search"];
+        let filterOrder = window.filterData.map(f => f.name);
         let currentIdx = filterOrder.indexOf(window.currentFilter);
         if (currentIdx === -1) currentIdx = 0;
         let nextIdx = (currentIdx + direction + filterOrder.length) % filterOrder.length;
@@ -1027,6 +1045,9 @@ Item {
     }
 
     function applyFilters(forceSnap) {
+        if (window.currentFilter !== "Search" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "All") {
+            window.updateCategoryProxyModel();
+        }
         let targetModel = window.getModelForFilter(window.currentFilter);
         if (!targetModel || targetModel.count === 0) {
             window.updateVisibleCount();
@@ -1123,6 +1144,11 @@ Item {
         window._pendingDeleteIndex = -1;
 
         if (folderCount < window._localSyncedCount) {
+            if (window.visible) {
+                // Keep carousel stable while user is viewing; item was already removed from UI models
+                window._localSyncedCount = folderCount;
+                return;
+            }
             let wasAllowing = window.allowAddAnimation;
             window.allowAddAnimation = false;
             window.isModelChanging = true;
@@ -1161,7 +1187,7 @@ Item {
         }
 
         let isReady = localFolderModel.status === FolderListModel.Ready;
-        if (isReady && window._localSyncedCount > 0 && !window.initialFocusSet) {
+        if (isReady && window._localSyncedCount > 0 && (!window.initialFocusSet || !window.visible)) {
             window.isModelChanging = true;
             window.sortListModel(localProxyModel);
             window.sortListModel(gifsProxyModel);
@@ -1187,7 +1213,11 @@ Item {
             let finalIndex = foundIndex !== -1 ? foundIndex : Math.min(Math.max(0, fallbackIndex), targetModel.count - 1);
             window.executeFocusRestore(finalIndex, false, true);
         }
+        if (window.visible && !window.initialFocusSet) {
+            centerOnActiveTimer.restart();
+        }
     }
+
 
     function syncSearchModel() {
         let folderCount = searchFolderModel.count;
@@ -1253,19 +1283,18 @@ Item {
         orientation: ListView.Horizontal
         clip: false
         interactive: !window.isApplying
-        cacheBuffer: 2000
+        reuseItems: true
+        cacheBuffer: Math.round(window.itemWidth * 3)
 
         highlightRangeMode: window.initialFocusSet ? ListView.StrictlyEnforceRange : ListView.NoHighlightRange
-        preferredHighlightBegin: Math.max(0, (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2))
-        preferredHighlightEnd: Math.max(0, (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2))
+        preferredHighlightBegin: Math.max(0, (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset)
+        preferredHighlightEnd: Math.max(0, (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset)
         highlightMoveDuration: (window.initialFocusSet && !window.isFilterAnimating && !window.isModelChanging) ? 350 : 0
         focus: true
         
         onWidthChanged: {
-            if (!window.initialFocusSet && width > 0 && currentIndex >= 0 && window.visible) {
-                forceLayout();
-                positionViewAtIndex(currentIndex, ListView.Center);
-                window.initialFocusSet = true;
+            if (!window.initialFocusSet && width > 0 && window.visible) {
+                centerOnActiveTimer.restart();
             }
         }
         
@@ -1299,8 +1328,9 @@ Item {
             NumberAnimation { property: "x"; duration: 400; easing.type: Easing.OutCubic }
         }
 
-        header: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2)) }
-        footer: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2)) }
+        header: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset) }
+        footer: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2) - window.selectedCenterOffset) }
+
         model: window.activeModel
 
         MouseArea {
@@ -1391,8 +1421,9 @@ Item {
 
             Item {
                 anchors.centerIn: parent
-                anchors.horizontalCenterOffset: ((window.itemHeight - height) / 2) * window.skewFactor
+                anchors.horizontalCenterOffset: -(window.skewFactor * height) / 2
                 width: parent.width > 0 ? parent.width * (targetWidth / (targetWidth + window.spacing)) : 0
+
                 height: parent.height
 
                 transform: Matrix4x4 {
@@ -1439,19 +1470,6 @@ Item {
                         }
                     }
 
-                    // Wallust Dynamic Palette Preview Badge
-                    Row {
-                        anchors.bottom: parent.bottom
-                        anchors.right: parent.right
-                        anchors.margins: window.s(6)
-                        spacing: window.s(3)
-                        z: 5
-
-                        Rectangle { width: window.s(8); height: window.s(8); radius: window.s(4); color: _theme.primary }
-                        Rectangle { width: window.s(8); height: window.s(8); radius: window.s(4); color: _theme.mauve }
-                        Rectangle { width: window.s(8); height: window.s(8); radius: window.s(4); color: _theme.blue }
-                        Rectangle { width: window.s(8); height: window.s(8); radius: window.s(4); color: _theme.peach }
-                    }
                 }
             }
         }
@@ -1693,14 +1711,23 @@ Item {
                     readonly property bool isCategory: modelData.name !== "All" && modelData.name !== "GIFs" && modelData.name !== "Videos" && modelData.name !== "Video" && modelData.name !== "Search"
                     
                     Rectangle {
+                        id: swatchCard
                         anchors.fill: parent
                         radius: window.s(10)
                         color: window.currentFilter === modelData.name ? Qt.rgba(_theme.primary.r, _theme.primary.g, _theme.primary.b, 0.28) : (filterMouse.containsMouse ? Qt.rgba(_theme.surface1.r, _theme.surface1.g, _theme.surface1.b, 0.40) : Qt.rgba(_theme.surface0.r, _theme.surface0.g, _theme.surface0.b, Config.effectiveCardOpacity))
                         border.color: window.currentFilter === modelData.name ? _theme.primary : (filterMouse.containsMouse ? Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.25) : Qt.alpha(_theme.surface1, 0.3))
                         border.width: window.currentFilter === modelData.name ? window.s(2) : Config.borderWidth
-                        scale: window.currentFilter === modelData.name ? 1.08 : (filterMouse.containsMouse ? 1.04 : 1.0)
+                        property real popScale: 1.0
+                        property real targetScale: filterMouse.pressed ? 0.90 : (window.currentFilter === modelData.name ? 1.08 : (filterMouse.containsMouse ? 1.04 : 1.0))
+                        scale: targetScale * popScale
                         
-                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+                        SequentialAnimation {
+                            id: swatchPopAnim
+                            NumberAnimation { target: swatchCard; property: "popScale"; to: 1.25; duration: 110; easing.type: Easing.OutQuad }
+                            NumberAnimation { target: swatchCard; property: "popScale"; to: 1.0; duration: 420; easing.type: Easing.OutQuint }
+                        }
+                        
+                        Behavior on targetScale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
                         Behavior on border.color { ColorAnimation { duration: 250 } }
                         Behavior on color { ColorAnimation { duration: 250 } }
 
@@ -1778,7 +1805,10 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         enabled: !window.isApplying
-                        onClicked: window.currentFilter = modelData.name
+                        onClicked: {
+                            swatchPopAnim.restart();
+                            window.currentFilter = modelData.name;
+                        }
                         cursorShape: Qt.PointingHandCursor
                     }
                 }

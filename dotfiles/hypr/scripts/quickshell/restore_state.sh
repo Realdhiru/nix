@@ -78,7 +78,7 @@ fi
 # 1. Hardware CTM Restoration (hyprsunset)
 if [ "$TEMP" -ne 6500 ] || [ "$GAMMA" -ne 100 ]; then
     if ! pgrep -x hyprsunset >/dev/null 2>&1; then
-        hyprsunset -t "$TEMP" -g "$GAMMA" >/dev/null 2>&1 &
+        nohup hyprsunset -t "$TEMP" -g "$GAMMA" >/dev/null 2>&1 & disown
         sleep 0.08
     fi
     hyprctl hyprsunset temperature "$TEMP" >/dev/null 2>&1 || true

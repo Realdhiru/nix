@@ -9,8 +9,8 @@ Item {
     id: root
     focus: true
 
-    property real layoutWidth: 560
-    property real layoutHeight: 460
+    property real layoutWidth: 320
+    property real layoutHeight: 390
     width: layoutWidth
     height: layoutHeight
 
@@ -315,78 +315,8 @@ EOF
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: root.s(16)
-            spacing: root.s(10)
-
-            // Header Row
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: root.s(38)
-                spacing: root.s(10)
-
-                Rectangle {
-                    width: root.s(38)
-                    height: root.s(38)
-                    radius: root.s(10)
-                    color: root.isActive ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.22) : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.g, 0.35)
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: root.isActive ? "󱩌" : "󰌵"
-                        font.family: "Iosevka Nerd Font, JetBrains Mono"
-                        font.pixelSize: root.s(20)
-                        color: root.isActive ? root.primary : root.subtext0
-                    }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: root.s(1)
-
-                    Text {
-                        text: "Display & Night Light"
-                        font.family: "JetBrains Mono"
-                        font.pixelSize: root.s(15)
-                        font.weight: Font.Bold
-                        color: root.text
-                    }
-
-                    Text {
-                        text: root.isActive ? `${root.currentTemp}K • ${root.currentGamma}% Gamma • ${root.currentSat}% Sat • ${root.currentGrain}% Grain • ${root.currentCrt}% CRT` : "Default (6500K • 100% Gamma • 100% Sat • 0% Grain • 0% CRT)"
-                        font.family: "JetBrains Mono"
-                        font.pixelSize: root.s(10.5)
-                        color: root.isActive ? root.primary : root.subtext0
-                    }
-                }
-
-                // Reset All Button
-                Rectangle {
-                    width: resetText.implicitWidth + root.s(20)
-                    height: root.s(28)
-                    radius: root.s(8)
-                    color: resetMa.containsMouse ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.25) : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.4)
-                    border.width: 1
-                    border.color: Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.3)
-
-                    Text {
-                        id: resetText
-                        anchors.centerIn: parent
-                        text: "Reset"
-                        font.family: "JetBrains Mono"
-                        font.pixelSize: root.s(11)
-                        font.weight: Font.Bold
-                        color: resetMa.containsMouse ? root.primary : root.text
-                    }
-
-                    MouseArea {
-                        id: resetMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.resetAll()
-                    }
-                }
-            }
+            anchors.margins: root.s(12)
+            spacing: root.s(8)
 
             // 1. TEMPERATURE CARD
             Rectangle {

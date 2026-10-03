@@ -27,6 +27,7 @@ in
     wezterm
     fastfetch
     htop
+    opencode
 
     # Browsers
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
