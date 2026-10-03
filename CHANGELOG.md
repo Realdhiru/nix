@@ -8,7 +8,12 @@
 - **KDE Connect Auto-Restart Systemd Unit**:
   - Configured `~/.config/systemd/user/kdeconnectd.service` with `Restart=on-failure` and `RestartSec=5s`. Monitors socket drops and network reconnects with 0% idle CPU/battery usage.
 - **Archive Extraction Support (`unrar`, `p7zip`, `unzip`, `zip`)**:
-  - Added `unrar`, `p7zip`, `unzip`, `zip` to `environment.systemPackages` in [`packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix#L38). Resolves `Failed to execute the command` error in `lxqt-archiver` when extracting `.rar` and multi-part archives.
+- **SideBar Center-Locked Layout & Horizontal CAVA Pill**:
+  - Locked `centerZone` (Workspaces) to the exact vertical center of the screen ([`SideBar.qml:L789`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L789)).
+  - Anchored `topZone` (Clock & CAVA) above `centerZone` and `bottomZone` (Tray, Actions, Battery) below `centerZone`, clustering all vertical bar widgets tightly towards the center.
+  - Redesigned CAVA into a sleek horizontal rectangle pill (`height: activeNow ? cavaVisualizer.fullH + s(10) : 0`).
+  - Set unlit CAVA segments to `opacity: 0.0` so only active moving bars render, eliminating faded background tracks.
+  - When CAVA spawns, it expands upwards towards the top of the screen, keeping the workspace capsule 100% locked in place.
 
 - **SideBar Icon Font Unification**:
   - Replaced all 5 remaining hardcoded `"Iosevka Nerd Font"` references (volume, wifi, bluetooth, recording, battery) in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml) with `barWindow.iconFont` (`JetBrainsMono Nerd Font, Iosevka Nerd Font, Symbols Nerd Font` fallback chain).

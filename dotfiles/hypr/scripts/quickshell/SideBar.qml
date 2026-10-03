@@ -106,7 +106,17 @@ Variants {
                 id: mocha
             }
 
-            readonly property color accentColor: (Config.accentColorSource && mocha[Config.accentColorSource]) ? mocha[Config.accentColorSource] : mocha.primary
+            function ensureBright(col) {
+                if (!col) return mocha.subtext0;
+                let lum = 0.2126 * col.r + 0.7152 * col.g + 0.0722 * col.b;
+                if (lum < 0.50) {
+                    let f = 0.50 / Math.max(0.08, lum);
+                    return Qt.rgba(Math.min(1.0, col.r * f + 0.2), Math.min(1.0, col.g * f + 0.2), Math.min(1.0, col.b * f + 0.2), 1.0);
+                }
+                return col;
+            }
+
+            readonly property color accentColor: ensureBright((Config.accentColorSource && mocha[Config.accentColorSource]) ? mocha[Config.accentColorSource] : mocha.primary)
 
             readonly property color cardBg: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
             readonly property color cardBorder: (Config.borderWidth > 0 && Config.borderOpacity > 0)
@@ -549,6 +559,53 @@ Variants {
                 );
             }
 
+            // ── Hardware Backlight Service (sysfs inotify, zero polling) ──
+            FileView {
+                id: brightCurView
+                path: "/sys/class/backlight/intel_backlight/brightness"
+                watchChanges: true
+                onLoadedChanged: barWindow.updateBrightness()
+                onTextChanged: barWindow.updateBrightness()
+                onFileChanged: reload()
+            }
+
+            FileView {
+                id: brightMaxView
+                path: "/sys/class/backlight/intel_backlight/max_brightness"
+                onLoadedChanged: barWindow.updateBrightness()
+            }
+
+            property int sysBrightness: 50
+            property bool showBrightPct: false
+            property bool brightFeedbackReady: false
+            readonly property string brightIcon: sysBrightness >= 70 ? "󰃠" : (sysBrightness >= 30 ? "󰃟" : "󰃞")
+
+            function updateBrightness() {
+                let c = parseInt((brightCurView.text() || "").trim());
+                let m = parseInt((brightMaxView.text() || "").trim());
+                if (isNaN(c) || isNaN(m) || m <= 0) return;
+                let pct = Math.round((c / m) * 100);
+                if (pct === sysBrightness) return;
+                sysBrightness = pct;
+                if (brightFeedbackReady) {
+                    showBrightPct = true;
+                    brightPctTimer.restart();
+                }
+            }
+
+            Timer {
+                interval: 800
+                running: true
+                onTriggered: barWindow.brightFeedbackReady = true
+            }
+
+            Timer {
+                id: brightPctTimer
+                interval: 1200
+                repeat: false
+                onTriggered: barWindow.showBrightPct = false
+            }
+
             // ── Audio / Volume Service ──
             PwObjectTracker {
                 objects: Pipewire.nodes.values
@@ -600,11 +657,11 @@ Variants {
                 Behavior on x { NumberAnimation { duration: 350; easing.type: Easing.OutQuint } }
                 Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
-                // ── Top Zone: Workspaces & Window Focus ──
+                // ── Top Zone: Clock & CAVA (Anchored above locked Center Zone) ──
                 Column {
                     id: topZone
-                    anchors.top: parent.top
-                    anchors.topMargin: barWindow.s(16)
+                    anchors.bottom: centerZone.top
+                    anchors.bottomMargin: barWindow.s(16)
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: barWindow.s(8)
 
@@ -694,14 +751,14 @@ Variants {
                         }
                     }
 
-                    // Music Pill (Chunky CAVA, directly below Clock)
+                    // Music Pill (Tall vertical CAVA pill, directly below Clock)
                     Rectangle {
                         id: mediaBox
                         readonly property bool activeNow: barWindow.isModuleActive("media") && barWindow.musicData.status === "Playing"
                         visible: height > 0
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: barWindow.barThickness
-                        height: activeNow ? (cavaVisualizer.fullH + barWindow.s(22)) : 0
+                        height: activeNow ? (cavaVisualizer.fullH + barWindow.s(20)) : 0
                         radius: barWindow.s(14)
                         color: barWindow.cardBg
                         border.width: Math.max(1, Config.borderWidth)
@@ -709,8 +766,8 @@ Variants {
                         clip: true
                         opacity: activeNow ? 1.0 : 0.0
 
-                        Behavior on height { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
-                        Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                        Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                        Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
 
                         Rectangle {
                             anchors.fill: parent
@@ -719,24 +776,21 @@ Variants {
                             z: -1
                         }
 
-                        // Vertical Columns CAVA Visualizer (Bouncing bottom to top)
+                        // 4 thick solid bars, bottom-anchored, only active height rendered
                         Item {
                             id: cavaVisualizer
                             anchors.centerIn: parent
-                            readonly property int colCount: 5
-                            readonly property int segCount: 8
-                            readonly property real barW: barWindow.s(4.4)
-                            readonly property real barGap: barWindow.s(1.6)
-                            readonly property real segH: barWindow.s(2.6)
-                            readonly property real segGap: barWindow.s(1.2)
+                            readonly property int colCount: 4
+                            readonly property real barW: barWindow.s(6)
+                            readonly property real barGap: barWindow.s(2.5)
                             readonly property real fullW: colCount * barW + (colCount - 1) * barGap
-                            readonly property real fullH: segCount * segH + (segCount - 1) * segGap
+                            readonly property real fullH: barWindow.s(56)
 
                             width: fullW
                             height: fullH
 
                             Row {
-                                anchors.centerIn: parent
+                                anchors.fill: parent
                                 spacing: cavaVisualizer.barGap
 
                                 Repeater {
@@ -747,32 +801,20 @@ Variants {
                                         width: cavaVisualizer.barW
                                         height: cavaVisualizer.fullH
 
-                                        // Sample 5 columns across CAVA 8-frequency bins
-                                        readonly property var binMap: [0, 1, 3, 5, 7]
-                                        property int rawVal: barWindow.cavaBars[binMap[index]] || 0
-                                        property int activeSegs: Math.round((rawVal / 100) * cavaVisualizer.segCount)
+                                        readonly property int rawVal: Math.max(barWindow.cavaBars[index * 2] || 0, barWindow.cavaBars[index * 2 + 1] || 0)
 
-                                        Column {
-                                            anchors.fill: parent
-                                            spacing: cavaVisualizer.segGap
-
-                                            // In Column, index 0 is top, index 7 is bottom.
-                                            // segFromBottom (0=bottom, 7=top) grows bottom to top.
-                                            Repeater {
-                                                model: cavaVisualizer.segCount
-                                                delegate: Rectangle {
-                                                    required property int index
-                                                    width: cavaVisualizer.barW
-                                                    height: cavaVisualizer.segH
-                                                    radius: barWindow.s(0.8)
-
-                                                    readonly property int segFromBottom: (cavaVisualizer.segCount - 1) - index
-                                                    property bool isLit: segFromBottom < colItem.activeSegs
-                                                    opacity: isLit ? 1.0 : 0.15
-                                                    color: barWindow.cavaBarColor(colItem.index, cavaVisualizer.colCount, segFromBottom, cavaVisualizer.segCount)
-                                                    Behavior on opacity { NumberAnimation { duration: 80 } }
-                                                }
+                                        Rectangle {
+                                            anchors.bottom: parent.bottom
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            width: parent.width
+                                            height: colItem.rawVal > 0 ? Math.max(width, (colItem.rawVal / 100) * parent.height) : 0
+                                            radius: width / 2
+                                            visible: height > 0
+                                            gradient: Gradient {
+                                                GradientStop { position: 0.0; color: barWindow.cavaBarColor(colItem.index, cavaVisualizer.colCount, 1, 2) }
+                                                GradientStop { position: 1.0; color: barWindow.cavaBarColor(colItem.index, cavaVisualizer.colCount, 0, 2) }
                                             }
+                                            Behavior on height { NumberAnimation { duration: 45; easing.type: Easing.OutQuad } }
                                         }
                                     }
                                 }
@@ -788,7 +830,7 @@ Variants {
                     }
                 }
 
-                // ── Center Zone: Workspaces Capsule (Centered on vertical bar) ──
+                // ── Center Zone: Workspaces Capsule (LOCKED AT TRUE SCREEN CENTER) ──
                 Item {
                     id: centerZone
                     anchors.centerIn: parent
@@ -897,11 +939,11 @@ Variants {
                     }
                 }
 
-                // ── Bottom Zone: System Tray, Sunset, Volume, Network, Battery ──
+                // ── Bottom Zone: System Tray, Sunset, Volume, Network, Battery (Anchored below locked Center Zone) ──
                 Column {
                     id: bottomZone
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: barWindow.s(16)
+                    anchors.top: centerZone.bottom
+                    anchors.topMargin: barWindow.s(16)
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: barWindow.s(8)
 
@@ -1017,9 +1059,10 @@ Variants {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "󰖙"
-                            font.family: barWindow.iconFont
-                            font.pixelSize: barWindow.s(16)
+                            text: barWindow.showBrightPct ? (barWindow.sysBrightness + "%") : barWindow.brightIcon
+                            font.family: barWindow.showBrightPct ? "JetBrains Mono" : barWindow.iconFont
+                            font.pixelSize: barWindow.showBrightPct ? barWindow.s(10.5) : barWindow.s(16)
+                            font.weight: barWindow.showBrightPct ? Font.Black : Font.Normal
                             color: sunsetMouse.containsMouse ? mocha.text : barWindow.accentColor
                             Behavior on color { ColorAnimation { duration: 150 } }
                         }
@@ -1036,6 +1079,10 @@ Variants {
                                 } else {
                                     Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle sunset"]);
                                 }
+                            }
+                            onWheel: (wheel) => {
+                                if (wheel.angleDelta.y > 0) Quickshell.execDetached(["brightnessctl", "-q", "set", "5%+"]);
+                                else if (wheel.angleDelta.y < 0) Quickshell.execDetached(["brightnessctl", "-q", "set", "5%-"]);
                             }
                         }
                     }

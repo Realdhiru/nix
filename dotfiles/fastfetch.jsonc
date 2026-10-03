@@ -87,6 +87,12 @@
     {
       "type": "title",
       "key": " 󰀄 "
+    },
+    "break",
+    {
+      "type": "colors",
+      "symbol": "circle",
+      "paddingLeft": 1
     }
   ]
 }

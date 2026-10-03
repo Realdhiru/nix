@@ -35,7 +35,7 @@ in
     brave
 
     # File Management
-    ntfs3g pcmanfm-qt kdePackages.filelight lxqt.lxqt-archiver unrar p7zip unzip zip ffmpegthumbnailer gdk-pixbuf librsvg webp-pixbuf-loader libheif libjxl
+    ntfs3g pcmanfm-qt kdePackages.filelight lxqt.lxqt-archiver unrar (p7zip.override { enableUnfree = true; }) unzip zip ffmpegthumbnailer gdk-pixbuf librsvg webp-pixbuf-loader libheif libjxl
 
     # Launchers & Clipboard
     fuzzel fd wl-clipboard cliphist

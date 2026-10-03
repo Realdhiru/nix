@@ -59,7 +59,6 @@
     # see note above on why standalone dxvk/vkd3d packages aren't here)
     winetricks
 
-    # Emulation / archive tooling used alongside Lutris library
-    p7zip
+    # Emulation / archive tooling: p7zip (with RAR codec) lives in packages.nix
   ];
 }
