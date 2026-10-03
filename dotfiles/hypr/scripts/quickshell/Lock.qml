@@ -402,15 +402,15 @@ ShellRoot {
                     anchors.fill: parent
                     visible: !screenRoot.isVideoWallpaper
                     blurEnabled: true
-                    blurMax: 40 * screenRoot.sc
-                    blur: 0.65 * screenRoot.introState
+                    blurMax: 64 * screenRoot.sc
+                    blur: 1.0 * screenRoot.introState
                 }
 
                 Rectangle {
                     id: dimmer
                     anchors.fill: parent
                     color: "black"
-                    opacity: 0.18 * screenRoot.introState
+                    opacity: 0.40 * screenRoot.introState
                 }
 
                 MouseArea {

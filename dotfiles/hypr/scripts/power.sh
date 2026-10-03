@@ -38,7 +38,7 @@ cmd_lock() {
     local lock_snap="/tmp/lock_screenshot.jpg"
     rm -f "$lock_snap" 2>/dev/null || true
     if command -v grim >/dev/null 2>&1; then
-        grim -t jpeg -q 75 "$lock_snap" 2>/dev/null || true
+        grim -t jpeg -q 30 "$lock_snap" 2>/dev/null || true
     fi
 
     if [ -s "$lock_snap" ]; then
