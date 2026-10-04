@@ -68,16 +68,138 @@ Item {
         id: monitorsModel
     }
 
-    property var resList: [
-        {w: 3840, h: 2160, l: "4K",   accent: window.primary},
-        {w: 2880, h: 1620, l: "QHD",  accent: window.primary},
-        {w: 1920, h: 1080, l: "FHD",  accent: window.primary},
-        {w: 1600, h: 900,  l: "HD+",  accent: window.primary},
-        {w: 1366, h: 768,  l: "WXGA", accent: window.primary},
-        {w: 1280, h: 720,  l: "HD",   accent: window.primary},
-        {w: 1024, h: 768,  l: "XGA",  accent: window.primary},
-        {w: 800,  h: 600,  l: "SVGA", accent: window.primary}
+    // Common presets, used as a floor so the picker is never degenerate. The
+    // authoritative list is the union of these with the active monitor's real
+    // Hyprland `availableModes`, so any mode an attached output actually
+    // supports (2560x1440@180, 3440x1440 ultrawide, 5120x1440, arbitrary
+    // laptop panels) is selectable without touching this table.
+    property var _presetRes: [
+        {w: 3840, h: 2160, l: "4K"},
+        {w: 3440, h: 1440, l: "UWQHD"},
+        {w: 2560, h: 1440, l: "QHD"},
+        {w: 2880, h: 1620, l: "QHD+"},
+        {w: 1920, h: 1080, l: "FHD"},
+        {w: 1600, h: 900,  l: "HD+"},
+        {w: 1366, h: 768,  l: "WXGA"},
+        {w: 1280, h: 720,  l: "HD"},
+        {w: 1024, h: 768,  l: "XGA"},
+        {w: 800,  h: 600,  l: "SVGA"}
     ]
+
+    // Extra distinct modes used ONLY to pad the 2-column grid to an even row
+    // count. Must never duplicate an already-listed entry.
+    property var _padRes: [
+        {w: 2560, h: 1600, l: "WQXGA"},
+        {w: 1920, h: 1200, l: "DCI"},
+        {w: 1680, h: 1050, l: "WSXGA+"},
+        {w: 1440, h: 900,  l: "WXGA+"},
+        {w: 1280, h: 1024, l: "SXGA"},
+        {w: 1152, h: 720,  l: "WGA"}
+    ]
+
+    function _resLabel(w, h) {
+        for (let i = 0; i < _presetRes.length; i++) {
+            if (_presetRes[i].w === w && _presetRes[i].h === h) return _presetRes[i].l;
+        }
+        return "";
+    }
+
+    function _activeAvailableModes() {
+        if (monitorsModel.count === 0) return [];
+        let m = monitorsModel.get(window.activeEditIndex);
+        if (!m || !m.availableModes) return [];
+        try { return JSON.parse(m.availableModes) || []; } catch(e) { return []; }
+    }
+
+    // Resolution picker: union of curated presets + the monitor's real modes,
+    // deduped, sorted by pixel count descending. Padded to an even length so
+    // the 2-column GridLayout and the Left/Right/Up/Down keyboard navigation
+    // keep their row-pair invariant without a hardcoded entry count.
+    property var resList: {
+        let seen = {};
+        let out = [];
+
+        let push = function(w, h) {
+            if (!w || !h || w < 200 || h < 200) return;
+            let k = w + "x" + h;
+            if (seen[k]) return;
+            seen[k] = true;
+            let lbl = _resLabel(w, h);
+            out.push({ w: w, h: h, l: lbl.length > 0 ? lbl : (w + "x" + h), accent: window.primary });
+        };
+
+        // Real monitor modes first — exact strings straight from Hyprland.
+        let modes = _activeAvailableModes();
+        for (let i = 0; i < modes.length; i++) {
+            let wh = String(modes[i]).split("@")[0].trim().split("x");
+            let w = parseInt(wh[0]), h = parseInt(wh[1]);
+            if (!isNaN(w) && !isNaN(h)) push(w, h);
+        }
+
+        // Current mode always reachable, even if Hyprland didn't enumerate it.
+        if (monitorsModel.count > 0) {
+            let m = monitorsModel.get(window.activeEditIndex);
+            push(m.resW, m.resH);
+        }
+
+        for (let i = 0; i < _presetRes.length; i++) push(_presetRes[i].w, _presetRes[i].h);
+
+        // Sort by pixel count desc, then width desc — stable, deterministic.
+        out.sort(function(a, b) {
+            let pa = a.w * a.h, pb = b.w * b.h;
+            if (pb !== pa) return pb - pa;
+            return b.w - a.w;
+        });
+
+        // Even count for the 2-column grid, padding only with modes that are
+        // not already listed (duplicating an entry renders two identical tiles).
+        for (let i = 0; i < _padRes.length && out.length % 2 !== 0; i++) {
+            push(_padRes[i].w, _padRes[i].h);
+        }
+        return out;
+    }
+
+    // Bumped every time the selected resolution changes (arrow nav, grid
+    // click). ListModel.setProperty role changes do NOT re-trigger bindings
+    // that read via monitorsModel.get(), so rateList references this epoch
+    // to recompute when resW/resH change. Monitor switches need no epoch —
+    // activeEditIndex is a plain property the binding already tracks.
+    property int _resEpoch: 0
+
+    // Refresh-rate picker: ONLY the rates the active monitor advertises for
+    // the CURRENTLY SELECTED resolution. A real panel exposes 1–3 rates per
+    // mode (eDP-1 @2880x1620 → 60 + 120) — that short list is the entire
+    // point. The old 13-entry table (24…360) offered modes no real monitor
+    // has. Falls back to the current rate so the slider is never empty.
+    property var rateList: {
+        _resEpoch;
+        let seen = {};
+        let out = [];
+        let push = function(r) {
+            let v = Math.round(parseFloat(r));
+            if (isNaN(v) || v < 20 || v > 1000) return;
+            if (seen[v]) return;
+            seen[v] = true;
+            out.push(v);
+        };
+        if (monitorsModel.count > 0) {
+            let cur = monitorsModel.get(window.activeEditIndex);
+            let modes = _activeAvailableModes();
+            for (let i = 0; i < modes.length; i++) {
+                let parts = String(modes[i]).split("@");
+                if (parts.length < 2) continue;
+                let wh = parts[0].trim().split("x");
+                if (parseInt(wh[0]) === cur.resW && parseInt(wh[1]) === cur.resH) {
+                    push(parts[1].replace(/[^0-9.]/g, ""));
+                }
+            }
+            push(cur.rate);
+        } else {
+            push(60);
+        }
+        out.sort(function(a, b) { return a - b; });
+        return out;
+    }
 
     property color selectedResAccent: window.primary
     property color selectedRateAccent: window.primary
@@ -86,13 +208,34 @@ Item {
     property int currentTransform: monitorsModel.count > 0 ? monitorsModel.get(window.activeEditIndex).transform : 0
     property bool currentIsPortrait: currentTransform === 1 || currentTransform === 3
 
+    // Fallbacks below are the model-empty case only (popup opening before its
+    // one-shot `hyprctl monitors -j` collector lands). Sourced from the live
+    // Quickshell.screens list rather than resolution literals so an external
+    // monitor at any mode/scale is already correct on frame 0.
+    property var _fallbackScreen: {
+        let sc = Quickshell.screens;
+        return (sc && sc.length > 0) ? sc[0] : null;
+    }
+
     property real currentSimW: {
-        if (monitorsModel.count === 0) return 1920;
+        if (monitorsModel.count === 0) {
+            // Physical pixels, same units as the model — logical screen size
+            // times scale (eDP-1: 1440×2 = 2880), not logical px.
+            let s = _fallbackScreen;
+            if (!s || !(s.width > 0)) return 1280;
+            let sc = (s.scale && s.scale > 0) ? s.scale : 1.0;
+            return Math.round(s.width * sc);
+        }
         let mon = monitorsModel.get(window.activeEditIndex);
         return currentIsPortrait ? mon.resH : mon.resW;
     }
     property real currentSimH: {
-        if (monitorsModel.count === 0) return 1080;
+        if (monitorsModel.count === 0) {
+            let s = _fallbackScreen;
+            if (!s || !(s.height > 0)) return 800;
+            let sc = (s.scale && s.scale > 0) ? s.scale : 1.0;
+            return Math.round(s.height * sc);
+        }
         let mon = monitorsModel.get(window.activeEditIndex);
         return currentIsPortrait ? mon.resW : mon.resH;
     }
@@ -156,21 +299,29 @@ Item {
 
         if (activeFocusIndex === 0) {
             let activeMon = monitorsModel.get(window.activeEditIndex);
-            let idx = 2; // Default FHD
-            for (let i = 0; i < window.resList.length; i++) {
-                if (window.resList[i].w === activeMon.resW && window.resList[i].h === activeMon.resH) {
+            let list = window.resList;
+            // Bounds derived from the actual list length: the grid is 2 columns,
+            // so rows are index pairs (even, odd). These used to be hardcoded to
+            // an 8-entry table and silently clamped any real monitor mode.
+            let lastRow = list.length - 2;
+            if (lastRow < 0) lastRow = 0;
+            let idx = 0;
+            for (let i = 0; i < list.length; i++) {
+                if (list[i].w === activeMon.resW && list[i].h === activeMon.resH) {
                     idx = i; break;
                 }
             }
 
             if (dir === "Left" && idx % 2 !== 0) idx--;
-            else if (dir === "Right" && idx % 2 === 0 && idx < 7) idx++;
+            else if (dir === "Right" && idx % 2 === 0 && idx < lastRow) idx++;
             else if (dir === "Up" && idx >= 2) idx -= 2;
-            else if (dir === "Down" && idx <= 5) idx += 2;
+            else if (dir === "Down" && idx <= lastRow - 1) idx += 2;
 
+            idx = Math.max(0, Math.min(list.length - 1, idx));
             window.selectedResAccent = window.resList[idx].accent;
             monitorsModel.setProperty(window.activeEditIndex, "resW", window.resList[idx].w);
             monitorsModel.setProperty(window.activeEditIndex, "resH", window.resList[idx].h);
+            window._resEpoch++;
             delayedLayoutUpdate.restart();
 
         } else if (activeFocusIndex === 1) {
@@ -324,8 +475,15 @@ Item {
     // NATIVE SYSTEM PROCESSES
     // -------------------------------------------------------------------------
     StackView.onActivated: {
-        displayPoller.running = false;
-        displayPoller.running = true;
+        // Populate once. Re-running the poller on every activation wiped
+        // the model (clear + re-append): unapplied res/rate/scale edits were
+        // lost, the grid rebuilt/flashed, and recycled delegates could show
+        // phantom duplicate tiles. Hotplug while open is covered by the
+        // live Quickshell.screens bindings + Apply re-poll.
+        if (monitorsModel.count === 0) {
+            displayPoller.running = false;
+            displayPoller.running = true;
+        }
     }
 
     Process {
@@ -364,7 +522,8 @@ Item {
                             bitDepth: 10,
                             uiX: normalizedX,
                             uiY: normalizedY,
-                            transform: tf
+                            transform: tf,
+                            availableModes: JSON.stringify(data[i].availableModes || [])
                         });
 
                         if (data[i].focused) window.activeEditIndex = i;
@@ -407,7 +566,7 @@ Item {
 
             let evalCmd = "hyprctl eval \"hl.monitor({output='" + m.name + "',mode='" + m.resW + "x" + m.resH + "@" + m.rate + "',position='0x0',scale='" + m.sysScale + "',bitdepth=10" + (m.transform !== 0 ? ",transform=" + m.transform : "") + "})\"";
 
-            Quickshell.execDetached(["notify-send", "Display Update", "Applied & Saved: " + m.resW + "x" + m.resH + " @ " + m.rate + "Hz"]);
+            Quickshell.execDetached(["notify-send", "Display Applied"]);
             Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; " + evalCmd + " ; " + jsonCmd + " ; " + postReloadCmd]);
 
             window.debugLog("Executed single monitor apply.");
@@ -509,7 +668,7 @@ Item {
             let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
 
             Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; " + fullHyprCmd + " ; " + jsonCmd + " ; " + postReloadCmd]);
-            Quickshell.execDetached(["notify-send", "Display Update", "Applied & Saved layout for: " + summaryString]);
+            Quickshell.execDetached(["notify-send", "Layout Applied"]);
 
             window.debugLog("Executed multi monitor apply: " + fullHyprCmd);
         }
@@ -656,9 +815,19 @@ Item {
                         Rectangle {
                             id: screenBezel
 
-                            // Perfect aspect ratio AND scales up physically on the desk at higher resolutions
-                            width: window.s(320) * (window.currentSimW / 1920.0)
-                            height: window.s(320) * (window.currentSimH / 1920.0)
+                            // Fit inside a s(320) square stage preserving the REAL panel aspect —
+                            // no square monitors exist. Landscape (16:9 → 320x180), portrait
+                            // (9:16 → 180x320) and ultrawide all render true to life. The old math
+                            // scaled w and h independently off the same s(320) base, which made
+                            // every 16:9 panel a perfect square (320×1.5 × 320×1.5).
+                            width: {
+                                let w = Math.max(1, window.currentSimW), h = Math.max(1, window.currentSimH);
+                                return w * Math.min(window.s(320) / w, window.s(320) / h);
+                            }
+                            height: {
+                                let w = Math.max(1, window.currentSimW), h = Math.max(1, window.currentSimH);
+                                return h * Math.min(window.s(320) / w, window.s(320) / h);
+                            }
 
                             anchors.bottom: standNeck.top
                             anchors.bottomMargin: window.s(-10)
@@ -1081,7 +1250,9 @@ Item {
                             model: window.resList
 
                             delegate: Rectangle {
-                                property var modelData: window.resList[index]
+                                // Built-in Repeater `modelData` role (the resList element)
+                                // is used directly — no shadow binding, so recycled delegates
+                                // can never render a stale index's tile as a phantom duplicate.
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: window.s(45)
                                 radius: window.s(12)
@@ -1139,6 +1310,7 @@ Item {
                                             window.selectedResAccent = accentColor;
                                             monitorsModel.setProperty(window.activeEditIndex, "resW", modelData.w);
                                             monitorsModel.setProperty(window.activeEditIndex, "resH", modelData.h);
+                                            window._resEpoch++;
                                             delayedLayoutUpdate.restart();
                                         }
                                     }
@@ -1263,7 +1435,7 @@ Item {
                         Layout.leftMargin: window.s(6)
                         Layout.rightMargin: window.s(6)
 
-                        property var rates: [60, 75, 100, 120, 144, 165, 180, 240, 360]
+                        property var rates: window.rateList.length > 0 ? window.rateList : [60, 120]
 
                         property int currentIndex: {
                             if (monitorsModel.count === 0) return 0;
@@ -1280,15 +1452,15 @@ Item {
                             return closestIdx;
                         }
 
-                        property real visualPct: currentIndex / (rates.length - 1)
+                        property real visualPct: currentIndex / Math.max(1, rates.length - 1)
 
                         onCurrentIndexChanged: {
-                            if (!sliderMa.pressed) visualPct = currentIndex / (rates.length - 1);
+                            if (!sliderMa.pressed) visualPct = currentIndex / Math.max(1, rates.length - 1);
                         }
 
                         function updateSelectionVisual(idx) {
                             if (monitorsModel.count === 0) return;
-                            visualPct = idx / (rates.length - 1);
+                            visualPct = idx / Math.max(1, rates.length - 1);
                             monitorsModel.setProperty(window.activeEditIndex, "rate", rates[idx].toString());
                             window.selectedRateAccent = window.primary;
                         }
@@ -1340,7 +1512,7 @@ Item {
                         Repeater {
                             model: sliderContainer.rates.length
                             Item {
-                                x: track.x + (index / (sliderContainer.rates.length - 1)) * track.width
+                                x: track.x + (index / Math.max(1, sliderContainer.rates.length - 1)) * track.width
                                 y: track.y + window.s(20)
 
                                 Text {
@@ -1370,7 +1542,7 @@ Item {
                                 let idx = Math.round(pct * (sliderContainer.rates.length - 1));
 
                                 if (snapToGrid) {
-                                    sliderContainer.visualPct = idx / (sliderContainer.rates.length - 1);
+                                    sliderContainer.visualPct = idx / Math.max(1, sliderContainer.rates.length - 1);
                                 } else {
                                     sliderContainer.visualPct = pct;
                                 }
@@ -1382,7 +1554,7 @@ Item {
                             onPressed: (mouse) => updateSelection(mouse.x, false)
                             onPositionChanged: (mouse) => { if (pressed) updateSelection(mouse.x, false) }
                             onReleased: (mouse) => updateSelection(mouse.x, true)
-                            onCanceled: () => sliderContainer.visualPct = sliderContainer.currentIndex / (sliderContainer.rates.length - 1)
+                            onCanceled: () => sliderContainer.visualPct = sliderContainer.currentIndex / Math.max(1, sliderContainer.rates.length - 1)
                         }
                     }
 

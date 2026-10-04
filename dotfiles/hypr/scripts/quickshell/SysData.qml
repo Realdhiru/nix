@@ -2,6 +2,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.UPower
 
 Item {
     id: root
@@ -185,6 +186,45 @@ Item {
         }
 
         root._handleAcTransition(wasOnline, root.acOnline);
+    }
+
+    // =========================================================================
+    // BATTERY RUNTIME TELEMETRY (native UPower, event-driven)
+    // UPower.displayDevice is the canonical aggregate battery object on the
+    // system bus (org.freedesktop.UPower). Every property below is a native
+    // C++ QBindable fed by UPower D-Bus PropertiesChanged -- no FileView,
+    // no Process, no Timer. batRuntimeText re-evaluates only when UPower
+    // actually emits.
+    // =========================================================================
+
+    function _fmtRuntime(seconds, charging) {
+        if (seconds <= 0) return charging ? "+0m" : "<1m";
+        let h = Math.floor(seconds / 3600);
+        let m = Math.floor((seconds % 3600) / 60);
+        let mm = m < 10 ? "0" + m : "" + m;
+        if (h > 0) return (charging ? "+" : "") + h + "h" + mm + "m";
+        return (charging ? "+" : "") + m + "m";
+    }
+
+    // Public API consumed by the SideBar battery hover text.
+    // Discharging: energy_now * 3600 / power_now
+    // Charging:    (energy_full - energy_now) * 3600 / power_now
+    // Clamped to 356400s. power_now == 0 while plugged in => "AC".
+    readonly property string batRuntimeText: {
+        if (!root.hasBattery) return "";
+        let d = UPower.displayDevice;
+        if (!d) return "";
+        let rate = Math.abs(d.changeRate);
+        if (rate < 1) return root.acOnline ? "AC" : "";
+        let rem;
+        if (d.timeToFull > 0) {
+            rem = ((d.energyCapacity - d.energy) * 3600) / rate;
+        } else {
+            rem = (d.energy * 3600) / rate;
+        }
+        if (rem > 356400) rem = 356400;
+        if (rem < 0) rem = 0;
+        return root._fmtRuntime(rem, d.timeToFull > 0);
     }
 
     // Event-driven direct sysfs reader for ACPI platform_profile (replaces power_state_watcher.sh & subshell leaks)

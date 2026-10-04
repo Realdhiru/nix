@@ -294,43 +294,36 @@ PanelWindow {
     property var    _layoutCache:    ({})
     property string _layoutCacheKey: ""
 
-    FileView {
-        id: monitorsFileView
-        path: Quickshell.env("HOME") + "/.cache/quickshell/monitors.json"
-        watchChanges: true
+    // Live per-output geometry for the offscreen-preload fallback in getLayout().
+    // masterWindow.screen is the authoritative per-screen source (already used for
+    // implicitWidth/implicitHeight above) and is the same live list TopBar.qml:10 and
+    // SideBar.qml:12 replicate over via `model: Quickshell.screens`. Replaces the old
+    // ~/.cache/quickshell/monitors.json snapshot, which was written once at startup by
+    // restore_state.sh:10 and never refreshed on hotplug, and which also indexed m[0]
+    // (first output) instead of the focused one. No resolution literals remain, so any
+    // external monitor at any mode/scale/rotation resolves correctly.
+    readonly property var _layoutScreen: {
+        let s = masterWindow && masterWindow.screen ? masterWindow.screen : null;
+        if (s && s.width > 0 && s.height > 0) return s;
+        let sc = Quickshell.screens;
+        return (sc && sc.length > 0) ? sc[0] : null;
     }
 
     property int monitorPhysWidth: {
-        try {
-            let t = monitorsFileView.text();
-            if (t && t.length > 0) {
-                let m = JSON.parse(t);
-                if (Array.isArray(m) && m.length > 0 && m[0].width) return m[0].width;
-            }
-        } catch(e) {}
-        return 2880;
+        let s = _layoutScreen;
+        if (!s) return 1280;
+        return Math.round(s.width * ((s.scale && s.scale > 0) ? s.scale : 1.0));
     }
 
     property int monitorPhysHeight: {
-        try {
-            let t = monitorsFileView.text();
-            if (t && t.length > 0) {
-                let m = JSON.parse(t);
-                if (Array.isArray(m) && m.length > 0 && m[0].height) return m[0].height;
-            }
-        } catch(e) {}
-        return 1620;
+        let s = _layoutScreen;
+        if (!s) return 800;
+        return Math.round(s.height * ((s.scale && s.scale > 0) ? s.scale : 1.0));
     }
 
     property real monitorScale: {
-        try {
-            let t = monitorsFileView.text();
-            if (t && t.length > 0) {
-                let m = JSON.parse(t);
-                if (Array.isArray(m) && m.length > 0 && m[0].scale) return m[0].scale;
-            }
-        } catch(e) {}
-        return 2.0;
+        let s = _layoutScreen;
+        return (s && s.scale && s.scale > 0) ? s.scale : 1.0;
     }
 
     function getLayout(name) {

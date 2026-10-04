@@ -146,21 +146,25 @@ Item {
         enabled: window.visible
         onActivated: {
             if (clipList.currentIndex >= 0 && clipList.currentIndex < clipModel.count) {
-                copyToClipboard(clipModel.get(clipList.currentIndex).id);
+                let entry = clipModel.get(clipList.currentIndex);
+                copyToClipboard(entry.id, entry.type === "image");
             }
         }
     }
 
-    Shortcut {
-        sequence: "Escape"
-        enabled: window.visible
-        onActivated: {
-            if (window.previewMode) {
-                window.previewMode = false;
-            } else {
-                Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
-            }
+    // ESC closes via deterministic key bubbling, exactly like Main.qml's
+    // master window (global Shortcut → switchWidget("hidden")) and the
+    // widgetStack Keys.onEscapePressed handler. A competing
+    // Shortcut{sequence:"Escape"} here used to fight Main's identical
+    // shortcut in the same window (ambiguous, unreliable), and shelled out
+    // to qs_manager.sh instead of closing directly.
+    Keys.onEscapePressed: (event) => {
+        if (window.previewMode) {
+            window.previewMode = false;
+            event.accepted = true;
         }
+        // Otherwise: deliberately NOT accepted — the event bubbles to the
+        // widgetStack handler in Main.qml, which hides the widget.
     }
 
     onPreviewModeChanged: {
@@ -288,13 +292,69 @@ Item {
         if (clipModel.count > 0) clipList.currentIndex = 0;
     }
 
-    function copyToClipboard(id) {
-        Quickshell.execDetached(["bash", "-c", "cliphist decode " + id + " | wl-copy"]);
-        Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
+    // Serialized paste: exactly one Process; the close IPC fires only
+    // after wl-copy owns the selection (no racing execDetached pair).
+    Process {
+        id: pasteProc
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {}
+        }
+        onExited: {
+            Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
+        }
+    }
+
+    function copyToClipboard(id, isImage) {
+        if (pasteProc.running) return;
+        let mime = isImage ? "image/png" : "text/plain;charset=utf-8";
+        pasteProc.command = ["bash", "-c", "cliphist decode " + id + " | wl-copy --type " + mime];
+        pasteProc.running = true;
+    }
+
+    // Full open-time state reset + refetch. Called from showWidget() on
+    // EVERY open (Main.qml invokes showWidget per open), because
+    // onVisibleChanged fires only once per cached-widget lifetime.
+    function onShow() {
+        if (window.allClips.length === 0) {
+            window.isInitialLoad = true;
+        }
+
+        focusTimer.restart();
+        introPhaseAnim.restart();
+        window.navDuration = 0;
+        window.previewMode = false;
+        window.previewAnimationDone = false;
+        window.fullTextPreview = "";
+        window.pendingIndex = -1;
+        searchInput.text = "";
+
+        window.currentOffset = 0;
+        window.hasMore = true;
+        window.isLoading = true;
+        // Supersede any stale in-flight fetch before rebinding.
+        if (clipFetcher.running) {
+            clipFetcher.running = false;
+        }
+        clipFetcher.command = ["python3", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.py", 0, window.fetchLimit, Caching.getCacheDir("clipboard")];
+        clipFetcher.running = true;
+    }
+
+    // Close-time cleanup. Kept on the once-per-lifetime
+    // onVisibleChanged path; onShow() performs its own full reset.
+    function onClose() {
+        searchInput.text = "";
+        window.pendingIndex = -1;
+
+        window.filterClips("");
+        if (clipModel.count > 0) {
+            clipList.currentIndex = 0;
+            clipList.positionViewAtBeginning();
+        }
     }
 
     function showWidget() {
-        focusTimer.restart();
+        window.onShow();
     }
 
     Timer {
@@ -311,33 +371,8 @@ Item {
     Connections {
         target: window
         function onVisibleChanged() {
-            if (window.visible) {
-                if (window.allClips.length === 0) {
-                    window.isInitialLoad = true;
-                }
-
-                focusTimer.restart();
-                introPhaseAnim.restart();
-                window.navDuration = 0; 
-                window.previewMode = false;
-                window.previewAnimationDone = false;
-                window.fullTextPreview = "";
-                window.pendingIndex = -1;
-                
-                window.currentOffset = 0;
-                window.hasMore = true;
-                window.isLoading = true;
-                clipFetcher.command = ["python3", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.py", 0, window.fetchLimit, Caching.getCacheDir("clipboard")];
-                clipFetcher.running = true;
-            } else {
-                searchInput.text = "";
-                window.pendingIndex = -1;
-                
-                window.filterClips("");
-                if (clipModel.count > 0) {
-                    clipList.currentIndex = 0;
-                    clipList.positionViewAtBeginning();
-                }
+            if (!window.visible) {
+                window.onClose();
             }
         }
     }
@@ -485,7 +520,7 @@ Item {
                         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                             if (clipModel.count > 0 && clipList.currentIndex >= 0 && clipList.currentIndex < clipModel.count) {
                                 let item = clipModel.get(clipList.currentIndex);
-                                if (item && item.id) window.copyToClipboard(item.id);
+                                if (item && item.id) window.copyToClipboard(item.id, item.type === "image");
                             }
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Escape) {
@@ -723,7 +758,7 @@ Item {
                                 window.previewMode = true;
                                 window.updatePreviewText();
                             } else {
-                                copyToClipboard(model.id);
+                                copyToClipboard(model.id, model.type === "image");
                             }
                         }
                     }

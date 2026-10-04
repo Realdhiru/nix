@@ -1,13 +1,19 @@
-{ stdenvNoCC, fetchgit, lib }:
+{ stdenvNoCC, fetchFromGitHub, lib }:
 
 stdenvNoCC.mkDerivation {
   pname = "buuf-nestort-icon-theme";
-  version = "master";
+  version = "unstable-2022-02-07";
 
-  src = fetchgit {
-    url = "https://gitlab.com/beucismis/buuf-nestort.git";
-    rev = "refs/heads/master";
-    hash = "sha256-1BvMLgi6FDwqyEV7W0CBbte97bybkGAOYkJKW6HqK9g="; 
+  # Upstream beucismis GitLab fork is gone (404). This is the same
+  # "Buuf For Many Desktops (formerly Buuf Nestort)" theme, verified by
+  # identical README/index.theme/directory layout, pinned to commit
+  # 9ce6963 (2022-02-07). Canonical eudaimon/disroot upstream is
+  # unreachable for bulk transfer from here; GitHub codeload is reliable.
+  src = fetchFromGitHub {
+    owner = "alfathmuqoddas";
+    repo = "buuf-nestort";
+    rev = "9ce696308923992ddcb1f60f926b8999253e0ea0";
+    hash = "sha256-xWTr3tzwIA5gK+3IB3eOhJmEh97DiumGerTfi35K9UU=";
   };
 
   dontBuild = true;
@@ -22,7 +28,7 @@ stdenvNoCC.mkDerivation {
 
   meta = with lib; {
     description = "Buuf For Many Desktops icon theme";
-    homepage = "https://gitlab.com/beucismis/buuf-nestort";
+    homepage = "https://github.com/alfathmuqoddas/buuf-nestort";
     platforms = platforms.linux;
   };
 }

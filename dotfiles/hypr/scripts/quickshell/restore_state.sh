@@ -7,7 +7,11 @@ STATE_FILE="$STATE_DIR/state.json"
 SHADER_FILE="$HOME/.cache/screen_shader.frag"
 
 mkdir -p "$STATE_DIR"
-hyprctl monitors -j > "$STATE_DIR/monitors.json" 2>/dev/null || true
+
+# NOTE: the old `hyprctl monitors -j > monitors.json` snapshot write was retired —
+# its only consumer (Main.qml monitorPhys* via FileView) now reads live per-screen
+# geometry (masterWindow.screen → Quickshell.screens), and the monitor popup polls
+# Hyprland directly. Nothing reads monitors.json anymore.
 
 # Initialize default state JSON if missing
 if [ ! -f "$STATE_FILE" ]; then

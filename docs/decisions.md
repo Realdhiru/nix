@@ -194,6 +194,26 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** QuickShell updates must never be applied by launching a secondary `quickshell -p ...` background process. Reloads must execute via native D-Bus IPC (`quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload`) or `qs_manager.sh reload`.
 - **Theme Swatch Buttons:** Category filter tabs in `WallpaperPicker.qml` replace text labels with dual-tone color gradient swatches (`dark`, `emerald`, `gruvbox`, `light`, `nord`, `ocean`, `sakura`, `sunset`, `synthwave`) inside 44px liquid glass capsules, filtering the carousel via `categoryProxyModel` and subfolder filename markers.
 
+### 25. SideBar Dynamic Parity & Multi-Tier Control Pills
+- **Decision:** Vertical `SideBar.qml` mirrors TopBar functionality and aesthetics without compromising center-locked geometry:
+  - **Dynamic Occupied-Only Workspaces**: Filters empty workspaces dynamically, rendering only `active` and `occupied` slots via Japanese Kanji numerals with vertical sliding highlight tracking (`activeHighlight`).
+  - **Unified Multi-Tier Status Pills**: Replaced separate one-off pills with two-tiered split pills (WiFi + Bluetooth, Brightness/Sunset + Volume) sharing a unified 1px divider, preserving vertical bar density while supporting transient feedback and mouse wheel scrolling.
+  - **Flat Rectangular CAVA Segments**: CAVA audio visualizer bars use flat rectangular geometry (`radius: barWindow.s(1)`) with moderate sensitivity (`sensitivity = 70`) matching TopBar visual standards.
+
+### 26. Dynamic Monitor Geometry & Resolution Pickers
+- **Decision:** No monitor resolution literal may remain in QuickShell layout/simulation code. `Main.qml` offscreen-preload geometry reads live `masterWindow.screen` (fallback `Quickshell.screens[0]`); `MonitorPopup.qml` resolution/refresh pickers are generated from Hyprland `availableModes` (union with curated presets, deduped/sorted, distinct even-row padding, derived keyboard bounds). Lutris gamescope game/output res stays empty (native) globally and per-game.
+- **Ops:** When Hyprland IPC is wedged, `qs_manager.sh reload` can hang on its `hyprctl eval` step — diagnose IPC first (`hyprctl monitors -j`), and prefer direct `quickshell ipc ... call main forceReload` on a healthy session.
+
+### 27. ESC Handling, Preview Aspect, Per-Mode Rates
+- **Decision:** No widget may register its own `Shortcut{sequence:"Escape"}` competing with `Main.qml`'s global one in the same window. ESC uses `Keys.onEscapePressed` bubbling (exit sub-state first, else fall through to the widgetStack hide handler). Monitor preview mock preserves true panel aspect via fit-box. Rate picker lists only EDID-advertised rates for the selected resolution; ListModel role writes are paired with an epoch counter where bindings read via `.get()`.
+- **Grid delegate hygiene:** never shadow Repeater's built-in `modelData` with an index binding (`window.list[index]`) — recycled delegates render stale tiles as phantom duplicates. Data pollers must not wipe+rebuild their model on every view activation (loses unapplied edits, flashes grid); populate-once with explicit refresh.
+
+### 28. Cached-Widget Refresh Contract, SNI Tray Constraints & UPower Battery Source
+- **Decision:** Cached popups (`Main.qml` `widgetCache`) refresh in `showWidget()`, never in `onVisibleChanged`. `targetObj.visible` is set `true` once and never reset, so `onVisibleChanged` fires once per process; any `enabled: window.visible` / `running: window.visible` stays armed forever unless reset per-open. Clipboard paste declares MIME explicitly and serializes copy→close through a single `Process.onExited`.
+- **Decision:** System-tray icons are register-once SNI clients. A watcher restart (any QuickShell restart) empties the tray until the client apps restart — there is no re-scan. The KDE Connect icon requires `kdeconnect-indicator` (`kdeconnectd` exports no `StatusNotifierItem`); EasyEffects `--service-mode` and `blueman-applet` (GtkStatusIcon) can never appear. Tray renderers must not denylist `kdeconnect` while the indicator is autostarted.
+- **Decision:** Battery runtime telemetry comes from `Quickshell.Services.UPower` only (`UPower.displayDevice` on the system bus: `energy`, `energyCapacity`, `changeRate`, `timeToFull`). Extends rule 3's sysfs-inotify ban: no `FileView` on `/sys`, no coalescing `Timer` (polling by another name). `UPowerDevice.isLaptopBattery` matches both the synthetic `DisplayDevice` aggregate and the real pack — always source `displayDevice` (never null, no enumeration race). Hover readout is an in-bar glyph↔text swap; the bar surface is never widened for tooltips.
+
+
 
 
 

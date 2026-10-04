@@ -7,7 +7,6 @@ import Quickshell.Io
 import Quickshell.Services.Pipewire
 import Quickshell.Services.SystemTray
 import "../"
-import "../tray"
 
 Item {
     id: window
@@ -744,14 +743,6 @@ Item {
                                     for (let i = 0; i < raw.length; i++) {
                                         let item = raw[i];
                                         if (!item) continue;
-                                        let idStr = (item.id || "").toLowerCase();
-                                        let titleStr = (item.title || "").toLowerCase();
-                                        if (idStr.includes("blueman") || idStr.includes("bluetooth") ||
-                                            idStr.includes("kdeconnect") || idStr.includes("kde connect") ||
-                                            titleStr.includes("blueman") || titleStr.includes("bluetooth") ||
-                                            titleStr.includes("kdeconnect") || titleStr.includes("kde connect")) {
-                                            continue;
-                                        }
                                         res.push(item);
                                     }
                                     return res;

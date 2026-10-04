@@ -31,8 +31,13 @@ description: High-density operational reference for maintaining the user's NixOS
    - System notifications (`notify-send`) must NEVER include full sentences, paragraphs, or conversational explanations.
    - Notification content must remain strictly minimal: 1–3 words max (e.g. `"Coffee mode ON"`, `"Game Mode OFF"`, `"Hotspot ON"`), with NO secondary body text unless delivering strictly necessary dynamic data (such as SSID or IP). TopBar ticker (`NotifTicker.qml`) and desktop popups are designed for compact telemetry signals, not sentences.
 8. **Zero Duplicate Process Policy for QuickShell**:
-   - NEVER execute raw `quickshell -p ...` or `hyprctl eval "hl.exec_cmd('quickshell ...')"` when QuickShell is already running. Spawning duplicate `quickshell` processes creates overlapping topbars and layer-shell collisions.
-   - ALWAYS perform clean reloads using `quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload` or `~/nix/dotfiles/hypr/scripts/qs_manager.sh reload` (which issues `pkill -9 quickshell` before spawning a fresh instance).
+    - NEVER execute raw `quickshell -p ...` or `hyprctl eval "hl.exec_cmd('quickshell ...')"` when QuickShell is already running. Spawning duplicate `quickshell` processes creates overlapping topbars and layer-shell collisions.
+    - ALWAYS perform clean reloads using `quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload` or `~/nix/dotfiles/hypr/scripts/qs_manager.sh reload` (which issues `pkill -9 quickshell` before spawning a fresh instance).
+9. **Cached-Widget Lifecycle, Clipboard, Tray & Battery Invariants**:
+    - `Main.qml` sets cached `targetObj.visible = true` once and never resets it: `onVisibleChanged` fires exactly once per process. Per-open refresh/state-reset belongs in `showWidget()` (invoked on every open). `Shortcut{enabled: window.visible}` and `running: window.visible` animations otherwise stay armed forever.
+    - Clipboard paste must declare MIME (`wl-copy --type image/png` / `--type text/plain;charset=utf-8`); bare `wl-copy` offers text only. Serialize copy→close (one `Process` + `onExited`), never racing `execDetached` pairs. `wl-paste --watch cliphist store` pairs live in supervised systemd user units (`Restart=always`), never unsupervised `exec_cmd` one-shots.
+    - Battery runtime comes only from `Quickshell.Services.UPower` (`UPower.displayDevice`: `energy`, `energyCapacity`, `changeRate`, `timeToFull`). Never `FileView`/timer-poll sysfs (zero inotify). `isLaptopBattery` matches both `DisplayDevice` and `BAT0` — source from `displayDevice` directly.
+    - SNI tray: clients register once at startup and never re-announce (a watcher restart empties the tray until clients restart). `kdeconnectd` exports no `StatusNotifierItem` — the icon requires `kdeconnect-indicator`. EasyEffects `--service-mode` and `blueman-applet` (GtkStatusIcon) cannot provide SNI icons. Never denylist `kdeconnect` while the indicator is autostarted.
 
 ## 2. Invariant Hardware & Architecture Policies
 
@@ -68,6 +73,9 @@ sudo nixos-rebuild dry-run --flake ~/nix#nixos
 
 # Non-destructive Hyprland/QuickShell reload
 ~/.config/hypr/scripts/reload.sh
+
+# Authoritative QuickShell reload
+~/nix/dotfiles/hypr/scripts/qs_manager.sh reload
 
 # Audio subsystem recovery
 ~/.config/hypr/scripts/fix_audio.sh

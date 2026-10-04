@@ -243,6 +243,40 @@
     };
   };
 
+  # Clipboard history recorders — supervised systemd replacements for the
+  # unsupervised `wl-paste --watch cliphist store` one-shots previously
+  # launched from Hyprland startup.lua. If a watcher dies (or Hyprland
+  # restarts and the Wayland socket drops), systemd restarts it in 2s so
+  # cliphist can never silently stop recording. Same process count as
+  # before, no resident shell, zero extra battery cost.
+  systemd.user.services.cliphist-text-watcher = {
+    Unit = {
+      Description = "Record text clipboard selections into cliphist history";
+    };
+    Service = {
+      ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch ${pkgs.cliphist}/bin/cliphist store";
+      Restart = "always";
+      RestartSec = 2;
+    };
+    Install = {
+      WantedBy = [ "graphical-session.target" ];
+    };
+  };
+
+  systemd.user.services.cliphist-image-watcher = {
+    Unit = {
+      Description = "Record image clipboard selections into cliphist history";
+    };
+    Service = {
+      ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch ${pkgs.cliphist}/bin/cliphist store";
+      Restart = "always";
+      RestartSec = 2;
+    };
+    Install = {
+      WantedBy = [ "graphical-session.target" ];
+    };
+  };
+
   home.username = user.username;
   home.homeDirectory = "/home/${user.username}";
   home.sessionPath = [ "$HOME/.local/bin" ];
