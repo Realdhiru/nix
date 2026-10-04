@@ -27,7 +27,7 @@ Variants {
                     Quickshell.reload(true);
                 }
                 function refreshMusic() {
-                    musicRefreshDebounce.restart();
+                    MusicState.refreshMusic();
                 }
                 function toggle() {
                     Config.topBarVisible = !Config.topBarVisible;
@@ -93,6 +93,14 @@ Variants {
             }
 
             readonly property bool isRevealed: !autohide || barHover.hovered || hideTimer.running || (Config.isPopupOpen !== undefined && Config.isPopupOpen)
+
+            // ── Optical centering ──
+            // bottomZone carries far more pills than topZone, so locking the
+            // workspace capsule at true screen center pushes the whole look
+            // downward. Shift the locked cluster so the COMBINED content box
+            // (measured exactly via childrenRect) is truly centered. The
+            // binding tracks height animations live, so recentering glides.
+            readonly property real contentShift: (barContent.childrenRect.y + barContent.childrenRect.height / 2) - (barContent.height / 2)
 
             implicitWidth: barThickness
             implicitHeight: Screen.height
@@ -301,7 +309,7 @@ Variants {
                 Qt.callLater(barWindow.updateNativeWorkspaces);
                 barWindow.checkRecording();
                 weatherPoller.running = true;
-                barWindow.parseMusicFile();
+                MusicState.parseMusicFile();
             }
 
             // ── Focused Window Tracking ──
@@ -343,192 +351,26 @@ Variants {
                 }
             }
 
-            // ── Music / MPRIS Live Processes ──
-            property var musicData: { "status": "Stopped", "title": "", "artUrl": "", "timeStr": "", "artReady": "false" }
-            readonly property bool isMediaActive: musicData.status !== "Stopped" && musicData.title !== ""
-            readonly property bool isSpotify: isMediaActive && (
-                (musicData.playerName && musicData.playerName.toLowerCase().indexOf("spotify") !== -1) ||
-                (musicData.source && musicData.source.toLowerCase().indexOf("spotify") !== -1)
-            )
-            readonly property string displayTitle: isMediaActive ? musicData.title : ""
-            readonly property string displayTime: isMediaActive ? musicData.timeStr : ""
-            readonly property string displayArtUrl: isMediaActive ? musicData.artUrl : ""
-            readonly property bool displayArtReady: isMediaActive && musicData.artReady === "true"
+            // ── Shared music/cava telemetry (MusicState singleton, sole owner) ──
+            // Live aliases — not copies. MusicState owns the MPRIS followers,
+            // music_info.sh, json watcher, cava, and timers; this bar only reads.
+            property var musicData: MusicState.musicData
+            property var cavaBars: MusicState.cavaBars
+            readonly property bool isMediaActive: MusicState.isMediaActive
+            readonly property bool isSpotify: MusicState.isSpotify
+            readonly property string displayTitle: MusicState.displayTitle
+            readonly property string displayTime: MusicState.displayTime
+            readonly property string displayArtUrl: MusicState.displayArtUrl
+            readonly property bool displayArtReady: MusicState.displayArtReady
+            readonly property bool hasVisibleMedia: MusicState.hasVisibleMedia
 
-            Timer {
-                id: musicRefreshDebounce
-                interval: 80
-                repeat: false
-                onTriggered: {
-                    musicForceRefresh.running = false;
-                    Qt.callLater(() => { musicForceRefresh.running = true; });
-                }
-            }
+            // (Music pipeline lives in MusicState singleton — sole owner.)
 
-            Process {
-                id: musicForceRefresh
-                running: true
-                command: ["bash", "-c", "bash " + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/music/music_info.sh > '" + Caching.getRunDir('music') + "/music_info.json.tmp' && mv '" + Caching.getRunDir('music') + "/music_info.json.tmp' '" + Caching.getRunDir('music') + "/music_info.json' && cat '" + Caching.getRunDir('music') + "/music_info.json'"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        let txt = this.text.trim();
-                        if (txt !== "") {
-                            try {
-                                let newData = JSON.parse(txt);
-                                barWindow.musicData = newData;
-                            } catch(e) {}
-                        }
-                    }
-                }
-            }
+            // (1s interpolation lives in MusicState singleton.)
 
-            FileView {
-                id: musicFileView
-                path: Caching.getRunDir('music') + "/music_info.json"
-                watchChanges: true
-                onLoadedChanged: barWindow.parseMusicFile()
-                onTextChanged: barWindow.parseMusicFile()
-            }
+            // (Drift timer + metadata follower live in MusicState singleton.)
 
-            function parseMusicFile() {
-                let txt = (musicFileView.text() || "").trim();
-                if (txt !== "") {
-                    try {
-                        let newData = JSON.parse(txt);
-                        barWindow.musicData = newData;
-                    } catch(e) {}
-                }
-            }
-
-            // 1s timeline advance
-            Timer {
-                interval: 1000
-                running: barWindow.musicData !== null && barWindow.musicData.status === "Playing"
-                repeat: true
-                onTriggered: {
-                    if (!barWindow.musicData || barWindow.musicData.status !== "Playing") return;
-                    if (!barWindow.musicData.timeStr || barWindow.musicData.timeStr === "") return;
-
-                    let parts = barWindow.musicData.timeStr.split(" / ");
-                    if (parts.length !== 2) return;
-
-                    let posParts = parts[0].split(":").map(Number);
-                    let lenParts = parts[1].split(":").map(Number);
-
-                    let posSecs = (posParts.length === 3)
-                        ? (posParts[0] * 3600 + posParts[1] * 60 + posParts[2])
-                        : (posParts[0] * 60 + posParts[1]);
-
-                    let lenSecs = (lenParts.length === 3)
-                        ? (lenParts[0] * 3600 + lenParts[1] * 60 + lenParts[2])
-                        : (lenParts[0] * 60 + lenParts[1]);
-
-                    if (isNaN(posSecs) || isNaN(lenSecs)) return;
-
-                    posSecs++;
-                    if (posSecs > lenSecs) posSecs = lenSecs;
-
-                    let newPosStr = "";
-                    if (posParts.length === 3) {
-                        let h = Math.floor(posSecs / 3600);
-                        let m = Math.floor((posSecs % 3600) / 60);
-                        let s = posSecs % 60;
-                        newPosStr = h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-                    } else {
-                        let m = Math.floor(posSecs / 60);
-                        let s = posSecs % 60;
-                        newPosStr = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-                    }
-
-                    let newData = Object.assign({}, barWindow.musicData);
-                    newData.timeStr = newPosStr + " / " + parts[1];
-                    newData.positionStr = newPosStr;
-                    newData.position = posSecs;
-                    if (lenSecs > 0) newData.percent = (posSecs / lenSecs) * 100;
-
-                    barWindow.musicData = newData;
-                }
-            }
-
-            Timer {
-                interval: 45000
-                running: barWindow.isMediaActive && barWindow.musicData.status === "Playing"
-                repeat: true
-                onTriggered: {
-                    musicRefreshDebounce.restart();
-                }
-            }
-
-            Process {
-                id: mprisWatcher
-                running: true
-                command: ["playerctl", "-a", "--follow", "metadata", "--format", "{{status}}|{{title}}"]
-                stdout: SplitParser {
-                    splitMarker: "\n"
-                    onRead: (line) => {
-                        let trimmed = line.trim();
-                        if (trimmed !== "") {
-                            let sep = trimmed.indexOf("|");
-                            let status = sep !== -1 ? trimmed.substring(0, sep).trim() : trimmed;
-                            let title = sep !== -1 ? trimmed.substring(sep + 1).trim() : "";
-                            if (status !== "" && status !== "null") {
-                                let cur = Object.assign({}, barWindow.musicData || {});
-                                cur.status = status;
-                                if (title !== "") cur.title = title;
-                                barWindow.musicData = cur;
-                            }
-                        }
-                        musicRefreshDebounce.restart();
-                    }
-                }
-            }
-
-            // Catches play/pause/stop transitions that don't trigger metadata changes
-            Process {
-                id: mprisStatusWatcher
-                running: true
-                command: ["playerctl", "-a", "--follow", "status"]
-                stdout: SplitParser {
-                    splitMarker: "\n"
-                    onRead: (line) => {
-                        let status = line.trim();
-                        if (status === "Playing" || status === "Paused" || status === "Stopped") {
-                            let cur = Object.assign({}, barWindow.musicData || {});
-                            if (cur.status !== status) {
-                                cur.status = status;
-                                barWindow.musicData = cur;
-                                musicRefreshDebounce.restart();
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── CAVA Visualizer Process ──
-            property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0]
-
-            Process {
-                id: cavaProcess
-                running: barWindow.musicData.status === "Playing"
-                command: ["nice", "-n", "10", "cava", "-p", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/cava_topbar.conf"]
-                stdout: SplitParser {
-                    splitMarker: "\n"
-                    onRead: (line) => {
-                        let segs = line.split(";");
-                        let out = [];
-                        for (let i = 0; i < segs.length && out.length < 8; i++) {
-                            if (segs[i].length === 0) continue;
-                            let v = parseInt(segs[i], 10);
-                            if (isNaN(v)) { out = null; break; }
-                            out.push(v < 0 ? 0 : (v > 100 ? 100 : v));
-                        }
-                        if (out && out.length === 8) barWindow.cavaBars = out;
-                    }
-                }
-                onRunningChanged: {
-                    if (!running) barWindow.cavaBars = [0, 0, 0, 0, 0, 0, 0, 0];
-                }
-            }
+            // (Status follower + cava process live in MusicState singleton.)
 
             function cavaBarColor(barIndex, barCount, segIndex, segCount) {
                 let mode = Config.cavaGradient || "soft";
@@ -591,6 +433,34 @@ Variants {
                     showBrightPct = true;
                     brightPctTimer.restart();
                 }
+            }
+
+            // Wheel brightness with fine steps at the low end: 5% steps
+            // above 5, 1% steps from 5 down to 1, then 0.2% steps to 0
+            // (5 → 4 → 3 → 2 → 1 → 0.8 → 0.6 → 0.4 → 0.2 → 0).
+            // Absolute raw set (not relative) so rapid scrolls converge
+            // instead of racing; the sysfs FileView re-syncs the display.
+            function nudgeBrightness(dir) {
+                let c = parseInt((brightCurView.text() || "").trim());
+                let m = parseInt((brightMaxView.text() || "").trim());
+                if (isNaN(c) || isNaN(m) || m <= 0) return;
+                let cur = Math.round((c / m) * 1000) / 10;
+                let next;
+                if (dir > 0) {
+                    if (cur >= 5) next = cur + 5;
+                    else if (cur >= 1) next = cur + 1;
+                    else next = cur + 0.2;
+                } else {
+                    if (cur > 5) next = cur - 5;
+                    else if (cur > 1) next = cur - 1;
+                    else if (cur > 0) next = cur - 0.2;
+                    else next = 0;
+                }
+                next = Math.round(Math.max(0, Math.min(100, next)) * 10) / 10;
+                let raw = Math.round((next / 100) * m);
+                if (raw < 0) raw = 0;
+                if (raw > m) raw = m;
+                Quickshell.execDetached(["brightnessctl", "-q", "set", "" + raw]);
             }
 
             Timer {
@@ -822,10 +692,11 @@ Variants {
                     }
                 }
 
-                // ── Center Zone: Workspaces Capsule (LOCKED AT TRUE SCREEN CENTER) ──
+                // ── Center Zone: Workspaces Capsule (optically centered via contentShift) ──
                 Item {
                     id: centerZone
                     anchors.centerIn: parent
+                    anchors.verticalCenterOffset: -barWindow.contentShift
                     width: barWindow.barThickness
                     height: workspacesBox.height
                     visible: workspacesBox.visible
@@ -1002,7 +873,7 @@ Variants {
                             }
                             return res;
                         }
-                        visible: barWindow.isModuleActive("tray") && filteredTrayItems.length > 0
+                        visible: barWindow.isModuleActive("tray") && (filteredTrayItems.length > 0 || SysData.coffeeActive)
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: barWindow.barThickness
                         height: visible ? (trayCol.implicitHeight + barWindow.s(12)) : 0
@@ -1022,7 +893,44 @@ Variants {
                         Column {
                             id: trayCol
                             anchors.centerIn: parent
-                            spacing: barWindow.s(6)
+                            spacing: barWindow.s(8)
+
+                            // Coffee mode indicator (same behavior as the
+                            // battery popup tray: click turns it off).
+                            // First in the column, matching popup order.
+                            Item {
+                                id: coffeeTrayItem
+                                visible: SysData.coffeeActive
+                                width: barWindow.barThickness
+                                height: visible ? barWindow.s(18) : 0
+                                anchors.horizontalCenter: parent.horizontalCenter
+
+                                property bool isHovered: coffeeTrayMouse.containsMouse
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: ""
+                                    font.family: "Iosevka Nerd Font"
+                                    font.pixelSize: barWindow.s(16)
+                                    color: coffeeTrayItem.isHovered ? barWindow.accentColor : mocha.text
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                }
+
+                                opacity: isHovered ? 1.0 : 0.8
+                                scale: isHovered ? 1.15 : 1.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                Behavior on scale { NumberAnimation { duration: 150 } }
+
+                                MouseArea {
+                                    id: coffeeTrayMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        SysData.setCoffee(false);
+                                    }
+                                }
+                            }
 
                             Repeater {
                                 model: trayBox.filteredTrayItems
@@ -1055,15 +963,25 @@ Variants {
                                         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: (event) => {
+                                            // Same behavior as the battery popup tray
+                                            // (and coffee: direct action, no dead clicks).
                                             if (event.button === Qt.LeftButton) {
                                                 if (modelData.isMenuOnly || modelData.onlyMenu) {
                                                     menuAnchor.open();
                                                 } else if (typeof modelData.activate === "function") {
                                                     modelData.activate();
                                                 }
+                                            } else if (event.button === Qt.MiddleButton) {
+                                                if (typeof modelData.secondaryActivate === "function") {
+                                                    modelData.secondaryActivate();
+                                                }
                                             } else if (event.button === Qt.RightButton) {
                                                 if (modelData.menu) {
                                                     menuAnchor.open();
+                                                } else if (typeof modelData.contextMenu === "function") {
+                                                    modelData.contextMenu(event.x, event.y);
+                                                } else {
+                                                    modelData.activate();
                                                 }
                                             }
                                         }
@@ -1125,8 +1043,8 @@ Variants {
                                         }
                                     }
                                     onWheel: (wheel) => {
-                                        if (wheel.angleDelta.y > 0) Quickshell.execDetached(["brightnessctl", "-q", "set", "5%+"]);
-                                        else if (wheel.angleDelta.y < 0) Quickshell.execDetached(["brightnessctl", "-q", "set", "5%-"]);
+                                        if (wheel.angleDelta.y > 0) barWindow.nudgeBrightness(1);
+                                        else if (wheel.angleDelta.y < 0) barWindow.nudgeBrightness(-1);
                                     }
                                 }
                             }
@@ -1162,29 +1080,21 @@ Variants {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: (mouse) => {
                                         if (mouse.button === Qt.RightButton) {
-                                            let sink = barWindow.currentAudioSink;
-                                            if (sink && sink.audio) {
-                                                sink.audio.muted = !sink.audio.muted;
-                                            } else {
-                                                Quickshell.execDetached(["bash", "-c", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"]);
-                                            }
+                                            // Single wpctl mechanism everywhere (osd.sh,
+                                            // battery slider): native sink.audio writes
+                                            // silently no-op when the node is stale.
+                                            Quickshell.execDetached(["bash", "-c", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"]);
                                         } else {
-                                            Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle volume"]);
+                                            Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle battery"]);
                                         }
                                     }
                                     onWheel: (wheel) => {
-                                        let sink = barWindow.currentAudioSink;
-                                        if (sink && sink.audio) {
-                                            let step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
-                                            let newVol = Math.max(0.0, Math.min(1.0, Math.round((sink.audio.volume + step) * 100) / 100));
-                                            sink.audio.volume = newVol;
-                                            if (sink.audio.muted && step > 0) sink.audio.muted = false;
-                                        } else {
-                                            if (wheel.angleDelta.y > 0) {
-                                                Quickshell.execDetached(["bash", "-c", "wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+"]);
-                                            } else {
-                                                Quickshell.execDetached(["bash", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"]);
-                                            }
+                                        // Mirrors osd.sh vol-up/down exactly (incl.
+                                        // unmute-on-raise and 100% cap).
+                                        if (wheel.angleDelta.y > 0) {
+                                            Quickshell.execDetached(["bash", "-c", "wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+"]);
+                                        } else if (wheel.angleDelta.y < 0) {
+                                            Quickshell.execDetached(["bash", "-c", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"]);
                                         }
                                     }
                                 }

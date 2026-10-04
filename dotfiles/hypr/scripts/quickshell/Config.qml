@@ -439,6 +439,14 @@ Item {
         path: config.homeDir + "/.cache/wallpaper_killed"
         watchChanges: true
         onLoadedChanged: config.updateSolidMode()
+        onFileChanged: {
+            // Directory-watch fires fileChanged on create/delete, but the
+            // buffer is stale until re-read — without this, runtime kills
+            // never flip isSolidMode (same defect class as powerProfileWatcher,
+            // which already reloads here).
+            wpKilledWatcher.reload();
+            config.updateSolidMode();
+        }
     }
 
     FileView {
@@ -446,6 +454,10 @@ Item {
         path: config.homeDir + "/.cache/gaming_mode"
         watchChanges: true
         onLoadedChanged: config.updateSolidMode()
+        onFileChanged: {
+            gamingModeWatcher.reload();
+            config.updateSolidMode();
+        }
     }
 
     FileView {

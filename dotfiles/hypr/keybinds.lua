@@ -32,7 +32,7 @@ end)
 -- ======================================================
 
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle network"))
-hl.bind(mainMod .. " + CTRL + V", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle volume"))
+hl.bind(mainMod .. " + CTRL + V", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle battery"))
 hl.bind(mainMod .. " + ALT + F", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle focustime"))
 
 hl.bind(mainMod .. " + CTRL + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle monitors"))

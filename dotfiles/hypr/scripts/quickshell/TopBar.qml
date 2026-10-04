@@ -164,20 +164,18 @@ Variants {
                 property int activeIndex: 0
             }
 
-            property var musicData: { "status": "Stopped", "title": "", "artUrl": "", "timeStr": "" }
-
-            readonly property bool isMediaActive: musicData.status !== "Stopped" && musicData.title !== ""
-            readonly property string displayTitle: isMediaActive ? musicData.title : ""
-            readonly property string displayTime: isMediaActive ? musicData.timeStr : ""
-            readonly property string displayArtUrl: isMediaActive ? musicData.artUrl : ""
-            readonly property bool displayArtReady: isMediaActive && musicData.artReady === "true"
-            readonly property bool hasVisibleMedia: displayTitle !== ""
-
-            // Raw ascii bar levels (0-100 each) from cava_topbar.conf's raw
-            // output, one value per bar. Zero baseline — the visualizer
-            // itself fades to width/opacity 0 when not playing, so there
-            // are no idle "dot" segments left sitting on screen.
-            property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0]
+            // ── Shared music/cava telemetry (MusicState singleton, sole owner) ──
+            // Live aliases — not copies. MusicState owns the MPRIS followers,
+            // music_info.sh, json watcher, cava, and timers; this bar only reads.
+            property var musicData: MusicState.musicData
+            property var cavaBars: MusicState.cavaBars
+            readonly property bool isMediaActive: MusicState.isMediaActive
+            readonly property bool isSpotify: MusicState.isSpotify
+            readonly property string displayTitle: MusicState.displayTitle
+            readonly property string displayTime: MusicState.displayTime
+            readonly property string displayArtUrl: MusicState.displayArtUrl
+            readonly property bool displayArtReady: MusicState.displayArtReady
+            readonly property bool hasVisibleMedia: MusicState.hasVisibleMedia
 
             function _hexToRgb01(hex) {
                 let h = hex.replace("#", "");
@@ -321,198 +319,13 @@ Variants {
                 barWindow.checkRecording();
             }
 
-            Process {
-                id: musicForceRefresh
-                running: true
-                command: ["bash", "-c", "bash " + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/music/music_info.sh > '" + Caching.getRunDir('music') + "/music_info.json.tmp' && mv '" + Caching.getRunDir('music') + "/music_info.json.tmp' '" + Caching.getRunDir('music') + "/music_info.json' && cat '" + Caching.getRunDir('music') + "/music_info.json'"]
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        let txt = this.text.trim();
-                        if (txt !== "") {
-                            try { 
-                                let newData = JSON.parse(txt);
-                                let oldData = barWindow.musicData || {};
-                                let posDiff = Math.abs(newData.position - (oldData.position || 0));
+            // (Music pipeline lives in MusicState singleton — sole owner.)
 
-                                if (oldData.title !== newData.title || oldData.status !== newData.status || oldData.artUrl !== newData.artUrl || posDiff >= 1) {
-                                    barWindow.musicData = newData;
-                                }
-                            } catch(e) {}
-                        }
-                    }
-                }
-            }
+            // (1s interpolation lives in MusicState singleton.)
 
-            FileView {
-                id: musicFileView
-                path: Caching.getRunDir('music') + "/music_info.json"
-                watchChanges: true
-                onLoadedChanged: barWindow.parseMusicFile()
-                onTextChanged: barWindow.parseMusicFile()
-            }
+            // (Drift timer + MPRIS followers live in MusicState singleton.)
 
-            function parseMusicFile() {
-                let txt = (musicFileView.text() || "").trim();
-                if (txt !== "") {
-                    try { 
-                        let newData = JSON.parse(txt);
-                        let oldData = barWindow.musicData || {};
-                        let posDiff = Math.abs(newData.position - (oldData.position || 0));
-
-                        if (oldData.title !== newData.title || oldData.status !== newData.status || oldData.artUrl !== newData.artUrl || posDiff > 3) {
-                            barWindow.musicData = newData;
-                        }
-                    } catch(e) {}
-                }
-            }
-
-            Timer {
-                interval: 1000
-                running: barWindow.musicData !== null && barWindow.musicData.status === "Playing"
-                repeat: true
-                onTriggered: {
-                    if (!barWindow.musicData || barWindow.musicData.status !== "Playing") return;
-                    if (!barWindow.musicData.timeStr || barWindow.musicData.timeStr === "") return;
-
-                    let parts = barWindow.musicData.timeStr.split(" / ");
-                    if (parts.length !== 2) return;
-
-                    let posParts = parts[0].split(":").map(Number);
-                    let lenParts = parts[1].split(":").map(Number);
-
-                    let posSecs = (posParts.length === 3)
-                        ? (posParts[0] * 3600 + posParts[1] * 60 + posParts[2])
-                        : (posParts[0] * 60 + posParts[1]);
-
-                    let lenSecs = (lenParts.length === 3)
-                        ? (lenParts[0] * 3600 + lenParts[1] * 60 + lenParts[2])
-                        : (lenParts[0] * 60 + lenParts[1]);
-
-                    if (isNaN(posSecs) || isNaN(lenSecs)) return;
-
-                    posSecs++;
-                    if (posSecs > lenSecs) posSecs = lenSecs;
-
-                    let newPosStr = "";
-                    if (posParts.length === 3) {
-                        let h = Math.floor(posSecs / 3600);
-                        let m = Math.floor((posSecs % 3600) / 60);
-                        let s = posSecs % 60;
-                        newPosStr = h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-                    } else {
-                        let m = Math.floor(posSecs / 60);
-                        let s = posSecs % 60;
-                        newPosStr = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-                    }
-
-                    let newData = Object.assign({}, barWindow.musicData);
-                    newData.timeStr = newPosStr + " / " + parts[1];
-                    newData.positionStr = newPosStr;
-                    newData.position = posSecs;
-                    if (lenSecs > 0) newData.percent = (posSecs / lenSecs) * 100;
-
-                    barWindow.musicData = newData;
-                }
-            }
-
-            // Position drift correction ONLY. MPRIS emits no continuous
-            // position stream, so the 1s interpolation above accumulates a
-            // small offset over long playback — this re-syncs against
-            // playerctl periodically. Track/status/metadata changes are NOT
-            // its job; those come from mprisWatcher's DBus signals.
-            // The old 2-second unconditional musicForceRefresh loop is gone:
-            // DBus PropertiesChanged/Seeked signals cover track, play/pause,
-            // metadata and art (music_info.sh fires a synthetic Seeked when
-            // an art download completes), so polling was pure duplication.
-            Timer {
-                interval: 45000
-                running: barWindow.isMediaActive && barWindow.musicData.status === "Playing"
-                repeat: true
-                onTriggered: {
-                    musicForceRefresh.running = false;
-                    musicForceRefresh.running = true;
-                }
-            }
-
-            Process {
-                id: mprisWatcher
-                running: true
-                command: ["playerctl", "--follow", "metadata", "--format", "{{status}}|{{title}}"]
-                stdout: SplitParser {
-                    splitMarker: "\n"
-                    onRead: (line) => {
-                        musicForceRefresh.running = false;
-                        musicForceRefresh.running = true;
-                    }
-                }
-            }
-
-            // Catches play/pause/stop transitions that don't trigger metadata changes
-            Process {
-                id: mprisStatusWatcher
-                running: true
-                command: ["playerctl", "--follow", "status"]
-                stdout: SplitParser {
-                    splitMarker: "\n"
-                    onRead: (line) => {
-                        let status = line.trim();
-                        if (status === "Playing" || status === "Paused" || status === "Stopped") {
-                            let cur = Object.assign({}, barWindow.musicData || {});
-                            if (cur.status !== status) {
-                                cur.status = status;
-                                barWindow.musicData = cur;
-                                musicForceRefresh.running = false;
-                                musicForceRefresh.running = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Topbar audio visualizer. Bound to status === "Playing"
-            // specifically (not just "not stopped") so it only spawns
-            // while media is genuinely playing — matches the visualizer's
-            // own fade-away-when-not-playing behavior, and avoids running
-            // cava (and burning CPU on FFT of silence) during a pause.
-            // cava_topbar.conf outputs raw ascii bar levels (0-100,
-            // semicolon-separated) once per frame at 30fps directly to
-            // stdout — no intermediate FIFO or wrapper script needed.
-            // `nice -n 10` deprioritizes it relative to everything else on
-            // the system — this is a purely cosmetic background process and
-            // shouldn't be able to delay anything time-sensitive (e.g. the
-            // synthetic DBus Seeked signal music_info.sh's art-fetch fires
-            // on completion, which mprisWatcher below is waiting on).
-            Process {
-                id: cavaProcess
-                running: barWindow.musicData.status === "Playing"
-                command: ["nice", "-n", "10", "cava", "-p", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/cava_topbar.conf"]
-                stdout: SplitParser {
-                    splitMarker: "\n"
-                    onRead: (line) => {
-                        // Single pass: tokenize, parse, and clamp into one
-                        // fixed-size array instead of chaining
-                        // filter/map/slice (each allocates a new array) —
-                        // this runs on every cava frame, so keeping
-                        // per-frame allocation low matters for avoiding GC
-                        // pauses on the shared QML thread.
-                        let segs = line.split(";");
-                        let out = [];
-                        for (let i = 0; i < segs.length && out.length < 8; i++) {
-                            if (segs[i].length === 0) continue;
-                            let v = parseInt(segs[i], 10);
-                            if (isNaN(v)) { out = null; break; }
-                            out.push(v < 0 ? 0 : (v > 100 ? 100 : v));
-                        }
-                        if (out && out.length === 8) barWindow.cavaBars = out;
-                    }
-                }
-                onRunningChanged: {
-                    // Decay bars to resting (empty) state immediately when
-                    // playback stops/pauses, rather than freezing at the
-                    // last loud frame until the next play.
-                    if (!running) barWindow.cavaBars = [0, 0, 0, 0, 0, 0, 0, 0];
-                }
-            }
+            // (Cava process lives in MusicState singleton.)
 
             // NOTE: the old audioPoller/networkPoller/btPoller fetch-wait
             // chains (pw-mon / nmcli monitor / dbus-monitor) were removed:

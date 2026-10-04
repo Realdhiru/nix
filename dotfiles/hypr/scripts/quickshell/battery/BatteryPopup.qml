@@ -108,33 +108,8 @@ Item {
     
     property string currentUserName: Quickshell.env("USER") || ""
     property bool dndEnabled: false
-    property bool coffeeActive: false
-
-    function syncCoffeeState() {
-        let t = (stateJsonView.text() || "").trim();
-        if (!t) {
-            window.coffeeActive = false;
-            return;
-        }
-        try {
-            let d = JSON.parse(t);
-            window.coffeeActive = !!(d.modes && d.modes.coffee);
-        } catch(e) {
-            window.coffeeActive = false;
-        }
-    }
-
-    FileView {
-        id: stateJsonView
-        path: Quickshell.env("HOME") + "/.cache/quickshell/state.json"
-        watchChanges: true
-        onLoadedChanged: window.syncCoffeeState()
-        onTextChanged: window.syncCoffeeState()
-        onFileChanged: {
-            stateJsonView.reload();
-            window.syncCoffeeState();
-        }
-    }
+    // Coffee state lives in SysData (single source); this popup only reads
+    // SysData.coffeeActive and writes via SysData.setCoffee().
 
     property bool hotspotActive: false
     property string hotspotSsid: "NixOS-Hotspot"
@@ -266,7 +241,7 @@ Item {
             window.sysVolume = Math.round(a.volume * 100);
             window.sysMuted = a.muted;
         }
-        window.syncCoffeeState();
+        // Coffee state is owned by SysData (always live) — no per-open sync.
     }
 
     // =========================================================================
@@ -748,7 +723,7 @@ Item {
                                     return res;
                                 }
 
-                                readonly property int totalItemCount: filteredTrayItems.length + (window.coffeeActive ? 1 : 0)
+                                readonly property int totalItemCount: filteredTrayItems.length + (SysData.coffeeActive ? 1 : 0)
                                 property real targetWidth: totalItemCount > 0 ? (totalItemCount * window.s(22) + (totalItemCount - 1) * window.s(8) + window.s(20)) : 0
                                 Layout.preferredWidth: targetWidth
                                 visible: targetWidth > 0
@@ -761,7 +736,7 @@ Item {
 
                                     Item {
                                         id: coffeeTrayItem
-                                        visible: window.coffeeActive
+                                        visible: SysData.coffeeActive
                                         width: visible ? window.s(18) : 0
                                         height: window.s(18)
                                         anchors.verticalCenter: parent.verticalCenter
@@ -788,8 +763,7 @@ Item {
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
                                             onClicked: {
-                                                window.coffeeActive = false;
-                                                Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/power.sh inhibit off"])
+                                                SysData.setCoffee(false);
                                             }
                                         }
                                     }

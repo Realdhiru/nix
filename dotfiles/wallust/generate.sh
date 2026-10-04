@@ -121,9 +121,14 @@ EOF
 if [ "$WALLPAPER" = "--neutral" ]; then
     emit_neutral_theme
 
-    # Notify client applications
+    # Notify client applications.
+    # NOTE: never SIGHUP wezterm-gui here — SIGHUP terminates the terminal
+    # and kills every pane (including live opencode sessions). Wezterm
+    # hot-reloads on config mtime change, so touching the color files
+    # (same as the normal path below) is sufficient and non-destructive.
     pkill -USR2 cava 2>/dev/null || true
-    pkill -HUP wezterm-gui 2>/dev/null || true
+    touch "$TARGET_CACHE/wezterm-colors.lua" 2>/dev/null || true
+    touch "$HOME/nix/dotfiles/wezterm.lua" 2>/dev/null || true
     RESTORE_SCRIPT="$HOME/.config/hypr/scripts/quickshell/restore_state.sh"
     [ ! -x "$RESTORE_SCRIPT" ] && RESTORE_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh"
     if [ -x "$RESTORE_SCRIPT" ]; then "$RESTORE_SCRIPT" >/dev/null 2>&1 || true; fi

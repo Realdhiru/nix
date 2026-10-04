@@ -86,11 +86,29 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then
         stop_mpvpaper
         rm -f /tmp/mpv-paper-socket
         if command -v mpvpaper >/dev/null 2>&1; then
-            mpvpaper -o "no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0 --input-ipc-server=/tmp/mpv-paper-socket" '*' "$WALL_TARGET" 8>&- > /dev/null 2>&1 &
+            # Instant poster frame so the screen never sits black while mpv
+            # initializes (seconds under load). The theme handoff below
+            # reuses this file via its [ ! -s ] guard.
+            frame_seed="/tmp/thumb_${BASENAME}.jpg"
+            if command -v ffmpeg >/dev/null 2>&1; then
+                ffmpeg -hide_banner -loglevel error -y -ss 00:00:01 -i "$WALL_TARGET" -frames:v 1 -vf "scale=640:-1" "$frame_seed" 2>/dev/null || true
+            fi
+            if [ -s "$frame_seed" ]; then
+                "$SCRIPT_DIR/ensure_awww.sh" 8>&- 2>/dev/null || true
+                awww img "$frame_seed" --transition-type fade --transition-duration 0.2 --transition-fps 60 > /dev/null 2>&1 || true
+            fi
+            mpvpaper -o "no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --video-only --no-cache --demuxer-readahead-secs=1 --panscan=1.0 --input-ipc-server=/tmp/mpv-paper-socket" '*' "$WALL_TARGET" 8>&- > /dev/null 2>&1 &
             disown $! 2>/dev/null || true
-            sleep 0.15
+            # Wait for first rendered frame (bounded), THEN stop awww.
+            # Stopping it earlier leaves a black gap until mpv is ready.
+            for i in $(seq 1 50); do
+                if echo '{ "command": ["get_property", "playback-time"] }' | socat -t 0.5 - /tmp/mpv-paper-socket 2>/dev/null | grep -q '"data"'; then
+                    break
+                fi
+                sleep 0.1
+            done
+            "$SCRIPT_DIR/ensure_awww.sh" --stop 8>&- 2>/dev/null || true
         fi
-        "$SCRIPT_DIR/ensure_awww.sh" --stop 8>&- 2>/dev/null || true
     fi
 else
     # Images & GIFs: hardware-accelerated smooth transitions via awww

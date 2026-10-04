@@ -14,6 +14,14 @@
         renice = 10;
         inhibit_screensaver = 1;
         softrealtime = "auto";
+        # TLP 1.9.1 is the sole hardware power authority — GameMode must not
+        # touch governors, split-lock mitigation, or iGPU policy (each touch
+        # re-prompts polkit: procsys-helper ×2 + governor-helper per launch).
+        # Governor is already TLP's powersave, so these are no-ops, no prompts.
+        desiredgov = "powersave";
+        defaultgov = "powersave";
+        disable_splitlock = 0;
+        igpu_power_threshold = -1;
       };
     };
   };

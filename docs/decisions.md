@@ -213,6 +213,16 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** System-tray icons are register-once SNI clients. A watcher restart (any QuickShell restart) empties the tray until the client apps restart — there is no re-scan. The KDE Connect icon requires `kdeconnect-indicator` (`kdeconnectd` exports no `StatusNotifierItem`); EasyEffects `--service-mode` and `blueman-applet` (GtkStatusIcon) can never appear. Tray renderers must not denylist `kdeconnect` while the indicator is autostarted.
 - **Decision:** Battery runtime telemetry comes from `Quickshell.Services.UPower` only (`UPower.displayDevice` on the system bus: `energy`, `energyCapacity`, `changeRate`, `timeToFull`). Extends rule 3's sysfs-inotify ban: no `FileView` on `/sys`, no coalescing `Timer` (polling by another name). `UPowerDevice.isLaptopBattery` matches both the synthetic `DisplayDevice` aggregate and the real pack — always source `displayDevice` (never null, no enumeration race). Hover readout is an in-bar glyph↔text swap; the bar surface is never widened for tooltips.
 
+### 29. Shared Media Backend, Solid-Mode Existence Watches & No Destructive Signals
+- **Decision:** All MPRIS/music/cava telemetry lives in root `MusicState.qml` (pragma Singleton). `TopBar.qml`/`SideBar.qml` are presentation-only and alias it (`property var musicData: MusicState.musicData`, …). No bar may own `playerctl --follow`, `music_info.sh`, json `FileView`, `cava`, or media timers — exactly one of each globally, independent of bar visibility. UI files are never merged for backend sharing.
+- **Decision:** Marker-file `FileView`s (`wallpaper_killed`, `gaming_mode`) must pair `watchChanges` with `onFileChanged: { reload(); updateSolidMode(); }`. Directory-watch fires the signal on create/delete but the buffer stays stale without an explicit reload (quickshell `fileview.cpp`: `onWatchedDirectoryChanged` only emits; `powerProfileWatcher` already had the correct pattern). Without this, runtime state flips never propagate.
+- **Decision:** Never `pkill -HUP wezterm-gui` (or any terminal) to "reload" config — SIGHUP terminates it and kills every pane. Wezterm hot-reloads on config mtime; `touch` the color/config files instead.
+
+### 30. Shared Coffee State, wpctl-Only Volume Writes & Reload Orphan Reaping
+- **Decision:** Coffee mode state lives only in `SysData.coffeeActive` (synced from `state.json`); all trays read it, all writes go through `SysData.setCoffee()`. No widget may own a parallel coffee FileView.
+- **Decision:** All volume writes go through `wpctl` (`set-mute`/`set-volume` on `@DEFAULT_AUDIO_SINK@`, mirroring `osd.sh` incl. unmute-on-raise and 100% cap). Native `sink.audio.*` writes silently no-op on stale nodes with no detectable failure — Pipewire stays read-only for display. `toggle volume` targets nothing (no such widget); volume clicks open the battery popup.
+- **Decision:** Every QML-owned persistent `Process` gets explicit stops in `Component.onDestruction` — engine reload does not reliably SIGTERM children, orphaning one set per reload (observed 8× `playerctl --follow` at PPID 1). Verified: repeated `forceReload` holds exactly the live set, zero orphans.
+
 
 
 

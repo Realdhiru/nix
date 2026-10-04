@@ -36,6 +36,41 @@ Item {
 
     property bool _lowBatteryNotified: false
 
+    // --- Coffee mode (idle inhibit) — single shared source ---
+    // Canonical state lives in ~/.cache/quickshell/state.json
+    // (modes.coffee), written by power.sh inhibit. Both the battery popup
+    // tray and the sidebar tray read root.coffeeActive; all writes go
+    // through setCoffee() so the two trays can never disagree.
+    property bool coffeeActive: false
+
+    function syncCoffeeState() {
+        let t = (coffeeStateView.text() || "").trim();
+        if (!t) { root.coffeeActive = false; return; }
+        try {
+            let d = JSON.parse(t);
+            root.coffeeActive = !!(d.modes && d.modes.coffee);
+        } catch(e) {
+            root.coffeeActive = false;
+        }
+    }
+
+    function setCoffee(on) {
+        root.coffeeActive = on ? true : false;
+        Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/power.sh inhibit " + (on ? "on" : "off")]);
+    }
+
+    FileView {
+        id: coffeeStateView
+        path: Quickshell.env("HOME") + "/.cache/quickshell/state.json"
+        watchChanges: true
+        onLoadedChanged: root.syncCoffeeState()
+        onTextChanged: root.syncCoffeeState()
+        onFileChanged: {
+            coffeeStateView.reload();
+            root.syncCoffeeState();
+        }
+    }
+
     // --- Lifecycle Management (CPU/RAM/net poller only) ---
     property int subscribers: 0
 
