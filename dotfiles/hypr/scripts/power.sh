@@ -20,16 +20,68 @@ LOCK_QML="$HOME/.config/hypr/scripts/quickshell/Lock.qml"
 STATE_FILE="$HOME/.cache/idle_inhibit.pid"
 
 is_locked() {
-    pgrep -f 'quickshell.*Lock\.qml' >/dev/null
+    # Match only real quickshell lock processes, never shells/scripts that
+    # merely mention the path (test commands, agents, wrappers) — a bare
+    # pgrep -f false-positives on those and silently swallows lock attempts.
+    local pid
+    for pid in $(pgrep -f 'quickshell.*Lock\.qml' 2>/dev/null || true); do
+        [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ] || continue
+        if ps -o args= -p "$pid" 2>/dev/null | grep -qE '(^|/)(\.quickshell-wrapped|quickshell|qs)( |$).*Lock\.qml'; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Reap definitionally-stray lock processes: a legitimate lock ALWAYS holds
+# the session lock (LockedHint=yes), so a Lock.qml older than 45s with the
+# session unlocked can only be a failed acquisition left idling (it blocks
+# PAM-lessly forever and poisons is_locked). Kill only those; young
+# processes may still be acquiring, live ones are untouched.
+reap_stray_locks() {
+    local sess hint now start age pid
+    sess="${XDG_SESSION_ID:-}"
+    if [ -z "$sess" ]; then
+        sess=$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$(id -un 2>/dev/null)" '$3==u && $4=="seat0" {print $1; exit}' || true)
+        [ -n "$sess" ] || sess=$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$(id -un 2>/dev/null)" '$3==u {print $1; exit}' || true)
+    fi
+    [ -n "$sess" ] || return 0
+    hint=$(loginctl show-session "$sess" -p LockedHint 2>/dev/null | cut -d= -f2 || true)
+    [ "$hint" = "no" ] || return 0
+    now=$(date +%s)
+    for pid in $(pgrep -f 'quickshell.*Lock\.qml' 2>/dev/null || true); do
+        [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ] || continue
+        ps -o args= -p "$pid" 2>/dev/null | grep -qE '(^|/)(\.quickshell-wrapped|quickshell|qs)( |$).*Lock\.qml' || continue
+        start=$(stat -c %Y "/proc/$pid" 2>/dev/null || echo "$now")
+        age=$((now - start))
+        if [ "$age" -gt 45 ]; then
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
 }
 
 # -----------------------------------------------------------------------------
 # SUBCOMMAND: lock
 # -----------------------------------------------------------------------------
 cmd_lock() {
-    if is_locked; then
+    # Single-flight: two near-simultaneous triggers (keybind + hypridle,
+    # double-press) used to both pass is_locked, spawn twice, and leave the
+    # loser invisibly stuck with no session lock — poisoning every later
+    # attempt. Non-blocking: a contender in flight means lock is imminent.
+    LOCK_GUARD="$HOME/.cache/quickshell/lock_guard.lock"
+    mkdir -p "$(dirname "$LOCK_GUARD")"
+    exec 9>"$LOCK_GUARD" 2>/dev/null || true
+    if ! flock -n 9 2>/dev/null; then
         exit 0
     fi
+
+    if is_locked; then
+        flock -u 9 2>/dev/null || true
+        exec 9>&- 2>/dev/null || true
+        exit 0
+    fi
+
+    reap_stray_locks
 
     # Reset any stale compositor crash state before launching
     hyprctl eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true

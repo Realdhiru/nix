@@ -208,6 +208,11 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** No widget may register its own `Shortcut{sequence:"Escape"}` competing with `Main.qml`'s global one in the same window. ESC uses `Keys.onEscapePressed` bubbling (exit sub-state first, else fall through to the widgetStack hide handler). Monitor preview mock preserves true panel aspect via fit-box. Rate picker lists only EDID-advertised rates for the selected resolution; ListModel role writes are paired with an epoch counter where bindings read via `.get()`.
 - **Grid delegate hygiene:** never shadow Repeater's built-in `modelData` with an index binding (`window.list[index]`) — recycled delegates render stale tiles as phantom duplicates. Data pollers must not wipe+rebuild their model on every view activation (loses unapplied edits, flashes grid); populate-once with explicit refresh.
 
+### 28. FH4 FitGirl on NixOS — Install Solved, Boot Blocked in LootboxUWP64
+- **Install (done):** sandboxed unrar All-OK; direct Proton fails on NixOS stub-ld → installed via Lutris+umu; FitGirl defaults to `S:\Games` (override `/DIR=`); post-install verify gate (`QuickSFV.exe` case-mismatch + `dxwebsetup.exe` fail under Wine) triggers scripted silent uninstall — neutered by swapping gate binaries for no-op exes post-file-phase. 77 GB (base+Fortune+Lego) verified.
+- **Boot (blocked):** game needs UWP VC++ runtime (`MSVCP140_APP`/`VCRUNTIME140_APP`/`vccorlib140_app`/`CONCRT140_APP`) absent from Wine — side-by-side renamed desktop CRTs satisfy imports. Past that, `LootboxUWP64.dll` (Xbox/lootbox layer, hooked `combase!RoGetActivationFactory` per UwpMagic) recurses unboundedly (~60–90s, heap churn, 1000+ C++ exception episodes, zero network/D3D12/AppModel activity) → stack overflow in 1MB thread. Anti-debug tripwires present (`IsDebuggerPresent=0` vs `CheckRemoteDebuggerPresent=1` + `int1`). umu exit 53 / container deaths are symptoms, not cause. Proton dirs restored (`GE-Proton10-34` kept alongside 11-x); Lutris entry left on user's `.bat` combo + `PROTONPATH` pin (valid) + `RunAsAdmin`.
+- **Next:** binary-patch int1 probes, or real UWP CRTs, or Steam non-Steam path — all need a fresh decision; do not re-probe blind.
+
 ### 28. Cached-Widget Refresh Contract, SNI Tray Constraints & UPower Battery Source
 - **Decision:** Cached popups (`Main.qml` `widgetCache`) refresh in `showWidget()`, never in `onVisibleChanged`. `targetObj.visible` is set `true` once and never reset, so `onVisibleChanged` fires once per process; any `enabled: window.visible` / `running: window.visible` stays armed forever unless reset per-open. Clipboard paste declares MIME explicitly and serializes copy→close through a single `Process.onExited`.
 - **Decision:** System-tray icons are register-once SNI clients. A watcher restart (any QuickShell restart) empties the tray until the client apps restart — there is no re-scan. The KDE Connect icon requires `kdeconnect-indicator` (`kdeconnectd` exports no `StatusNotifierItem`); EasyEffects `--service-mode` and `blueman-applet` (GtkStatusIcon) can never appear. Tray renderers must not denylist `kdeconnect` while the indicator is autostarted.
@@ -235,6 +240,20 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** Plain Hyprland binds cannot require "both Alts" (pressed Alt counts toward the mod mask) — deliberate chords add a real modifier (CTRL), documented inline. Never work around with submaps/timers.
 - **Decision:** Cold-start model sync uses the backend's own change signals (`Hyprland.workspaces/toplevels.valuesChanged`), never deferred timers. One-shot timers are polling with a nicer name when the event source exists.
 - **Decision:** Boot-critical `FileView`s (settings.json) use `blockLoading: true` so first-frame bindings see real values. Async-first-read leaves defaults live (wrong bar flashes) until load lands.
+
+### 33. Spread Layout, Persistent Tray Presence & Sequenced Handoffs
+- **Decision:** Sidebar uses spread layout (top cluster top-pinned, bottom cluster bottom-pinned, CAVA floats in the void) — never offset against animating geometry, never center-lock mismatched clusters.
+- **Decision:** Toggleable tray adornments are always rendered (dimmed when off, click toggles both ways) — zero layout shift, standard tray UX. A true SNI coffee is impossible without an external daemon (quickshell `SystemTrayItem` is host-only, `isCreatable: false`); rejected to avoid a new resident process.
+- **Decision:** Bar position switches sequence (incoming reserves first, outgoing releases after grace) so edge motion reads correctly. All `FileView`-watched runtime flags (`rec_pid` included) pair `watchChanges` with `onFileChanged: reload()`.
+
+### 34. Mode-Specific Toggles, Full Template Substitution & Glyph Hygiene
+- **Decision:** Mode indicators integrate into an existing host pill (coffee stacked inside battery, on only while active) — never inside shared trays/flows where toggling displaces stable icons. Sidebar carries no music UI at all (TopBar + MusicState own it).
+- **Decision:** Every theme template placeholder must be substituted in EVERY mode (`--neutral` included). Raw `{{...}}` in live Qt/GTK configs produces unreadable apps.
+- **Decision:** Non-ASCII literals (nerd glyphs) are byte-patched (`python3` `\uf0f4`) and hexdump-verified — never retyped through the editor.
+
+### 35. Lockscreen Fail-Fast & Single-Flight Spawn
+- **Decision:** A lock that isn't confirmed within 15s is a failed lock: `Lock.qml` quits loudly (`Qt.exit(1)`) instead of idling invisible with PAM waiting. Silent stuck locks poisoned `is_locked` and swallowed every future attempt.
+- **Decision:** `cmd_lock` is single-flight (non-blocking flock) — concurrent triggers must serialize, never double-spawn. Strays are defined strictly (Lock.qml alive + session unlocked + older than 45s) and reaped before spawning. Lock-state checks match real quickshell binaries only, never cmdline mentions.
 
 
 

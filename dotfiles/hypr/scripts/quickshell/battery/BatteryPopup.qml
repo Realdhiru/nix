@@ -723,7 +723,7 @@ Item {
                                     return res;
                                 }
 
-                                readonly property int totalItemCount: filteredTrayItems.length + (SysData.coffeeActive ? 1 : 0)
+                                readonly property int totalItemCount: filteredTrayItems.length
                                 property real targetWidth: totalItemCount > 0 ? (totalItemCount * window.s(22) + (totalItemCount - 1) * window.s(8) + window.s(20)) : 0
                                 Layout.preferredWidth: targetWidth
                                 visible: targetWidth > 0
@@ -732,7 +732,7 @@ Item {
 
                                 Row {
                                     anchors.centerIn: parent
-                                    spacing: window.s(8)
+                                    spacing: window.s(10)
 
                                     Repeater {
                                         id: trayPopupRepeater
@@ -789,40 +789,6 @@ Item {
                                             }
                                         }
                                     }
-                                    Item {
-                                        id: coffeeTrayItem
-                                        visible: SysData.coffeeActive
-                                        width: visible ? window.s(18) : 0
-                                        height: window.s(18)
-                                        anchors.verticalCenter: parent.verticalCenter
-
-                                        property bool isHovered: coffeeTrayMouse.containsMouse
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: ""
-                                            font.family: "Iosevka Nerd Font"
-                                            font.pixelSize: window.s(16)
-                                            color: coffeeTrayItem.isHovered ? window.primary : window.text
-                                            Behavior on color { ColorAnimation { duration: 150 } }
-                                        }
-
-                                        opacity: isHovered ? 1.0 : 0.8
-                                        scale: isHovered ? 1.15 : 1.0
-                                        Behavior on opacity { NumberAnimation { duration: 150 } }
-                                        Behavior on scale { NumberAnimation { duration: 150 } }
-
-                                        MouseArea {
-                                            id: coffeeTrayMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                SysData.setCoffee(false);
-                                            }
-                                        }
-                                    }
-
                                 }
                             }
                         }

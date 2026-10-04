@@ -196,6 +196,10 @@ Variants {
                 watchChanges: true
                 onLoadedChanged: barWindow.checkRecording()
                 onTextChanged: barWindow.checkRecording()
+                onFileChanged: {
+                    recFileView.reload();
+                    barWindow.checkRecording();
+                }
             }
             function checkRecording() {
                 let txt = (recFileView.text() || "").trim();
@@ -335,6 +339,14 @@ Variants {
                 function onValuesChanged() { barWindow.updateNativeWorkspaces(); }
             }
 
+            // Reactive revision: re-runs the sync whenever ANY backend
+            // observable mutates (late cold fill included), through QML's
+            // own dependency tracking — independent of whether the model
+            // signal connections above resolved at birth. Update is
+            // idempotent, so overlapping triggers are harmless.
+            readonly property int wsBackendRev: (Hyprland.workspaces && Hyprland.workspaces.values ? Hyprland.workspaces.values.length : 0) + (Hyprland.toplevels && Hyprland.toplevels.values ? Hyprland.toplevels.values.length : 0) * 64 + ((Hyprland.focusedWorkspace && Hyprland.focusedWorkspace.id) ? Hyprland.focusedWorkspace.id * 4096 : 0)
+            onWsBackendRevChanged: barWindow.updateNativeWorkspaces()
+
             Component.onCompleted: {
                 barWindow.updateNativeWorkspaces();
                 Qt.callLater(barWindow.updateNativeWorkspaces);
@@ -382,55 +394,8 @@ Variants {
                 }
             }
 
-            // ── Shared music/cava telemetry (MusicState singleton, sole owner) ──
-            // Live aliases — not copies. MusicState owns the MPRIS followers,
-            // music_info.sh, json watcher, cava, and timers; this bar only reads.
-            property var musicData: MusicState.musicData
-            property var cavaBars: MusicState.cavaBars
-            readonly property bool isMediaActive: MusicState.isMediaActive
-            readonly property bool isSpotify: MusicState.isSpotify
-            readonly property string displayTitle: MusicState.displayTitle
-            readonly property string displayTime: MusicState.displayTime
-            readonly property string displayArtUrl: MusicState.displayArtUrl
-            readonly property bool displayArtReady: MusicState.displayArtReady
-            readonly property bool hasVisibleMedia: MusicState.hasVisibleMedia
-
-            // (Music pipeline lives in MusicState singleton — sole owner.)
-
-            // (1s interpolation lives in MusicState singleton.)
-
-            // (Drift timer + metadata follower live in MusicState singleton.)
-
-            // (Status follower + cava process live in MusicState singleton.)
-
-            function cavaBarColor(barIndex, barCount, segIndex, segCount) {
-                let mode = Config.cavaGradient || "soft";
-                let topColor = barWindow.accentColor;
-                let t = (segCount <= 1) ? 1.0 : (segIndex / (segCount - 1));
-
-                if (mode === "soft") {
-                    let alpha = 0.35 + (0.65 * t);
-                    return Qt.rgba(topColor.r, topColor.g, topColor.b, alpha);
-                }
-
-                let bottomColor = topColor;
-                if (mode === "warm") {
-                    bottomColor = (mocha.peach && mocha.peach !== mocha.surface0) ? mocha.peach : (mocha.mauve || topColor);
-                } else if (mode === "ivory") {
-                    bottomColor = mocha.subtext0 || mocha.text;
-                } else if (mode === "sapphire") {
-                    bottomColor = (mocha.sapphire && mocha.sapphire !== mocha.surface0) ? mocha.sapphire : (mocha.blue || mocha.subtext0);
-                } else if (mocha[mode]) {
-                    bottomColor = mocha[mode];
-                }
-
-                return Qt.rgba(
-                    Math.max(0.0, Math.min(1.0, bottomColor.r + (topColor.r - bottomColor.r) * t)),
-                    Math.max(0.0, Math.min(1.0, bottomColor.g + (topColor.g - bottomColor.g) * t)),
-                    Math.max(0.0, Math.min(1.0, bottomColor.b + (topColor.b - bottomColor.b) * t)),
-                    1.0
-                );
-            }
+            // Music/CAVA live in TopBar + MusicState singleton — this bar
+            // shows no music UI by design (no aliases, no color helpers).
 
             // ── Hardware Backlight Service (sysfs inotify, zero polling) ──
             FileView {
@@ -558,11 +523,11 @@ Variants {
                 Behavior on x { NumberAnimation { duration: 350; easing.type: Easing.OutQuint } }
                 Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
-                // ── Top Zone: Clock (fixed height — CAVA floats above, excluded) ──
+                // ── Top Zone: CAVA + Clock pinned to TOP ──
                 Column {
                     id: topZone
-                    anchors.bottom: centerZone.top
-                    anchors.bottomMargin: barWindow.s(16)
+                    anchors.top: parent.top
+                    anchors.topMargin: barWindow.s(16)
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: barWindow.s(8)
 
@@ -653,96 +618,13 @@ Variants {
                     }
                 }
 
-                // Music Pill (CAVA bars floating above Clock, EXCLUDED from
-                // zone alignment so appearing/disappearing never shifts the
-                // clock, workspaces, or bottom pills).
-                Rectangle {
-                    id: mediaBox
-                    readonly property bool activeNow: barWindow.isModuleActive("media") && barWindow.musicData.status === "Playing"
-                    visible: height > 0
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottom: topZone.top
-                    anchors.bottomMargin: barWindow.s(8)
-                    width: barWindow.barThickness
-                    height: activeNow ? (cavaVisualizer.fullH + barWindow.s(20)) : 0
-                    radius: barWindow.s(14)
-                    color: "transparent"
-                    border.width: 0
-                    clip: true
-                    opacity: activeNow ? 1.0 : 0.0
 
-                    Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-                    Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-
-                    // Segmented bricks, pixel-identical to TopBar's visualizer
-                    // (segH s(2), segGap s(1), radius s(0.5), lit-only,
-                    // no height animation — segments snap like TopBar).
-                    // 4 columns to fit bar width; same value mapping.
-                    Item {
-                        id: cavaVisualizer
-                        anchors.centerIn: parent
-                        readonly property int colCount: 4
-                        readonly property real barW: barWindow.s(6)
-                        readonly property real barGap: barWindow.s(2.5)
-                        readonly property real fullW: colCount * barW + (colCount - 1) * barGap
-                        readonly property real fullH: barWindow.s(56)
-                        readonly property int segCount: 19
-                        readonly property real segH: barWindow.s(2)
-                        readonly property real segGap: barWindow.s(1)
-
-                        width: fullW
-                        height: fullH
-
-                        Row {
-                            anchors.fill: parent
-                            spacing: cavaVisualizer.barGap
-
-                            Repeater {
-                                model: cavaVisualizer.colCount
-                                delegate: Item {
-                                    id: colItem
-                                    required property int index
-                                    width: cavaVisualizer.barW
-                                    height: cavaVisualizer.fullH
-
-                                    readonly property int rawVal: Math.max(barWindow.cavaBars[index * 2] || 0, barWindow.cavaBars[index * 2 + 1] || 0)
-                                    readonly property int activeSegs: Math.round((rawVal / 100) * cavaVisualizer.segCount)
-
-                                    Repeater {
-                                        model: cavaVisualizer.segCount
-                                        delegate: Rectangle {
-                                            id: segRect
-                                            required property int index
-                                            width: cavaVisualizer.barW
-                                            height: cavaVisualizer.segH
-                                            radius: barWindow.s(0.5)
-                                            anchors.bottom: parent.bottom
-                                            anchors.bottomMargin: index * (cavaVisualizer.segH + cavaVisualizer.segGap)
-
-                                            property bool isLit: index < colItem.activeSegs
-                                            visible: isLit
-                                            opacity: 1.0
-
-                                            color: barWindow.cavaBarColor(colItem.index, cavaVisualizer.colCount, index, cavaVisualizer.segCount)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"])
-                    }
-                }
-
-                // ── Center Zone: Workspaces Capsule (LOCKED AT TRUE SCREEN CENTER) ──
+                // ── Center Zone: Workspaces Capsule (pinned below clock) ──
                 Item {
                     id: centerZone
-                    anchors.centerIn: parent
+                    anchors.top: topZone.bottom
+                    anchors.topMargin: barWindow.s(16)
+                    anchors.horizontalCenter: parent.horizontalCenter
                     width: barWindow.barThickness
                     height: workspacesBox.height
                     visible: workspacesBox.visible
@@ -898,11 +780,11 @@ Variants {
                     }
                 }
 
-                // ── Bottom Zone: System Tray, Sunset, Volume, Network, Battery (Anchored below locked Center Zone) ──
+                // ── Bottom Zone: System Tray, Sunset, Volume, Network, Battery (pinned to BOTTOM) ──
                 Column {
                     id: bottomZone
-                    anchors.top: centerZone.bottom
-                    anchors.topMargin: barWindow.s(16)
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: barWindow.s(16)
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: barWindow.s(8)
 
@@ -919,7 +801,7 @@ Variants {
                             }
                             return res;
                         }
-                        visible: barWindow.isModuleActive("tray") && (filteredTrayItems.length > 0 || SysData.coffeeActive)
+                        visible: barWindow.isModuleActive("tray") && filteredTrayItems.length > 0
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: barWindow.barThickness
                         height: visible ? (trayCol.implicitHeight + barWindow.s(12)) : 0
@@ -939,7 +821,7 @@ Variants {
                         Column {
                             id: trayCol
                             anchors.centerIn: parent
-                            spacing: barWindow.s(8)
+                            spacing: barWindow.s(10)
 
                             Repeater {
                                 model: trayBox.filteredTrayItems
@@ -998,42 +880,6 @@ Variants {
                                 }
                             }
 
-                            // Coffee mode indicator LAST so toggling it never
-                            // displaces native icons (same behavior as the
-                            // battery popup tray: click turns it off).
-                            Item {
-                                id: coffeeTrayItem
-                                visible: SysData.coffeeActive
-                                width: barWindow.barThickness
-                                height: visible ? barWindow.s(18) : 0
-                                anchors.horizontalCenter: parent.horizontalCenter
-
-                                property bool isHovered: coffeeTrayMouse.containsMouse
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: ""
-                                    font.family: "Iosevka Nerd Font"
-                                    font.pixelSize: barWindow.s(16)
-                                    color: coffeeTrayItem.isHovered ? barWindow.accentColor : mocha.text
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                }
-
-                                opacity: isHovered ? 1.0 : 0.8
-                                scale: isHovered ? 1.15 : 1.0
-                                Behavior on opacity { NumberAnimation { duration: 150 } }
-                                Behavior on scale { NumberAnimation { duration: 150 } }
-
-                                MouseArea {
-                                    id: coffeeTrayMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        SysData.setCoffee(false);
-                                    }
-                                }
-                            }
                         }
                     }
 
@@ -1131,7 +977,7 @@ Variants {
                                             // silently no-op when the node is stale.
                                             Quickshell.execDetached(["bash", "-c", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"]);
                                         } else {
-                                            Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle battery"]);
+                                            Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"]);
                                         }
                                     }
                                     onWheel: (wheel) => {
@@ -1271,18 +1117,20 @@ Variants {
                         }
                     }
 
-                    // Battery Pill (Dynamic icon only, no percentage text)
+                    // Battery Pill (battery icon; coffee indicator stacked
+                    // above while active — click coffee to turn it off)
                     Rectangle {
                         id: batBox
                         visible: barWindow.isModuleActive("battery")
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: barWindow.barThickness
-                        height: barWindow.s(38)
+                        height: SysData.coffeeActive ? barWindow.s(54) : barWindow.s(38)
                         radius: barWindow.s(14)
                         color: barWindow.cardBg
                         border.width: Math.max(1, Config.borderWidth)
                         border.color: batMouse.containsMouse ? barWindow.accentColor : barWindow.cardBorder
                         clip: true
+                        Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
 
                         Rectangle {
                             anchors.fill: parent
@@ -1291,35 +1139,67 @@ Variants {
                             z: -1
                         }
 
-                        Text {
-                            anchors.centerIn: parent
-                            visible: !batMouse.containsMouse
-                            text: barWindow.isDesktop ? "" : barWindow.batIcon
-                            font.family: barWindow.iconFont
-                            font.pixelSize: barWindow.s(18)
-                            color: barWindow.batDynamicColor
-                            Behavior on color { ColorAnimation { duration: 250 } }
-                        }
-
-                        // Hover: remaining runtime from native UPower telemetry
-                        // (SysData.batRuntimeText). In-bar swap, no geometry change.
-                        Text {
-                            anchors.centerIn: parent
-                            visible: batMouse.containsMouse && !barWindow.isDesktop
-                            text: SysData.batRuntimeText
-                            font.family: "JetBrains Mono Nerd Font, JetBrains Mono"
-                            font.pixelSize: barWindow.s(11)
-                            font.weight: Font.Bold
-                            font.letterSpacing: -0.3
-                            color: mocha.text
-                        }
-
+                        // Declared before content so the coffee toggle above
+                        // receives clicks first (later siblings win ties).
                         MouseArea {
                             id: batMouse
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle battery"])
+                        }
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: barWindow.s(4)
+
+                            Item {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: barWindow.s(18)
+                                height: SysData.coffeeActive ? barWindow.s(16) : 0
+                                visible: height > 0
+                                clip: true
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: ""
+                                    font.family: "Iosevka Nerd Font"
+                                    font.pixelSize: barWindow.s(16)
+                                    color: batMouse.containsMouse ? barWindow.accentColor : mocha.text
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        SysData.setCoffee(false);
+                                    }
+                                }
+                            }
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                visible: !batMouse.containsMouse
+                                text: barWindow.isDesktop ? "" : barWindow.batIcon
+                                font.family: barWindow.iconFont
+                                font.pixelSize: barWindow.s(18)
+                                color: barWindow.batDynamicColor
+                                Behavior on color { ColorAnimation { duration: 250 } }
+                            }
+
+                            // Hover: remaining runtime from native UPower telemetry
+                            // (SysData.batRuntimeText). In-bar swap, no geometry change.
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                visible: batMouse.containsMouse && !barWindow.isDesktop
+                                text: SysData.batRuntimeText
+                                font.family: "JetBrains Mono Nerd Font, JetBrains Mono"
+                                font.pixelSize: barWindow.s(11)
+                                font.weight: Font.Bold
+                                font.letterSpacing: -0.3
+                                color: mocha.text
+                            }
                         }
                     }
                 }

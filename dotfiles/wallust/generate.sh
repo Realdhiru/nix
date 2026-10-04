@@ -102,8 +102,12 @@ gradient_color_8 = '#ede6dc'
 EOF
 
     sed 's/{{color4}}/#EDE6DC/g' "$SCRIPT_DIR/templates/gtk.css" > "$TARGET_CACHE/gtk.css"
-    sed -e 's/{{color4}}/#EDE6DC/g' -e 's/{{color2}}/#5E5E60/g' -e 's/{{color3}}/#747576/g' "$SCRIPT_DIR/templates/qtct.conf" > "$TARGET_CACHE/qtct.conf"
-    sed 's/{{color4}}/#EDE6DC/g' "$SCRIPT_DIR/templates/qt-style.qss" > "$TARGET_CACHE/qt-style.qss"
+    # Substitute EVERY placeholder the templates declare. Leaving any
+    # {{background}}/{{foreground}}/{{color0}}/{{color8}} raw writes literal
+    # braces into live Qt config (unreadable black-on-dark file manager).
+    # Values mirror emit_neutral_theme's colors.json (base/text/surfaces).
+    sed -e 's/{{color4}}/#EDE6DC/g' -e 's/{{color2}}/#5E5E60/g' -e 's/{{color3}}/#747576/g' -e 's/{{background}}/#000000/g' -e 's/{{foreground}}/#EDE6DC/g' -e 's/{{color0}}/#111116/g' -e 's/{{color8}}/#22222a/g' "$SCRIPT_DIR/templates/qtct.conf" > "$TARGET_CACHE/qtct.conf"
+    sed -e 's/{{color4}}/#EDE6DC/g' -e 's/{{background}}/#000000/g' -e 's/{{foreground}}/#EDE6DC/g' -e 's/{{color0}}/#111116/g' -e 's/{{color8}}/#22222a/g' "$SCRIPT_DIR/templates/qt-style.qss" > "$TARGET_CACHE/qt-style.qss"
     cat <<'EOF' > "$TARGET_CACHE/hyprland-colors.conf"
 $active_border_col_1 = rgb(EDE6DC)
 $active_border_col_2 = rgb(C9BFB5)

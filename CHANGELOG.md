@@ -1,5 +1,47 @@
 # CHANGELOG
 
+## 2026-10-04 — Lockscreen Fail-Fast: Acquisition Watchdog, Single-Flight Spawn, Stray Reaper
+
+- **Root cause of dead keybind**: `Lock.qml` failing session-lock acquisition sat invisible forever (PAM waiting, no UI) while `is_locked` stayed true — every later attempt silently no-op'd. Found live: 4.5-min-old stuck pair, session unlocked.
+- [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml): 15s acquisition watchdog (`!rootLock.locked` → log + `Qt.exit(1)`); healthy locks (<100ms) never trip it. Proven offscreen: exit 1 at 15.3s with log line.
+- [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh): `cmd_lock` single-flight via non-blocking flock (double-press/hypridle races can't double-spawn); `reap_stray_locks` kills only >45s-old Lock.qml with session unlocked (a live lock always holds it); `is_locked` hardened to real quickshell binaries (test shells/agents mentioning the path no longer block locking). Verified: syntax + dry-run no-op + logic unit checks.
+- Full lock cycle verified healthy end-to-end (spawn → PAM conversation → clean exit, exit 0). Keybind registered (`modmask 1 + F2`), scripts valid.
+
+## 2026-10-04 — Cava Out, Coffee-in-Battery, Chord, Native Sync, No-Flash Start
+
+- **Cava removed from sidebar** (TopBar untouched): `mediaBox` block + aliases + `cavaBarColor` deleted; zero references remain. MusicState still feeds TopBar.
+- **Coffee inside battery pill**: out of both trays (popup SNI-only again); `batBox` stacks cup-above-battery (`s(54)` when active, `s(38)` otherwise, animated), cup click toggles off, rest opens battery popup (nested-over-outer click routing). Tray flows never shift on coffee.
+- **Tray gaps 10** (both trays). **Volume pill opens music widget**.
+- **EarlyOOM explained** (was only configured): userspace OOM killer; kernel OOM can't fire in time under thrash with 23GB swap; SIGTERMs biggest hog <5% available. Needs user rebuild to activate.
+- **Workspace native sync + chord + no-flash** (implemented, live).
+
+## 2026-10-04 — Cava Restored On Top, Coffee Pill, Chord Fix, Native Workspace Sync
+
+- **Cava back above clock** (topZone first child) per explicit direction; clock/top/bottom fixed, only workspaces shift on play/stop.
+- **Coffee dedicated pill** (`coffeeBox`, `s(28)`, radius `s(8)`): out of both trays (popup back to SNI-only), visible only when active above sidebar tray card, click turns off. Glyph drops fixed twice via byte-patch (`ef 83 b4`).
+- **Bar hide chord**: `SUPER+ALT+ALT_L/R` → `SUPER+CTRL+ALT+ALT_L/R` (plain binds can't require both Alts — pressed Alt counts toward the mask). `hyprctl reload` applied.
+- **Workspaces native sync**: `Hyprland.workspaces`/`toplevels.onValuesChanged` + `wsBackendRev` binding trigger; deferred timers deleted. Hide/show blank not reproducible in testing (pills present after toggle cycle) — revision trigger covers all mutation paths idempotently.
+- **Battery AC-direction fix** (was unlogged): `UPower.onBattery` gates direction (fixes "25h on AC"); trickle/capped/>10h → `AC`; display clamps 11:59.
+- **Antigravity CLI removed** from system packages (GUI/hub/IDE untouched; needs user rebuild). Folder recon: 5 portable builtin skills identified, nothing changed.
+- **Record watcher + neutral Qt + video poster + thumbnail nice** (verified live, see prior notes in code comments).
+
+## 2026-10-04 — Cava Back On Top, Coffee Pill, Neutral Qt Fix, Native Workspace Signals
+
+- **Cava back above clock** (SideBar `topZone` first child): moved out of void-float back into top flow per explicit direction. Tradeoff stated: appearing shifts workspaces down; clock/top/bottom fixed.
+- **Coffee out of trays**: deleted from both tray flows; new compact `coffeeBox` pill (`s(28)`) directly above sidebar tray card, visible only when active. Popup tray back to SNI-only. Lesson x2: editor silently drops non-ASCII glyphs — byte-patch + hexdump-verify every time (`ef 83 b4` twice).
+- **Neutral Qt placeholder fix** (`generate.sh`): `--neutral` substituted only 3/7 placeholders, leaving raw `{{background}}`/`{{foreground}}`/`{{color0}}`/`{{color8}}` in live Qt configs (black unreadable file manager). Now substitutes all from the neutral palette; verified zero leftovers + syntax.
+- **Workspaces native**: `Hyprland.workspaces`/`toplevels.onValuesChanged` replace deferred timers; record watcher gained the same `onFileChanged: reload()` fix (proven both directions with fake pid).
+- **Bar hide chord + no-flash start + video poster + thumbnail nice**: live (prior batch verified).
+
+## 2026-10-04 — Spread Sidebar, Persistent Coffee, Staggered Bar Handoff, Record Watcher Fix
+
+- **Spread sidebar layout**: top cluster (clock → workspaces) pinned to top, bottom cluster (tray → battery) pinned to bottom, CAVA floats in the middle void below workspaces (grows downward, moves nothing). Cava-above-clock was geometrically impossible once top-pinned (would clip off-screen) — intent (stable + always visible) preserved.
+- **Coffee always rendered** (both trays): dimmed 0.35 when off, click toggles both ways via `SysData.setCoffee()`. Zero layout shift ever. (Why not native SNI: quickshell 0.3.1 `SystemTrayItem` is `isCreatable: false` — host only. A real SNI coffee needs an external D-Bus daemon = new resident process. Rejected per battery stance.)
+- **Sequenced bar handoff**: incoming bar reserves its edge first, outgoing releases after 380ms grace (symmetric `hideGrace` in both bars). Kills the top-originated combined motion on position switches.
+- **Record watcher fixed**: `recFileView` lacked `onFileChanged: reload()` (same defect class) — recording pill never appeared at runtime. Proven with fake pid file (pill on → rm → pill off, both directions).
+- **Mystery "+" pill identified**: Kanji 十 (workspace 10) at small size — correct behavior, correct order. Not a bug.
+- **Bar hide chord + workspace signals + no-flash start** (from prior batch, now live): 4-key visibility chord, `valuesChanged` model signals, `blockLoading` settings.
+
 ## 2026-10-04 — Coffee Last, 4-Key Bar Hide, Native Workspace Signals, Volume Proven, No-Flash Start
 
 - **Coffee LAST in both trays**: coffee led the column/row so every toggle displaced SNI icons. Moved after the Repeater in `SideBar.trayCol` and `BatteryPopup` row (line-surgery, byte-exact glyph preserved — verified `ef 83 b4` after two silent drops by the editor). Existing icons no longer move.
