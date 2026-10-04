@@ -535,6 +535,12 @@ Item {
         id: settingsFileWatcher
         path: config.settingsJsonPath
         watchChanges: true
+        // Block ONLY the very first read: onCompleted's parseSettingsTextSync
+        // must see the file before first frame, otherwise topBarPosition
+        // stays default "top" and the wrong bar flashes on every fresh
+        // start/toggle until the async load lands. After load, all updates
+        // stay event-driven (no blocking).
+        blockLoading: true
         onLoadedChanged: {
             config.parseSettingsTextSync();
             settingsReader.running = false;

@@ -51,9 +51,12 @@ hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(scripts .. "quickshell/toggle_theme_m
 -- Toggle Quickshell
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle quickshell"))
 
--- Toggle TopBar only
-hl.bind(mainMod .. " + ALT + ALT_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle topbar"))
-hl.bind(mainMod .. " + ALT + ALT_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle topbar"))
+-- Toggle TopBar only (deliberate 4-key chord: the old 2-mod
+-- SUPER+ALT+ALT_L/R fired on either Alt alone because Hyprland counts
+-- the pressed Alt toward the mod mask, so plain binds cannot require
+-- "both Alts". CTRL gates it against accidental presses.)
+hl.bind(mainMod .. " + CTRL + ALT + ALT_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle topbar"))
+hl.bind(mainMod .. " + CTRL + ALT + ALT_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle topbar"))
 
 -- Toggle Bar Auto-Hide (CTRL + MOD + ALT)
 hl.bind(mainMod .. " + CTRL + ALT_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))

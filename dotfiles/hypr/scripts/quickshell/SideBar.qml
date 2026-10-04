@@ -320,23 +320,19 @@ Variants {
                 }
             }
 
-            // Hyprland toplevel/workspace bindings are often still empty at
-            // onCompleted (cold IPC), so the first scan finds nothing and the
-            // bar stays blank until the next workspace event forces a manual
-            // switch. Two one-shot deferred syncs catch the late bindings.
-            // Not polling: each fires once per process lifetime.
-            Timer {
-                interval: 800
-                running: true
-                repeat: false
-                onTriggered: barWindow.updateNativeWorkspaces()
+            // Native model signals: Hyprland populates workspaces/toplevels
+            // asynchronously after cold IPC, so the onCompleted scan can
+            // find nothing. These fire on the late fill (and every later
+            // mutation), so the bar registers workspaces on its own — no
+            // polling timers, no manual-switch bootstrap needed.
+            Connections {
+                target: Hyprland.workspaces
+                function onValuesChanged() { barWindow.updateNativeWorkspaces(); }
             }
 
-            Timer {
-                interval: 2500
-                running: true
-                repeat: false
-                onTriggered: barWindow.updateNativeWorkspaces()
+            Connections {
+                target: Hyprland.toplevels
+                function onValuesChanged() { barWindow.updateNativeWorkspaces(); }
             }
 
             Component.onCompleted: {
@@ -945,43 +941,6 @@ Variants {
                             anchors.centerIn: parent
                             spacing: barWindow.s(8)
 
-                            // Coffee mode indicator (same behavior as the
-                            // battery popup tray: click turns it off).
-                            // First in the column, matching popup order.
-                            Item {
-                                id: coffeeTrayItem
-                                visible: SysData.coffeeActive
-                                width: barWindow.barThickness
-                                height: visible ? barWindow.s(18) : 0
-                                anchors.horizontalCenter: parent.horizontalCenter
-
-                                property bool isHovered: coffeeTrayMouse.containsMouse
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: ""
-                                    font.family: "Iosevka Nerd Font"
-                                    font.pixelSize: barWindow.s(16)
-                                    color: coffeeTrayItem.isHovered ? barWindow.accentColor : mocha.text
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                }
-
-                                opacity: isHovered ? 1.0 : 0.8
-                                scale: isHovered ? 1.15 : 1.0
-                                Behavior on opacity { NumberAnimation { duration: 150 } }
-                                Behavior on scale { NumberAnimation { duration: 150 } }
-
-                                MouseArea {
-                                    id: coffeeTrayMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        SysData.setCoffee(false);
-                                    }
-                                }
-                            }
-
                             Repeater {
                                 model: trayBox.filteredTrayItems
                                 delegate: Image {
@@ -1035,6 +994,43 @@ Variants {
                                                 }
                                             }
                                         }
+                                    }
+                                }
+                            }
+
+                            // Coffee mode indicator LAST so toggling it never
+                            // displaces native icons (same behavior as the
+                            // battery popup tray: click turns it off).
+                            Item {
+                                id: coffeeTrayItem
+                                visible: SysData.coffeeActive
+                                width: barWindow.barThickness
+                                height: visible ? barWindow.s(18) : 0
+                                anchors.horizontalCenter: parent.horizontalCenter
+
+                                property bool isHovered: coffeeTrayMouse.containsMouse
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: ""
+                                    font.family: "Iosevka Nerd Font"
+                                    font.pixelSize: barWindow.s(16)
+                                    color: coffeeTrayItem.isHovered ? barWindow.accentColor : mocha.text
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                }
+
+                                opacity: isHovered ? 1.0 : 0.8
+                                scale: isHovered ? 1.15 : 1.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                Behavior on scale { NumberAnimation { duration: 150 } }
+
+                                MouseArea {
+                                    id: coffeeTrayMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        SysData.setCoffee(false);
                                     }
                                 }
                             }

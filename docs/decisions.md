@@ -230,6 +230,12 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** `qs_manager.sh` brutal paths (`reload`, quickshell toggle) reap only PPID-1 strays of quickshell-spawned followers (exact full-command patterns). Live children and clipboard owners are never matched.
 - **Decision:** `services.earlyoom` (`freeMemThreshold=5`, `freeSwapThreshold=100`, avoid compositor/shell) is the freeze guard: 23GB swap means the kernel OOM never fires in time under thrash; userspace must SIGTERM the hog at <5% available. macOS (compressed memory + Jetsam) and Windows (compression + app lifecycle kills) both ship such guards; desktop Linux/NixOS does not by default.
 
+### 32. Toggle-Effect Ordering, Native Model Signals, Boot-Critical Reads
+- **Decision:** Toggleable tray adornments (coffee) render LAST so their appearance never displaces stable icons. Same rule both trays.
+- **Decision:** Plain Hyprland binds cannot require "both Alts" (pressed Alt counts toward the mod mask) — deliberate chords add a real modifier (CTRL), documented inline. Never work around with submaps/timers.
+- **Decision:** Cold-start model sync uses the backend's own change signals (`Hyprland.workspaces/toplevels.valuesChanged`), never deferred timers. One-shot timers are polling with a nicer name when the event source exists.
+- **Decision:** Boot-critical `FileView`s (settings.json) use `blockLoading: true` so first-frame bindings see real values. Async-first-read leaves defaults live (wrong bar flashes) until load lands.
+
 
 
 

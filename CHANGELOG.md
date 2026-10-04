@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-10-04 — Coffee Last, 4-Key Bar Hide, Native Workspace Signals, Volume Proven, No-Flash Start
+
+- **Coffee LAST in both trays**: coffee led the column/row so every toggle displaced SNI icons. Moved after the Repeater in `SideBar.trayCol` and `BatteryPopup` row (line-surgery, byte-exact glyph preserved — verified `ef 83 b4` after two silent drops by the editor). Existing icons no longer move.
+- **Bar hide gated on deliberate chord**: `SUPER+ALT+ALT_L/R` fired on either Alt alone (Hyprland counts the pressed Alt toward the mod mask — plain binds cannot require both Alts). Rebound visibility toggle to `SUPER+CTRL+ALT+ALT_L/R`; autohide chords (already 3+ mods) kept. `hyprctl reload` applied.
+- **Workspaces go native, timers deleted**: `Hyprland.workspaces`/`toplevels` `onValuesChanged` connections replace the 800/2500ms one-shots — cold-IPC fill triggers sync by itself, plus existing focus/raw-event paths. Fixes blank-until-manual-switch without polling.
+- **Volume proven end-to-end**: `wpctl` roundtrips on `easyeffects_sink` (1.00→0.95→MUTED→0.95→0.80→restored 1.00); pill/mute/popup all shell identical commands; ghost `toggle volume` eliminated; `hyprctl reload` applied. Audio graph sane (EE sink default, Speaker 1.00 unmuted).
+- **No-flash start**: `settingsFileWatcher.blockLoading = true` — `onCompleted` parse saw empty async buffer, so `topBarPosition` stayed default `"top"` until load landed (the toggle-ON topbar flash). First read now blocks (~ms), bars correct from frame 0; later updates stay event-driven.
+- **Observed (out of scope, not touched)**: two `Lock.qml` instances accumulating (hypridle 150s lock never reaps; unlock path unclear) — needs a separate lock-flow look. Never executed Lock.qml per policy.
+
 ## 2026-10-04 — Antigravity CLI Removal, Battery AC-Direction Fix, Cava Out-of-Flow, Workspace Auto-Sync
 
 - **Antigravity CLI removed** (`modules/system/packages.nix`): deleted `antigravity-cli` (`agy` binary). GUI untouched (`antigravity-hub` launcher, IDE, `.desktop` files, NotifTicker matcher all independent). Takes effect on next `sudo nixos-rebuild switch`.
