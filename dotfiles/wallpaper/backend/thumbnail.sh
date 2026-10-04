@@ -4,6 +4,12 @@
 # but do not use `set -e` globally to prevent a single bad image from killing the batch.
 set -uo pipefail
 
+# Yield to foreground work: batch thumbnailing must never contend with an
+# in-progress wallpaper switch (the 4-5s slow switches were this batch
+# fighting awww/mpv/wallust for CPU under load).
+renice -n 15 -p $$ 2>/dev/null || true
+ionice -c 3 -p $$ 2>/dev/null || true
+
 SRC="$HOME/Pictures/Wallpapers"
 CACHE_DIR="$HOME/.cache/quickshell/wallpaper_picker"
 THUMB="$CACHE_DIR/thumbs"

@@ -64,7 +64,6 @@ in
     file gsettings-desktop-schemas
 
     antigravity-hub
-    antigravity-cli
     gram
     nil
     vscode-langservers-extracted

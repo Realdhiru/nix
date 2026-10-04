@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-10-04 — Antigravity CLI Removal, Battery AC-Direction Fix, Cava Out-of-Flow, Workspace Auto-Sync
+
+- **Antigravity CLI removed** (`modules/system/packages.nix`): deleted `antigravity-cli` (`agy` binary). GUI untouched (`antigravity-hub` launcher, IDE, `.desktop` files, NotifTicker matcher all independent). Takes effect on next `sudo nixos-rebuild switch`.
+- **Antigravity data recon** (read-only, nothing changed): `~/.gemini/antigravity[-cli]/` holds 5 builtin skills (`agy-customizations` + hooks/MCP/plugin docs, `antigravity_guide`, `generative_ui`, `migrate-workflows`, `permissioned-github`) plus per-agent brain/conversations. Portable to opencode: `permissioned-github` (gh/git rules) and `agy-customizations` MCP/hook docs. `~/.config/Antigravity/` is plain Electron app data (nothing portable).
+- **Battery "25h on AC" fixed** ([`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml)): direction now from `UPower.onBattery`, never `timeToFull` (0 when UPower can't estimate → old code ran discharge math while charging). AC without active fill (trickle/capped/`ttf==0`/estimate>10h) → `"AC"`; pill display clamps at 11:59 (kills `99h00m` overflow).
+- **Cava excluded from zone flow** (SideBar): `mediaBox` moved out of `topZone` Column to a sibling anchored above the clock — appearing/disappearing can no longer shift clock, workspaces, or pills. Content byte-identical (segmented bricks kept).
+- **Workspaces auto-register**: two one-shot deferred syncs (800ms/2500ms, fire once per lifetime — not polling) catch late Hyprland bindings at cold start; no manual switch needed.
+- **Coffee glyph restored**: `""` bytes were stripped by an edit (`text: ""` empty) — restored `ef 83 b4` via byte-exact patch. Verified rendering in sidebar tray. Lesson: verify non-ASCII literals with hexdump after editing.
+
 ## 2026-10-04 — Centering Revert, Workspace De-bounce, Segmented Cava, Video Poster Handoff, Orphan Reaper, EarlyOOM
 
 - **REVERTED sidebar optical centering** (`contentShift`/`verticalCenterOffset` removed): the offset binding recomputed on every height animation (workspace pill resize, tray/cava show-hide), fighting the layout's own animations — visible jitter, shadow frames, drifting pills. Lesson recorded: never position against animating geometry. Workspace capsule back at locked true center.

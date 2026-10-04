@@ -14,7 +14,31 @@ Variants {
     delegate: Component {
         PanelWindow {
             id: barWindow
-            visible: Config.topBarVisible && Config.topBarPosition === "left"
+            // Staggered position-switch handoff (mirrors TopBar): when this
+            // bar loses its edge, stay mapped briefly so the incoming bar's
+            // space reservation lands first, then release.
+            property bool hideGrace: false
+            visible: Config.topBarVisible && (Config.topBarPosition === "left" || barWindow.hideGrace)
+
+            Timer {
+                id: hideGraceTimer
+                interval: 380
+                repeat: false
+                onTriggered: barWindow.hideGrace = false
+            }
+
+            Connections {
+                target: Config
+                function onTopBarPositionChanged() {
+                    if (Config.topBarPosition !== "left") {
+                        barWindow.hideGrace = true;
+                        hideGraceTimer.restart();
+                    } else {
+                        hideGraceTimer.stop();
+                        barWindow.hideGrace = false;
+                    }
+                }
+            }
             required property var modelData
             screen: modelData
 
@@ -296,6 +320,25 @@ Variants {
                 }
             }
 
+            // Hyprland toplevel/workspace bindings are often still empty at
+            // onCompleted (cold IPC), so the first scan finds nothing and the
+            // bar stays blank until the next workspace event forces a manual
+            // switch. Two one-shot deferred syncs catch the late bindings.
+            // Not polling: each fires once per process lifetime.
+            Timer {
+                interval: 800
+                running: true
+                repeat: false
+                onTriggered: barWindow.updateNativeWorkspaces()
+            }
+
+            Timer {
+                interval: 2500
+                running: true
+                repeat: false
+                onTriggered: barWindow.updateNativeWorkspaces()
+            }
+
             Component.onCompleted: {
                 barWindow.updateNativeWorkspaces();
                 Qt.callLater(barWindow.updateNativeWorkspaces);
@@ -519,95 +562,13 @@ Variants {
                 Behavior on x { NumberAnimation { duration: 350; easing.type: Easing.OutQuint } }
                 Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
-                // ── Top Zone: Clock & CAVA (Anchored above locked Center Zone) ──
+                // ── Top Zone: Clock (fixed height — CAVA floats above, excluded) ──
                 Column {
                     id: topZone
                     anchors.bottom: centerZone.top
                     anchors.bottomMargin: barWindow.s(16)
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: barWindow.s(8)
-
-                    // Music Pill (Tall vertical CAVA bars above Clock, no background pill)
-                    Rectangle {
-                        id: mediaBox
-                        readonly property bool activeNow: barWindow.isModuleActive("media") && barWindow.musicData.status === "Playing"
-                        visible: height > 0
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: barWindow.barThickness
-                        height: activeNow ? (cavaVisualizer.fullH + barWindow.s(20)) : 0
-                        radius: barWindow.s(14)
-                        color: "transparent"
-                        border.width: 0
-                        clip: true
-                        opacity: activeNow ? 1.0 : 0.0
-
-                        Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-                        Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-
-                        // Segmented bricks, pixel-identical to TopBar's visualizer
-                        // (segH s(2), segGap s(1), radius s(0.5), lit-only,
-                        // no height animation — segments snap like TopBar).
-                        // 4 columns to fit bar width; same value mapping.
-                        Item {
-                            id: cavaVisualizer
-                            anchors.centerIn: parent
-                            readonly property int colCount: 4
-                            readonly property real barW: barWindow.s(6)
-                            readonly property real barGap: barWindow.s(2.5)
-                            readonly property real fullW: colCount * barW + (colCount - 1) * barGap
-                            readonly property real fullH: barWindow.s(56)
-                            readonly property int segCount: 19
-                            readonly property real segH: barWindow.s(2)
-                            readonly property real segGap: barWindow.s(1)
-
-                            width: fullW
-                            height: fullH
-
-                            Row {
-                                anchors.fill: parent
-                                spacing: cavaVisualizer.barGap
-
-                                Repeater {
-                                    model: cavaVisualizer.colCount
-                                    delegate: Item {
-                                        id: colItem
-                                        required property int index
-                                        width: cavaVisualizer.barW
-                                        height: cavaVisualizer.fullH
-
-                                        readonly property int rawVal: Math.max(barWindow.cavaBars[index * 2] || 0, barWindow.cavaBars[index * 2 + 1] || 0)
-                                        readonly property int activeSegs: Math.round((rawVal / 100) * cavaVisualizer.segCount)
-
-                                        Repeater {
-                                            model: cavaVisualizer.segCount
-                                            delegate: Rectangle {
-                                                id: segRect
-                                                required property int index
-                                                width: cavaVisualizer.barW
-                                                height: cavaVisualizer.segH
-                                                radius: barWindow.s(0.5)
-                                                anchors.bottom: parent.bottom
-                                                anchors.bottomMargin: index * (cavaVisualizer.segH + cavaVisualizer.segGap)
-
-                                                property bool isLit: index < colItem.activeSegs
-                                                visible: isLit
-                                                opacity: 1.0
-
-                                                color: barWindow.cavaBarColor(colItem.index, cavaVisualizer.colCount, index, cavaVisualizer.segCount)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"])
-                        }
-                    }
 
                     // Clock / Date Card (Enlarged, roomy fonts, no blinking dot)
                     Rectangle {
@@ -693,6 +654,92 @@ Variants {
                                 Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle calendar"]);
                             }
                         }
+                    }
+                }
+
+                // Music Pill (CAVA bars floating above Clock, EXCLUDED from
+                // zone alignment so appearing/disappearing never shifts the
+                // clock, workspaces, or bottom pills).
+                Rectangle {
+                    id: mediaBox
+                    readonly property bool activeNow: barWindow.isModuleActive("media") && barWindow.musicData.status === "Playing"
+                    visible: height > 0
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: topZone.top
+                    anchors.bottomMargin: barWindow.s(8)
+                    width: barWindow.barThickness
+                    height: activeNow ? (cavaVisualizer.fullH + barWindow.s(20)) : 0
+                    radius: barWindow.s(14)
+                    color: "transparent"
+                    border.width: 0
+                    clip: true
+                    opacity: activeNow ? 1.0 : 0.0
+
+                    Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                    Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+
+                    // Segmented bricks, pixel-identical to TopBar's visualizer
+                    // (segH s(2), segGap s(1), radius s(0.5), lit-only,
+                    // no height animation — segments snap like TopBar).
+                    // 4 columns to fit bar width; same value mapping.
+                    Item {
+                        id: cavaVisualizer
+                        anchors.centerIn: parent
+                        readonly property int colCount: 4
+                        readonly property real barW: barWindow.s(6)
+                        readonly property real barGap: barWindow.s(2.5)
+                        readonly property real fullW: colCount * barW + (colCount - 1) * barGap
+                        readonly property real fullH: barWindow.s(56)
+                        readonly property int segCount: 19
+                        readonly property real segH: barWindow.s(2)
+                        readonly property real segGap: barWindow.s(1)
+
+                        width: fullW
+                        height: fullH
+
+                        Row {
+                            anchors.fill: parent
+                            spacing: cavaVisualizer.barGap
+
+                            Repeater {
+                                model: cavaVisualizer.colCount
+                                delegate: Item {
+                                    id: colItem
+                                    required property int index
+                                    width: cavaVisualizer.barW
+                                    height: cavaVisualizer.fullH
+
+                                    readonly property int rawVal: Math.max(barWindow.cavaBars[index * 2] || 0, barWindow.cavaBars[index * 2 + 1] || 0)
+                                    readonly property int activeSegs: Math.round((rawVal / 100) * cavaVisualizer.segCount)
+
+                                    Repeater {
+                                        model: cavaVisualizer.segCount
+                                        delegate: Rectangle {
+                                            id: segRect
+                                            required property int index
+                                            width: cavaVisualizer.barW
+                                            height: cavaVisualizer.segH
+                                            radius: barWindow.s(0.5)
+                                            anchors.bottom: parent.bottom
+                                            anchors.bottomMargin: index * (cavaVisualizer.segH + cavaVisualizer.segGap)
+
+                                            property bool isLit: index < colItem.activeSegs
+                                            visible: isLit
+                                            opacity: 1.0
+
+                                            color: barWindow.cavaBarColor(colItem.index, cavaVisualizer.colCount, index, cavaVisualizer.segCount)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"])
                     }
                 }
 
@@ -912,7 +959,7 @@ Variants {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: ""
+                                    text: ""
                                     font.family: "Iosevka Nerd Font"
                                     font.pixelSize: barWindow.s(16)
                                     color: coffeeTrayItem.isHovered ? barWindow.accentColor : mocha.text

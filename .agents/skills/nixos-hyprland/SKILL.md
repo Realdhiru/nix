@@ -41,6 +41,7 @@ description: High-density operational reference for maintaining the user's NixOS
     - Media telemetry lives only in root `MusicState.qml` (pragma Singleton); `TopBar.qml`/`SideBar.qml` alias it and must never own `playerctl --follow`, `music_info.sh`, json `FileView`, `cava`, or media timers. UI files are never merged for backend sharing.
     - Marker-file `FileView`s (`wallpaper_killed`, `gaming_mode`) require `onFileChanged: { reload(); updateSolidMode(); }` — directory-watch signals create/delete but the buffer stays stale otherwise. Never SIGHUP a terminal to reload config; `touch` the config files (wezterm hot-reloads on mtime).
     - Coffee state lives only in `SysData.coffeeActive` (+ `setCoffee()`); volume writes go only through `wpctl` (Pipewire is read-only for display). Every persistent QML `Process` stops itself in `Component.onDestruction` — engine reloads orphan children otherwise.
+    - Battery direction comes only from `UPower.onBattery`, never `timeToFull` (0 when unestimable → discharge math while charging). Verify non-ASCII literals with `hexdump` after editing — they drop silently to `""`.
     - Never position layout against animating geometry (no anchor offsets bound to `childrenRect`/implicitHeight — fights tweens, causes jitter). `qs_manager.sh` brutal paths reap only PPID-1 follower strays (exact full-command patterns; never bare names, never clipboard owners).
 
 ## 2. Invariant Hardware & Architecture Policies

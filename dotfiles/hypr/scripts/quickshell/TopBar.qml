@@ -12,8 +12,34 @@ Variants {
     delegate: Component {
         PanelWindow {
             id: barWindow
-            visible: Config.topBarVisible && Config.topBarPosition !== "left"
+            // Staggered position-switch handoff: when this bar loses its
+            // edge, stay mapped briefly so the incoming bar's space
+            // reservation lands first (correct-edge motion), then release.
+            // Without this, the outgoing top strip and incoming left strip
+            // animate as one top-originated move.
+            property bool hideGrace: false
+            visible: Config.topBarVisible && (Config.topBarPosition !== "left" || barWindow.hideGrace)
             property bool pendingReload: false
+
+            Timer {
+                id: hideGraceTimer
+                interval: 380
+                repeat: false
+                onTriggered: barWindow.hideGrace = false
+            }
+
+            Connections {
+                target: Config
+                function onTopBarPositionChanged() {
+                    if (Config.topBarPosition === "left") {
+                        barWindow.hideGrace = true;
+                        hideGraceTimer.restart();
+                    } else {
+                        hideGraceTimer.stop();
+                        barWindow.hideGrace = false;
+                    }
+                }
+            }
 
             IpcHandler {
                 target: "topbar"

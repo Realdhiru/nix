@@ -242,24 +242,32 @@ Item {
     }
 
     // Public API consumed by the SideBar battery hover text.
+    // Direction comes from UPower.onBattery — never from timeToFull, which
+    // is 0 when UPower can't estimate. The old code then ran DISCHARGE math
+    // while charging, yielding absurd "25h" readings on AC.
     // Discharging: energy_now * 3600 / power_now
     // Charging:    (energy_full - energy_now) * 3600 / power_now
-    // Clamped to 356400s. power_now == 0 while plugged in => "AC".
+    // On AC without active fill (trickle/capped/full, or estimate > 10h):
+    // "AC". Pill display clamps at 11:59 (never "99h00m" overflow).
     readonly property string batRuntimeText: {
         if (!root.hasBattery) return "";
         let d = UPower.displayDevice;
         if (!d) return "";
         let rate = Math.abs(d.changeRate);
-        if (rate < 1) return root.acOnline ? "AC" : "";
         let rem;
-        if (d.timeToFull > 0) {
-            rem = ((d.energyCapacity - d.energy) * 3600) / rate;
-        } else {
+        let charging = false;
+        if (UPower.onBattery) {
+            if (rate < 1) return "";
             rem = (d.energy * 3600) / rate;
+        } else {
+            if (rate < 1 || d.timeToFull <= 0) return "AC";
+            rem = ((d.energyCapacity - d.energy) * 3600) / rate;
+            if (rem > 36000) return "AC";
+            charging = true;
         }
-        if (rem > 356400) rem = 356400;
+        if (rem > 43199) rem = 43199;
         if (rem < 0) rem = 0;
-        return root._fmtRuntime(rem, d.timeToFull > 0);
+        return root._fmtRuntime(rem, charging);
     }
 
     // Event-driven direct sysfs reader for ACPI platform_profile (replaces power_state_watcher.sh & subshell leaks)
