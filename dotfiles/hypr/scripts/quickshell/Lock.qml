@@ -87,16 +87,16 @@ ShellRoot {
     // the session lock (denied/failed ext-session-lock), quit loudly
     // instead of idling invisible forever with PAM waiting — that state
     // poisons is_locked and silently swallows every future lock attempt.
-    // 15s is ~150x a healthy acquisition (<100ms); legit sessions always
+    // 5s is ~50x a healthy acquisition (<100ms); legit sessions always
     // hold the lock by then. Exit code 1 lets power.sh log the failsafe.
     Timer {
         id: lockAcquireWatchdog
-        interval: 15000
+        interval: 5000
         repeat: false
         running: true
         onTriggered: {
             if (!rootLock.locked) {
-                console.error("QS_LOCK: session lock not acquired within 15s — quitting to unblock future attempts");
+                console.error("QS_LOCK: session lock not acquired within 5s — quitting to unblock future attempts");
                 Qt.exit(1);
             }
         }

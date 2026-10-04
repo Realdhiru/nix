@@ -90,13 +90,13 @@
   # decompressor + Electron app) thrashes into a hard freeze because the
   # 23GB swap keeps the kernel OOM killer from ever firing in time.
   # Mem-driven (swap threshold 100 = effectively memory-only): SIGTERM the
-  # biggest hog below 5% available, SIGKILL if still critical. Compositor
-  # and shell are never picked; browsers/installers are.
+  # biggest hog below 5% available, SIGKILL if still critical. Selection is
+  # by oom_score (RSS-heavy hogs); compositor/shell are small and never
+  # picked in practice. (earlyoom 1.9.0 has no avoid/prefer flags.)
   services.earlyoom = {
     enable = true;
     freeMemThreshold = 5;
     freeSwapThreshold = 100;
-    extraArgs = [ "-a" "(Hyprland|quickshell)" ];
   };
 
   # Removable drives & UDisks2 NTFS mount options (allows user ownership and dirty bit recovery)
