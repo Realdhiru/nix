@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 2026-10-04 — Centering Revert, Workspace De-bounce, Segmented Cava, Video Poster Handoff, Orphan Reaper, EarlyOOM
+
+- **REVERTED sidebar optical centering** (`contentShift`/`verticalCenterOffset` removed): the offset binding recomputed on every height animation (workspace pill resize, tray/cava show-hide), fighting the layout's own animations — visible jitter, shadow frames, drifting pills. Lesson recorded: never position against animating geometry. Workspace capsule back at locked true center.
+- **Workspace switch de-bounce**: pill height `Behavior OutBack` (overshoot bounce) → `OutCubic`, matching the capsule. Occupied/active detection itself verified correct against live `hyprctl` (ws 1–5 + special ignored by design).
+- **Segmented Cava port** (SideBar): solid rounded bars replaced with TopBar-exact bricks — `segH s(2)`, `segGap s(1)`, `radius s(0.5)`, lit-only, no per-frame animation; 19 segs × (2+1) − 1 = `fullH` s(56) exact; same `cavaBarColor(col, count, seg, segCount)` call shape and value mapping. Zero roundness left.
+- **Video wallpaper handoff**: poster frame (`ffmpeg` 640px) shown via `awww img` instantly, mpvpaper starts with fast flags (`--video-only --no-cache --readahead 1`), awww stops only after first frame confirmed over IPC socket (bounded 5s poll). No black gap. Measured: video live ~1.7s, image restore 1.2s.
+- **Orphan reaper** ([`qs_manager.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/qs_manager.sh)): brutal `reload`/toggle paths now reap only PPID-1 strays (`playerctl -a --follow`, `cava_topbar.conf`, `udevadm monitor --subsystem-match`) — live children never touched, clipboard `wl-copy` owners never matched. Reaped 6 accumulated orphans. Plus `MusicState.onDestruction` stops for graceful IPC reloads (proven orphan-free over repeats).
+- **EarlyOOM guard** (`modules/system/services.nix`): `freeMemThreshold=5`, `freeSwapThreshold=100` (mem-driven; 23GB swap defeats swap-gated defaults), avoid compositor/shell. Eval-validated. Needs `sudo nixos-rebuild switch` (same as pending cliphist units).
+
+## 2026-10-04 — GameMode Polkit Storm Fixed (TLP Left Sole Authority)
+
+- **Root cause**: user `gamemoded` + Lutris auto-prepending `gamemoderun` fired upstream polkit helpers on every launch/stop (`procsys-helper` split_lock 0/1, `governor-helper` restore powersave — clobbering TLP's governor).
+- **Fix** in [`gaming.nix`](file:///home/realdhiru/nix/modules/system/gaming.nix): `desiredgov/defaultgov=powersave` (no-op), `disable_splitlock=0`, `igpu_power_threshold=-1` (kills gpu-helper; Iris Xe has no gamemode clock knob). Plus `gamemode: false` in Lutris `system.yml` (Lutris only prepends `gamemoderun` when set — verified 0 occurrences in generated launch script). No TLP/asusd/polkit changes.
+- **Verified**: `gamemoderun true` → governor stays `powersave`, zero procsys/split journal lines. Note: manual `gamemoderun` still invokes governor-helper (upstream has no disable switch) — nothing invokes it now; fallback if ever seen again is `systemctl --user mask gamemoded.service`.
+
 ## 2026-10-04 — MusicState Live (4→2 playerctl, orphan-free reloads), Coffee Single-Source, Volume wpctl Unification, Tray Gap, Brightness Ladder
 
 - **MusicState singleton live** ([`MusicState.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/MusicState.qml), root, SysData pattern): sole MPRIS/cava/music owner; both bars alias (`MusicState.musicData`, …). Deleted ~365 duplicated lines. Verified: 4→2 followers across reloads; mock mpv play→cava×1/JSON Playing, pause→×0, resume→×1, stop→×0; top↔left switches spawn nothing. **Reload orphan fix**: `Component.onDestruction` stops all four processes — Quickshell doesn't reliably SIGTERM children on engine reload (found 8 PPID-1 orphans from prior generations, reaped). Repeated reloads now hold exactly 2 followers, zero orphans.

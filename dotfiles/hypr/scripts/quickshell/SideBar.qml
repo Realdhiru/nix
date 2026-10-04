@@ -94,14 +94,6 @@ Variants {
 
             readonly property bool isRevealed: !autohide || barHover.hovered || hideTimer.running || (Config.isPopupOpen !== undefined && Config.isPopupOpen)
 
-            // ── Optical centering ──
-            // bottomZone carries far more pills than topZone, so locking the
-            // workspace capsule at true screen center pushes the whole look
-            // downward. Shift the locked cluster so the COMBINED content box
-            // (measured exactly via childrenRect) is truly centered. The
-            // binding tracks height animations live, so recentering glides.
-            readonly property real contentShift: (barContent.childrenRect.y + barContent.childrenRect.height / 2) - (barContent.height / 2)
-
             implicitWidth: barThickness
             implicitHeight: Screen.height
             margins { top: s(4); bottom: s(4); left: s(4); right: 0 }
@@ -552,7 +544,10 @@ Variants {
                         Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                         Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
 
-                        // 4 thick solid bars, bottom-anchored, only active height rendered
+                        // Segmented bricks, pixel-identical to TopBar's visualizer
+                        // (segH s(2), segGap s(1), radius s(0.5), lit-only,
+                        // no height animation — segments snap like TopBar).
+                        // 4 columns to fit bar width; same value mapping.
                         Item {
                             id: cavaVisualizer
                             anchors.centerIn: parent
@@ -561,6 +556,9 @@ Variants {
                             readonly property real barGap: barWindow.s(2.5)
                             readonly property real fullW: colCount * barW + (colCount - 1) * barGap
                             readonly property real fullH: barWindow.s(56)
+                            readonly property int segCount: 19
+                            readonly property real segH: barWindow.s(2)
+                            readonly property real segGap: barWindow.s(1)
 
                             width: fullW
                             height: fullH
@@ -578,19 +576,25 @@ Variants {
                                         height: cavaVisualizer.fullH
 
                                         readonly property int rawVal: Math.max(barWindow.cavaBars[index * 2] || 0, barWindow.cavaBars[index * 2 + 1] || 0)
+                                        readonly property int activeSegs: Math.round((rawVal / 100) * cavaVisualizer.segCount)
 
-                                        Rectangle {
-                                            anchors.bottom: parent.bottom
-                                            anchors.horizontalCenter: parent.horizontalCenter
-                                            width: parent.width
-                                            height: colItem.rawVal > 0 ? Math.max(barWindow.s(2), (colItem.rawVal / 100) * parent.height) : 0
-                                            radius: barWindow.s(1)
-                                            visible: height > 0
-                                            gradient: Gradient {
-                                                GradientStop { position: 0.0; color: barWindow.cavaBarColor(colItem.index, cavaVisualizer.colCount, 1, 2) }
-                                                GradientStop { position: 1.0; color: barWindow.cavaBarColor(colItem.index, cavaVisualizer.colCount, 0, 2) }
+                                        Repeater {
+                                            model: cavaVisualizer.segCount
+                                            delegate: Rectangle {
+                                                id: segRect
+                                                required property int index
+                                                width: cavaVisualizer.barW
+                                                height: cavaVisualizer.segH
+                                                radius: barWindow.s(0.5)
+                                                anchors.bottom: parent.bottom
+                                                anchors.bottomMargin: index * (cavaVisualizer.segH + cavaVisualizer.segGap)
+
+                                                property bool isLit: index < colItem.activeSegs
+                                                visible: isLit
+                                                opacity: 1.0
+
+                                                color: barWindow.cavaBarColor(colItem.index, cavaVisualizer.colCount, index, cavaVisualizer.segCount)
                                             }
-                                            Behavior on height { NumberAnimation { duration: 45; easing.type: Easing.OutQuad } }
                                         }
                                     }
                                 }
@@ -692,11 +696,10 @@ Variants {
                     }
                 }
 
-                // ── Center Zone: Workspaces Capsule (optically centered via contentShift) ──
+                // ── Center Zone: Workspaces Capsule (LOCKED AT TRUE SCREEN CENTER) ──
                 Item {
                     id: centerZone
                     anchors.centerIn: parent
-                    anchors.verticalCenterOffset: -barWindow.contentShift
                     width: barWindow.barThickness
                     height: workspacesBox.height
                     visible: workspacesBox.visible
@@ -792,7 +795,7 @@ Variants {
 
                                     property real targetHeight: isItemVisible ? barWindow.s(32) : 0
                                     height: targetHeight
-                                    Behavior on targetHeight { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                    Behavior on targetHeight { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
                                     width: isItemVisible ? barWindow.s(32) : 0
                                     radius: barWindow.s(10)

@@ -86,6 +86,19 @@
     criticalPowerAction = "Hibernate";
   };
 
+  # Userspace OOM guard: without this, RAM exhaustion (e.g. repack
+  # decompressor + Electron app) thrashes into a hard freeze because the
+  # 23GB swap keeps the kernel OOM killer from ever firing in time.
+  # Mem-driven (swap threshold 100 = effectively memory-only): SIGTERM the
+  # biggest hog below 5% available, SIGKILL if still critical. Compositor
+  # and shell are never picked; browsers/installers are.
+  services.earlyoom = {
+    enable = true;
+    freeMemThreshold = 5;
+    freeSwapThreshold = 100;
+    extraArgs = [ "-a" "(Hyprland|quickshell)" ];
+  };
+
   # Removable drives & UDisks2 NTFS mount options (allows user ownership and dirty bit recovery)
   services.udisks2.enable = true;
   environment.etc."udisks2/mount_options.conf".text = ''

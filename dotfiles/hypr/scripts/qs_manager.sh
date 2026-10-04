@@ -28,9 +28,29 @@ ACTION="${1:-}"
 TARGET="${2:-}"
 SUBTARGET="${3:-}"
 
+# -----------------------------------------------------------------------------
+# ORPHAN REAPER: SIGKILLing quickshell (below) orphans its stateless
+# follower processes (PPID 1) because QML onDestruction never runs.
+# Fresh instances respawn everything, so reaping ONLY PPID-1 strays is
+# always safe — live children (PPID=quickshell) are never touched.
+# Patterns are exact full-command matches: never bare names (a bare
+# "wl-paste" or "playerctl" pattern would hit clipboard owners / daemons).
+# -----------------------------------------------------------------------------
+reap_qs_orphans() {
+    local pid ppid
+    for pid in $(pgrep -f "playerctl -a --follow" 2>/dev/null || true) $(pgrep -f "cava -p .*cava_topbar.conf" 2>/dev/null || true) $(pgrep -f "udevadm monitor --subsystem-match" 2>/dev/null || true); do
+        [ -n "$pid" ] || continue
+        ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ' || true)
+        if [ "$ppid" = "1" ]; then
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+}
+
 if [[ "$ACTION" == "reload" ]]; then
     pkill -9 -f "quickshell" 2>/dev/null || true
     pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
+    reap_qs_orphans
     sleep 0.3
     hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('$QS_BIN -p $SHELL_QML_PATH'))" >/dev/null 2>&1 || (nohup "$QS_BIN" -p "$SHELL_QML_PATH" >/dev/null 2>&1 & disown)
     exit 0
@@ -40,8 +60,10 @@ if [[ "$ACTION" == "toggle" && "$TARGET" == "quickshell" ]]; then
     if pgrep -f "Shell.qml" >/dev/null || pgrep -x quickshell >/dev/null || pgrep -f "\.quickshell-wra" >/dev/null; then
         pkill -9 -f "quickshell" 2>/dev/null || true
         pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
+        reap_qs_orphans
         notify-send -a "QuickShell" -u low "QuickShell OFF" 2>/dev/null || true
     else
+        reap_qs_orphans
         hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('$QS_BIN -p $SHELL_QML_PATH'))" >/dev/null 2>&1 || (nohup "$QS_BIN" -p "$SHELL_QML_PATH" >/dev/null 2>&1 & disown)
         notify-send -a "QuickShell" -u low "QuickShell ON" 2>/dev/null || true
     fi

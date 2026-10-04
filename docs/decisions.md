@@ -223,6 +223,11 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** All volume writes go through `wpctl` (`set-mute`/`set-volume` on `@DEFAULT_AUDIO_SINK@`, mirroring `osd.sh` incl. unmute-on-raise and 100% cap). Native `sink.audio.*` writes silently no-op on stale nodes with no detectable failure — Pipewire stays read-only for display. `toggle volume` targets nothing (no such widget); volume clicks open the battery popup.
 - **Decision:** Every QML-owned persistent `Process` gets explicit stops in `Component.onDestruction` — engine reload does not reliably SIGTERM children, orphaning one set per reload (observed 8× `playerctl --follow` at PPID 1). Verified: repeated `forceReload` holds exactly the live set, zero orphans.
 
+### 31. No Positioning Against Animating Geometry, Orphan Reaping & OOM Guard
+- **Decision (revert lesson):** Never offset layout against live height animations (`childrenRect`/implicitHeight bindings driving anchors). The offset recomputes mid-animation and fights the layout's own tweens — jitter, shadows, drift. Workspace capsule stays locked at true center; optical balance is achieved by content design, not runtime shifting.
+- **Decision:** `qs_manager.sh` brutal paths (`reload`, quickshell toggle) reap only PPID-1 strays of quickshell-spawned followers (exact full-command patterns). Live children and clipboard owners are never matched.
+- **Decision:** `services.earlyoom` (`freeMemThreshold=5`, `freeSwapThreshold=100`, avoid compositor/shell) is the freeze guard: 23GB swap means the kernel OOM never fires in time under thrash; userspace must SIGTERM the hog at <5% available. macOS (compressed memory + Jetsam) and Windows (compression + app lifecycle kills) both ship such guards; desktop Linux/NixOS does not by default.
+
 
 
 
