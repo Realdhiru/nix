@@ -821,7 +821,7 @@ Item {
                                         font.weight: Font.Bold
                                         font.pixelSize: window.s(13)
                                         color: window.text
-                                        anchors.verticalCenter: parent.verticalCenter
+                                        Layout.alignment: Qt.AlignVCenter
                                     }
 
                                     Item { Layout.fillWidth: true }

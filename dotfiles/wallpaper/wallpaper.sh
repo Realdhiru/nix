@@ -83,6 +83,27 @@ cmd_clean() {
 # SUBCOMMAND: kill
 # -----------------------------------------------------------------------------
 cmd_kill() {
+    if [ -f "$HOME/.cache/wallpaper_killed" ]; then
+        # TOGGLE BACK ON: Restore last active wallpaper
+        rm -f "$HOME/.cache/wallpaper_killed"
+        local target=""
+        if [ -s "$LAST_TXT" ]; then
+            target="$(cat "$LAST_TXT" 2>/dev/null || true)"
+        elif [ -f "$HOME/.cache/last_wallpaper.txt" ]; then
+            target="$(cat "$HOME/.cache/last_wallpaper.txt" 2>/dev/null || true)"
+        fi
+        if [ -n "$target" ] && [ -f "$target" ]; then
+            cmd_set "$target"
+        else
+            cmd_boot
+        fi
+        if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+            hyprctl reload >/dev/null 2>&1 || true
+        fi
+        notify-send -a "Wallpaper" -u low "ON"
+        return 0
+    fi
+
     "$BACKEND/ensure_awww.sh" --stop 2>/dev/null || true
     local pids
     pids=$(pidof .mpvpaper-wrapped 2>/dev/null || true)
@@ -96,6 +117,8 @@ cmd_kill() {
 
     if [ -s "$CURRENT_TXT" ]; then
         cp -f "$CURRENT_TXT" "$LAST_TXT" 2>/dev/null || true
+    elif [ -f "$HOME/.cache/current_wallpaper.txt" ]; then
+        cp -f "$HOME/.cache/current_wallpaper.txt" "$LAST_TXT" 2>/dev/null || true
     fi
     rm -f "$CURRENT_TXT"
     touch "$CURRENT_TXT"
@@ -112,6 +135,7 @@ cmd_kill() {
         hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" >/dev/null 2>&1 || true
     fi
     touch "$HOME/.cache/wallpaper_killed"
+    notify-send -a "Wallpaper" -u low "OFF"
 }
 
 # -----------------------------------------------------------------------------

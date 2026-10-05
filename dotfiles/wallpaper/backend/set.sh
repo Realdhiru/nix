@@ -33,11 +33,12 @@ WAS_KILLED=0
 [ -f "$HOME/.cache/wallpaper_killed" ] && WAS_KILLED=1
 rm -f "$HOME/.cache/wallpaper_killed"
 
-# Restore blur, shadows, and animations if recovering from killed wallpaper
+# Restore blur, shadows, animations, and window rules if recovering from killed wallpaper
 if [ "$WAS_KILLED" -eq 1 ] && command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
     CURRENT_PROFILE="$(cat "$HOME/.cache/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
     if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$HOME/.cache/gaming_mode" ]; then
         hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+        hyprctl reload >/dev/null 2>&1 || true
     fi
 fi
 

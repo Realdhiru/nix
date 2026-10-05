@@ -146,10 +146,10 @@ Variants {
             }
 
             readonly property color accentColor: ensureBright((Config.accentColorSource && mocha[Config.accentColorSource]) ? mocha[Config.accentColorSource] : mocha.primary)
-            readonly property color brightColor: Qt.lighter(accentColor, 1.15)
-            readonly property color volColor: Qt.darker(accentColor, 1.10)
-            readonly property color wifiColor: ensureBright(mocha.subtext0 || accentColor)
-            readonly property color btColor: ensureBright(mocha.text || accentColor)
+            readonly property color brightColor: mocha.text
+            readonly property color volColor: mocha.text
+            readonly property color wifiColor: mocha.text
+            readonly property color btColor: mocha.text
 
             readonly property color cardBg: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
             readonly property color cardBorder: (Config.borderWidth > 0 && Config.borderOpacity > 0)
@@ -616,34 +616,27 @@ Variants {
 
 
                 // ── Center Zone: Workspaces Capsule (pinned below clock) ──
-                Item {
-                    id: centerZone
+                Rectangle {
+                    id: workspacesBox
                     anchors.top: topZone.bottom
                     anchors.topMargin: barWindow.s(16)
                     anchors.horizontalCenter: parent.horizontalCenter
+                    color: barWindow.cardBg
+                    radius: barWindow.s(14)
+                    border.width: Math.max(1, Config.borderWidth)
+                    border.color: barWindow.cardBorder
+                    Behavior on color { ColorAnimation { duration: 250 } }
+                    Behavior on border.color { ColorAnimation { duration: 250 } }
                     width: barWindow.barThickness
-                    height: workspacesBox.height
-                    visible: workspacesBox.visible
+                    clip: true
 
-                    // Workspaces Capsule (Vertical port of TopBar workspace widget)
+                    // Anti-bleed base layer
                     Rectangle {
-                        id: workspacesBox
-                        color: barWindow.cardBg
-                        radius: barWindow.s(14)
-                        border.width: Math.max(1, Config.borderWidth)
-                        border.color: barWindow.cardBorder
-                        Behavior on color { ColorAnimation { duration: 250 } }
-                        Behavior on border.color { ColorAnimation { duration: 250 } }
-                        width: barWindow.barThickness
-                        clip: true
-
-                        // Anti-bleed base layer
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, Config.antiBleedOpacity)
-                            z: -1
-                        }
+                        anchors.fill: parent
+                        radius: parent.radius
+                        color: Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, Config.antiBleedOpacity)
+                        z: -1
+                    }
 
                         property int visibleItemCount: {
                             let n = 0;
@@ -834,7 +827,6 @@ Variants {
                             }
                         }
                     }
-                }
 
                 // ── Bottom Zone: System Tray, Sunset, Volume, Network, Battery (pinned to BOTTOM) ──
                 Column {

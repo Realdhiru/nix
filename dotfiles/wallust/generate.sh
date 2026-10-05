@@ -151,15 +151,15 @@ if [ ! -f "$WALLPAPER" ]; then
     exit 1
 fi
 
-# 1. Compute luminance metrics directly from the wallpaper
+# 1. Compute luminance metrics directly from the wallpaper (downsampled for instant execution)
 OVERALL_LUM="50"
 TOP_LUM="50"
 if command -v magick >/dev/null 2>&1; then
-    OVERALL_LUM=$(magick "$WALLPAPER" -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
-    TOP_LUM=$(magick "$WALLPAPER" -gravity North -crop 100x10%+0+0 -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
+    OVERALL_LUM=$(magick "$WALLPAPER" -resize 128x128\! -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
+    TOP_LUM=$(magick "$WALLPAPER" -resize 128x128\! -gravity North -crop 128x13+0+0 +repage -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
 elif command -v convert >/dev/null 2>&1; then
-    OVERALL_LUM=$(convert "$WALLPAPER" -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
-    TOP_LUM=$(convert "$WALLPAPER" -gravity North -crop 100x10%+0+0 -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
+    OVERALL_LUM=$(convert "$WALLPAPER" -resize 128x128\! -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
+    TOP_LUM=$(convert "$WALLPAPER" -resize 128x128\! -gravity North -crop 128x13+0+0 +repage -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
 fi
 
 TOP_LUM_VAL=$(awk -v l="$TOP_LUM" 'BEGIN {printf "%.1f", l}')

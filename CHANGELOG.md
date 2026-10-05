@@ -3,17 +3,18 @@
 ## 2026-10-05 — SideBar Workspace Resilience, Salience Theme Harmony & Coffee Icon Refinement
 
 - **SideBar Workspace Resilience & Zero-Count Collapse Prevention**:
-  - In [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L648-L686), updated `visibleItemCount` to fallback to `Math.max(1, n)` and `clampedCount` to clamp `Math.max(1, Math.min(visibleItemCount, 10))` so workspace pills never collapse to 0 height or break layout during bar transitions.
-  - Decoupled `workspacesBox.visible` from dynamic child counts so it solely tracks module activation (`barWindow.isModuleActive("workspaces")`).
-- **Sidebar Icon Color Harmonization**:
-  - Replaced hardcoded secondary accent tokens (`mocha.sapphire`, `mocha.pink`, `mocha.blue`) in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L148-L153) with wallpaper-derived tonal derivatives (`Qt.lighter(accentColor, 1.15)`, `Qt.darker(accentColor, 1.10)`, and text/subtext0), ensuring status icons harmonize with the active wallpaper.
-- **Fastfetch 16-Block Dual-Row Layout**:
-  - Updated [`~/.config/fastfetch/config.jsonc`](file:///home/realdhiru/.config/fastfetch/config.jsonc#L93-L109) to render two distinct 8-block rows (standard ANSI 0–7 and high-intensity bright 8–15).
-- **Wallust Palette Salience Harmonization**:
-  - Switched `palette = "saliencedark16"` and `color_space = "salience"` in [`dotfiles/wallust/wallust.toml`](file:///home/realdhiru/nix/dotfiles/wallust/wallust.toml) and [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh). Eliminates synthetic ANSI hue distortion and generates a harmonious 16-color palette derived directly from the current wallpaper.
-- **Minimalist Material Design Coffee Glyph**:
-  - Replaced FontAwesome coffee glyph with Material Design icon `󰅴` (`\U000f0174`) in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L958) backed by `JetBrainsMono Nerd Font`.
-  - Added initial startup sync in [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml#L302) to immediately load active coffee mode status from `~/.cache/quickshell/state.json`.
+  - In [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L616-L640), eliminated redundant `centerZone` wrapper Item and anchored `workspacesBox` directly to `topZone.bottom` with `anchors.horizontalCenter: parent.horizontalCenter`, permanently resolving geometry desync and widget disappearance during TopBar/SideBar position toggling.
+  - Updated status icons in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L148-L153) to `mocha.text` (wallpaper text white) for clean visibility against dark card backgrounds.
+- **BatteryPopup QML Layout Warning Fix**:
+  - Replaced illegal `anchors.verticalCenter` on `Text` inside `RowLayout` in [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml#L824) with `Layout.alignment: Qt.AlignVCenter`.
+- **Wallpaper Toggle Reversibility & Clean Recovery**:
+  - In [`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh#L83-L125), updated `cmd_kill` to act as an idempotent toggle (`SUPER + CTRL + SHIFT + W`): turns wallpaper off and saves target, toggling again restores the previous wallpaper and executes `hyprctl reload` to restore transparent window rules.
+  - In [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh#L36-L43), added `hyprctl reload` when recovering from killed state to clear `1.0 override` opacity rules.
+- **Wallpaper Switch Performance Acceleration**:
+  - In [`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh#L154-L165), downsampled luminance calculation image input to `128x128` prior to grayscale mean analysis, speeding up theme extraction significantly.
+- **KDE Connect Autostart & Ly Display Manager Fixes**:
+  - Masked `app-org.kde.kdeconnect.daemon@autostart.service` and created `Hidden=true` desktop entry to stop automatic startup on login.
+  - In [`modules/system/services.nix`](file:///home/realdhiru/nix/modules/system/services.nix#L187-L195), enabled `shell = true` in Ly config for pure TTY logins, and set `xsessions = null` to resolve the `failed to crawl session directories` error.
 
 ## 2026-10-04 — Lockscreen Fail-Fast: Acquisition Watchdog, Single-Flight Spawn, Stray Reaper
 
