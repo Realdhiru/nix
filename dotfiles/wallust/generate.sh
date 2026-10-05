@@ -247,8 +247,8 @@ fi
 if [ "$IS_MONO" = "True" ]; then
     emit_neutral_theme
 else
-    PALETTE="dark16"
-    COLORSPACE="lch"
+    PALETTE="saliencedark16"
+    COLORSPACE="salience"
     if [ "$MODE" = "light" ]; then
         PALETTE="light16"
         COLORSPACE="lch"

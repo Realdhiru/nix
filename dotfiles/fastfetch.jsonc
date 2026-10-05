@@ -91,7 +91,20 @@
     "break",
     {
       "type": "colors",
-      "symbol": "circle",
+      "symbol": "block",
+      "block": {
+        "range": [0, 7],
+        "width": 3
+      },
+      "paddingLeft": 1
+    },
+    {
+      "type": "colors",
+      "symbol": "block",
+      "block": {
+        "range": [8, 15],
+        "width": 3
+      },
       "paddingLeft": 1
     }
   ]

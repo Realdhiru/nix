@@ -299,6 +299,7 @@ Item {
 
     Component.onCompleted: {
         root._syncSysfsBattery();
+        root.syncCoffeeState();
     }
 
     // =========================================================================

@@ -44,7 +44,7 @@ description: High-density operational reference for maintaining the user's NixOS
     - Battery direction comes only from `UPower.onBattery`, never `timeToFull` (0 when unestimable → discharge math while charging). Verify non-ASCII literals with `hexdump` after editing — they drop silently to `""`.
     - Mode indicators integrate into a host pill (coffee inside battery, on only while active) — never inside shared trays. Sidebar has no music UI (TopBar + MusicState own it). Visibility toggles require 3+ modifiers (plain binds can't require both Alts). Cold-start sync uses backend change signals, never deferred timers. Boot-critical `FileView`s use `blockLoading: true`.
     - Bar position switches sequence (incoming reserves first, outgoing releases after grace). Every runtime-flag `FileView` pairs `watchChanges` with `onFileChanged: reload()`. Substitute every template placeholder in every theme mode. Byte-patch non-ASCII glyphs + hexdump-verify.
-    - Unconfirmed session locks quit loudly within 15s (never idle invisible). Lock spawn is single-flight; strays (alive + session unlocked + >45s) are reaped; lock-state matches binaries only, never cmdline mentions.
+    - Unconfirmed session locks quit loudly within 5s (never idle invisible). Lock spawn is single-flight; strays (alive + session unlocked + >45s) are reaped; lock-state matches binaries only, never cmdline mentions.
     - Never position layout against animating geometry (no anchor offsets bound to `childrenRect`/implicitHeight — fights tweens, causes jitter). `qs_manager.sh` brutal paths reap only PPID-1 follower strays (exact full-command patterns; never bare names, never clipboard owners).
 
 ## 2. Invariant Hardware & Architecture Policies

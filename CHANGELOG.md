@@ -1,9 +1,24 @@
 # CHANGELOG
 
+## 2026-10-05 — SideBar Workspace Resilience, Salience Theme Harmony & Coffee Icon Refinement
+
+- **SideBar Workspace Resilience & Zero-Count Collapse Prevention**:
+  - In [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L648-L686), updated `visibleItemCount` to fallback to `Math.max(1, n)` and `clampedCount` to clamp `Math.max(1, Math.min(visibleItemCount, 10))` so workspace pills never collapse to 0 height or break layout during bar transitions.
+  - Decoupled `workspacesBox.visible` from dynamic child counts so it solely tracks module activation (`barWindow.isModuleActive("workspaces")`).
+- **Sidebar Icon Color Harmonization**:
+  - Replaced hardcoded secondary accent tokens (`mocha.sapphire`, `mocha.pink`, `mocha.blue`) in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L148-L153) with wallpaper-derived tonal derivatives (`Qt.lighter(accentColor, 1.15)`, `Qt.darker(accentColor, 1.10)`, and text/subtext0), ensuring status icons harmonize with the active wallpaper.
+- **Fastfetch 16-Block Dual-Row Layout**:
+  - Updated [`~/.config/fastfetch/config.jsonc`](file:///home/realdhiru/.config/fastfetch/config.jsonc#L93-L109) to render two distinct 8-block rows (standard ANSI 0–7 and high-intensity bright 8–15).
+- **Wallust Palette Salience Harmonization**:
+  - Switched `palette = "saliencedark16"` and `color_space = "salience"` in [`dotfiles/wallust/wallust.toml`](file:///home/realdhiru/nix/dotfiles/wallust/wallust.toml) and [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh). Eliminates synthetic ANSI hue distortion and generates a harmonious 16-color palette derived directly from the current wallpaper.
+- **Minimalist Material Design Coffee Glyph**:
+  - Replaced FontAwesome coffee glyph with Material Design icon `󰅴` (`\U000f0174`) in [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L958) backed by `JetBrainsMono Nerd Font`.
+  - Added initial startup sync in [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml#L302) to immediately load active coffee mode status from `~/.cache/quickshell/state.json`.
+
 ## 2026-10-04 — Lockscreen Fail-Fast: Acquisition Watchdog, Single-Flight Spawn, Stray Reaper
 
 - **Root cause of dead keybind**: `Lock.qml` failing session-lock acquisition sat invisible forever (PAM waiting, no UI) while `is_locked` stayed true — every later attempt silently no-op'd. Found live: 4.5-min-old stuck pair, session unlocked.
-- [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml): 15s acquisition watchdog (`!rootLock.locked` → log + `Qt.exit(1)`); healthy locks (<100ms) never trip it. Proven offscreen: exit 1 at 15.3s with log line.
+- [`Lock.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Lock.qml): 5s acquisition watchdog (`!rootLock.locked` → log + `Qt.exit(1)`); healthy locks acquire in <100ms, so the watchdog is fail-fast only and never delays a working lock.
 - [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh): `cmd_lock` single-flight via non-blocking flock (double-press/hypridle races can't double-spawn); `reap_stray_locks` kills only >45s-old Lock.qml with session unlocked (a live lock always holds it); `is_locked` hardened to real quickshell binaries (test shells/agents mentioning the path no longer block locking). Verified: syntax + dry-run no-op + logic unit checks.
 - Full lock cycle verified healthy end-to-end (spawn → PAM conversation → clean exit, exit 0). Keybind registered (`modmask 1 + F2`), scripts valid.
 

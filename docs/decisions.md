@@ -252,7 +252,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** Non-ASCII literals (nerd glyphs) are byte-patched (`python3` `\uf0f4`) and hexdump-verified — never retyped through the editor.
 
 ### 35. Lockscreen Fail-Fast & Single-Flight Spawn
-- **Decision:** A lock that isn't confirmed within 15s is a failed lock: `Lock.qml` quits loudly (`Qt.exit(1)`) instead of idling invisible with PAM waiting. Silent stuck locks poisoned `is_locked` and swallowed every future attempt.
+- **Decision:** A lock that isn't confirmed within 5s is a failed lock: `Lock.qml` quits loudly (`Qt.exit(1)`) instead of idling invisible with PAM waiting. Silent stuck locks poisoned `is_locked` and swallowed every future attempt.
 - **Decision:** `cmd_lock` is single-flight (non-blocking flock) — concurrent triggers must serialize, never double-spawn. Strays are defined strictly (Lock.qml alive + session unlocked + older than 45s) and reaped before spawning. Lock-state checks match real quickshell binaries only, never cmdline mentions.
 
 

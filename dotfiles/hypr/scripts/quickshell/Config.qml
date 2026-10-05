@@ -22,7 +22,7 @@ Item {
     property var rawSettings: ({})
     property var rawEnvs: ({})
     property bool topBarVisible: true
-    property string topBarPosition: "top"
+    property string topBarPosition: "left"
     signal requestWidgetCommand(string cmd, string targetWidget, string arg)
 
     function setTopBarPosition(pos) {
