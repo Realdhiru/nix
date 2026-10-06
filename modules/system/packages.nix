@@ -124,6 +124,7 @@ in
     gsettings-desktop-schemas
 
     antigravity-hub
+    opencode
     gram
     nil
     vscode-langservers-extracted
