@@ -478,16 +478,19 @@ Item {
 
     readonly property var categoryRankMap: ({
         "gifs": 0,
-        "nord": 1,
-        "ocean": 2,
-        "emerald": 3,
-        "sakura": 4,
-        "sunset": 5,
-        "synthwave": 6,
-        "gruvbox": 7,
-        "dark": 8,
-        "light": 9,
-        "videos": 10
+        "gruvbox": 1,
+        "sakura": 2,
+        "nord": 3,
+        "ocean": 4,
+        "emerald": 5,
+        "sunset": 6,
+        "synthwave": 7,
+        "crimson": 8,
+        "violet": 9,
+        "monochrome": 10,
+        "dark": 11,
+        "light": 12,
+        "videos": 13
     })
 
 

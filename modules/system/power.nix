@@ -7,6 +7,7 @@
 
   boot.kernelParams = [
     "i915.enable_fbc=1"
+    "i915.enable_psr=1"
   ];
 
   # --- 2. TLP CONFIGURATION (SOLE POWER MANAGER) ---
@@ -36,7 +37,9 @@
 
       PLATFORM_PROFILE_ON_AC  = "performance";
       PLATFORM_PROFILE_ON_BAT = "balanced";
-      PLATFORM_PROFILE_ON_SAV = "quiet";
+      PLATFORM_PROFILE_ON_SAV = "balanced";
+
+      CPU_MAX_PERF_ON_SAV = 60;
 
       RUNTIME_PM_ON_AC  = "auto";
       RUNTIME_PM_ON_BAT = "auto";

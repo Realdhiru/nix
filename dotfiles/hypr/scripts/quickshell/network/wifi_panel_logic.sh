@@ -37,7 +37,12 @@ HOTSPOT_SSID=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk 
     fi
 done)
 
-CURRENT_RAW=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wifi | awk -F: -v hs="$HOTSPOT_SSID" '$1=="yes" && $2=="Infra" && (hs == "" || $3 != hs){print $1":"$3":"$4":"$5; exit}')
+RESCAN_MODE="no"
+if [ "${1:-}" = "--rescan" ]; then
+    RESCAN_MODE="yes"
+fi
+
+CURRENT_RAW=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wifi list --rescan "$RESCAN_MODE" 2>/dev/null | awk -F: -v hs="$HOTSPOT_SSID" '$1=="yes" && $2=="Infra" && (hs == "" || $3 != hs){print $1":"$3":"$4":"$5; exit}')
 
 if [[ -n "$CURRENT_RAW" ]]; then
     IFS=':' read -r active ssid signal security <<< "$CURRENT_RAW"
@@ -66,7 +71,7 @@ fi
 
 # AWK processes the entire network list natively, zero sub-shells
 # Excludes both connected SSID and the active hotspot SSID
-NETWORKS_JSON=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wifi list --rescan auto 2>/dev/null | awk -F: -v conn="$ssid" -v hs="$HOTSPOT_SSID" '
+NETWORKS_JSON=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wifi list --rescan "$RESCAN_MODE" 2>/dev/null | awk -F: -v conn="$ssid" -v hs="$HOTSPOT_SSID" '
     $2 == "Infra" && $3 != "" && $3 != conn && (hs == "" || $3 != hs) && !seen[$3]++ {
         ssid=$3; signal=$4; security=$5;
         

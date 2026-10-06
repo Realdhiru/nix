@@ -6,7 +6,7 @@ config.window_close_confirmation = "NeverPrompt"
 config.hide_tab_bar_if_only_one_tab = true
 config.adjust_window_size_when_changing_font_size = false
 
--- Window background opacity: 0.0 for pure transparency
+-- Window background opacity: 0.11 default, 1.0 in solid modes
 config.window_background_opacity = 0.11
 
 -- Render via WebGpu (Vulkan/ANV): the iris-GL path on mesa + i915 hangs
@@ -23,9 +23,40 @@ config.font_size = 9
 
 -- 1. Use WezTerm's native home_dir (os.getenv("HOME") crashes during background reloads)
 local theme_path = wezterm.home_dir .. "/.cache/theme/colors.json"
+local wp_killed_path = wezterm.home_dir .. "/.cache/wallpaper_killed"
+local gaming_path = wezterm.home_dir .. "/.cache/gaming_mode"
+local profile_path = wezterm.home_dir .. "/.cache/qs_power_profile"
 
--- 2. Explicitly watch the generated file for automatic hot-reloading
+-- 2. Explicitly watch theme and state files for automatic hot-reloading
 wezterm.add_to_config_reload_watch_list(theme_path)
+wezterm.add_to_config_reload_watch_list(wp_killed_path)
+wezterm.add_to_config_reload_watch_list(gaming_path)
+wezterm.add_to_config_reload_watch_list(profile_path)
+
+local function file_exists(path)
+    local fh = io.open(path, "r")
+    if fh then
+        fh:close()
+        return true
+    end
+    return false
+end
+
+local is_solid = file_exists(wp_killed_path) or file_exists(gaming_path)
+if not is_solid then
+    local pf = io.open(profile_path, "r")
+    if pf then
+        local ptext = pf:read("*a")
+        pf:close()
+        if ptext and ptext:match("power%-saver") then
+            is_solid = true
+        end
+    end
+end
+
+if is_solid then
+    config.window_background_opacity = 1.0
+end
 
 -- 3. Parse JSON colors directly (Single Source of Truth)
 local f = io.open(theme_path, "r")

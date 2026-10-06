@@ -66,9 +66,8 @@
   # Screen recording.
   programs.gpu-screen-recorder.enable = true;
 
-  # KDE Connect (enables daemon + opens required firewall ports 1714-1764)
-  programs.kdeconnect.enable = true;
-  services.udev.packages = [ pkgs.kdePackages.kdeconnect-kde ];
+  # KDE Connect completely disabled per user preference
+  programs.kdeconnect.enable = false;
 
   # Virtual input device support for KDE Connect digitizer / drawing tablet
   hardware.uinput.enable = true;
@@ -158,7 +157,6 @@
     extraPortals = with pkgs; [
       xdg-desktop-portal-hyprland
       xdg-desktop-portal-gtk
-      hypr-kdeconnect-portal
     ];
     config = {
       common = {
@@ -166,7 +164,6 @@
       };
       hyprland = {
         default = [ "hyprland" "gtk" ];
-        "org.freedesktop.impl.portal.RemoteDesktop" = [ "hypr-kdeconnect" ];
       };
     };
   };

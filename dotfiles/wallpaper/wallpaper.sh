@@ -83,9 +83,9 @@ cmd_clean() {
 # SUBCOMMAND: kill
 # -----------------------------------------------------------------------------
 cmd_kill() {
+    local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
     if [ -f "$HOME/.cache/wallpaper_killed" ]; then
-        # TOGGLE BACK ON: Restore last active wallpaper
-        rm -f "$HOME/.cache/wallpaper_killed"
+        # TOGGLE BACK ON: Restore last active wallpaper (set.sh handles deleting wallpaper_killed and restoring blur/shadows)
         local target=""
         if [ -s "$LAST_TXT" ]; then
             target="$(cat "$LAST_TXT" 2>/dev/null || true)"
@@ -95,11 +95,14 @@ cmd_kill() {
         if [ -n "$target" ] && [ -f "$target" ]; then
             cmd_set "$target"
         else
+            rm -f "$HOME/.cache/wallpaper_killed"
             cmd_boot
+            if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+                hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+                hyprctl reload >/dev/null 2>&1 || true
+            fi
         fi
-        if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-            hyprctl reload >/dev/null 2>&1 || true
-        fi
+        [ -x "$state_ctl" ] && bash "$state_ctl" set modes.wallpaperKilled false 2>/dev/null || true
         notify-send -a "Wallpaper" -u low "ON"
         return 0
     fi
@@ -135,6 +138,7 @@ cmd_kill() {
         hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" >/dev/null 2>&1 || true
     fi
     touch "$HOME/.cache/wallpaper_killed"
+    [ -x "$state_ctl" ] && bash "$state_ctl" set modes.wallpaperKilled true 2>/dev/null || true
     notify-send -a "Wallpaper" -u low "OFF"
 }
 

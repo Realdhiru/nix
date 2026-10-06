@@ -32,12 +32,19 @@ def process_file(file_info, cached_map):
     furl = f"file://{fpath}"
 
     existing = cached_map.get(fpath)
-    if existing and existing.get("mtime") == mtime and existing.get("size") == size and existing.get("band") is not None and existing.get("natural_v2"):
+    if existing and existing.get("mtime") == mtime and existing.get("size") == size and existing.get("band") is not None and existing.get("soft_oklch_v1"):
         return existing
 
     try:
         raw_theme, hex_color, band, color_key = classify_image_natural(fpath)
         bucket = raw_theme.capitalize()
+
+        # Connect open-set descriptor tracking to discovery pool
+        desc = get_descriptor_for_path(fpath)
+        if desc is not None:
+            reg_res = REGISTRY.classify(desc, update=True)
+            if reg_res.get("novel"):
+                REGISTRY.add_to_pending(fpath, desc)
     except Exception:
         desc = get_descriptor_for_path(fpath)
         if desc is not None:
@@ -71,7 +78,7 @@ def process_file(file_info, cached_map):
         "theme": bucket.lower(),
         "band": band,
         "colorKey": round(color_key, 2),
-        "natural_v2": True,
+        "soft_oklch_v1": True,
         "mtime": mtime,
         "size": size
     }
@@ -145,6 +152,10 @@ def run_indexing(src_dir, output_file):
     with open(tmp_out, "w") as f:
         json.dump(output_data, f, indent=2)
     os.replace(tmp_out, output_file)
+    try:
+        REGISTRY.save()
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

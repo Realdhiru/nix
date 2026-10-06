@@ -31,7 +31,7 @@ CONFIG: Dict[str, Any] = {
     "n_init": 3,
     "gamma": 1.5,
     "accent_bonus": 2.0,
-    "descriptor_weights": [1.5, 2.5, 2.5, 0.6, 0.6, 0.6, 1.0],
+    "descriptor_weights": [1.0, 3.0, 3.0, 0.6, 1.2, 1.2, 1.5],
     "accept": 1.0,
     "T": 0.15,
     "min_radius": 0.12,
@@ -145,6 +145,76 @@ def load_image_frame(path: Union[str, Path]) -> Optional[Image.Image]:
         return None
 
 
+def extract_histogram_features(arr_oklab: np.ndarray) -> Dict[str, Any]:
+    """
+    Compute soft OKLCH histogram features from an (H, W, 3) or (N, 3) Oklab array.
+    Uses 18 continuous hue bins (20 deg each) with linear interpolation,
+    plus dark, light, and achromatic mass fractions.
+    """
+    pixels = arr_oklab.reshape(-1, 3)
+    L = pixels[:, 0]
+    a = pixels[:, 1]
+    b = pixels[:, 2]
+    chromas = np.sqrt(a ** 2 + b ** 2)
+    h_deg = (np.arctan2(b, a) * 180.0 / np.pi + 360.0) % 360.0
+    N = float(len(L))
+
+    mL = float(np.mean(L))
+    mC = float(np.mean(chromas))
+    dark_ratio = float(np.mean(L < 0.24))
+    light_ratio = float(np.mean(L > 0.74))
+
+    # Achromatic threshold in Oklab: C < 0.030
+    achrom_mask = chromas < 0.030
+    chrom_mask = ~achrom_mask
+    chromatic_mass = float(np.sum(chrom_mask) / N)
+
+    neon_accents = float(np.mean((chromas > 0.12) & ((a > 0.04) | (b < -0.04))))
+
+    # 18 circular hue bins with soft linear interpolation weighted by chroma
+    hue_mass = np.zeros(18, dtype=np.float64)
+    if np.any(chrom_mask):
+        h_chrom = h_deg[chrom_mask]
+        c_chrom = chromas[chrom_mask]
+        bin_float = h_chrom / 20.0
+        bin_idx0 = np.floor(bin_float).astype(int) % 18
+        bin_idx1 = (bin_idx0 + 1) % 18
+        frac1 = bin_float - np.floor(bin_float)
+        frac0 = 1.0 - frac1
+
+        np.add.at(hue_mass, bin_idx0, frac0 * c_chrom)
+        np.add.at(hue_mass, bin_idx1, frac1 * c_chrom)
+        total_w = np.sum(c_chrom)
+        if total_w > 0:
+            hue_mass /= total_w
+
+    top_bin = int(np.argmax(hue_mass))
+    top_bin_mass = float(hue_mass[top_bin])
+
+    # Find dominant chromatic mode (L, a, b)
+    if np.any(chrom_mask):
+        accent_idx = int(np.argmax(chromas))
+        rep_hex = oklab_to_hex(pixels[accent_idx])
+        rep_lab = pixels[accent_idx]
+    else:
+        rep_hex = "#1e1e2e" if mL < 0.35 else ("#f5f5f5" if mL > 0.70 else "#778899")
+        rep_lab = np.array([mL, 0.0, 0.0], dtype=np.float64)
+
+    return {
+        "mL": mL,
+        "mC": mC,
+        "dark_ratio": dark_ratio,
+        "light_ratio": light_ratio,
+        "chromatic_mass": chromatic_mass,
+        "neon_accents": neon_accents,
+        "hue_mass": hue_mass,
+        "top_bin": top_bin,
+        "top_bin_mass": top_bin_mass,
+        "rep_hex": rep_hex,
+        "rep_lab": rep_lab,
+    }
+
+
 def extract_descriptor(image: Image.Image) -> np.ndarray:
     """Compute holistic 7D Oklab descriptor vector representing whole-image color mass."""
     arr = np.asarray(image, dtype=np.float64) / 255.0
@@ -160,28 +230,12 @@ def extract_descriptor(image: Image.Image) -> np.ndarray:
     mb = float(np.mean(b_all))
     mC = float(np.mean(chromas_all))
 
-    # KMeans on pixel clusters for major color blocks
-    k = min(4, CONFIG.get("k", 4))
-    kmeans = KMeans(
-        n_clusters=k,
-        n_init=CONFIG["n_init"],
-        random_state=42
-    )
-    labels = kmeans.fit_predict(pixels_oklab)
-    centers = kmeans.cluster_centers_
-
-    counts = np.bincount(labels, minlength=k).astype(np.float64)
-    areas = counts / float(len(labels))
-
-    c_centers = np.sqrt(centers[:, 1] ** 2 + centers[:, 2] ** 2)
-    # Balanced weighting: areas retain primary authority, with moderate chroma consideration
-    weights = areas * (1.0 + np.minimum(c_centers, 0.25) * 1.5)
-    best_idx = int(np.argmax(weights))
-    prominent_block = centers[best_idx]
+    feats = extract_histogram_features(pixels_oklab)
+    prom = feats["rep_lab"]
 
     descriptor = np.array([
         mL, ma, mb,
-        prominent_block[0], prominent_block[1], prominent_block[2],
+        prom[0], prom[1], prom[2],
         mC
     ], dtype=np.float64)
 
@@ -257,7 +311,7 @@ def get_descriptor_for_path(path: Union[str, Path], conn: Optional[sqlite3.Conne
 
 def classify_image_natural(path_or_image: Union[str, Path, Image.Image]) -> Tuple[str, str, int, float]:
     """
-    Classify wallpaper according to its whole-image color mass without accent distortion.
+    Classify wallpaper using soft OKLCH histogram mass voting without accent distortion or cancellation.
     Returns: (theme_name, hex_color, band, color_key)
     """
     if isinstance(path_or_image, (str, Path)):
@@ -267,25 +321,19 @@ def classify_image_natural(path_or_image: Union[str, Path, Image.Image]) -> Tupl
     else:
         im = path_or_image
 
-    arr = np.asarray(im.resize((48, 48)), dtype=np.float64) / 255.0
-    pixels = linear_to_oklab(srgb_to_linear(arr)).reshape(-1, 3)
+    arr = np.asarray(im.resize((48, 48), Image.Resampling.BOX), dtype=np.float64) / 255.0
+    pixels_oklab = linear_to_oklab(srgb_to_linear(arr)).reshape(-1, 3)
 
-    L = pixels[:, 0]
-    a = pixels[:, 1]
-    b = pixels[:, 2]
-    chromas = np.sqrt(a ** 2 + b ** 2)
+    feats = extract_histogram_features(pixels_oklab)
+    mL = feats["mL"]
+    mC = feats["mC"]
+    dark_ratio = feats["dark_ratio"]
+    light_ratio = feats["light_ratio"]
+    chromatic_mass = feats["chromatic_mass"]
+    neon_accents = feats["neon_accents"]
+    rep_hex = feats["rep_hex"]
 
-    mL = float(np.mean(L))
-    dark_ratio = float(np.mean(L < 0.24))
-    light_ratio = float(np.mean(L > 0.74))
-    ma = float(np.mean(a))
-    mb = float(np.mean(b))
-    mC = float(np.mean(chromas))
-
-    accent_idx = int(np.argmax(chromas))
-    rep_hex = oklab_to_hex(pixels[accent_idx]) if mC >= 0.03 else ("#1e1e2e" if mL < 0.3 else "#f5f5f5")
-    neon_accents = float(np.mean((chromas > 0.12) & ((a > 0.04) | (b < -0.04))))
-
+    # 1. Luminance Dominance Gates
     if dark_ratio >= 0.50 or (mL < 0.23 and dark_ratio >= 0.35):
         if neon_accents >= 0.10:
             return "synthwave", rep_hex, 1, 300.0
@@ -293,26 +341,48 @@ def classify_image_natural(path_or_image: Union[str, Path, Image.Image]) -> Tupl
     if light_ratio >= 0.45 or (mL > 0.75 and light_ratio >= 0.30):
         return "light", "#f5f5f5", 0, round(mL * 100.0, 2)
 
-    if mC < 0.026:
+    # 2. Strict Chromatic Mass Gate (Speck filter & Monochrome assignment)
+    # If less than 12% of pixels have non-trivial chroma, prevent chromatic assignment
+    if chromatic_mass < 0.12 or mC < 0.026:
+        if mL < 0.28:
+            return "dark", "#1e1e2e", 0, round(mL * 100.0, 2)
+        if mL > 0.72:
+            return "light", "#f5f5f5", 0, round(mL * 100.0, 2)
         return "monochrome", "#778899", 0, round(mL * 100.0, 2)
 
-    hue = float((np.arctan2(mb, ma) * 180.0 / np.pi + 360.0) % 360.0)
+    # 3. Soft OKLCH Hue Histogram Voting (18 circular bins: 20 deg per bin)
+    hue_mass = feats["hue_mass"]
+    top_bin = feats["top_bin"]
+    h_center = top_bin * 20.0 + 10.0
 
-    if 100.0 <= hue < 170.0:
+    # Categorize based on dominant chromatic mass bin
+    # bin 5, 6, 7 (100 - 160 deg): Emerald
+    if 100.0 <= h_center < 160.0:
         theme = "emerald"
-    elif 170.0 <= hue < 255.0:
-        theme = "nord" if (mC < 0.052 or ma < -0.015) else "ocean"
-    elif 255.0 <= hue < 285.0:
+    # bin 8, 9, 10 (160 - 220 deg): Nord vs Ocean
+    elif 160.0 <= h_center < 220.0:
+        theme = "nord" if (mC < 0.054 or feats["rep_lab"][1] < -0.015) else "ocean"
+    # bin 11, 12, 13 (220 - 280 deg): Ocean
+    elif 220.0 <= h_center < 280.0:
         theme = "ocean"
-    elif 285.0 <= hue < 320.0:
+    # bin 14 (280 - 300 deg): Violet
+    elif 280.0 <= h_center < 300.0:
         theme = "synthwave" if (mC > 0.08 or neon_accents > 0.08) else "violet"
-    elif 320.0 <= hue < 355.0:
+    # bin 15 (300 - 320 deg): Synthwave / Magenta
+    elif 300.0 <= h_center < 320.0:
+        theme = "synthwave" if (mC > 0.075 or neon_accents > 0.06) else "violet"
+    # bin 16, 17 (320 - 350 deg): Sakura
+    elif 320.0 <= h_center < 350.0:
         theme = "sakura"
-    elif (hue >= 355.0) or (0.0 <= hue < 20.0):
-        theme = "crimson" if (ma > 0.04 and mb < 0.02) else "sunset"
-    elif 20.0 <= hue < 55.0:
-        theme = "sunset" if mC > 0.055 else "gruvbox"
+    # bin 17, 0 (350 - 20 deg): Crimson vs Sunset
+    elif (h_center >= 350.0) or (0.0 <= h_center < 20.0):
+        # Crimson has positive 'a' (red) with low/negative 'b'
+        theme = "crimson" if (feats["rep_lab"][1] > 0.035 and feats["rep_lab"][2] < 0.035) else "sunset"
+    # bin 1, 2 (20 - 55 deg): Sunset vs Gruvbox
+    elif 20.0 <= h_center < 55.0:
+        theme = "sunset" if mC > 0.052 else "gruvbox"
+    # bin 3, 4 (55 - 100 deg): Gruvbox
     else:
         theme = "gruvbox"
 
-    return theme, rep_hex, 1, round(hue, 2)
+    return theme, rep_hex, 1, round(h_center, 2)

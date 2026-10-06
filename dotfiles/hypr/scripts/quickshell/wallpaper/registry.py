@@ -42,9 +42,9 @@ SEEDED_THEMES: Dict[str, List[str]] = {
     "emerald": ["#50fa7b", "#2ee6a8"],
     "sunset": ["#ffb86c", "#ff5555"],
     "synthwave": ["#bd93f9", "#ff79c6"],
-    "crimson": ["#e63946", "#d90429"],
+    "crimson": ["#8b0000", "#b22222", "#dc143c"],
     "violet": ["#9d4edd", "#7b2cbf"],
-    "monochrome": ["#778899", "#808080"],
+    "monochrome": ["#4c566a", "#708090", "#808080"],
     "dark": ["#1e1e2e", "#313244"],
     "light": ["#ffffff", "#cbd5e1"],
 }

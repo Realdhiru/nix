@@ -308,7 +308,7 @@ Item {
             if (password !== "") {
                 connectProcess.command = ["bash", "-c", "nmcli device wifi connect '" + macOrSsid + "' password '" + password + "'"];
             } else {
-                connectProcess.command = ["bash", "-c", "if nmcli connection show '" + macOrSsid + "' >/dev/null 2>&1; then nmcli connection up id '" + macOrSsid + "'; else nmcli device wifi connect '" + macOrSsid + "'; fi"];
+                connectProcess.command = ["bash", "-c", "if nmcli -t -f NAME connection show | grep -Fxq '" + macOrSsid + "'; then nmcli connection up id '" + macOrSsid + "'; else nmcli device wifi connect '" + macOrSsid + "'; fi"];
             }
         } else {
             connectProcess.command = ["bash", window.scriptsDir + "/bluetooth_panel_logic.sh", "--connect", macOrSsid];
@@ -905,9 +905,8 @@ Item {
 
     Timer {
         interval: (Object.keys(window.busyTasks).length > 0 || Object.keys(window.disconnectingDevices).length > 0) ? 1000 : 3000
-        // Cached-popup leak fix: this drives eth/wifi/bt fetch spawns; a
-        // bare running:true kept polling forever after close.
-        running: window.visible; repeat: true
+        // Gate polling: do not run background polls while a connection handshake is active
+        running: window.visible && window.connectingId === "" && !connectProcess.running; repeat: true
         onTriggered: {
             if (!ethPoller.running) ethPoller.running = true;
             if (!wifiPoller.running) wifiPoller.running = true;

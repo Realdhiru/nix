@@ -158,7 +158,7 @@ Item {
     Theme { id: _theme }
     property bool isSolidMode: false
     readonly property real effectivePopupOpacity: config.isSolidMode ? 1.0 : (_theme.isLightMode ? 0.30 : config.popupOpacity)
-    readonly property real effectiveCardOpacity: config.isSolidMode ? 0.40 : config.cardOpacity
+    readonly property real effectiveCardOpacity: config.isSolidMode ? 1.0 : config.cardOpacity
     readonly property real antiBleedOpacity: config.isSolidMode ? 0.0 : (_theme.isLightMode ? 0.18 : 0.04)
     property bool topbarHelpIcon: true
     property int workspaceCount: 8
