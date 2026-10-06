@@ -153,13 +153,19 @@ exec 8>&- 2>/dev/null || true
     fi
     [ -z "$SEED" ] && SEED="$WALL"
 
-    # If video, sample 1 frame for color sampling
+    # If video or GIF, sample 1 frame for ultra-fast color sampling
     seed_ext="${SEED##*.}"
     seed_ext="${seed_ext,,}"
     if [[ "$seed_ext" =~ ^(mp4|mkv|mov|webm)$ ]]; then
         frame_seed="/tmp/thumb_${BASENAME}.jpg"
         if [ ! -s "$frame_seed" ] && command -v ffmpeg >/dev/null 2>&1; then
             ffmpeg -hide_banner -loglevel error -y -ss 00:00:01 -i "$SEED" -frames:v 1 -vf "scale=400:-1" "$frame_seed" 2>/dev/null || true
+        fi
+        [ -s "$frame_seed" ] && SEED="$frame_seed"
+    elif [[ "$seed_ext" == "gif" ]]; then
+        frame_seed="/tmp/thumb_${BASENAME}.jpg"
+        if [ ! -s "$frame_seed" ] && command -v magick >/dev/null 2>&1; then
+            magick "${SEED}[0]" -resize 400x400\> "$frame_seed" 2>/dev/null || true
         fi
         [ -s "$frame_seed" ] && SEED="$frame_seed"
     fi

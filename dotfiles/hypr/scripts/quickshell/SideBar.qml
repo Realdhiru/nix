@@ -241,7 +241,7 @@ Variants {
                 return "󰁺";
             }
             readonly property string iconFont: "JetBrainsMono Nerd Font, Iosevka Nerd Font, Symbols Nerd Font"
-            readonly property color batDynamicColor: barWindow.accentColor
+            readonly property color batDynamicColor: mocha.text
 
             // ── Workspaces Model & Native Bindings ──
             ListModel {
@@ -536,7 +536,7 @@ Variants {
                         height: centerCol.implicitHeight + barWindow.s(24)
                         radius: barWindow.s(14)
                         color: barWindow.cardBg
-                        border.width: Math.max(1, Config.borderWidth)
+                        border.width: Config.borderWidth
                         border.color: clockMouse.containsMouse ? barWindow.accentColor : barWindow.cardBorder
                         clip: true
 
@@ -623,7 +623,7 @@ Variants {
                     anchors.horizontalCenter: parent.horizontalCenter
                     color: barWindow.cardBg
                     radius: barWindow.s(14)
-                    border.width: Math.max(1, Config.borderWidth)
+                    border.width: Config.borderWidth
                     border.color: barWindow.cardBorder
                     Behavior on color { ColorAnimation { duration: 250 } }
                     Behavior on border.color { ColorAnimation { duration: 250 } }
@@ -855,7 +855,7 @@ Variants {
                         height: visible ? (trayCol.implicitHeight + barWindow.s(12)) : 0
                         radius: barWindow.s(14)
                         color: barWindow.cardBg
-                        border.width: Math.max(1, Config.borderWidth)
+                        border.width: Config.borderWidth
                         border.color: barWindow.cardBorder
                         clip: false
 
@@ -981,7 +981,7 @@ Variants {
                         height: barWindow.s(66)
                         radius: barWindow.s(14)
                         color: barWindow.cardBg
-                        border.width: Math.max(1, Config.borderWidth)
+                        border.width: Config.borderWidth
                         border.color: (sunsetMouse.containsMouse || volMouse.containsMouse) ? barWindow.accentColor : barWindow.cardBorder
                         clip: true
 
@@ -1092,7 +1092,7 @@ Variants {
                         height: barWindow.s(66)
                         radius: barWindow.s(14)
                         color: barWindow.cardBg
-                        border.width: Math.max(1, Config.borderWidth)
+                        border.width: Config.borderWidth
                         border.color: (wifiMouse.containsMouse || btMouse.containsMouse) ? barWindow.accentColor : barWindow.cardBorder
                         clip: true
 
@@ -1171,7 +1171,7 @@ Variants {
                         height: barWindow.isRecording ? barWindow.s(36) : 0
                         radius: barWindow.s(14)
                         color: recMouse.containsMouse ? mocha.surface2 : mocha.surface1
-                        border.width: Math.max(1, Config.borderWidth)
+                        border.width: Config.borderWidth
                         border.color: barWindow.accentColor
                         opacity: barWindow.isRecording ? 1.0 : 0.0
                         clip: true
@@ -1216,7 +1216,7 @@ Variants {
                         height: barWindow.s(38)
                         radius: barWindow.s(14)
                         color: barWindow.cardBg
-                        border.width: Math.max(1, Config.borderWidth)
+                        border.width: Config.borderWidth
                         border.color: batMouse.containsMouse ? barWindow.accentColor : barWindow.cardBorder
                         clip: true
 

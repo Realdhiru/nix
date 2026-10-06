@@ -22,7 +22,21 @@ Item {
     property var rawSettings: ({})
     property var rawEnvs: ({})
     property bool topBarVisible: true
-    property string topBarPosition: "left"
+    property string topBarPosition: {
+        try {
+            let raw = "";
+            if (typeof settingsFileWatcher.text === "function") raw = settingsFileWatcher.text();
+            else if (typeof settingsFileWatcher.text === "string") raw = settingsFileWatcher.text;
+            if (raw) {
+                let cleaned = raw.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+                let parsed = JSON.parse(cleaned);
+                if (parsed.topbarPosition === "top" || parsed.topbarPosition === "left") {
+                    return parsed.topbarPosition;
+                }
+            }
+        } catch(e) {}
+        return "left";
+    }
     signal requestWidgetCommand(string cmd, string targetWidget, string arg)
 
     function setTopBarPosition(pos) {
@@ -518,7 +532,13 @@ Item {
 
     function parseSettingsTextSync() {
         try {
-            let raw = settingsFileWatcher.text ? settingsFileWatcher.text.trim() : "";
+            let raw = "";
+            if (typeof settingsFileWatcher.text === "function") {
+                raw = settingsFileWatcher.text();
+            } else if (typeof settingsFileWatcher.text === "string") {
+                raw = settingsFileWatcher.text;
+            }
+            raw = raw ? raw.trim() : "";
             if (!raw || raw.length === 0) return;
             let cleaned = raw.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
             if (cleaned && cleaned.length > 0 && cleaned !== "{}") {

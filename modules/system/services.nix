@@ -185,6 +185,11 @@
     enable = true;
     settings = {
       battery = true;
+      battery_id = "BAT0";
+      box_title = null;
+      hide_borders = true;
+      hide_key_hints = true;
+      hide_version_string = true;
       session_log = null;
       shell = true;
       xinitrc = null;

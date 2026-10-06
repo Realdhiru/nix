@@ -151,15 +151,23 @@ if [ ! -f "$WALLPAPER" ]; then
     exit 1
 fi
 
+# For animated formats (GIFs), restrict input to the first frame [0]
+# to prevent ImageMagick from iterating over all frames in the animation.
+WALL_INPUT="$WALLPAPER"
+WALL_LOWER="${WALLPAPER,,}"
+if [[ "$WALL_LOWER" == *.gif ]]; then
+    WALL_INPUT="${WALLPAPER}[0]"
+fi
+
 # 1. Compute luminance metrics directly from the wallpaper (downsampled for instant execution)
 OVERALL_LUM="50"
 TOP_LUM="50"
 if command -v magick >/dev/null 2>&1; then
-    OVERALL_LUM=$(magick "$WALLPAPER" -resize 128x128\! -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
-    TOP_LUM=$(magick "$WALLPAPER" -resize 128x128\! -gravity North -crop 128x13+0+0 +repage -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
+    OVERALL_LUM=$(magick "$WALL_INPUT" -resize 128x128\! -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
+    TOP_LUM=$(magick "$WALL_INPUT" -resize 128x128\! -gravity North -crop 128x13+0+0 +repage -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
 elif command -v convert >/dev/null 2>&1; then
-    OVERALL_LUM=$(convert "$WALLPAPER" -resize 128x128\! -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
-    TOP_LUM=$(convert "$WALLPAPER" -resize 128x128\! -gravity North -crop 128x13+0+0 +repage -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
+    OVERALL_LUM=$(convert "$WALL_INPUT" -resize 128x128\! -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
+    TOP_LUM=$(convert "$WALL_INPUT" -resize 128x128\! -gravity North -crop 128x13+0+0 +repage -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
 fi
 
 TOP_LUM_VAL=$(awk -v l="$TOP_LUM" 'BEGIN {printf "%.1f", l}')
@@ -179,7 +187,7 @@ IS_LIGHT_VAL=$([ "$MODE" = "light" ] && echo "true" || echo "false")
 # 2. Extract true dominant, vibrant accent color from wallpaper
 COLOR_DATA=""
 if command -v magick >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-    COLOR_DATA=$(magick "$WALLPAPER" -depth 8 -scale 100x100 -colors 16 -format "%c\n" histogram:info: 2>/dev/null | python3 -c '
+    COLOR_DATA=$(magick "$WALL_INPUT" -depth 8 -scale 100x100 -colors 16 -format "%c\n" histogram:info: 2>/dev/null | python3 -c '
 import sys, re, colorsys
 mode = sys.argv[1] if len(sys.argv) > 1 else "dark"
 lines = sys.stdin.readlines()

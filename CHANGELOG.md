@@ -12,9 +12,21 @@
   - In [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh#L36-L43), added `hyprctl reload` when recovering from killed state to clear `1.0 override` opacity rules.
 - **Wallpaper Switch Performance Acceleration**:
   - In [`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh#L154-L165), downsampled luminance calculation image input to `128x128` prior to grayscale mean analysis, speeding up theme extraction significantly.
-- **KDE Connect Autostart & Ly Display Manager Fixes**:
-  - Masked `app-org.kde.kdeconnect.daemon@autostart.service` and created `Hidden=true` desktop entry to stop automatic startup on login.
-  - In [`modules/system/services.nix`](file:///home/realdhiru/nix/modules/system/services.nix#L187-L195), enabled `shell = true` in Ly config for pure TTY logins, and set `xsessions = null` to resolve the `failed to crawl session directories` error.
+- **QuickShell Bar State Restoration & Dual Execution Prevention**:
+  - In [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml#L24-L38), bound `topBarPosition` to synchronously parse `settings.json` on initialization using `settingsFileWatcher.text()`.
+  - In [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml#L530-L545), fixed `parseSettingsTextSync()` to check both function and property forms of `FileView.text`, eliminating the startup race where `topBarPosition` defaulted to `"top"` while `"left"` was saved in settings. QuickShell now directly renders only the user's saved bar mode without flashing or simultaneously rendering both bars.
+- **SideBar Border Cleanup & Universal Monochrome Battery Icon**:
+  - In [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L539-L1220), removed hardcoded `Math.max(1, Config.borderWidth)` overrides across clock, workspaces, tray, media/sunset/volume, network, and battery cards, strictly honoring `Config.borderWidth` (borderless when set to 0).
+  - In [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L244), updated `batDynamicColor` to `mocha.text` (pure monochrome white), achieving universal contrast and consistency with other status icons against any wallpaper palette.
+- **GIF Wallpaper Acceleration & Sub-Second Theme Extraction**:
+  - In [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh#L156-L168) and [`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh#L151-L164), optimized animated GIF processing by targeting frame index `[0]`. Prevents ImageMagick from unpacking/quantizing every frame in multi-frame animations, matching static wallpaper theme generation speeds.
+- **KDE Connect Direct Autostart Termination**:
+  - In [`startup.lua`](file:///home/realdhiru/nix/dotfiles/hypr/startup.lua#L18-L21), commented out `hl.exec_cmd("kdeconnect-indicator")`, permanently eliminating automatic tray icon and background process spawns on boot.
+- **Multiple Concurrent Antigravity Instances Support**:
+  - Added user desktop entry override at `~/.local/share/applications/antigravity-hub.desktop` with `Actions=NewInstance;` and `--user-data-dir=%h/.config/Antigravity-instance2`, bypassing Electron's single-instance mutex and allowing multiple windows from Fuzzel/app launcher.
+- **Ly Console Display Manager Refinements**:
+  - In [`modules/system/services.nix`](file:///home/realdhiru/nix/modules/system/services.nix#L187-L197), configured `battery_id = "BAT0"` so Ly accurately reads live battery capacity from sysfs.
+  - Set `box_title = null`, `hide_borders = true`, `hide_key_hints = true`, and `hide_version_string = true` for a distraction-free, minimalist TUI login prompt.
 
 ## 2026-10-04 — Lockscreen Fail-Fast: Acquisition Watchdog, Single-Flight Spawn, Stray Reaper
 
