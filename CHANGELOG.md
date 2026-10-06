@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2026-10-06 — Bar Mutual Exclusion, Ly Shell Wrapper Fix & Pure OLED Neutral Opacity
+
+- **Strict Mutual Exclusion & Dimension Unification Between TopBar and SideBar**:
+  - In [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml#L21) and [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L20), eliminated artificial staggered `hideGraceTimer` and bound visibility strictly to `Config.topBarPosition !== "left"` and `Config.topBarPosition === "left"` respectively, preventing any simultaneous bar overlap or duplicate process race.
+  - Standardized bar thickness globally to `s(46)` across both bars ([`TopBar.qml:69`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml#L69) and [`SideBar.qml:90`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L90)), aligning height and pill proportions perfectly.
+- **Dead Code Cleanup in QuickShell Config**:
+  - In [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml#L530-L580), deleted redundant `Process { id: settingsReader ... }` bash subprocess and consolidated keybinds/startup parsing synchronously within `parseSettingsTextSync()`.
+- **Migrated Display Manager from Ly to greetd + tuigreet**:
+  - In [`services.nix`](file:///home/realdhiru/nix/modules/system/services.nix#L183-L193), cleanly replaced `services.displayManager.ly` with `services.greetd` running `tuigreet`.
+  - Configured pure pitch-black OLED aesthetic (`container=black`, pure white borders/text/prompts) with live battery percentage (`--battery`), date/time (`--time`), remembered user/session (`--remember --remember-session`), and direct launch into `Hyprland` without legacy X11 wrapper dependencies.
+- **Persistent Wallpaper-Killed State Across Reboots**:
+  - In [`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh#L151-L156), added check for `~/.cache/wallpaper_killed` in `cmd_boot()` to preserve disabled/pitch-black state across reboots.
+- **Fuzzel & WezTerm Opaque Neutral Theme Enforcement**:
+  - In [`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh#L117-L121) and [`wezterm.lua`](file:///home/realdhiru/nix/dotfiles/wezterm.lua#L31-L36), updated neutral theme generation to force opaque `000000ff` background in Fuzzel and `opacity = 1.0` in WezTerm while preserving translucency during active wallpaper mode.
+- **Native Antigravity Multi-Window Operation**:
+  - Validated that Antigravity natively creates new windows using `Ctrl + Shift + N` inside the application, removing any custom external launcher wrappers.
+
 ## 2026-10-05 — SideBar Workspace Resilience, Salience Theme Harmony & Coffee Icon Refinement
 
 - **SideBar Workspace Resilience & Zero-Count Collapse Prevention**:

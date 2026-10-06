@@ -180,24 +180,14 @@
     before = [ "graphical-session.target" ];
   };
 
-  # Ly console display manager
-  services.displayManager.ly = {
+  # greetd console display manager with pure OLED minimal tuigreet
+  services.greetd = {
     enable = true;
     settings = {
-      battery = true;
-      battery_id = "BAT0";
-      box_title = null;
-      hide_borders = true;
-      hide_key_hints = true;
-      hide_version_string = true;
-      session_log = null;
-      shell = true;
-      xinitrc = null;
-      waylandsessions = "${pkgs.runCommand "clean-wayland-sessions" {} ''
-        mkdir -p $out
-        cp ${pkgs.hyprland}/share/wayland-sessions/hyprland.desktop $out/
-      ''}";
-      xsessions = null;
+      default_session = {
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --battery --remember --remember-session --width 64 --window-padding 2 --container-padding 2 --prompt-padding 1 --theme 'border=white;text=white;time=white;prompt=white;input=white;action=white;button=white;container=black' --cmd Hyprland";
+        user = "greeter";
+      };
     };
   };
   services.displayManager.defaultSession = "hyprland";

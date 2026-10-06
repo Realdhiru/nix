@@ -54,6 +54,7 @@ EOF
 return {
     foreground = "#EDE6DC",
     background = "#000000",
+    opacity = 1.0,
 
     cursor_bg = "#EDE6DC",
     cursor_fg = "#000000",
@@ -116,7 +117,7 @@ EOF
 
     for f in "$HOME/.config/fuzzel/fuzzel.ini" "$HOME/nix/dotfiles/fuzzel/fuzzel.ini"; do
         if [ -f "$f" ]; then
-            sed -i -E "s/^(match = ).*/\1EDE6DCff/; s/^(selection-match = ).*/\1EDE6DCff/" "$f" 2>/dev/null || true
+            sed -i -E "s/^(match = ).*/\1EDE6DCff/; s/^(selection-match = ).*/\1EDE6DCff/; s/^(background = ).*/\1000000ff/" "$f" 2>/dev/null || true
         fi
     done
 }
@@ -348,7 +349,7 @@ if len(c) >= 6:
     HEX_ACCENT="${ACCENT#'#'}"
     for f in "$HOME/.config/fuzzel/fuzzel.ini" "$HOME/nix/dotfiles/fuzzel/fuzzel.ini"; do
         if [ -f "$f" ]; then
-            sed -i -E "s/^(match = ).*/\1${HEX_ACCENT}ff/; s/^(selection-match = ).*/\1${HEX_ACCENT}ff/" "$f" 2>/dev/null || true
+            sed -i -E "s/^(match = ).*/\1${HEX_ACCENT}ff/; s/^(selection-match = ).*/\1${HEX_ACCENT}ff/; s/^(background = ).*/\112131833/" "$f" 2>/dev/null || true
         fi
     done
 fi

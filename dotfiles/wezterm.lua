@@ -9,8 +9,8 @@ config.adjust_window_size_when_changing_font_size = false
 -- Window background opacity: 0.0 for pure transparency
 config.window_background_opacity = 0.11
 
--- Render via WebGpu (Vulkan/ANV): the iris-GL path on mesa 26.2 + i915 hangs
--- (ecode 12:1:859ffffb) on this Alder Lake Iris Xe; the Vulkan path is clean.
+-- Render via WebGpu (Vulkan/ANV): the iris-GL path on mesa + i915 hangs
+-- (ecode 12:1:859ffffb) on Raptor Lake Iris Xe; the Vulkan path is clean.
 config.front_end = "WebGpu"
 
 -- Grayscale antialiasing for OLED panel (disables LCD RGB subpixel fringing)
@@ -31,6 +31,9 @@ wezterm.add_to_config_reload_watch_list(theme_path)
 local success, theme = pcall(dofile, theme_path)
 if success and type(theme) == "table" then
     config.colors = theme
+    if theme.opacity then
+        config.window_background_opacity = theme.opacity
+    end
 end
 
 return config

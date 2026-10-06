@@ -1,6 +1,7 @@
 return {
     foreground = "{{foreground}}",
     background = "{{background}}",
+    opacity = 0.11,
 
     cursor_bg = "{{color4}}",
     cursor_fg = "{{background}}",

@@ -149,6 +149,11 @@ cmd_set() {
 # SUBCOMMAND: boot
 # -----------------------------------------------------------------------------
 cmd_boot() {
+    if [ -f "$HOME/.cache/wallpaper_killed" ]; then
+        cmd_kill
+        exit 0
+    fi
+
     local wall=""
     if [ -f "$CURRENT_TXT" ]; then
         local cached

@@ -17,31 +17,10 @@ Variants {
             // Staggered position-switch handoff (mirrors TopBar): when this
             // bar loses its edge, stay mapped briefly so the incoming bar's
             // space reservation lands first, then release.
-            property bool hideGrace: false
-            visible: Config.topBarVisible && (Config.topBarPosition === "left" || barWindow.hideGrace)
+            visible: Config.topBarVisible && Config.topBarPosition === "left"
             onVisibleChanged: {
                 if (visible) {
                     barWindow.updateNativeWorkspaces();
-                }
-            }
-
-            Timer {
-                id: hideGraceTimer
-                interval: 380
-                repeat: false
-                onTriggered: barWindow.hideGrace = false
-            }
-
-            Connections {
-                target: Config
-                function onTopBarPositionChanged() {
-                    if (Config.topBarPosition !== "left") {
-                        barWindow.hideGrace = true;
-                        hideGraceTimer.restart();
-                    } else {
-                        hideGraceTimer.stop();
-                        barWindow.hideGrace = false;
-                    }
                 }
             }
             required property var modelData

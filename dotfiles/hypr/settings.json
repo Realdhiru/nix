@@ -33,6 +33,6 @@
   ],
   "keybinds": [],
   "topbarHelpIcon": true,
-  "topbarPosition": "left",
+  "topbarPosition": "top",
   "barAutohide": false
 }

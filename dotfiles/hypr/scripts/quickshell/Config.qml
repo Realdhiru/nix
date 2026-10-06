@@ -419,7 +419,6 @@ Item {
     Component.onCompleted: {
         parseSettingsTextSync();
         sh("mkdir -p ~/.cache && touch ~/.cache/hypr_power_monitor.conf");
-        settingsReader.running = false; settingsReader.running = true;
         envReader.running = false; envReader.running = true;
         config.updateSolidMode();
     }
@@ -527,6 +526,35 @@ Item {
             config.workspaceCount = config.rawSettings.workspaceCount;
             config.initialWorkspaceCount = config.rawSettings.workspaceCount;
         }
+        if (config.rawSettings.keybinds !== undefined && Array.isArray(config.rawSettings.keybinds)) {
+            let tempBinds = [];
+            for (let k of config.rawSettings.keybinds) {
+                tempBinds.push({
+                    type: k.type || "bind",
+                    mods: k.mods || "",
+                    key: k.key || "",
+                    dispatcher: k.dispatcher || "exec",
+                    command: k.command || "",
+                    isEditing: false
+                });
+            }
+            config.keybindsData = tempBinds;
+        } else {
+            config.keybindsData = [];
+        }
+
+        if (config.rawSettings.startup !== undefined && Array.isArray(config.rawSettings.startup)) {
+            let tempStartup = [];
+            for (let s of config.rawSettings.startup) {
+                tempStartup.push({ command: s.command || "" });
+            }
+            config.startupData = tempStartup;
+        } else {
+            config.startupData = [];
+        }
+
+        config.keybindsLoaded();
+        config.startupLoaded();
         config.dataReady = true;
     }
 
@@ -555,103 +583,12 @@ Item {
         id: settingsFileWatcher
         path: config.settingsJsonPath
         watchChanges: true
-        // Block ONLY the very first read: onCompleted's parseSettingsTextSync
-        // must see the file before first frame, otherwise topBarPosition
-        // stays default "top" and the wrong bar flashes on every fresh
-        // start/toggle until the async load lands. After load, all updates
-        // stay event-driven (no blocking).
         blockLoading: true
-        onLoadedChanged: {
-            config.parseSettingsTextSync();
-            settingsReader.running = false;
-            settingsReader.running = true;
-        }
+        onLoadedChanged: config.parseSettingsTextSync()
         onFileChanged: {
             settingsFileWatcher.reload();
             config.parseSettingsTextSync();
-            settingsReader.running = false;
-            settingsReader.running = true;
         }
-        onTextChanged: {
-            config.parseSettingsTextSync();
-            settingsReader.running = false;
-            settingsReader.running = true;
-        }
-    }
-
-    Process {
-        id: settingsReader
-        command: ["bash", "-c", `cat "${config.settingsJsonPath}" 2>/dev/null || echo '{}'`]
-        running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    let raw = this.text ? this.text.trim() : "";
-                    let cleaned = raw.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
-                    if (cleaned && cleaned.length > 0 && cleaned !== "{}") {
-                        let parsed = JSON.parse(cleaned);
-                        config.applySettingsObject(parsed);
-                        if (config.rawSettings.barAutohide !== undefined) config.barAutohide = Boolean(config.rawSettings.barAutohide);
-                        if (config.rawSettings.cardColorSource !== undefined) config.cardColorSource = config.rawSettings.cardColorSource;
-                        if (config.rawSettings.clockColorSource !== undefined) config.clockColorSource = config.rawSettings.clockColorSource;
-                        if (config.rawSettings.textColorSource !== undefined) config.textColorSource = config.rawSettings.textColorSource;
-                        if (config.rawSettings.accentColorSource !== undefined) config.accentColorSource = config.rawSettings.accentColorSource;
-                        if (config.rawSettings.cavaGradient !== undefined) config.cavaGradient = config.rawSettings.cavaGradient;
-                        if (config.rawSettings.topbarHelpIcon !== undefined) config.topbarHelpIcon = config.rawSettings.topbarHelpIcon;
-                        if (config.rawSettings.wallpaperDir !== undefined) {
-                            let wp = config.rawSettings.wallpaperDir;
-                            if (wp.startsWith("~/")) wp = homeDir + wp.substring(1);
-                            config.wallpaperDir = wp;
-                        }
-                        if (config.rawSettings.language !== undefined && config.rawSettings.language !== "") config.language = config.rawSettings.language;
-                        if (config.rawSettings.kbOptions !== undefined) config.kbOptions = config.rawSettings.kbOptions;
-                        if (config.rawSettings.workspaceCount !== undefined) {
-                            config.workspaceCount = config.rawSettings.workspaceCount;
-                            config.initialWorkspaceCount = config.rawSettings.workspaceCount;
-                        }
-
-                        // Map Keybinds
-                        if (config.rawSettings.keybinds !== undefined && Array.isArray(config.rawSettings.keybinds)) {
-                            let tempBinds = [];
-                            for (let k of config.rawSettings.keybinds) {
-                                tempBinds.push({
-                                    type: k.type || "bind",
-                                    mods: k.mods || "",
-                                    key: k.key || "",
-                                    dispatcher: k.dispatcher || "exec",
-                                    command: k.command || "",
-                                    isEditing: false
-                                });
-                            }
-                            config.keybindsData = tempBinds;
-                        } else {
-                            config.keybindsData = [];
-                        }
-
-                        // Map Startups
-                        if (config.rawSettings.startup !== undefined && Array.isArray(config.rawSettings.startup)) {
-                            let tempStartup = [];
-                            for (let s of config.rawSettings.startup) {
-                                tempStartup.push({ command: s.command || "" });
-                            }
-                            config.startupData = tempStartup;
-                        } else {
-                            config.startupData = [];
-                        }
-                    } else {
-                        config.saveAppSettings();
-                        config.keybindsData = [];
-                        config.saveAllKeybinds([]);
-                        config.startupData = [];
-                    }
-                } catch (e) {
-                    config.keybindsData = [];
-                    config.startupData = [];
-                }
-                config.keybindsLoaded();
-                config.startupLoaded();
-                config.dataReady = true;
-            }
-        }
+        onTextChanged: config.parseSettingsTextSync()
     }
 }
