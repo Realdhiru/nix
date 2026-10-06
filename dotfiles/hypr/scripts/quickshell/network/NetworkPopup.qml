@@ -153,26 +153,11 @@ Item {
         powerAnimBlocker.restart();
         window.syncModeFromState();
 
-        let hasCache = false;
-        if (cache.lastEthJson !== "") { processEthJson(cache.lastEthJson, true); hasCache = true; }
-        if (cache.lastWifiJson !== "") { processWifiJson(cache.lastWifiJson, true); hasCache = true; }
-        if (cache.lastBtJson !== "") { processBtJson(cache.lastBtJson, true); hasCache = true; }
-
-        if (hasCache) {
-            let validModes = [];
-            if (window.ethPresent) validModes.push("eth");
-            if (window.wifiPresent) validModes.push("wifi");
-            if (window.btPresent) validModes.push("bt");
-
-            if (validModes.length > 0 && validModes.indexOf(window.activeMode) === -1) {
-                window.activeMode = validModes[0];
-                window.powerAnimAllowed = false;
-                powerAnimBlocker.restart();
-            }
-        }
-
         introState = 1.0;
-        if (window.activeMode === "wifi") savedNetworksFetcher.running = true;
+        if (window.activeMode === "wifi") {
+            savedNetworksFetcher.running = true;
+            Quickshell.execDetached(["bash", "-c", "nmcli device wifi rescan 2>/dev/null || true"]);
+        }
     }
 
     function playSfx(filename) {
@@ -395,6 +380,7 @@ Item {
 
         if (window.activeMode === "wifi") {
             savedNetworksFetcher.running = true;
+            Quickshell.execDetached(["bash", "-c", "nmcli device wifi rescan 2>/dev/null || true"]);
             if (wifiPoller.running) wifiPoller.running = false;
             wifiPoller.running = true;
         } else if (window.activeMode === "bt") {
@@ -2092,7 +2078,40 @@ Item {
 
                                     cursorShape: (floatCard.triggered || floatCard.isMyBusy || floatCard.renderFill === 1.0 || !floatCard.isInteractable) ? Qt.ArrowCursor : Qt.PointingHandCursor
 
+                                    onClicked: {
+                                        if (cmdStr === "TOGGLE_VIEW") {
+                                            fillAnim.stop();
+                                            drainAnim.stop();
+                                            floatCard.fillLevel = 0.0;
+                                            window.playSfx("switch.wav");
+                                            window.showInfoView = !window.showInfoView;
+                                            return;
+                                        }
+                                        if (isInfoNode && action === "IP Address") {
+                                            fillAnim.stop();
+                                            drainAnim.stop();
+                                            floatCard.fillLevel = 0.0;
+                                            if (name && name !== "No IP" && name !== "Unknown") {
+                                                window.playSfx("switch.wav");
+                                                let safeIp = name.replace(/'/g, "'\\''");
+                                                Quickshell.execDetached(["bash", "-c", "printf '%s' '" + safeIp + "' | wl-copy"]);
+                                            }
+                                            floatCard.triggered = true;
+                                            cardFlashAnim.start();
+                                            return;
+                                        }
+                                        if (isInfoNode && cmdStr) {
+                                            fillAnim.stop();
+                                            drainAnim.stop();
+                                            floatCard.fillLevel = 0.0;
+                                            Quickshell.execDetached(["sh", "-c", cmdStr]);
+                                            if (window.activeMode === "bt") btPoller.running = true;
+                                            return;
+                                        }
+                                    }
+
                                     onPressed: {
+                                        if (cmdStr === "TOGGLE_VIEW" || isInfoNode) return;
                                         window.isInteractingWithCard = true;
                                         if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel === 0.0) {
                                             if (window.pendingWifiId !== "") {
@@ -2103,6 +2122,7 @@ Item {
                                         }
                                     }
                                     onReleased: {
+                                        if (cmdStr === "TOGGLE_VIEW" || isInfoNode) return;
                                         window.isInteractingWithCard = false;
                                         if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel < 1.0) {
                                             fillAnim.stop()
@@ -2110,6 +2130,7 @@ Item {
                                         }
                                     }
                                     onCanceled: {
+                                        if (cmdStr === "TOGGLE_VIEW" || isInfoNode) return;
                                         window.isInteractingWithCard = false;
                                         if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel < 1.0) {
                                             fillAnim.stop()

@@ -475,7 +475,7 @@ Variants {
 
                                     property real targetWidth: isItemVisible ? barWindow.s(32) : 0
                                     width: targetWidth
-                                    Behavior on targetWidth { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                    Behavior on targetWidth { NumberAnimation { duration: 160; easing.type: Easing.OutQuad } }
 
                                     height: isItemVisible ? barWindow.s(32) : 0
                                     radius: barWindow.s(10)

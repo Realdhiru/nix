@@ -32,7 +32,7 @@ def process_file(file_info, cached_map):
     furl = f"file://{fpath}"
 
     existing = cached_map.get(fpath)
-    if existing and existing.get("mtime") == mtime and existing.get("size") == size and existing.get("band") is not None and existing.get("soft_oklch_v1"):
+    if existing and existing.get("mtime") == mtime and existing.get("size") == size and existing.get("band") is not None and existing.get("wallust_v2"):
         return existing
 
     try:
@@ -78,7 +78,7 @@ def process_file(file_info, cached_map):
         "theme": bucket.lower(),
         "band": band,
         "colorKey": round(color_key, 2),
-        "soft_oklch_v1": True,
+        "wallust_v2": True,
         "mtime": mtime,
         "size": size
     }

@@ -117,7 +117,7 @@ in
     usbutils
     repomix
     appimage-run
-    xorg.xorgserver
+    xorg-server
 
     # System / Desktop Integration
     file

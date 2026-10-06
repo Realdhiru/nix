@@ -177,12 +177,12 @@
     before = [ "graphical-session.target" ];
   };
 
-  # greetd console display manager with pure OLED minimal tuigreet
+  # greetd console display manager with default tuigreet
   services.greetd = {
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --battery --remember --remember-session --width 64 --window-padding 2 --container-padding 2 --prompt-padding 1 --theme 'border=white;text=white;time=white;prompt=white;input=white;action=white;button=white;container=black' --cmd Hyprland";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-session --cmd start-hyprland";
         user = "greeter";
       };
     };

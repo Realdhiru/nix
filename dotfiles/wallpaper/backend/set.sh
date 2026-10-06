@@ -119,12 +119,13 @@ else
     "$SCRIPT_DIR/ensure_awww.sh" 8>&- 2>/dev/null || true
 
     TRANS_TYPE="${2:-${AWWW_TRANSITION:-fade}}"
-    TRANS_DURATION="${AWWW_TRANSITION_DURATION:-0.35}"
+    TRANS_DURATION="${AWWW_TRANSITION_DURATION:-0.2}"
     TRANS_FPS="${AWWW_TRANSITION_FPS:-120}"
     TRANS_BEZIER="${AWWW_TRANSITION_BEZIER:-.1,.9,.2,1}"
 
     if command -v awww >/dev/null 2>&1; then
         awww img "$WALL" \
+            --resize crop \
             --transition-type "$TRANS_TYPE" \
             --transition-duration "$TRANS_DURATION" \
             --transition-fps "$TRANS_FPS" \

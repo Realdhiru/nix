@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## 2026-10-06 — System Snappy Animations, Greetd Default & Rebuild Warning Purge
+
+- **Nix Rebuild Evaluation Warnings Purged**:
+  - In [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix), renamed `xorg.xorgserver` to `xorg-server`, eliminating all deprecation warnings during `nixos-rebuild build`.
+- **Greetd / Tuigreet Default & Start-Hyprland Fix**:
+  - In [`modules/system/services.nix`](file:///home/realdhiru/nix/modules/system/services.nix), stripped custom color/padding flags to run stock default `tuigreet`, and routed session execution through `start-hyprland` to eliminate Hyprland v0.56+ startup warnings.
+- **Network Discovery & Dynamic Tab Rescan**:
+  - In [`dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml), eliminated pre-hydrating stale cache devices on initial popup open.
+  - Implemented detached non-blocking `nmcli device wifi rescan` triggers on tab switch to ensure new hotspots (such as mobile hotspots) appear immediately on the first poll tick without freezing the UI.
+- **Instant Action & View Toggling in Network Widget**:
+  - In [`dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml), removed the 600ms hold-fill barrier and 1500ms drain delays from view switches (`TOGGLE_VIEW`, "View Info", "Scan Devices") and copy actions. They now trigger instantly on mouse click (`onClicked`) in 0ms without delay or pauses.
+- **System-Wide Snappy Animation Alignment (`menu_decel`)**:
+  - In [`dotfiles/hypr/appearance.lua`](file:///home/realdhiru/nix/dotfiles/hypr/appearance.lua), unified all desktop animations (`windowsIn`, `fade`, `layersIn`, `fadeLayersIn`, `specialWorkspace`) onto the fast, responsive `menu_decel` curve matching `workspaces`.
+  - Windows snap into place via `popin 80%` at speed `2.8`, layers and notifications enter instantly at speed `3.5`, and scratchpad switches at speed `5`.
+  - Wallpaper restoration in [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh) uses pure non-directional hardware-accelerated crossfade (`--transition-type fade`, `0.2s`) with `--resize crop` to preserve aspect ratio without stretching.
+- **Bluetooth Stale Cache Purge**:
+  - Purged obsolete `~/.cache/quickshell/network/bt_stat_*` files and verified live reporting.
+
+## 2026-10-06 — Unshifted sRGB HSL Categorization & Directory Sorter Alignment
+
+- **Eliminated Oklab Hue Distortion & Rotation**:
+  - In [`classify.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/classify.py), replaced Oklab angle degree bins ($20^\circ\text{--}55^\circ$ where red was shifted into Sunset/orange) with **standard un-shifted sRGB HSL hue degrees** ($0^\circ\text{--}360^\circ$) directly extracted from Wallust's dominant salient color.
+  - Category thresholds now match natural human perception:
+    - `Crimson`: $345^\circ\text{--}15^\circ$ (true blood red, ruby)
+    - `Sunset`: $15^\circ\text{--}45^\circ$ (warm orange, golden glow)
+    - `Gruvbox`: $45^\circ\text{--}75^\circ$ (amber, mustard, earth tones)
+    - `Emerald`: $75^\circ\text{--}165^\circ$ (green, forest)
+    - `Nord`: $165^\circ\text{--}205^\circ$ (arctic cyan, frost teal)
+    - `Ocean`: $205^\circ\text{--}260^\circ$ (deep blue, cobalt)
+    - `Violet`: $260^\circ\text{--}295^\circ$ (purple)
+    - `Synthwave`: $295^\circ\text{--}345^\circ$ (magenta, neon pink)
+- **Directory Sorter & QuickShell Widget Synchronization**:
+  - In [`auto_organize.py`](file:///home/realdhiru/Pictures/Wallpapers/scripts/auto_organize.py), aligned fallback mapping: crimson wallpapers map to `sakura` (or `crimson` folder if created), never dumping red wallpapers into `sunset`.
+  - In [`indexer.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.py), bumped cache key to `wallust_v2` and re-indexed all 409 wallpapers into `~/.cache/quickshell/wallpaper_index.json`.
+  - Red wallpapers (`berserk-guts-red.jpg`, `jujutsu-kaisen-yuji-itadori-kanji.png`, `hollow-knight-silksong-crimson-glow-3840x2160.jpg`) now correctly classify into `Crimson`, keeping the `Sunset` tab purely orange/amber.
+- **QuickShell Live Reload**:
+  - Reloaded QuickShell via `qs_manager.sh reload`.
+
+
 ## 2026-10-06 — System-Wide Battery, True Solid Opacity, Network Acceleration & Thermal Fixes
 
 - **KDE Connect Completely Purged**:

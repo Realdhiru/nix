@@ -6,6 +6,7 @@ import sys
 import json
 import sqlite3
 import subprocess
+import colorsys
 from pathlib import Path
 from typing import Tuple, List, Optional, Union, Dict, Any
 
@@ -309,9 +310,48 @@ def get_descriptor_for_path(path: Union[str, Path], conn: Optional[sqlite3.Conne
     return desc
 
 
+def extract_wallust_salience(image: Image.Image) -> Tuple[str, float, float, bool]:
+    """
+    Extract exact Wallust dominant salient accent color and continuous hue angle.
+    Mirrors dotfiles/wallust/generate.sh salience-weighted histogram algorithm.
+    Returns: (accent_hex, hue_deg, saturation, is_mono)
+    """
+    try:
+        im_small = image.resize((100, 100), Image.Resampling.BILINEAR)
+        quant = im_small.quantize(colors=16, method=Image.Quantize.MEDIANCUT).convert("RGB")
+        palette_counts = quant.getcolors(10000) or []
+
+        parsed = []
+        for cnt, (r, g, b) in palette_counts:
+            h, l, s = colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+            parsed.append((cnt, h, s, l))
+
+        total = sum(p[0] for p in parsed) or 1
+        dark_or_mono = sum(p[0] for p in parsed if p[3] < 0.12 or p[2] < 0.12)
+        colored = [p for p in parsed if p[2] >= 0.15 and 0.10 <= p[3] <= 0.85]
+        colored_pixels = sum(p[0] for p in colored)
+
+        if colored and (dark_or_mono / total) < 0.80 and (colored_pixels / total) >= 0.04:
+            colored.sort(key=lambda p: (p[0] ** 0.7) * (1.0 + p[2] * 1.5), reverse=True)
+            best = colored[0]
+            target_l = 0.68
+            target_s = max(0.55, min(0.90, best[2] * 1.25))
+            r, g, b = colorsys.hls_to_rgb(best[1], target_l, target_s)
+            accent = "#{0:02x}{1:02x}{2:02x}".format(int(r * 255), int(g * 255), int(b * 255))
+            hue_deg = float((best[1] * 360.0) % 360.0)
+            return accent, hue_deg, float(best[2]), False
+
+        mean_lum = sum(p[0] * p[3] for p in parsed) / total
+        accent = "#EDE6DC" if mean_lum < 0.5 else "#2D3139"
+        return accent, 0.0, float(mean_lum), True
+    except Exception:
+        return "#EDE6DC", 0.0, 0.0, True
+
+
 def classify_image_natural(path_or_image: Union[str, Path, Image.Image]) -> Tuple[str, str, int, float]:
     """
-    Classify wallpaper using soft OKLCH histogram mass voting without accent distortion or cancellation.
+    Classify wallpaper using soft OKLCH histogram mass voting without accent distortion,
+    returning exact Wallust salient accent color and continuous hue angle for sorting.
     Returns: (theme_name, hex_color, band, color_key)
     """
     if isinstance(path_or_image, (str, Path)):
@@ -331,58 +371,56 @@ def classify_image_natural(path_or_image: Union[str, Path, Image.Image]) -> Tupl
     light_ratio = feats["light_ratio"]
     chromatic_mass = feats["chromatic_mass"]
     neon_accents = feats["neon_accents"]
-    rep_hex = feats["rep_hex"]
+
+    # Wallust dominant salient accent & continuous hue angle
+    w_accent, w_hue, w_sat, is_w_mono = extract_wallust_salience(im)
+    rep_hex = w_accent if not is_w_mono else feats["rep_hex"]
 
     # 1. Luminance Dominance Gates
     if dark_ratio >= 0.50 or (mL < 0.23 and dark_ratio >= 0.35):
         if neon_accents >= 0.10:
-            return "synthwave", rep_hex, 1, 300.0
-        return "dark", "#1e1e2e", 0, round(mL * 100.0, 2)
+            return "synthwave", rep_hex, 1, round(w_hue if not is_w_mono else 300.0, 2)
+        return "dark", rep_hex, 0, round(mL * 100.0, 2)
     if light_ratio >= 0.45 or (mL > 0.75 and light_ratio >= 0.30):
-        return "light", "#f5f5f5", 0, round(mL * 100.0, 2)
+        return "light", rep_hex, 0, round(mL * 100.0, 2)
 
     # 2. Strict Chromatic Mass Gate (Speck filter & Monochrome assignment)
-    # If less than 12% of pixels have non-trivial chroma, prevent chromatic assignment
-    if chromatic_mass < 0.12 or mC < 0.026:
+    if chromatic_mass < 0.12 or mC < 0.026 or is_w_mono:
         if mL < 0.28:
-            return "dark", "#1e1e2e", 0, round(mL * 100.0, 2)
+            return "dark", rep_hex, 0, round(mL * 100.0, 2)
         if mL > 0.72:
-            return "light", "#f5f5f5", 0, round(mL * 100.0, 2)
-        return "monochrome", "#778899", 0, round(mL * 100.0, 2)
+            return "light", rep_hex, 0, round(mL * 100.0, 2)
+        return "monochrome", rep_hex, 0, round(mL * 100.0, 2)
 
-    # 3. Soft OKLCH Hue Histogram Voting (18 circular bins: 20 deg per bin)
-    hue_mass = feats["hue_mass"]
-    top_bin = feats["top_bin"]
-    h_center = top_bin * 20.0 + 10.0
-
-    # Categorize based on dominant chromatic mass bin
-    # bin 5, 6, 7 (100 - 160 deg): Emerald
-    if 100.0 <= h_center < 160.0:
+    # 3. Natural un-shifted sRGB HSL Hue mapping from Wallust salient color
+    # Standard 360° color wheel:
+    # Crimson (Red): 345° - 15°
+    # Sunset (Orange): 15° - 45°
+    # Gruvbox (Amber / Yellow / Brown): 45° - 75°
+    # Emerald (Green): 75° - 165°
+    # Nord (Cyan / Arctic): 165° - 205°
+    # Ocean (Blue / Cobalt): 205° - 260°
+    # Violet (Purple): 260° - 295°
+    # Synthwave / Sakura (Magenta / Pink): 295° - 345°
+    h = w_hue
+    if h >= 345.0 or h < 15.0:
+        theme = "crimson"
+    elif 15.0 <= h < 45.0:
+        theme = "sunset"
+    elif 45.0 <= h < 75.0:
+        theme = "gruvbox"
+    elif 75.0 <= h < 165.0:
         theme = "emerald"
-    # bin 8, 9, 10 (160 - 220 deg): Nord vs Ocean
-    elif 160.0 <= h_center < 220.0:
-        theme = "nord" if (mC < 0.054 or feats["rep_lab"][1] < -0.015) else "ocean"
-    # bin 11, 12, 13 (220 - 280 deg): Ocean
-    elif 220.0 <= h_center < 280.0:
+    elif 165.0 <= h < 205.0:
+        theme = "nord"
+    elif 205.0 <= h < 260.0:
         theme = "ocean"
-    # bin 14 (280 - 300 deg): Violet
-    elif 280.0 <= h_center < 300.0:
-        theme = "synthwave" if (mC > 0.08 or neon_accents > 0.08) else "violet"
-    # bin 15 (300 - 320 deg): Synthwave / Magenta
-    elif 300.0 <= h_center < 320.0:
-        theme = "synthwave" if (mC > 0.075 or neon_accents > 0.06) else "violet"
-    # bin 16, 17 (320 - 350 deg): Sakura
-    elif 320.0 <= h_center < 350.0:
-        theme = "sakura"
-    # bin 17, 0 (350 - 20 deg): Crimson vs Sunset
-    elif (h_center >= 350.0) or (0.0 <= h_center < 20.0):
-        # Crimson has positive 'a' (red) with low/negative 'b'
-        theme = "crimson" if (feats["rep_lab"][1] > 0.035 and feats["rep_lab"][2] < 0.035) else "sunset"
-    # bin 1, 2 (20 - 55 deg): Sunset vs Gruvbox
-    elif 20.0 <= h_center < 55.0:
-        theme = "sunset" if mC > 0.052 else "gruvbox"
-    # bin 3, 4 (55 - 100 deg): Gruvbox
+    elif 260.0 <= h < 295.0:
+        theme = "violet"
+    elif 295.0 <= h < 345.0:
+        theme = "sakura" if w_sat < 0.65 else "synthwave"
     else:
         theme = "gruvbox"
 
-    return theme, rep_hex, 1, round(h_center, 2)
+    return theme, rep_hex, 1, round(w_hue, 2)
+
