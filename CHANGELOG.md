@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-10-06 — Neo Browser Launcher: Self-Healing Store Paths
+
+- **Root cause**: `nixos-rebuild` changed nix store hashes; launcher had hardcoded Xephyr path and `systemd` symlink pointed to GC'd bubblewrap 0.11.2.
+- Added `appimage-run` + `xorg.xorgserver` (Xephyr) to declarative `packages.nix` so they survive rebuilds/GC.
+- Replaced hardcoded `/nix/store/...-xorg-server-.../bin/Xephyr` with `$(which Xephyr)` in `~/.local/bin/neo-browser`.
+- Made launcher self-healing: auto-detects dangling `systemd` symlink and regenerates `runner` + symlink on next launch.
+
 ## 2026-10-06 — Wallpaper Whole-Image Natural Classification, Dynamic Picker Swatches & Repository Refactoring
 
 - **Holistic Whole-Image Color Mass Classification**:
