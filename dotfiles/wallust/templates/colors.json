@@ -20,5 +20,38 @@
   "pink": "{{color13}}",
   "yellow": "{{color3}}",
   "maroon": "{{color9}}",
-  "teal": "{{color6}}"
+  "teal": "{{color6}}",
+  "primary": "{{color4}}",
+  "accent": "{{color4}}",
+  "background": "{{background}}",
+  "foreground": "{{foreground}}",
+  "opacity": 0.11,
+  "cursor_bg": "{{color4}}",
+  "cursor_fg": "{{background}}",
+  "cursor_border": "{{color4}}",
+  "selection_bg": "{{color4}}",
+  "selection_fg": "{{foreground}}",
+  "active_border_1": "{{color4}}",
+  "active_border_2": "{{color12}}",
+  "inactive_border": "{{color0}}",
+  "ansi": [
+    "{{color0}}",
+    "{{color1}}",
+    "{{color2}}",
+    "{{color3}}",
+    "{{color4}}",
+    "{{color5}}",
+    "{{color6}}",
+    "{{color7}}"
+  ],
+  "brights": [
+    "{{color8}}",
+    "{{color9}}",
+    "{{color10}}",
+    "{{color11}}",
+    "{{color12}}",
+    "{{color13}}",
+    "{{color14}}",
+    "{{color15}}"
+  ]
 }

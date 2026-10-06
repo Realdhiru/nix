@@ -30,8 +30,8 @@ Item {
     // -------------------------------------------------------------------------
     // DYNAMIC MASTER WINDOW SCALING (Dimensions defined via WindowRegistry)
     // -------------------------------------------------------------------------
-    property real targetMasterHeight: Math.round(510 * window.sf)
-    property real targetMasterWidth: Math.round(1450 * window.sf)
+    property real targetMasterHeight: Math.min(Math.floor(Screen.height * 0.92), Math.round(510 * window.sf))
+    property real targetMasterWidth: Math.min(Math.floor(Screen.width * 0.94), Math.round(1450 * window.sf))
 
 
     // -------------------------------------------------------------------------
@@ -577,8 +577,8 @@ Item {
                         var ctx = getContext("2d");
                         ctx.clearRect(0, 0, width, height);
                         ctx.beginPath();
-                        var currentRx = Math.round(320 * window.sf);
-                        var currentRy = Math.round(140 * window.sf);
+                        var currentRx = Math.min(Math.round(290 * window.sf), Math.max(Math.round(180 * window.sf), (window.width - Math.round(680 * window.sf)) / 2));
+                        var currentRy = Math.min(Math.round(135 * window.sf), Math.max(Math.round(90 * window.sf), (window.height - Math.round(160 * window.sf)) / 2));
                         for (var i = 0; i <= Math.PI * 2; i += 0.05) {
                             var xx = width/2 + Math.cos(i) * currentRx;
                             var yy = height/2 + Math.sin(i) * currentRy;
@@ -652,12 +652,16 @@ Item {
                             property bool isToday: window.weatherView === 0
                             property bool isHighlighted: isToday && index === window.activeHourIndex
                             
-                            property real rx: Math.round(320 * window.sf) * centralHub.orbitBreath
-                            property real ry: Math.round(140 * window.sf) * centralHub.orbitBreath
+                            property real rx: Math.min(Math.round(290 * window.sf), Math.max(Math.round(180 * window.sf), (window.width - Math.round(680 * window.sf)) / 2)) * centralHub.orbitBreath
+                            property real ry: Math.min(Math.round(135 * window.sf), Math.max(Math.round(90 * window.sf), (window.height - Math.round(160 * window.sf)) / 2)) * centralHub.orbitBreath
                             
                             property int relIdx: isToday ? (index - window.activeHourIndex) : index
                             
-                            property real targetAngleDeg: isToday ? (65 + (relIdx * 30)) : (index * (360 / Math.max(1, mCount)))
+                            property real targetAngleDeg: {
+                                let count = Math.max(1, mCount);
+                                let step = 360 / count;
+                                return isToday ? (90 + (relIdx * step)) : (index * step);
+                            }
                             
                             property real orbitOffset: isToday ? 0 : (window.globalOrbitAngle * (180 / Math.PI) * -1.5)
                             property real osc: isToday ? (Math.sin(window.globalOrbitAngle * 10 + index) * 5) : 0 
@@ -668,14 +672,14 @@ Item {
                             y: Math.sin(rad) * ry - height/2
                             z: Math.sin(rad) * Math.round(100 * window.sf) 
                             
-                            scale: isHighlighted ? 1.4 : (isToday ? (0.95 + 0.20 * Math.sin(rad)) : (0.90 + 0.25 * Math.sin(rad)))
+                            scale: isHighlighted ? 1.15 : (isToday ? (0.92 + 0.12 * Math.sin(rad)) : (0.88 + 0.14 * Math.sin(rad)))
                             opacity: isHighlighted ? 1.0 : (isToday ? (0.7 + 0.3 * ((Math.sin(rad) + 1) / 2)) : (0.65 + 0.35 * ((Math.sin(rad) + 1) / 2)))
 
-                            width: Math.round(56 * window.sf); height: Math.round(95 * window.sf)
+                            width: Math.round(48 * window.sf); height: Math.round(78 * window.sf)
                             
                             Rectangle {
                                 anchors.fill: parent
-                                radius: Math.round(28 * window.sf)
+                                radius: Math.round(24 * window.sf)
                                 color: isHighlighted ? window.textAccent : (hrMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08))
                                 border.color: isHighlighted ? "transparent" : (hrMa.containsMouse ? window.textAccent : Qt.alpha(window.surface1, 0.3))
                                 border.width: Config.borderWidth
@@ -684,12 +688,12 @@ Item {
                                 
                                 ColumnLayout {
                                     anchors.centerIn: parent 
-                                    spacing: Math.round(4 * window.sf)
+                                    spacing: Math.round(2 * window.sf)
                                     
                                     Text { 
                                         Layout.alignment: Qt.AlignHCenter
                                         text: modelData.time
-                                        font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: Math.round(12 * window.sf)
+                                        font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: Math.round(10 * window.sf)
                                         color: isHighlighted ? window.base : (hrMa.containsMouse ? window.text : window.overlay1)
                                     }
                                     
@@ -697,7 +701,7 @@ Item {
                                         id: weatherIconText
                                         Layout.alignment: Qt.AlignHCenter
                                         text: modelData.icon || (window.weatherData && window.weatherData.forecast[window.weatherView] ? window.weatherData.forecast[window.weatherView].icon : "")
-                                        font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(18 * window.sf)
+                                        font.family: "Iosevka Nerd Font"; font.pixelSize: Math.round(15 * window.sf)
                                         color: isHighlighted ? window.base : (modelData.hex || window.text)
                                         
                                         property real hoverLift: hrMa.containsMouse ? Math.round(-3 * window.sf) : 0
@@ -707,7 +711,7 @@ Item {
                                     
                                     Text { 
                                         Layout.alignment: Qt.AlignHCenter; text: modelData.temp + "°"
-                                        font.family: "JetBrains Mono"; font.weight: Font.Black; font.pixelSize: Math.round(14 * window.sf)
+                                        font.family: "JetBrains Mono"; font.weight: Font.Black; font.pixelSize: Math.round(12 * window.sf)
                                         color: isHighlighted ? window.base : window.text 
                                     }
                                 }

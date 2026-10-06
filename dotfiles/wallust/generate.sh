@@ -46,7 +46,39 @@ emit_neutral_theme() {
   "teal": "#ADADAF",
   "isLight": false,
   "topLuminance": 0.0,
-  "primary": "#EDE6DC"
+  "primary": "#EDE6DC",
+  "accent": "#EDE6DC",
+  "background": "#000000",
+  "foreground": "#EDE6DC",
+  "opacity": 1.0,
+  "cursor_bg": "#EDE6DC",
+  "cursor_fg": "#000000",
+  "cursor_border": "#EDE6DC",
+  "selection_bg": "#313131",
+  "selection_fg": "#EDE6DC",
+  "active_border_1": "#EDE6DC",
+  "active_border_2": "#C9BFB5",
+  "inactive_border": "#151515",
+  "ansi": [
+    "#151515",
+    "#484849",
+    "#5E5E60",
+    "#747576",
+    "#7E7E7F",
+    "#878889",
+    "#ADADAF",
+    "#EAEBEC"
+  ],
+  "brights": [
+    "#404040",
+    "#4C4D4F",
+    "#6A6A6C",
+    "#828284",
+    "#8B8C8E",
+    "#B4B5B7",
+    "#E6E7E9",
+    "#FFFFFF"
+  ]
 }
 EOF
 
@@ -282,8 +314,15 @@ if [ -f "$TARGET_CACHE/colors.json" ]; then
             isLight: $il,
             topLuminance: ($tl|tonumber),
             mauve: (if $ac != "" then $ac else .mauve end),
-            primary: (if $ac != "" then $ac else .mauve end),
+            primary: (if $ac != "" then $ac else .primary end),
+            accent: (if $ac != "" then $ac else .primary end),
+            cursor_bg: (if $ac != "" then $ac else .primary end),
+            cursor_border: (if $ac != "" then $ac else .primary end),
+            selection_bg: (if $ac != "" then $ac else .primary end),
+            active_border_1: (if $ac != "" then $ac else .primary end),
+            active_border_2: (if $s0 != "" then $s0 else .subtext0 end),
             text: (if $tx != "" then $tx else .text end),
+            foreground: (if $tx != "" then $tx else .text end),
             subtext0: (if $s0 != "" then $s0 else .subtext0 end),
             subtext1: (if $s1 != "" then $s1 else .subtext1 end),
             overlay0: "#6c7086",

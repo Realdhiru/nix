@@ -162,7 +162,10 @@ process_wallpaper() {
         rm -f "$COLOR_DIR/${name}_"* 2>/dev/null || true
 
         local hex
-        hex=$(magick "$target" -resize 1x1 -format "%[hex:p{0,0}]" info: 2>/dev/null | cut -c 1-6)
+        hex=$(magick "$target" -scale 50x50 -colors 8 -format "%c\n" histogram:info: 2>/dev/null | sort -nr | grep -oE '#[0-9A-Fa-f]{6}' | head -n 1 | tr -d '#' | tr '[:upper:]' '[:lower:]' || true)
+        if [ -z "$hex" ] || [ "${#hex}" -ne 6 ]; then
+            hex=$(magick "$target" -resize 1x1\! -format "%[hex:p{0,0}]" info: 2>/dev/null | cut -c 1-6 | tr '[:upper:]' '[:lower:]' || true)
+        fi
 
         if [ -n "$hex" ] && [ "${#hex}" -eq 6 ]; then
             if [ -n "$category" ]; then
@@ -185,4 +188,12 @@ find "$SRC" -not -path '*/.*' -not -path '*/previews*' -not -path '*/scripts*' -
     -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o \
     -iname '*.gif' -o -iname '*.mp4' -o -iname '*.mkv' -o -iname '*.mov' -o \
     -iname '*.webm' \) -print0 | xargs -0 -P "$THREADS" -I {} bash -c 'process_wallpaper "$@"' _ {}
+
+# Automatically refresh QuickShell wallpaper index with unified classifier
+INDEXER_SCRIPT="$HOME/.config/hypr/scripts/quickshell/wallpaper/indexer.py"
+[ ! -f "$INDEXER_SCRIPT" ] && INDEXER_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.py"
+if [ -f "$INDEXER_SCRIPT" ]; then
+    python3 "$INDEXER_SCRIPT" "$SRC" "$HOME/.cache/quickshell/wallpaper_index.json" >/dev/null 2>&1 &
+fi
+
 

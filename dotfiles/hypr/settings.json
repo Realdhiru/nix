@@ -28,11 +28,11 @@
       "x": 0,
       "y": 0,
       "scale": 2,
-      "transform": 2
+      "transform": 0
     }
   ],
   "keybinds": [],
   "topbarHelpIcon": true,
-  "topbarPosition": "top",
+  "topbarPosition": "left",
   "barAutohide": false
 }

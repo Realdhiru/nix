@@ -12,6 +12,7 @@ hl.on("hyprland.start", function()
 
     -- 3. Wallpaper initialization in background
     hl.exec_cmd(scripts .. "boot_wallpaper.sh")
+    hl.exec_cmd(scripts .. "wallpaper_watcher.sh")
 
     -- 4. Idle & Utilities
     hl.exec_cmd("hypridle")

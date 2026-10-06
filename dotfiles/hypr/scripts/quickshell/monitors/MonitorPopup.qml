@@ -294,6 +294,18 @@ Item {
         }
     }
 
+    function scrollResIntoView(idx) {
+        if (typeof resFlickable === "undefined" || !resFlickable) return;
+        let row = Math.floor(idx / 2);
+        let rowH = window.s(42) + window.s(8);
+        let targetY = row * rowH;
+        if (targetY < resFlickable.contentY) {
+            resFlickable.contentY = Math.max(0, targetY);
+        } else if (targetY + rowH > resFlickable.contentY + resFlickable.height) {
+            resFlickable.contentY = Math.min(resFlickable.contentHeight - resFlickable.height, targetY + rowH - resFlickable.height);
+        }
+    }
+
     function handleArrowKey(dir) {
         if (monitorsModel.count === 0) return;
 
@@ -323,7 +335,7 @@ Item {
             monitorsModel.setProperty(window.activeEditIndex, "resH", window.resList[idx].h);
             window._resEpoch++;
             delayedLayoutUpdate.restart();
-
+            scrollResIntoView(idx);
         } else if (activeFocusIndex === 1) {
             let t = monitorsModel.get(window.activeEditIndex).transform;
             if (dir === "Up") t = 0;
@@ -1192,13 +1204,15 @@ Item {
             // INTERACTIVE SELECTION GRIDS
             // ==========================================
             Item {
+                id: rightSideOuter
                 anchors.left: leftVisualArea.right
                 anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: window.s(-10) // Tweak layout slightly downwards
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.topMargin: window.s(20)
+                anchors.bottomMargin: window.s(20)
                 anchors.leftMargin: window.s(10)
-                anchors.rightMargin: window.s(30)
-                height: rightSideContainer.implicitHeight
+                anchors.rightMargin: window.s(24)
 
                 opacity: window.introProgress
                 transform: Translate { y: window.uiYOffset }
@@ -1236,85 +1250,128 @@ Item {
                 ColumnLayout {
                     id: rightSideContainer
                     anchors.fill: parent
-                    spacing: window.s(10)
+                    spacing: window.s(8)
 
-                    // --- RESOLUTION CARDS SECTION ---
-                    GridLayout {
-                        id: resGrid
+                    // --- RESOLUTION CARDS SECTION (SCROLLABLE & RESPONSIVE) ---
+                    Item {
                         Layout.fillWidth: true
-                        columns: 2
-                        columnSpacing: window.s(10)
-                        rowSpacing: window.s(10)
+                        Layout.fillHeight: true
+                        clip: true
 
-                        Repeater {
-                            model: window.resList
+                        Flickable {
+                            id: resFlickable
+                            anchors.fill: parent
+                            contentWidth: width
+                            contentHeight: resGrid.implicitHeight
+                            boundsBehavior: Flickable.StopAtBounds
 
-                            delegate: Rectangle {
-                                // Built-in Repeater `modelData` role (the resList element)
-                                // is used directly — no shadow binding, so recycled delegates
-                                // can never render a stale index's tile as a phantom duplicate.
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: window.s(45)
-                                radius: window.s(12)
+                            GridLayout {
+                                id: resGrid
+                                width: resFlickable.width - (resFlickable.contentHeight > resFlickable.height ? window.s(10) : 0)
+                                columns: 2
+                                columnSpacing: window.s(8)
+                                rowSpacing: window.s(8)
 
-                                property bool isSel: {
-                                    if (monitorsModel.count === 0) return false;
-                                    let activeMon = monitorsModel.get(window.activeEditIndex);
-                                    return activeMon.resW === modelData.w && activeMon.resH === modelData.h;
-                                }
-                                property color accentColor: modelData.accent
+                                Repeater {
+                                    model: window.resList
 
-                                color: isSel ? Qt.alpha(accentColor, 0.15) : (resMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.12) : (Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)))
-                                border.color: isSel ? accentColor : (resMa.containsMouse ? Qt.alpha(window.text, 0.2) : Qt.alpha(window.surface1, 0.3))
-                                border.width: isSel ? window.s(2) : window.s(1)
+                                    delegate: Rectangle {
+                                        // Built-in Repeater `modelData` role (the resList element)
+                                        // is used directly — no shadow binding, so recycled delegates
+                                        // can never render a stale index's tile as a phantom duplicate.
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: window.s(42)
+                                        radius: window.s(10)
 
-                                Behavior on color { ColorAnimation { duration: 200 } }
-                                Behavior on border.color { ColorAnimation { duration: 200 } }
+                                        property bool isSel: {
+                                            if (monitorsModel.count === 0) return false;
+                                            let activeMon = monitorsModel.get(window.activeEditIndex);
+                                            return activeMon.resW === modelData.w && activeMon.resH === modelData.h;
+                                        }
+                                        property color accentColor: modelData.accent
 
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: window.s(12)
-                                    spacing: window.s(8)
+                                        color: isSel ? Qt.alpha(accentColor, 0.15) : (resMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.12) : (Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)))
+                                        border.color: isSel ? accentColor : (resMa.containsMouse ? Qt.alpha(window.text, 0.2) : Qt.alpha(window.surface1, 0.3))
+                                        border.width: isSel ? window.s(2) : window.s(1)
 
-                                    Text {
-                                        font.family: "JetBrains Mono"
-                                        font.weight: isSel ? Font.Black : Font.Bold
-                                        font.pixelSize: window.s(15)
-                                        color: isSel ? accentColor : window.text
-                                        text: modelData.l
                                         Behavior on color { ColorAnimation { duration: 200 } }
-                                    }
+                                        Behavior on border.color { ColorAnimation { duration: 200 } }
 
-                                    Item { Layout.fillWidth: true }
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: window.s(10)
+                                            spacing: window.s(6)
 
-                                    Text {
-                                        font.family: "JetBrains Mono"
-                                        font.pixelSize: window.s(11)
-                                        color: isSel ? window.text : window.subtext0
-                                        text: modelData.w + "x" + modelData.h
-                                        Behavior on color { ColorAnimation { duration: 200 } }
-                                    }
-                                }
+                                            Text {
+                                                font.family: "JetBrains Mono"
+                                                font.weight: isSel ? Font.Black : Font.Bold
+                                                font.pixelSize: window.s(14)
+                                                color: isSel ? accentColor : window.text
+                                                text: modelData.l
+                                                Behavior on color { ColorAnimation { duration: 200 } }
+                                            }
 
-                                scale: resMa.pressed ? 0.96 : 1.0
-                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutSine } }
+                                            Item { Layout.fillWidth: true }
 
-                                MouseArea {
-                                    id: resMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        window.activeFocusIndex = 0;
-                                        if (monitorsModel.count > 0) {
-                                            window.selectedResAccent = accentColor;
-                                            monitorsModel.setProperty(window.activeEditIndex, "resW", modelData.w);
-                                            monitorsModel.setProperty(window.activeEditIndex, "resH", modelData.h);
-                                            window._resEpoch++;
-                                            delayedLayoutUpdate.restart();
+                                            Text {
+                                                font.family: "JetBrains Mono"
+                                                font.pixelSize: window.s(10)
+                                                color: isSel ? window.text : window.subtext0
+                                                text: modelData.w + "x" + modelData.h
+                                                Behavior on color { ColorAnimation { duration: 200 } }
+                                            }
+                                        }
+
+                                        scale: resMa.pressed ? 0.96 : 1.0
+                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutSine } }
+
+                                        MouseArea {
+                                            id: resMa
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                window.activeFocusIndex = 0;
+                                                if (monitorsModel.count > 0) {
+                                                    window.selectedResAccent = accentColor;
+                                                    monitorsModel.setProperty(window.activeEditIndex, "resW", modelData.w);
+                                                    monitorsModel.setProperty(window.activeEditIndex, "resH", modelData.h);
+                                                    window._resEpoch++;
+                                                    delayedLayoutUpdate.restart();
+                                                }
+                                            }
                                         }
                                     }
                                 }
+                            }
+                        }
+
+                        // Scroll Indicator
+                        Rectangle {
+                            id: scrollBarTrack
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            width: window.s(4)
+                            radius: window.s(2)
+                            color: "transparent"
+                            visible: resFlickable.contentHeight > resFlickable.height
+
+                            Rectangle {
+                                width: parent.width
+                                height: Math.max(window.s(24), resFlickable.height * (resFlickable.height / Math.max(1, resFlickable.contentHeight)))
+                                y: resFlickable.contentHeight > resFlickable.height ? (resFlickable.contentY / (resFlickable.contentHeight - resFlickable.height)) * (resFlickable.height - height) : 0
+                                radius: parent.radius
+                                color: Qt.alpha(window.text, 0.25)
+                            }
+                        }
+
+                        WheelHandler {
+                            target: resFlickable
+                            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                            onWheel: (event) => {
+                                let delta = -event.angleDelta.y * 0.8;
+                                resFlickable.contentY = Math.max(0, Math.min(resFlickable.contentHeight - resFlickable.height, resFlickable.contentY + delta));
                             }
                         }
                     }

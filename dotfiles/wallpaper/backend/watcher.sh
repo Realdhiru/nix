@@ -140,6 +140,9 @@ cleanup_residue() {
 
 # Run initial cleanup and sync on startup
 cleanup_residue
+if [ -f "$SRC/scripts/auto_organize.py" ]; then
+    python3 "$SRC/scripts/auto_organize.py" --force >/dev/null 2>&1 || true
+fi
 if [ -x "$THUMB_SCRIPT" ]; then
     "$THUMB_SCRIPT" &
 fi
@@ -155,9 +158,15 @@ stdbuf -oL inotifywait -m -r -q \
         :
     done
 
+    # If any new media is dropped/written in root, auto-organize into proper category folder
+    if [ -f "$SRC/scripts/auto_organize.py" ]; then
+        python3 "$SRC/scripts/auto_organize.py" --force >/dev/null 2>&1 || true
+    fi
+
     cleanup_residue
     if [ -x "$THUMB_SCRIPT" ]; then
         "$THUMB_SCRIPT" &
     fi
 done
+
 

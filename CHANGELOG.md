@@ -1,7 +1,72 @@
 # CHANGELOG
 
-## 2026-10-06 — Bar Mutual Exclusion, Ly Shell Wrapper Fix & Pure OLED Neutral Opacity
+## 2026-10-06 — Wallpaper Whole-Image Natural Classification, Dynamic Picker Swatches & Repository Refactoring
 
+- **Holistic Whole-Image Color Mass Classification**:
+  - Eliminated accent-exploding KMeans over-weighting in [`classify.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/classify.py) and added `classify_image_natural()`: evaluates global lightness $L$, dark/light pixel mass, global chroma $C$, and area-weighted $(a, b)$ vectors across the entire image.
+  - Wallpapers with dark mass $\ge 50\%$ naturally classify into `dark` (e.g. OLED, black minimalism) rather than latching onto tiny colored specks.
+  - Wallpapers with low global chroma ($C < 0.026$) naturally bin into `monochrome` rather than false chromatic buckets.
+  - Expanded natural category spectrum with `monochrome`, `crimson`, and `violet` in both QuickShell wallpaper picker and `registry.py`.
+  - Updated [`indexer.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.py) and re-indexed all 409 wallpapers into `~/.cache/quickshell/wallpaper_index.json`.
+
+- **Wallpaper Picker UI Refinements**:
+  - In [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml#L1791), replaced tacky horizontal gradients on category filter buttons with clean, solid, professional circular color dots bound to `getCategoryColor(modelData.name)`.
+  - Added dynamic count tracking (`categoryCountMap` & `updateCategoryCounts()`) so empty categories (0 wallpapers) automatically hide and are skipped during keyboard tab cycling.
+
+- **Wallpaper Repository Refactoring & Auto-Organize Integration**:
+  - Updated [`scripts/auto_organize.py`](file:///home/realdhiru/Pictures/Wallpapers/scripts/auto_organize.py) to route static image classification through `classify_image_natural` from QuickShell's color engine.
+  - Re-generated gallery markdown and preview assets via `scripts/generate_gallery.py` across all 409 wallpapers.
+  - Committed user modifications and additions in `~/Pictures/Wallpapers` repository (`refactor(organize): natural whole-image color classification, gallery sync & asset cleanup`).
+
+## 2026-10-06 — FH4 (Forza Horizon 4) Lutris Crash: Root Cause Identified, Not Fixable Via Config
+
+- **Investigation only — no system or game config changed.** Findings:
+
+- **Misdiagnosis corrected**: initial hypothesis was `programs.nix-ld.enable = false` blocking all GE-Proton/Wine binaries. **Wrong.** Lutris in this system is packaged with `buildFHSEnv` (`lutris-0.5.22-fhsenv-rootfs`, mounted via bubblewrap by the `/run/current-system/sw/bin/lutris` wrapper), which supplies a real `usr/lib64/ld-linux-x86-64.so.2` -> `glibc-multi-2.44-25`. This is why Silksong, GTA-SA, NFS-MW and FL Studio all launch fine on GE-Proton11-7/11-6. My test invoked Proton binaries directly from a bare shell, bypassing the FHS wrapper, which produced the misleading "NixOS cannot run dynamically linked executables" error. **`nix-ld` is irrelevant here; do not enable it.**
+
+- **Actual root cause — FH4 is a UWP/Store (MSIX) package and Wine cannot register sideloaded appx packages.** The launcher path is `explorer.exe shell:appsFolder\Microsoft.SunriseBaseGame_8wekyb3d8bbwe!SunriseReleaseFinal`, which requires a prior `Add-AppxPackage -Register`. Confirmed absent in the `fh4` prefix: no `drive_c/users/steamuser/AppData/Local/Packages/` dir and zero `Sunrise` hits in `system.reg`. The AUMID therefore resolves to nothing, `explorer` exits immediately, and Lutris's window closes — matching the reported "keeps on closing".
+
+- **Why registration cannot be automated** (all attempted and measured):
+  - `powershell.exe` cannot execute under Wine: `fixme:powershell:wmain stub` — Wine ships no `wmain`, so every invocation exits silently. The repack's own `UwpActivate.ps1`/`UwpActivate.bat` are therefore dead on arrival. `reg.exe` works fine, so plain registry writes are possible.
+  - `FH4_AutoUWP.exe` (the repack's native UWP launcher) loads and runs to completion with exit code 0 but never registers the package — it spawns `explorer.exe` and detaches before reaching any appx call. `appxdeploymentclient.dll` is present in GE-Proton11-7 but provides no usable sideload-registration entry point.
+  - Consequence: registration would require hand-authoring the `PackageRepository` / `ActivatableClassId` registry keys and `LocalState` save dirs for all 3 packages (`FH4`, `FH4_FortuneIsland`, `FH4_Lego`). Doable but fragile and unverified.
+
+- **Reproduced Lutris's runtime manually** for diagnosis: `/tmp/opencode/fhsrun.sh` builds the same bubblewrap+FHS namespace (FHS rootfs ro-binds, host `/etc` bind-mounted via `readlink -f` to avoid the `machine-id`/`hosts` self-symlink loop, host top-level dirs bound). Required env fixes found empirically: use the FHS glibc loader for the loader itself (the naive `ld.so --library-path` invocation breaks wine's `/proc/self/exe`-based libdir resolution), pass an explicit `python3` to the `proton` script (its `#!/usr/bin/env python3` shebang fails inside bwrap), and inject the system Vulkan loader + Intel ANV ICD via `LD_LIBRARY_PATH`/`VK_ICD_FILENAMES` (the FHS rootfs has no Vulkan; without it the launcher logs `err:vulkan:vulkan_init_once Failed to load libvulkan.so.1`).
+  - Also note: inside the bwrap namespace the prefix's `z:` -> `/` mapping is broken (empty `dir Z:\...`) while `x:` -> `/home/realdhiru` works. Use `X:` paths, not `Z:`.
+
+- **Confirmed healthy, not implicated**: Vulkan/ANV works on the host (Mesa 26.2.4, Iris Xe RPL-P, `apiVersion 1.4.354`, `DRIVER_ID_INTEL_OPEN_SOURCE_MESA`). The host `/` is at 92% (29G free) with FH4 at 77G — tight but not blocking.
+
+- **Secondary config drift (not the crash cause, left untouched)**: FH4 is the only game whose Lutris yml sets an explicit `wine.version` (`wine-ge-8-26`, a bare Wine build with no vkd3d, while FH4 is D3D12); its prefix `version` says `GE-Proton10-34` and `config_info` still references `GE-Proton11-7` paths (three-way mismatch). `~/.local/share/lutris/runtimes/` is empty, so Lutris never installed its own dxvk/vkd3d DLLs.
+
+- Prefix registry backed up to `/tmp/opencode/fh4-backup/` before any experimentation; nothing staged or committed.
+
+## 2026-10-06 — Bar Mutual Exclusion, Multi-Monitor Responsiveness, Unified Colors & Media Color Sorting
+
+- **Open-Set Wallpaper Color Classifier & Oklab Sorter**:
+  - Implemented mathematical color pipeline in [`classify.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/classify.py): Ottosson sRGB -> linear -> Oklab conversion, KMeans ($k=6$), cluster weighting $w_i = \text{area}_i \times (C_i + 0.02)^{1.5}$ with accent bonus ($w \times 2$ for $3-25\%$ area, $C \ge 2\bar{C}$), 7D descriptor vector, and SQLite cache (`descriptors.db`).
+  - Implemented [`registry.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/registry.py): `ThemeRegistry` managing `themes.json`, 9 seeded palettes, drift-clamped running mean adaptation, agglomerative promotion with CSS naming, `merge()`, `prune()`, `reassign_all()`.
+  - Implemented [`sort.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/sort.py): 6D feature extraction, nearest-neighbor + 2-opt shortest open path starting at darkest image, and theme display ordering by centroid hue (achromatic first by $L$).
+  - Implemented [`eval.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/eval.py): confusion matrix on ground truth, grid-search, and automated test suite verifying all 4 mandatory edge cases pass with 100% accuracy.
+  - Implemented unified CLI [`cli.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/cli.py) (`classify`, `promote`, `merge`, `themes`, `rename`, `sort`, `eval`).
+  - Integrated open-set classification directly into [`indexer.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.py).
+  - Fixed phantom/ghost card rendering in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml#L1285) by disabling `reuseItems` and validating model boundaries.
+
+- **Multi-Monitor Responsive Bounds & Active Screen Tracking**:
+  - In [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js#L64-L125), added responsive viewport clamping (`maxAllowedW = mw * 0.96`, `maxAllowedH = mh * 0.94`) and edge clamping so popup widgets never clip outside screen borders across varied external monitor resolutions and scaling factors.
+  - In [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml#L4-L8, L510-L535), added `syncActiveScreen()` using `Hyprland.focusedWorkspace.monitor` to bind popup layer surfaces directly to the currently focused display upon trigger.
+- **Scrollable Resolution Grid & UI Overflow Protection in Popups**:
+  - In [`MonitorPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml#L1192-L1360), wrapped high-density display resolution options in a bounded, momentum-scrolling `Flickable` with custom scrollbar, mouse-wheel support, and `scrollResIntoView()` keyboard navigation, preventing overflow and pinning orientation/slider controls safely on-screen.
+  - In [`CalendarPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/CalendarPopup.qml#L32-L35, L575-L725), clamped dimensions to screen bounds and reworked 3D orbital weather capsules to dynamic non-overlapping angular distribution with compact `48x78` dimensions.
+- **Centralized System Theme Color SSOT via Single `colors.json`**:
+  - In [`wallust/templates/colors.json`](file:///home/realdhiru/nix/dotfiles/wallust/templates/colors.json) and [`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh#L46-L77), enriched `~/.cache/theme/colors.json` with ANSI 16 palette, cursor, selection, borders, and UI accents across both dynamic and neutral modes.
+  - In [`wezterm.lua`](file:///home/realdhiru/nix/dotfiles/wezterm.lua#L22-L55), refactored configuration to consume `~/.cache/theme/colors.json` directly using `wezterm.json_parse()`, obsoleting separate terminal color templates.
+- **Global Wallpaper Color Indexing & Unified Media Color Sorting**:
+  - In [`indexer.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.py), consolidated wallpaper color classification using a 32x32 weighted HSV histogram classifier across images, GIFs, and videos. Added theme bucketing (`Gruvbox`, `Sakura`, `Nord`, `Ocean`, `Emerald`, `Sunset`, `Synthwave`, `Dark`, `Light`) and extracted real colors from video/GIF thumbnails.
+- **Wallpaper Category Swatches & Pure Color Spectrum Classification**:
+  - In [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml#L864-L878), mapped `getCategoryColors()` to curated signature gradients (`Gruvbox`, `Sakura`, `Nord`, `Ocean`, `Emerald`, `Sunset`, `Synthwave`, `Dark`, `Light`), eliminating fallback to a single accent tint.
+  - In [`indexer.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.py#L88-L108), removed blind `folder_hint` overrides so wallpapers are classified by true 32x32 HSV pixel histograms rather than directory placement.
+  - In [`auto_organize.py`](file:///home/realdhiru/Pictures/Wallpapers/scripts/auto_organize.py#L23-L37), implemented dynamic folder category discovery and alias resolution (`blue` -> `ocean`, `warm` -> `sakura`, `purple` -> `synthwave`), removing skip flags so dropped/downloaded files are ingested immediately.
+  - In [`backend/watcher.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/watcher.sh#L142-L160) and [`startup.lua`](file:///home/realdhiru/nix/dotfiles/hypr/startup.lua#L15), integrated `auto_organize.py --force` into the wallpaper event loop and registered `wallpaper_watcher.sh` on Hyprland startup. Launched live `wallpaper-watcher.service` under systemd.
 - **Strict Mutual Exclusion & Dimension Unification Between TopBar and SideBar**:
   - In [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml#L21) and [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L20), eliminated artificial staggered `hideGraceTimer` and bound visibility strictly to `Config.topBarPosition !== "left"` and `Config.topBarPosition === "left"` respectively, preventing any simultaneous bar overlap or duplicate process race.
   - Standardized bar thickness globally to `s(46)` across both bars ([`TopBar.qml:69`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml#L69) and [`SideBar.qml:90`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml#L90)), aligning height and pill proportions perfectly.

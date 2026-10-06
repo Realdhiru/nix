@@ -96,13 +96,18 @@ Item {
 
     readonly property var filterData: [
         { name: "All", label: "All" },
+        { name: "Gruvbox", label: "Gruvbox" },
+        { name: "Sakura", label: "Sakura" },
+        { name: "Nord", label: "Nord" },
+        { name: "Ocean", label: "Ocean" },
+        { name: "Emerald", label: "Emerald" },
+        { name: "Sunset", label: "Sunset" },
+        { name: "Synthwave", label: "Synthwave" },
+        { name: "Crimson", label: "Crimson" },
+        { name: "Violet", label: "Violet" },
+        { name: "Monochrome", label: "Mono" },
         { name: "Dark", label: "Dark" },
-        { name: "White", label: "White" },
-        { name: "Red", label: "Red" },
-        { name: "Orange", label: "Orange" },
-        { name: "Green", label: "Green" },
-        { name: "Blue", label: "Blue" },
-        { name: "Purple", label: "Purple" },
+        { name: "Light", label: "Light" },
         { name: "GIFs", label: "GIF" },
         { name: "Videos", label: "Vid" },
         { name: "Search", label: "Search" }
@@ -130,6 +135,7 @@ Item {
             onStreamFinished: {
                 window.isDownloadingWallpaper = false;
                 downloadTimeoutTimer.stop();
+                window.hasPendingOrganize = true;
                 if (window.currentDownloadName !== "") {
                     let map = window.downloadedSearchMap;
                     map[window.currentDownloadName] = true;
@@ -165,13 +171,16 @@ Item {
                                 let clean = window.getCleanName(fn);
                                 let hex = item.hex || "#1e1e2e";
                                 let bucket = item.bucket || "Dark";
+                                let score = (item.band !== undefined && item.colorKey !== undefined) ?
+                                    { band: item.band, key: item.colorKey } :
+                                    window.hexToColorScore(hex);
                                 catMap[fn] = bucket;
                                 colorMap[fn] = hex.replace("#", "");
-                                scoreMap[fn] = window.hexToColorScore(hex);
+                                scoreMap[fn] = score;
                                 if (clean.length > 0) {
                                     catMap[clean] = bucket;
                                     colorMap[clean] = hex.replace("#", "");
-                                    scoreMap[clean] = window.hexToColorScore(hex);
+                                    scoreMap[clean] = score;
                                 }
                             }
                         }
@@ -179,6 +188,7 @@ Item {
                     window.wallpaperCategoryMap = catMap;
                     window.wallpaperColorMap = colorMap;
                     window.wallpaperScoreMap = scoreMap;
+                    window.updateCategoryCounts();
                     if (localProxyModel.count > 0) {
                         window.sortListModel(localProxyModel);
                         window.sortListModel(gifsProxyModel);
@@ -527,15 +537,6 @@ Item {
                 arr.push({ "fileName": fn, "fileUrl": String(fu) });
             }
         }
-        const bucketOrder = {
-            "Red": 1,
-            "Orange": 2,
-            "Green": 3,
-            "Blue": 4,
-            "Purple": 5,
-            "White": 6,
-            "Dark": 7
-        };
         arr.sort(function(a, b) {
             let aType = window.getFileTypeRank(a.fileName);
             let bType = window.getFileTypeRank(b.fileName);
@@ -543,14 +544,6 @@ Item {
 
             let aClean = window.getCleanName(a.fileName);
             let bClean = window.getCleanName(b.fileName);
-
-            let aCat = window.wallpaperCategoryMap[a.fileName] || window.wallpaperCategoryMap[aClean] || "Dark";
-            let bCat = window.wallpaperCategoryMap[b.fileName] || window.wallpaperCategoryMap[bClean] || "Dark";
-
-            let aRank = bucketOrder[aCat] || 6;
-            let bRank = bucketOrder[bCat] || 6;
-
-            if (aRank !== bRank) return aRank - bRank;
 
             let aScore = window.wallpaperScoreMap[a.fileName] || window.wallpaperScoreMap[aClean] || null;
             if (!aScore) {
@@ -564,7 +557,10 @@ Item {
                 bScore = window.hexToColorScore(bHex);
             }
 
-            if (aScore.band !== bScore.band) return aScore.band - bScore.band;
+            // Continuous color gradient sorting:
+            // Band 1: Chromatic (sorted by hue angle 0° to 360°)
+            // Band 0: Achromatic / Monochrome (sorted by lightness 0 to 100)
+            if (aScore.band !== bScore.band) return bScore.band - aScore.band;
             if (Math.abs(aScore.key - bScore.key) > 0.5) return aScore.key - bScore.key;
 
             let aName = aClean.toLowerCase();
@@ -870,16 +866,40 @@ Item {
         }
     }
 
+    function getCategoryColor(catName) {
+        let name = String(catName).toLowerCase();
+        switch (name) {
+            case "gruvbox": return "#d79921";
+            case "sakura": return "#f38ba8";
+            case "nord": return "#88c0d0";
+            case "ocean": return "#1e66f5";
+            case "emerald": return "#50fa7b";
+            case "sunset": return "#ffb86c";
+            case "synthwave": return "#bd93f9";
+            case "crimson": case "red": return "#e63946";
+            case "violet": case "purple": return "#9d4edd";
+            case "monochrome": case "slate": case "gray": return "#778899";
+            case "dark": return "#1e1e2e";
+            case "light": case "white": return "#f5f5f5";
+            default: return _theme.primary;
+        }
+    }
+
     function getCategoryColors(catName) {
         let name = String(catName).toLowerCase();
         switch (name) {
+            case "gruvbox": return { c1: "#d79921", c2: "#fabd2f" };
+            case "sakura": return { c1: "#f38ba8", c2: "#ffb4c6" };
+            case "nord": return { c1: "#88c0d0", c2: "#81a1c1" };
+            case "ocean": return { c1: "#1e66f5", c2: "#74c7ec" };
+            case "emerald": return { c1: "#50fa7b", c2: "#2ee6a8" };
+            case "sunset": return { c1: "#ffb86c", c2: "#ff5555" };
+            case "synthwave": return { c1: "#bd93f9", c2: "#ff79c6" };
+            case "crimson": case "red": return { c1: "#e63946", c2: "#ff4d6d" };
+            case "violet": case "purple": return { c1: "#9d4edd", c2: "#c77dff" };
+            case "monochrome": case "slate": case "gray": return { c1: "#6c757d", c2: "#adb5bd" };
             case "dark": return { c1: "#1e1e2e", c2: "#45475a" };
-            case "white": return { c1: "#ffffff", c2: "#cbd5e1" };
-            case "red": return { c1: "#ff5555", c2: "#ff79c6" };
-            case "orange": return { c1: "#ffb86c", c2: "#fabd2f" };
-            case "green": return { c1: "#50fa7b", c2: "#2ee6a8" };
-            case "blue": return { c1: "#8be9fd", c2: "#88c0d0" };
-            case "purple": return { c1: "#bd93f9", c2: "#ff79c6" };
+            case "light": case "white": return { c1: "#ffffff", c2: "#cbd5e1" };
             default: return { c1: _theme.primary, c2: _theme.mauve };
         }
     }
@@ -890,6 +910,37 @@ Item {
         let clean = window.getCleanName(fn);
         let mapped = window.wallpaperCategoryMap[fn] || window.wallpaperCategoryMap[clean] || "";
         return mapped.toLowerCase();
+    }
+
+    property var categoryCountMap: ({})
+
+    function updateCategoryCounts() {
+        let counts = {};
+        for (let i = 0; i < localProxyModel.count; i++) {
+            let item = localProxyModel.get(i);
+            if (item && item.fileName) {
+                let cat = window.getWallpaperCategory(item.fileName);
+                if (cat) {
+                    counts[cat] = (counts[cat] || 0) + 1;
+                }
+            }
+        }
+        window.categoryCountMap = counts;
+    }
+
+    function getCategoryCount(catName) {
+        let cat = String(catName).toLowerCase();
+        if (cat === "all") return localProxyModel.count;
+        if (cat === "gifs" || cat === "gif") return gifsProxyModel.count;
+        if (cat === "videos" || cat === "video") return videosProxyModel.count;
+        if (cat === "search") return 1;
+        return window.categoryCountMap[cat] || 0;
+    }
+
+    function isFilterVisible(fName) {
+        if (fName === "Search") return false;
+        if (fName === "All" || fName === "GIFs" || fName === "Videos" || fName === "Video") return true;
+        return window.getCategoryCount(fName) > 0;
     }
 
     function updateCategoryProxyModel() {
@@ -1037,14 +1088,18 @@ Item {
     }
 
     function cycleFilter(direction) {
-        let filterOrder = window.filterData.map(f => f.name);
-        let currentIdx = filterOrder.indexOf(window.currentFilter);
+        let visibleFilters = window.filterData.filter(f => window.isFilterVisible(f.name)).map(f => f.name);
+        if (visibleFilters.length === 0) return;
+        let currentIdx = visibleFilters.indexOf(window.currentFilter);
         if (currentIdx === -1) currentIdx = 0;
-        let nextIdx = (currentIdx + direction + filterOrder.length) % filterOrder.length;
-        window.currentFilter = filterOrder[nextIdx];
+        let nextIdx = (currentIdx + direction + visibleFilters.length) % visibleFilters.length;
+        window.currentFilter = visibleFilters[nextIdx];
     }
 
     function applyFilters(forceSnap) {
+        if (!window.isFilterVisible(window.currentFilter) && window.currentFilter !== "Search") {
+            window.currentFilter = "All";
+        }
         if (window.currentFilter !== "Search" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "All") {
             window.updateCategoryProxyModel();
         }
@@ -1184,6 +1239,7 @@ Item {
             if (batchGifs.length > 0) gifsProxyModel.append(batchGifs);
             if (batchVids.length > 0) videosProxyModel.append(batchVids);
             window._localSyncedCount = folderCount;
+            window.updateCategoryCounts();
         }
 
         let isReady = localFolderModel.status === FolderListModel.Ready;
@@ -1283,8 +1339,8 @@ Item {
         orientation: ListView.Horizontal
         clip: false
         interactive: !window.isApplying
-        reuseItems: true
-        cacheBuffer: Math.round(window.itemWidth * 3)
+        reuseItems: false
+        cacheBuffer: Math.round(window.itemWidth * 2)
 
         highlightRangeMode: window.initialFocusSet ? ListView.StrictlyEnforceRange : ListView.NoHighlightRange
         preferredHighlightBegin: Math.max(0, (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset)
@@ -1405,8 +1461,9 @@ Item {
                     : encodeURI("file://" + Caching.getCacheDir("wallpaper_picker") + "/thumbs/" + (isVideo ? safeFileName + ".jpg" : safeFileName));
             }
 
-            width: targetWidth + window.spacing
-            visible: true
+            readonly property bool isValidItem: safeFileName !== "" && index >= 0 && index < window.activeModel.count
+            width: isValidItem ? (targetWidth + window.spacing) : 0
+            visible: isValidItem
             opacity: isVisuallyEnlarged ? 1.0 : 0.6
             scale: 1.0
             height: targetHeight
@@ -1703,7 +1760,7 @@ Item {
             Repeater {
                 model: window.filterData
                 delegate: Item {
-                    visible: modelData.name !== "Search"
+                    visible: window.isFilterVisible(modelData.name)
                     width: !visible ? 0 : window.s(44)
                     height: !visible ? 0 : window.s(36)
                     anchors.verticalCenter: parent.verticalCenter
@@ -1734,18 +1791,14 @@ Item {
                         Rectangle {
                             id: categorySwatch
                             visible: isCategory
-                            width: window.s(20)
-                            height: window.s(20)
-                            radius: window.s(4)
+                            width: window.s(16)
+                            height: window.s(16)
+                            radius: window.s(8)
                             anchors.centerIn: parent
-                            border.color: window.currentFilter === modelData.name ? _theme.text : Qt.alpha(_theme.surface2, 0.6)
-                            border.width: window.currentFilter === modelData.name ? window.s(2) : 1
-                            
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0.0; color: window.getCategoryColors(modelData.name).c1 }
-                                GradientStop { position: 1.0; color: window.getCategoryColors(modelData.name).c2 }
-                            }
+                            color: window.getCategoryColor(modelData.name)
+                            border.color: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(1, 1, 1, 0.20)
+                            border.width: 1
+                            Behavior on color { ColorAnimation { duration: 200 } }
                         }
 
                         Text {

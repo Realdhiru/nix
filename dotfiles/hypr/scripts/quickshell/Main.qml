@@ -4,6 +4,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import "WindowRegistry.js" as Registry
 
 PanelWindow {
@@ -509,6 +510,30 @@ PanelWindow {
         }
     }
 
+    function syncActiveScreen() {
+        let sc = Quickshell.screens;
+        if (!sc || sc.length <= 1) return;
+        let monName = "";
+        try {
+            if (Hyprland.focusedWorkspace && Hyprland.focusedWorkspace.monitor && Hyprland.focusedWorkspace.monitor.name) {
+                monName = Hyprland.focusedWorkspace.monitor.name;
+            }
+        } catch(e) {}
+        if (monName) {
+            for (let i = 0; i < sc.length; i++) {
+                if (sc[i].name === monName) {
+                    if (masterWindow.screen !== sc[i]) {
+                        masterWindow.screen = sc[i];
+                        _layoutCacheKey = "";
+                        Config.masterWidth = sc[i].width;
+                        Config.masterHeight = sc[i].height;
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
     function switchWidget(newWidget, arg) {
         masterWindow.switchGeneration++;
         let gen = masterWindow.switchGeneration;
@@ -525,6 +550,7 @@ PanelWindow {
                 delayedClear.restart();
             }
         } else {
+            syncActiveScreen();
             delayedClear.stop();
             if (currentActive === "hidden" || !masterWindow.isWindowActive) {
                 morphReenableTimer.stop();

@@ -64,6 +64,16 @@ function getLayout(name, mx, my, mw, mh, userScale, barPos) {
     let scale = getScale(mw, mh, userScale);
     let finalW = config.w === -1 ? mw : s(config.w, scale);
     let finalH = s(config.h, scale);
+
+    // Responsive ceiling: clamp to 96% width and 94% height to prevent off-screen clipping
+    let maxAllowedW = Math.floor(mw * 0.96);
+    let maxAllowedH = Math.floor(mh * 0.94);
+    if (config.w !== -1 && finalW > maxAllowedW) {
+        finalW = maxAllowedW;
+    }
+    if (finalH > maxAllowedH) {
+        finalH = maxAllowedH;
+    }
     
     let isLeftBar = (barPos === "left");
     let rx = 0;
@@ -105,6 +115,11 @@ function getLayout(name, mx, my, mw, mh, userScale, barPos) {
             ry = mh - finalH - s(config.mb, scale);
             break;
     }
+
+    // Safety boundary clamp: ensure popups never render outside screen edges
+    let minX = isLeftBar ? 48 : 0;
+    rx = Math.max(minX, Math.min(rx, Math.max(0, mw - finalW)));
+    ry = Math.max(0, Math.min(ry, Math.max(0, mh - finalH)));
 
     return {
         w: finalW,
