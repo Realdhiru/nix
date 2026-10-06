@@ -20,14 +20,25 @@ in
 {
   environment.systemPackages = with pkgs; [
     # CLI & Core Utilities
-    vim git curl wget tree jq yq-go bc socat python3 weathr util-linux distrobox
+    vim
+    git
+    curl
+    wget
+    tree
+    jq
+    yq-go
+    bc
+    socat
+    python3
+    weathr
+    util-linux
+    distrobox
 
     # Development & Terminal
     tmux
     wezterm
     fastfetch
     htop
-    opencode
 
     # Browsers
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
@@ -35,33 +46,82 @@ in
     brave
 
     # File Management
-    ntfs3g pcmanfm-qt kdePackages.filelight lxqt.lxqt-archiver unrar (p7zip.override { enableUnfree = true; }) unzip zip ffmpegthumbnailer gdk-pixbuf librsvg webp-pixbuf-loader libheif libjxl
+    ntfs3g
+    pcmanfm-qt
+    kdePackages.filelight
+    lxqt.lxqt-archiver
+    unrar
+    (p7zip.override { enableUnfree = true; })
+    unzip
+    zip
+    ffmpegthumbnailer
+    gdk-pixbuf
+    librsvg
+    webp-pixbuf-loader
+    libheif
+    libjxl
 
     # Launchers & Clipboard
-    fuzzel fd wl-clipboard cliphist
+    fuzzel
+    fd
+    wl-clipboard
+    cliphist
 
     # Screenshots & Recording
-    grim slurp grimblast gpu-screen-recorder-gtk
+    grim
+    slurp
+    grimblast
+    gpu-screen-recorder-gtk
 
     # Media & Display
-    (mpv.override { scripts = [ mpvScripts.mpris ]; }) mpvpaper awww playerctl brightnessctl cava loupe ffmpeg imagemagick
+    (mpv.override { scripts = [ mpvScripts.mpris ]; })
+    mpvpaper
+    awww
+    playerctl
+    brightnessctl
+    cava
+    loupe
+    ffmpeg
+    imagemagick
 
     # Documents & Creative
-    kdePackages.okular kdePackages.breeze onlyoffice-desktopeditors blender kdePackages.kdenlive parabolic
+    kdePackages.okular
+    kdePackages.breeze
+    onlyoffice-desktopeditors
+    blender
+    kdePackages.kdenlive
+    parabolic
 
     # Audio & Networking
-    pwvucontrol networkmanagerapplet blueman
+    pwvucontrol
+    networkmanagerapplet
+    blueman
 
     # Power & Sensors
-    acpi iw lm_sensors
+    acpi
+    iw
+    lm_sensors
 
     # Desktop Integration
-    libnotify polkit_gnome hypridle hyprlock quickshellWrapped qt6Packages.qtmultimedia wallust
+    libnotify
+    polkit_gnome
+    hypridle
+    hyprlock
+    quickshellWrapped
+    qt6Packages.qtmultimedia
+    wallust
 
-    powertop psmisc hyprsunset usbutils repomix appimage-run xorg.xorgserver
+    powertop
+    psmisc
+    hyprsunset
+    usbutils
+    repomix
+    appimage-run
+    xorg.xorgserver
 
     # System / Desktop Integration
-    file gsettings-desktop-schemas
+    file
+    gsettings-desktop-schemas
 
     antigravity-hub
     gram
