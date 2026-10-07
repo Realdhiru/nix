@@ -72,9 +72,9 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### 4. Hardware Quirks Modularization (`hosts/nixos/hardware/`)
 - **ASUS Vivobook OLED (`asus.nix`):**
   - Brightness Fn keys drop ACPI events after hybrid-sleep. Fixed via `systemd-hybrid-sleep` post-hook unbinding and rebinding `acpi.video_bus.0`.
-- **Sonix FHD Webcam (`sonix-webcam.nix`):**
-  - USB controller babble crash on MJPEG/non-native resolutions. Fixed via `v4l2loopback` `/dev/video10` pass-through feeder (`camera-loopback.sh`) streaming native YUYV.
-  - Conflicting `libcamera` monitor disabled in WirePlumber (`50-disable-libcamera.conf`).
+- **Webcam & Virtual Loopback (`sonix-webcam.nix`):**
+  - Internal Sonix USB controller (`3277:0022`) has persistent hardware power-cycling faults causing unrecoverable disconnects after ~2.7s under active streaming.
+  - Retired the fragile FFmpeg loopback feeder script and crash-looping service. Retained clean declarative `v4l2loopback` `/dev/video10` labeled as `"Webcam"` with `exclusive_caps=1` for native phone-as-webcam streaming via DroidCam / OBS / scrcpy with zero daemon overhead.
 
 ### 5. Rebuild Safety Pipeline (`modules/home/shell.nix`, `scripts/health-check.sh`)
 - **Decision:** All system switches must route through `rebuild()`.

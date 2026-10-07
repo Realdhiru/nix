@@ -422,39 +422,54 @@ Item {
     ListModel { id: orbitListModel }
 
     function syncModel(listModel, dataArray) {
-        for (let i = listModel.count - 1; i >= 0; i--) {
-            let id = listModel.get(i).id;
-            let found = false;
-            for (let j = 0; j < dataArray.length; j++) {
-                if (id === dataArray[j].id) { found = true; break; }
-            }
-            if (!found) { listModel.remove(i); }
+        if (!dataArray || dataArray.length === 0) {
+            listModel.clear();
+            return;
         }
 
-        for (let i = 0; i < dataArray.length && i < 30; i++) {
-            let d = dataArray[i];
-            let foundIdx = -1;
-            for (let j = i; j < listModel.count; j++) {
-                if (listModel.get(j).id === d.id) { foundIdx = j; break; }
+        let maxCount = Math.min(dataArray.length, 30);
+        
+        // Fast path: if counts match and IDs match, just update properties in place without touching tree
+        let matches = (listModel.count === maxCount);
+        if (matches) {
+            for (let i = 0; i < maxCount; i++) {
+                if (listModel.get(i).id !== dataArray[i].id) {
+                    matches = false;
+                    break;
+                }
             }
+        }
 
-            let obj = {
-                id: d.id || "", ssid: d.ssid || "", mac: d.mac || "",
-                name: d.name || d.ssid || "", icon: d.icon || "", security: d.security || "", action: d.action || "",
-                isInfoNode: d.isInfoNode || false, isActionable: d.isActionable !== undefined ? d.isActionable : false,
-                cmdStr: d.cmdStr || "", parentIndex: d.parentIndex !== undefined ? d.parentIndex : -1
-            };
-
-            if (foundIdx === -1) {
-                listModel.insert(i, obj);
-            } else {
-                if (foundIdx !== i) { listModel.move(foundIdx, i, 1); }
-                for (let key in obj) {
-                    if (listModel.get(i)[key] !== obj[key]) {
-                        listModel.setProperty(i, key, obj[key]);
+        if (matches) {
+            for (let i = 0; i < maxCount; i++) {
+                let d = dataArray[i];
+                let item = listModel.get(i);
+                for (let key in d) {
+                    if (item[key] !== d[key]) {
+                        listModel.setProperty(i, key, d[key]);
                     }
                 }
             }
+            return;
+        }
+
+        // Structural change: atomic clear + repopulate avoids Qt6 QQuickItem::stackBefore reordering crash
+        listModel.clear();
+        for (let i = 0; i < maxCount; i++) {
+            let d = dataArray[i];
+            listModel.append({
+                id: d.id || "",
+                ssid: d.ssid || "",
+                mac: d.mac || "",
+                name: d.name || d.ssid || "",
+                icon: d.icon || "",
+                security: d.security || "",
+                action: d.action || "",
+                isInfoNode: d.isInfoNode || false,
+                isActionable: d.isActionable !== undefined ? d.isActionable : false,
+                cmdStr: d.cmdStr || "",
+                parentIndex: d.parentIndex !== undefined ? d.parentIndex : -1
+            });
         }
     }
 
@@ -1728,7 +1743,7 @@ Item {
 
                             scale: (!isLoaded ? 0.0 : (floatMa.pressed ? dynamicScale * 0.95 : (floatCard.locksList ? dynamicScale * 1.08 : dynamicScale))) * floatCard.bumpScale
                             Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
-                            z: floatCard.locksList ? 10 : index
+                            z: floatCard.locksList ? 10 : 1
 
                             MultiEffect {
                                 source: floatCard

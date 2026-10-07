@@ -82,6 +82,7 @@ in
     cava
     loupe
     ffmpeg
+    droidcam
     imagemagick
 
     # Documents & Creative

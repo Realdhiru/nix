@@ -64,7 +64,7 @@ description: High-density operational reference for maintaining the user's NixOS
 - **Out-of-Store Symlinks**: Home Manager `mkOutOfStoreSymlink` targets live `~/nix/dotfiles/` for instant zero-rebuild live updates.
 - **Hardware Quirks**:
   - ASUS OLED brightness keys: rebound after hybrid-sleep in `hosts/nixos/hardware/asus.nix`.
-  - Sonix Webcam: `v4l2loopback` `/dev/video10` pass-through via `hosts/nixos/hardware/sonix-webcam.nix`.
+  - Virtual Webcam: `v4l2loopback` `/dev/video10` loopback (`hosts/nixos/hardware/sonix-webcam.nix`) for DroidCam / phone-as-webcam streaming.
   - WirePlumber: `50-disable-libcamera.conf` disables libcamera to avoid UVC stream collision.
 
 ## 3. Workflow & Verification Commands

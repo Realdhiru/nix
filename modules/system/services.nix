@@ -44,6 +44,14 @@
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = false;
+    settings = {
+      General = {
+        AutoConnect = true;
+        FastConnectable = true;
+        ReconnectAttempts = 7;
+        ReconnectIntervals = "1, 2, 4";
+      };
+    };
   };
   services.blueman.enable = true;
 
@@ -117,7 +125,11 @@
       polkit.addRule(function(action, subject) {
         if (
           (action.id == "org.freedesktop.udisks2.filesystem-mount" ||
-           action.id == "org.freedesktop.udisks2.filesystem-mount-system") &&
+           action.id == "org.freedesktop.udisks2.filesystem-mount-system" ||
+           action.id == "org.freedesktop.udisks2.filesystem-unmount-others" ||
+           action.id == "org.freedesktop.udisks2.eject-media" ||
+           action.id == "org.freedesktop.udisks2.power-off-drive" ||
+           action.id == "org.freedesktop.udisks2.power-off-drive-system") &&
           subject.isInGroup("wheel")
         ) {
           return polkit.Result.YES;

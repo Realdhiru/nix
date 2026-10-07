@@ -240,10 +240,7 @@
     '';
 
     shellAliases = {
-      cam = "mpv av://v4l2:$(ls -d /dev/v4l/by-id/*video-index0 2>/dev/null || echo /dev/video0) --profile=low-latency --untimed";
-      cam-on = "$HOME/nix/dotfiles/hypr/scripts/webcam.sh on";
-      cam-off = "$HOME/nix/dotfiles/hypr/scripts/webcam.sh off";
-      webcam = "$HOME/nix/dotfiles/hypr/scripts/webcam.sh";
+      cam = "mpv av://v4l2:/dev/video10 --profile=low-latency --untimed";
     };
   };
 

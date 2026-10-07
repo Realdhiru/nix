@@ -52,7 +52,7 @@ Item {
     
     Timer {
         id: applyUnlockTimer
-        interval: 250
+        interval: 50
         onTriggered: window.isApplying = false
     }
     
@@ -1140,12 +1140,12 @@ Item {
 
     Shortcut { 
         sequence: "Left"; 
-        enabled: window.visible && !window.isApplying && !searchInput.activeFocus
+        enabled: window.visible && !searchInput.activeFocus
         onActivated: window.stepToNextValidIndex(-1) 
     }
     Shortcut { 
         sequence: "Right"; 
-        enabled: window.visible && !window.isApplying && !searchInput.activeFocus
+        enabled: window.visible && !searchInput.activeFocus
         onActivated: window.stepToNextValidIndex(1) 
     }
     Shortcut { 
@@ -1165,8 +1165,8 @@ Item {
         onActivated: window.deleteCurrentWallpaper()
     }
     Shortcut { sequence: "Escape"; enabled: !window.isApplying && window.currentFilter === "Search"; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
-    Shortcut { sequence: "Tab"; enabled: !window.isApplying; onActivated: window.cycleFilter(1) }
-    Shortcut { sequence: "Backtab"; enabled: !window.isApplying; onActivated: window.cycleFilter(-1) }
+    Shortcut { sequence: "Tab"; onActivated: window.cycleFilter(1) }
+    Shortcut { sequence: "Backtab"; onActivated: window.cycleFilter(-1) }
 
     ListModel { id: localProxyModel }
     ListModel { id: categoryProxyModel }
@@ -1341,7 +1341,7 @@ Item {
         spacing: 0
         orientation: ListView.Horizontal
         clip: false
-        interactive: !window.isApplying
+        interactive: true
         reuseItems: false
         cacheBuffer: Math.round(window.itemWidth * 2)
 
@@ -1396,10 +1396,6 @@ Item {
             anchors.fill: parent
             acceptedButtons: Qt.NoButton
             onWheel: (wheel) => {
-                if (window.isApplying) {
-                    wheel.accepted = true;
-                    return;
-                }
                 let dx = wheel.angleDelta.x;
                 let dy = wheel.angleDelta.y;
                 let delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
@@ -1493,7 +1489,7 @@ Item {
                 
                 MouseArea {
                     anchors.fill: parent
-                    enabled: delegateRoot.matchesFilter && !window.isApplying
+                    enabled: delegateRoot.matchesFilter
                     onClicked: {
                         view.currentIndex = index;
                         window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo);

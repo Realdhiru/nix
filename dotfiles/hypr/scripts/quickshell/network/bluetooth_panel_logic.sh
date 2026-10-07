@@ -111,32 +111,37 @@ get_status() {
             connected_json="[$(IFS=,; echo "${connected_list_objs[*]}")]"
         fi
 
-        # 2. PROCESS PAIRED & SCANNED DEVICES INSTANTLY
-        for line in "${devices[@]}"; do
-            [ -z "$line" ] && continue
-            rest="${line#Device }"
-            mac="${rest%% *}"
+        # 2. PROCESS IN-RANGE PAIRED & SCANNED DEVICES INSTANTLY (Batched D-Bus in <15ms)
+        while IFS=$'\t' read -r mac name icon_type action; do
+            [ -z "$mac" ] && continue
+            [[ "$connected_macs" == *"$mac"* ]] && continue
             
-            if [[ "$connected_macs" == *"$mac"* ]]; then continue; fi
-
-            name="${rest#* }"
-            name_esc="${name//\"/\\\"}"
-
-            if [[ "$paired_macs" == *"$mac"* ]]; then
-                action="Connect"
-            else
-                action="Pair & Connect"
-                mac_hyphens="${mac//:/-}"
-                if [[ "$name" == "$mac" || "$name" == "$mac_hyphens" || -z "$name" ]]; then
-                    continue
-                fi
+            mac_hyphens="${mac//:/-}"
+            if [[ "$name" == "$mac" || "$name" == "$mac_hyphens" || -z "$name" ]]; then
+                continue
             fi
 
-            icon=$(get_icon "unknown" "$name")
+            name_esc="${name//\"/\\\"}"
+            icon=$(get_icon "$icon_type" "$name")
             icon_esc="${icon//\"/\\\"}"
 
             devices_list_objs+=("{\"id\":\"$mac\",\"name\":\"$name_esc\",\"mac\":\"$mac\",\"icon\":\"$icon_esc\",\"action\":\"$action\"}")
-        done
+        done < <(busctl --system call org.bluez / org.freedesktop.DBus.ObjectManager GetManagedObjects --json=short 2>/dev/null | jq -r '
+            .data[0] 
+            | to_entries[] 
+            | select(.value["org.bluez.Device1"] != null) 
+            | .value["org.bluez.Device1"] as $d 
+            | select($d.Connected.data != true)
+            | select($d.RSSI.data != null)
+            | select($d.Name.data != null and $d.Name.data != "")
+            | [
+                $d.Address.data,
+                ($d.Name.data // $d.Alias.data),
+                ($d.Icon.data // "unknown"),
+                (if $d.Paired.data == true then "Connect" else "Pair & Connect" end)
+              ]
+            | @tsv
+        ' 2>/dev/null)
 
         if [ ${#devices_list_objs[@]} -gt 0 ]; then
             devices_json="[$(IFS=,; echo "${devices_list_objs[*]}")]"

@@ -119,8 +119,8 @@ else
     "$SCRIPT_DIR/ensure_awww.sh" 8>&- 2>/dev/null || true
 
     TRANS_TYPE="${2:-${AWWW_TRANSITION:-fade}}"
-    TRANS_DURATION="${AWWW_TRANSITION_DURATION:-0.2}"
-    TRANS_FPS="${AWWW_TRANSITION_FPS:-120}"
+    TRANS_DURATION="${3:-${AWWW_TRANSITION_DURATION:-0.18}}"
+    TRANS_FPS="${4:-${AWWW_TRANSITION_FPS:-120}}"
     TRANS_BEZIER="${AWWW_TRANSITION_BEZIER:-.1,.9,.2,1}"
 
     if command -v awww >/dev/null 2>&1; then
@@ -174,10 +174,21 @@ exec 8>&- 2>/dev/null || true
         [ -s "$frame_seed" ] && SEED="$frame_seed"
     fi
 
+    # Cancel any previous in-flight theme generation to prevent CPU congestion during rapid switches
+    THEME_PID_FILE="/tmp/wallust_theme_handoff.pid"
+    if [ -f "$THEME_PID_FILE" ]; then
+        old_pid=$(cat "$THEME_PID_FILE" 2>/dev/null || true)
+        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+            kill "$old_pid" 2>/dev/null || true
+        fi
+    fi
+
     # Trigger standalone theme engine if present
     THEME_ENGINE="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
     [ ! -x "$THEME_ENGINE" ] && THEME_ENGINE="$HOME/nix/dotfiles/wallust/generate.sh"
     if [ -x "$THEME_ENGINE" ]; then
         "$THEME_ENGINE" "$SEED" >/dev/null 2>&1
     fi
+    rm -f "$THEME_PID_FILE" 2>/dev/null || true
 ) &
+echo $! > /tmp/wallust_theme_handoff.pid 2>/dev/null || true
