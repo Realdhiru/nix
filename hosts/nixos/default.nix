@@ -3,7 +3,6 @@
   imports = [
     ./hardware-configuration.nix
     ./hardware/asus.nix
-    ./hardware/sonix-webcam.nix
     ../../modules/system/boot.nix
     ../../modules/system/users.nix
     ../../modules/system/services.nix

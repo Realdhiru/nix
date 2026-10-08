@@ -1,15 +1,23 @@
 # CHANGELOG
 
-## 2026-10-08 — Camera Duct-Tape Purge & Clean DroidCam Integration
+## 2026-10-08 — Camera Purge, Full Power Cut & Consuming Cursor Zoom
 
-- **Purged Broken Camera Loopback Feeder & Scripts (`sonix-webcam.nix`, `camera-loopback.sh`, `webcam.sh`)**:
-  - Removed failing `camera-loopback.service` and feeder script [`camera-loopback.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/camera-loopback.sh) which attempted to stream from the hardware-faulty internal Sonix chip (`3277:0022`), eliminating continuous 3-second USB bus crash loops and resets.
-  - Removed controller script [`webcam.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/webcam.sh) and obsolete shell aliases (`cam-on`, `cam-off`, `webcam`) in [`modules/home/shell.nix`](file:///home/realdhiru/nix/modules/home/shell.nix).
-- **Clean Virtual Webcam Loopback Module (`hosts/nixos/hardware/sonix-webcam.nix`)**:
-  - Simplified module to clean `v4l2loopback` declaration with `options v4l2loopback card_label="Webcam" video_nr=10 exclusive_caps=1`.
-  - Removed deprecated `options uvcvideo nodrop=1`.
-- **System DroidCam Package Integration (`modules/system/packages.nix`)**:
-  - Added `pkgs.droidcam` to `environment.systemPackages` for native phone-as-webcam streaming directly into `/dev/video10` over Wi-Fi or USB with zero background service bloat.
+- **Consuming Cursor Zoom (`keybinds.lua`)**:
+  - Re-implemented `mainMod + mouse_up` and `mainMod + mouse_down` to adjust `cursor:zoom_factor` (clamped to `1.0` - `3.0`) via native Lua state.
+  - Consumes mouse wheel inputs so underlying windows (browsers, editors) do not scroll when zooming.
+- **Complete Camera & Virtual Device Purge**:
+  - Deleted [`hosts/nixos/hardware/sonix-webcam.nix`](file:///home/realdhiru/nix/hosts/nixos/hardware/sonix-webcam.nix) and unlinked it from [`hosts/nixos/default.nix`](file:///home/realdhiru/nix/hosts/nixos/default.nix).
+  - Purged `pkgs.droidcam` from [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix).
+  - Removed dead `cam` alias from [`modules/home/shell.nix`](file:///home/realdhiru/nix/modules/home/shell.nix).
+  - Removed failing `camera-loopback.sh` and `webcam.sh` scripts.
+- **Power Autosuspend for Broken Internal Webcam (`power.nix`)**:
+  - Removed `3277:0022` from `USB_DENYLIST` in [`modules/system/power.nix`](file:///home/realdhiru/nix/modules/system/power.nix). TLP now aggressively autosuspends the broken internal hardware on battery, maximizing battery life.
+- **Smooth Wallpaper Kill Mode Transitions**:
+  - In [`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh) and [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), removed disruptive `hyprctl reload` passes and harsh window rule overrides on toggle. Hyprland now interpolates blur, shadow, and window opacity smoothly without UI freezes.
+- **Battery-Efficient Hardware-Accelerated GIF Playback via `mpvpaper`**:
+  - In [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), animated GIFs are routed into `mpvpaper` with auto-pause (`-p`), hardware decode (`--hwdec=auto-safe`), and converted mp4 caching. Eliminates `awww` frame-decoding CPU freezes.
+- **Eliminated Theme Generation Race Condition on Wallpaper Change (`set.sh`)**:
+  - In [`dotfiles/wallpaper/backend/set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), moved `wallust_theme_handoff.pid` check and stale PID cancellation before spawning the background theme subshell. System UI, Quickshell, terminal, and border colors now update immediately on every wallpaper switch.
 
 ## 2026-10-07 — Rapid Wallpaper Switching & Zero-Lag Keybind Pipeline
 

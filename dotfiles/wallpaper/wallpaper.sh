@@ -93,13 +93,12 @@ cmd_kill() {
             target="$(cat "$HOME/.cache/last_wallpaper.txt" 2>/dev/null || true)"
         fi
         if [ -n "$target" ] && [ -f "$target" ]; then
-            cmd_set "$target"
+            cmd_set "$target" "fade" "0.18" "120"
         else
             rm -f "$HOME/.cache/wallpaper_killed"
             cmd_boot
             if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
                 hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
-                hyprctl reload >/dev/null 2>&1 || true
             fi
         fi
         [ -x "$state_ctl" ] && bash "$state_ctl" set modes.wallpaperKilled false 2>/dev/null || true
@@ -134,8 +133,7 @@ cmd_kill() {
     fi
 
     if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-        hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0 }, animations = { enabled = true } })" >/dev/null 2>&1 || true
-        hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" >/dev/null 2>&1 || true
+        hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
     fi
     touch "$HOME/.cache/wallpaper_killed"
     [ -x "$state_ctl" ] && bash "$state_ctl" set modes.wallpaperKilled true 2>/dev/null || true

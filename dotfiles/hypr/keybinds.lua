@@ -223,8 +223,16 @@ hl.bind(mainMod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = 10 }))
 -- Cursor Zoom
 -- ======================================================
 
-hl.bind(mainMod .. " + mouse_up", hl.dsp.exec_cmd("hyprctl eval \"hl.config({cursor={zoom_factor=$(hyprctl getoption cursor:zoom_factor | grep float | awk '{print $NF + 0.9}')}})\""), { non_consuming = true })
+local current_zoom = 1.0
 
-hl.bind(mainMod .. " + mouse_down", hl.dsp.exec_cmd("hyprctl eval \"hl.config({cursor={zoom_factor=1.0}})\""), { non_consuming = true })
+hl.bind(mainMod .. " + mouse_up", function()
+    current_zoom = current_zoom + 0.9
+    hl.config({ cursor = { zoom_factor = current_zoom } })
+end)
+
+hl.bind(mainMod .. " + mouse_down", function()
+    current_zoom = 1.0
+    hl.config({ cursor = { zoom_factor = 1.0 } })
+end)
 
 
