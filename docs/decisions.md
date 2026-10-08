@@ -6,7 +6,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 
 ### 1. User & Credential Parameterization (`user.nix`)
 - **Decision:** [`user.nix`](file:///home/realdhiru/nix/user.nix) is the single source of truth for `username`, `name`, and `hostname`.
-- **Rationale:** Banished hardcoded `/home/username` across Nix modules, Lua scripts, and Matugen configs for portability. All modules consume `user.username`.
+- **Rationale:** Banished hardcoded `/home/username` across Nix modules, Lua scripts, and Wallust configs for portability. All modules consume `user.username`.
 
 ### 2. Power Management & Hardware Authority
 - **Decision:** TLP 1.9.1 is the sole hardware authority for platform profiles, EPP, and ASPM.
@@ -28,6 +28,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - All JSON reads and edits in hot shell scripts must use native compiled C utilities (`jq`).
   - Text and math processing in hooks must use POSIX C utilities (`awk`).
   - High-frequency utilities must use compiled native binaries (Rust / C++) or direct Wayland/PipeWire IPC.
+  - Theme generation ([`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh)) relies directly on Wallust's native Rust extraction engine without ImageMagick/Python histogram overrides or synthetic monochrome fallbacks, preserving full 16-color ANSI terminal palettes.
 
 - **Rules:**
   - Never fork bash `Process` to read files or watch file state (`colors_wait.sh`, `settings_wait.sh`, `solidModeDetector`, `battery_wait.sh`, `av_event_stream.sh`). Use native `Quickshell.Io.FileView` on kernel/tmpfs files.

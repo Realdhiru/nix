@@ -67,42 +67,6 @@
     force = true;
   };
 
-  # Distrobox .deb installer helper and file manager integration
-  home.file.".local/bin/distrobox-install-deb" = {
-    source = config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/scripts/distrobox-install-deb.sh";
-  };
-
-  # Application association for .deb packages (shows directly in PCManFM-Qt "Open With")
-  xdg.dataFile."applications/distrobox-install.desktop".text = ''
-    [Desktop Entry]
-    Type=Application
-    Name=Install in Distrobox
-    Comment=Install Debian package inside Distrobox deb-box container
-    Exec=${config.home.homeDirectory}/.local/bin/distrobox-install-deb %f
-    Icon=system-software-install
-    Terminal=false
-    Categories=System;Utility;
-    MimeType=application/vnd.debian.binary-package;application/x-deb;
-    NoDisplay=true
-  '';
-
-  # Declarative ChatGPT Distrobox desktop entry: strictly locked to x-scheme-handler/codex
-  # completely stripped of HTTP/HTTPS/HTML and generic document handlers to prevent browser hijacking.
-  xdg.dataFile."applications/deb-box-chatgpt.desktop".text = ''
-    [Desktop Entry]
-    Name=ChatGPT (on deb-box)
-    Comment=ChatGPT by OpenAI
-    GenericName=AI assistant (on deb-box)
-    Exec=sh -c 'ELECTRON_OZONE_PLATFORM_HINT=auto "$@" ; /run/current-system/sw/bin/distrobox stop deb-box --yes >/dev/null 2>&1 &' -- /run/current-system/sw/bin/distrobox-enter -n deb-box -- chatgpt %U
-    Icon=chatgpt
-    Type=Application
-    StartupNotify=true
-    Categories=Utility;Development;
-    MimeType=x-scheme-handler/codex;
-    StartupWMClass=chatgpt
-  '';
-
   # Mutable user-managed MIME associations (allows casual right-click "Set as Default" in PCManFM-Qt)
   xdg.mimeApps.enable = false;
 
@@ -274,6 +238,39 @@
     };
     Install = {
       WantedBy = [ "graphical-session.target" ];
+    };
+  };
+
+  programs.foot = {
+    enable = true;
+    server.enable = true;
+    settings = {
+      main = {
+        font = "JetBrains Mono:size=10";
+        dpi-aware = "yes";
+        pad = "12x12";
+        include = "${config.home.homeDirectory}/.cache/theme/foot-colors.ini";
+      };
+      colors = {
+        alpha = "0.89";
+      };
+    };
+  };
+
+  programs.alacritty = {
+    enable = true;
+    settings = {
+      general.import = [
+        "${config.home.homeDirectory}/.cache/theme/alacritty-colors.toml"
+      ];
+      window = {
+        opacity = 0.89;
+        padding = { x = 12; y = 12; };
+      };
+      font = {
+        normal = { family = "JetBrains Mono"; };
+        size = 10;
+      };
     };
   };
 

@@ -189,11 +189,11 @@ find "$SRC" -not -path '*/.*' -not -path '*/previews*' -not -path '*/scripts*' -
     -iname '*.gif' -o -iname '*.mp4' -o -iname '*.mkv' -o -iname '*.mov' -o \
     -iname '*.webm' \) -print0 | xargs -0 -P "$THREADS" -I {} bash -c 'process_wallpaper "$@"' _ {}
 
-# Automatically refresh QuickShell wallpaper index with unified classifier
-INDEXER_SCRIPT="$HOME/.config/hypr/scripts/quickshell/wallpaper/indexer.py"
-[ ! -f "$INDEXER_SCRIPT" ] && INDEXER_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.py"
+# Automatically refresh QuickShell wallpaper index with fast native indexer
+INDEXER_SCRIPT="$HOME/.config/hypr/scripts/quickshell/wallpaper/indexer.sh"
+[ ! -f "$INDEXER_SCRIPT" ] && INDEXER_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.sh"
 if [ -f "$INDEXER_SCRIPT" ]; then
-    python3 "$INDEXER_SCRIPT" "$SRC" "$HOME/.cache/quickshell/wallpaper_index.json" >/dev/null 2>&1 &
+    "$INDEXER_SCRIPT" "$SRC" "$HOME/.cache/quickshell/wallpaper_index.json" >/dev/null 2>&1 &
 fi
 
 

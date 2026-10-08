@@ -7,19 +7,47 @@
 
   programs.zsh = {
     enable = true;
-
     enableCompletion = true;
+    completionInit = ''
+      autoload -Uz compinit
+      if [ -f "$HOME/.zcompdump.zwc" ]; then
+        compinit -C -d "$HOME/.zcompdump"
+      else
+        compinit -d "$HOME/.zcompdump"
+        { zcompile "$HOME/.zcompdump" } &!
+      fi
+    '';
 
     autosuggestion.enable = true;
-
     syntaxHighlighting.enable = true;
 
     history = {
-      size = 10000;
+      size = 50000;
+      save = 50000;
       path = "$HOME/.zsh_history";
+      share = true;
+      extended = true;
     };
 
+    historySubstringSearch.enable = true;
+
+    plugins = [
+      {
+        name = "fzf-tab";
+        src = pkgs.zsh-fzf-tab;
+        file = "share/fzf-tab/fzf-tab.plugin.zsh";
+      }
+    ];
+
     initContent = ''
+      # Instant multi-window history sync
+      setopt INC_APPEND_HISTORY
+      setopt SHARE_HISTORY
+
+      # History substring search arrow key bindings
+      bindkey '^[[A' history-substring-search-up
+      bindkey '^[[B' history-substring-search-down
+
       # Suppress Zsh reverse-video '%' end-of-line mark on terminal launch
       PROMPT_EOL_MARK=""
 
@@ -245,6 +273,16 @@
 
 
   programs.starship.enable = true;
+
+  programs.zoxide = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
+  };
 
   xdg.configFile."starship.toml".source =
     ../../dotfiles/starship.toml;

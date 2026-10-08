@@ -217,95 +217,41 @@ if [ -z "$MODE" ]; then
 fi
 IS_LIGHT_VAL=$([ "$MODE" = "light" ] && echo "true" || echo "false")
 
-# 2. Extract true dominant, vibrant accent color from wallpaper
-COLOR_DATA=""
-if command -v magick >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-    COLOR_DATA=$(magick "$WALL_INPUT" -depth 8 -scale 100x100 -colors 16 -format "%c\n" histogram:info: 2>/dev/null | python3 -c '
-import sys, re, colorsys
-mode = sys.argv[1] if len(sys.argv) > 1 else "dark"
-lines = sys.stdin.readlines()
-parsed = []
-for line in lines:
-    m = re.search(r"(\d+):\s*\(.*?\)\s*#([0-9A-Fa-f]+)", line)
-    if m:
-        count = int(m.group(1))
-        hstr = m.group(2)
-        if len(hstr) >= 12:
-            r = int(hstr[0:4], 16) / 65535.0
-            g = int(hstr[4:8], 16) / 65535.0
-            b = int(hstr[8:12], 16) / 65535.0
-        elif len(hstr) >= 6:
-            r = int(hstr[0:2], 16) / 255.0
-            g = int(hstr[2:4], 16) / 255.0
-            b = int(hstr[4:6], 16) / 255.0
-        else:
-            continue
-        h, l, s = colorsys.rgb_to_hls(r, g, b)
-        hex_c = "#{0:02x}{1:02x}{2:02x}".format(int(r*255), int(g*255), int(b*255))
-        parsed.append((count, hex_c, h, s, l))
-
-total_pixels = sum(p[0] for p in parsed) or 1
-dark_or_mono_pixels = sum(p[0] for p in parsed if p[4] < 0.12 or p[3] < 0.12)
-colored = [p for p in parsed if p[3] >= 0.15 and 0.10 <= p[4] <= 0.85]
-colored_pixels = sum(p[0] for p in colored)
-
-# If image is >= 80% black/dark or colored pixels represent less than 4% of image:
-if colored and (dark_or_mono_pixels / total_pixels) < 0.80 and (colored_pixels / total_pixels) >= 0.04:
-    is_mono = "False"
-    colored.sort(key=lambda p: (p[0] ** 0.7) * (1.0 + p[3] * 1.5), reverse=True)
-    best = colored[0]
-    target_l = 0.38 if mode == "light" else 0.68
-    target_s = max(0.65 if mode == "light" else 0.55, min(0.90, best[3] * 1.25))
-    r, g, b = colorsys.hls_to_rgb(best[2], target_l, target_s)
-    accent = "#{0:02x}{1:02x}{2:02x}".format(int(r*255), int(g*255), int(b*255))
-else:
-    is_mono = "True"
-    accent = "#EDE6DC" if mode == "dark" else "#2D3139"
-
-if mode == "light":
-    text_color = "#181926"
-    subtext0 = "#494d64"
-    subtext1 = "#5b6078"
-else:
-    text_color = "#EDE6DC"
-    subtext0 = "#C9BFB5"
-    subtext1 = "#A89F95"
-
-print(f"{accent}|{text_color}|{subtext0}|{subtext1}|{is_mono}")
-' "$MODE" 2>/dev/null || true)
+# 2. Run Wallust natively to generate all template outputs
+PALETTE="saliencedark16"
+COLORSPACE="salience"
+if [ "$MODE" = "light" ]; then
+    PALETTE="light16"
+    COLORSPACE="lch"
 fi
 
+if ! wallust run \
+    --config-dir "$SCRIPT_DIR" \
+    --palette "$PALETTE" \
+    --colorspace "$COLORSPACE" \
+    --check-contrast \
+    -s \
+    -q \
+    "$WALLPAPER" 2>/dev/null; then
+    emit_neutral_theme
+fi
+
+# 3. Read generated palette metadata directly from Wallust's colors.json
 ACCENT=""
 TEXT_COLOR=""
 SUBTEXT0=""
 SUBTEXT1=""
-IS_MONO="False"
-if [ -n "$COLOR_DATA" ]; then
-    IFS="|" read -r ACCENT TEXT_COLOR SUBTEXT0 SUBTEXT1 IS_MONO <<< "$COLOR_DATA"
+if [ -f "$TARGET_CACHE/colors.json" ]; then
+    ACCENT=$(jq -r '.accent // .primary // .color4 // ""' "$TARGET_CACHE/colors.json" 2>/dev/null || true)
+    TEXT_COLOR=$(jq -r '.text // .foreground // ""' "$TARGET_CACHE/colors.json" 2>/dev/null || true)
+    SUBTEXT0=$(jq -r '.subtext0 // ""' "$TARGET_CACHE/colors.json" 2>/dev/null || true)
+    SUBTEXT1=$(jq -r '.subtext1 // ""' "$TARGET_CACHE/colors.json" 2>/dev/null || true)
 fi
 
-# 3. Apply Theme: if monochrome / dark-dominated, emit clean neutral OLED palette
-if [ "$IS_MONO" = "True" ]; then
-    emit_neutral_theme
-else
-    PALETTE="saliencedark16"
-    COLORSPACE="salience"
-    if [ "$MODE" = "light" ]; then
-        PALETTE="light16"
-        COLORSPACE="lch"
-    fi
-
-    if ! wallust run \
-        --config-dir "$SCRIPT_DIR" \
-        --palette "$PALETTE" \
-        --colorspace "$COLORSPACE" \
-        --check-contrast \
-        -s \
-        -q \
-        "$WALLPAPER" 2>/dev/null; then
-        emit_neutral_theme
-    fi
-fi
+[ -z "$TEXT_COLOR" ] && TEXT_COLOR=$([ "$MODE" = "light" ] && echo "#181926" || echo "#EDE6DC")
+[ -z "$SUBTEXT0" ] && SUBTEXT0=$([ "$MODE" = "light" ] && echo "#494d64" || echo "#C9BFB5")
+[ -z "$SUBTEXT1" ] && SUBTEXT1=$([ "$MODE" = "light" ] && echo "#5b6078" || echo "#A89F95")
+[ -z "$ACCENT" ] && ACCENT=$([ "$MODE" = "light" ] && echo "#2D3139" || echo "#EDE6DC")
 
 # 4. Merge metadata & vibrant accent into colors.json in-place
 if [ -f "$TARGET_CACHE/colors.json" ]; then

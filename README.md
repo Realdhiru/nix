@@ -5,7 +5,7 @@
 [![NixOS](https://img.shields.io/badge/NixOS-Unstable-blue?style=for-the-badge&logo=nixos&logoColor=white)](https://nixos.org)
 [![Hyprland](https://img.shields.io/badge/Hyprland-Wayland-00B4D8?style=for-the-badge&logo=hyprland&logoColor=white)](https://hyprland.org)
 [![QuickShell](https://img.shields.io/badge/UI-QuickShell_(QML)-8338EC?style=for-the-badge)](https://git.outfoxxed.me/outfoxxed/quickshell)
-[![Theming](https://img.shields.io/badge/Theme-Matugen-FF006E?style=for-the-badge)](https://github.com/InioX/matugen)
+[![Theming](https://img.shields.io/badge/Theme-Wallust-FF006E?style=for-the-badge)](https://codeberg.org/explosion-mental/wallust)
 [![Flakes](https://img.shields.io/badge/Config-Nix_Flakes-52B788?style=for-the-badge&logo=nixos)](https://wiki.nixos.org/wiki/Flakes)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
@@ -106,7 +106,7 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 | **Desktop Shell & UI** | [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) (Qt6 / QML) | Event-driven topbar, circular battery dial, MPRIS music & power popups |
 | **Application Launcher** | [Fuzzel](https://codeberg.org/dnkl/fuzzel) | Wayland dmenu/rofi alternative with custom frosted glass styling |
 | **Shell & Prompt** | [Zsh](https://www.zsh.org/) + [Starship](https://starship.rs/) | Fast, modular shell prompt with automated safety-gated `rebuild()` |
-| **Theming** | [Matugen](https://github.com/InioX/matugen) (Material You) | Wallpaper-derived dynamic color extraction across GTK, Qt, WezTerm, QuickShell, and Cava |
+| **Theming** | [Wallust](https://codeberg.org/explosion-mental/wallust) | High-speed Rust wallpaper-derived color extraction across GTK, Qt, WezTerm, QuickShell, and Cava |
 | **Icon Theme** | Buuf-Nestort | Hand-drawn skeuomorphic icon theme |
 | **Typography** | JetBrains Mono Nerd Font | Monospace code font with comprehensive glyph and symbol support |
 | **Lockscreen & Idle** | [Hyprlock](https://github.com/hyprwm/hyprlock) + [Hypridle](https://github.com/hyprwm/hypridle) | Wayland lockscreen with live video background support (QtMultimedia) |
@@ -143,7 +143,7 @@ Built for **100% portability** — fork it, edit one file, and deploy the entire
 - **Frame-0 Hot Reloading**: Synchronously evaluates cached power and visual states at startup and reload (`SUPER + R`), applying compositor rules in ~15ms without unmapping Wayland surfaces or cold-restarting desktop shell widgets.
 - **Low-Latency Compositing Mode**: A dedicated keybind (`SUPER + SHIFT + G`) toggles Direct Scanout (`render:direct_scanout = 2`), Adaptive Sync (VRR), and asynchronous tearing for latency-sensitive full-screen workloads.
 - **Pure Wayland Pipeline**: All Chromium and Electron apps run with native Wayland flags (`NIXOS_OZONE_WL = "1"`), providing kinetic touchpad gestures and subpixel scrolling.
-- **Fuzzy File Navigation & Theming**: Centered interactive file search (`SUPER + SPACE`) with instant parent directory navigation in `pcmanfm-qt`, paired with in-place Matugen palette syncing across widgets, terminal, and launcher.
+- **Fuzzy File Navigation & Theming**: Centered interactive file search (`SUPER + SPACE`) with instant parent directory navigation in `pcmanfm-qt`, paired with in-place Wallust palette syncing across widgets, terminal, and launcher.
 
 ### Declarative System Infrastructure
 - **Safety-Gated Rebuild Workflow**: A custom rebuild pipeline validates builds before activation, runs a post-switch health gate with automated rollbacks, and retains a 14-day garbage collection safety window while tracking floating `nixos-unstable`.
@@ -190,7 +190,7 @@ nix/
 │   ├── wezterm.lua                    # Hardware-accelerated GPU terminal
 │   ├── fuzzel/
 │   │   └── fuzzel.ini                 # 2x HiDPI centered application & file launcher
-│   ├── matugen/                       # Dynamic color extraction config & templates
+│   ├── wallust/                       # Dynamic color extraction config & templates
 │   └── hypr/                          # Hyprland Wayland compositor configuration (Lua)
 │       ├── hyprland.lua               # Compositor core entrypoint
 │       ├── appearance.lua             # Dual-kawase blur, shadows, and smooth Bezier curves

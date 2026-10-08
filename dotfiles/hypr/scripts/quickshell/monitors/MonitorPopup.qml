@@ -32,7 +32,7 @@ Item {
     }
 
     // -------------------------------------------------------------------------
-    // COLORS (Dynamic Matugen Palette)
+    // COLORS (Dynamic Wallust Palette)
     // -------------------------------------------------------------------------
     Theme { id: _theme }
     readonly property color base: _theme.base

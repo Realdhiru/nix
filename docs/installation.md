@@ -1,6 +1,6 @@
 # Installation & Deployment Guide
 
-This repository contains a declarative, production-ready NixOS workstation configuration featuring Hyprland, QuickShell, dynamic Matugen color palette generation, and TLP hardware power management.
+This repository contains a declarative, production-ready NixOS workstation configuration featuring Hyprland, QuickShell, dynamic Wallust color palette generation, and TLP hardware power management.
 
 It is engineered with a **portable, single-source user architecture** (similar to the Omarchy distribution model), meaning you can fork, clone, and deploy it on any machine without having to hunt down hardcoded paths or usernames.
 
@@ -121,4 +121,4 @@ You can customize the desktop shell without modifying QML code by editing [`dotf
 ```
 
 - **`PopupCard.qml`**: Standardized base container for all QuickShell popups, enforcing uniform borders, opacity, corner radii, and frosted specular highlights.
-- **Matugen**: Colors automatically derive from the active wallpaper and propagate to QuickShell, WezTerm, GTK 3/4, and Qt apps in real time.
+- **Wallust**: Colors automatically derive from the active wallpaper and propagate to QuickShell, WezTerm, GTK 3/4, and Qt apps in real time.

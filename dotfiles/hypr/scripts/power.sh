@@ -83,15 +83,12 @@ cmd_lock() {
 
     reap_stray_locks
 
+    if command -v hyprlock >/dev/null 2>&1; then
+        exec hyprlock
+    fi
+
     # Reset any stale compositor crash state before launching
     hyprctl eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
-
-    # Take live desktop screenshot for frosted glass lock mode
-    local lock_snap="/tmp/lock_screenshot.jpg"
-    rm -f "$lock_snap" 2>/dev/null || true
-    if command -v grim >/dev/null 2>&1; then
-        grim -t jpeg -q 30 "$lock_snap" 2>/dev/null || true
-    fi
 
     if [ -s "$lock_snap" ]; then
         export CURRENT_WALLPAPER="$lock_snap"

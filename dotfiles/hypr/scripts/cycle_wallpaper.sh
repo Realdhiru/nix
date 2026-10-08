@@ -11,15 +11,17 @@ TARGET_TXT="$CACHE_DIR/target_wallpaper.txt"
 CURRENT_TXT="$CACHE_DIR/current_wallpaper.txt"
 
 CUR_PATH=""
-for cand in "$TARGET_TXT" "$CURRENT_TXT"; do
-    if [ -f "$cand" ]; then
-        c=$(cat "$cand" 2>/dev/null | tr -d "\r\n")
-        if [ -n "$c" ]; then
-            CUR_PATH="$c"
-            break
-        fi
+if [ -f "$CURRENT_TXT" ] && [ -f "$TARGET_TXT" ]; then
+    if [ "$CURRENT_TXT" -nt "$TARGET_TXT" ]; then
+        CUR_PATH="$(cat "$CURRENT_TXT" 2>/dev/null | tr -d '\r\n')"
+    else
+        CUR_PATH="$(cat "$TARGET_TXT" 2>/dev/null | tr -d '\r\n')"
     fi
-done
+elif [ -f "$TARGET_TXT" ]; then
+    CUR_PATH="$(cat "$TARGET_TXT" 2>/dev/null | tr -d '\r\n')"
+elif [ -f "$CURRENT_TXT" ]; then
+    CUR_PATH="$(cat "$CURRENT_TXT" 2>/dev/null | tr -d '\r\n')"
+fi
 CUR_NAME="$(basename "$CUR_PATH")"
 
 TARGET_PATH=""

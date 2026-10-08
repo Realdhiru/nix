@@ -44,7 +44,7 @@ Item {
     function cellW(mx, mw) { return (mw * orientedRoot.width) - ((mx > 0 ? sp / 2 : 0) + ((mx + mw) < 0.99 ? sp / 2 : 0)); }
     function cellH(my, mh) { return (mh * orientedRoot.height) - ((my > 0 ? sp / 2 : 0) + ((my + mh) < 0.99 ? sp / 2 : 0)); }
 
-    // Unified Matugen Theming (Strict Type Binding via Theme.qml)
+    // Unified Wallust Theming (Strict Type Binding via Theme.qml)
     Theme { id: _theme }
     property color cBase: _theme.base
     property color cCrust: _theme.crust

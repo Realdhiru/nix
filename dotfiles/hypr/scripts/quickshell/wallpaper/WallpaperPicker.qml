@@ -152,7 +152,7 @@ Item {
 
     Process {
         id: markersProc
-        command: ["bash", "-c", "python3 \"$HOME/.config/hypr/scripts/quickshell/wallpaper/indexer.py\" \"$HOME/Pictures/Wallpapers\" \"$HOME/.cache/quickshell/wallpaper_index.json\" && cat \"$HOME/.cache/quickshell/wallpaper_index.json\""]
+        command: ["bash", "-c", "\"$HOME/.config/hypr/scripts/quickshell/wallpaper/indexer.sh\" \"$HOME/Pictures/Wallpapers\" \"$HOME/.cache/quickshell/wallpaper_index.json\" && cat \"$HOME/.cache/quickshell/wallpaper_index.json\""]
         running: false
         stdout: StdioCollector {
             onStreamFinished: {
@@ -2099,8 +2099,7 @@ Item {
             searchState.searched = window.hasSearched;
             searchState.lastName = window.lastSearchName;
             Quickshell.execDetached(["bash", "-c", "echo 'pause' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
-        } else {
-            Quickshell.execDetached(["bash", "-c", "echo 'stop' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control; for p in \$(pgrep -f ddg_search.sh); do if [ \"\$p\" != \"\$\$\" ] && [ \"\$p\" != \"\$BASHPID\" ]; then kill -9 \$p 2>/dev/null || true; fi; done; pkill -f '[g]et_ddg_links.py'"]);
+            Quickshell.execDetached(["bash", "-c", "echo 'stop' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control; for p in \$(pgrep -f ddg_search.sh); do if [ \"\$p\" != \"\$\$\" ] && [ \"\$p\" != \"\$BASHPID\" ]; then kill -9 \$p 2>/dev/null || true; fi; done"]);
         }
     }
 }

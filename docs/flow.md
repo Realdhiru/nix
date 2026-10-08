@@ -35,7 +35,7 @@ Shell.qml (loader)
       ├─ TopBar.qml (bars, native Hyprland workspace IPC, NotifTicker live notifier)
       ├─ Floating.qml (popup roots: layoutWidth / layoutHeight bound)
       ├─ SysData.qml (power-profile telemetry & live listener)
-      ├─ MatugenColors.qml (reads ~/.cache/matugen/qs_colors.json)
+      ├─ Theme.qml (reads ~/.cache/theme/colors.json)
       └─ Subsystems: battery, volume, music, network, wallpaper, focustime, monitors, calendar, clipboard
 ```
 

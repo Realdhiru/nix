@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## 2026-10-09 — Terminal Color Restoration & Native Tooling
+
+- **Restored Terminal Color Palette & Purged Theme Generation Python (`generate.sh`)**:
+  - **Root Cause**: In [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), an ImageMagick-to-Python histogram calculation incorrectly classified wallpapers with $\ge 80\%$ dark pixels as `is_mono = "True"`. This invoked `emit_neutral_theme`, overwriting `wezterm-colors.lua` with a hardcoded monochrome 16-shade grayscale palette (`#151515`, `#484849`, `#5E5E60`, etc.), stripping all ANSI and bright terminal colors.
+  - **Resolution**: Eliminated the inline Python interpreter and the brittle monochrome check. Wallust now executes directly on all wallpapers, extracting rich ANSI and bright palettes via its native Rust engine. Palette metadata (`accent`, `text`, `subtext`) is parsed directly from `colors.json` via native single-pass `jq`.
+  - Re-applied active wallpaper theme; verified full 16-color palette restoration in `wezterm-colors.lua` and instantaneous execution.
+- **Workspace Bar Dynamic Loading & Jitter Optimization (`TopBar.qml`, `SideBar.qml`)**:
+  - **Root Cause**: Switching to high or empty workspaces (e.g. 10 from 1) caused `workspacesModel` to dynamically append elements 7..10 on the fly, incurring asynchronous QML component construction lag. Additionally, `wsPill` animated width from 0 and slide-translated from below, while unmapped coordinates on frame 0 caused `activeHighlight` to glitch to coordinate 0 before snapping back. Clicking pills and mouse-wheel scrolling spawned bash and `hyprctl` subprocesses.
+  - **Resolution**: Pre-allocated a baseline of 10 persistent workspace delegates in `workspacesModel` in both `TopBar.qml` and `SideBar.qml`. Empty higher workspaces now toggle state seamlessly without scene-graph re-instantiation. Gated `activeHighlight` target bounds against positive pill geometry (`activePill.width > 0`), eliminating coordinate glitches. Replaced shell forks with native C++ IPC (`Hyprland.dispatch("workspace", ...)`).
+- **Smooth Wallpaper Cycling & Hold-to-Repeat (`set.sh`, `cycle_wallpaper.sh`, `keybinds.lua`)**:
+  - **Root Cause**: `set.sh` did not update `target_wallpaper.txt` when wallpapers were applied via the picker or CLI. When cycling from an active GIF, `cycle_wallpaper.sh` read the stale `target_wallpaper.txt` (pointing to an old photo) and cycled from that photo instead. Additionally, the Hyprland keybind used one-shot `hl.bind` without key repeat.
+  - **Resolution**: Synchronized `target_wallpaper.txt` inside [`dotfiles/wallpaper/backend/set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh). Added mtime freshness fallback in [`dotfiles/hypr/scripts/cycle_wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/cycle_wallpaper.sh). Added `{ repeating = true }` to `SUPER + ALT + Left/Right` keybinds in [`dotfiles/hypr/keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), allowing smooth, continuous one-by-one cycling while holding the arrow key.
+- **Complete Purge of Corrupted Codex & Distrobox Container Setup**:
+  - **Root Cause**: Containerized Electron applications inside the `deb-box` Distrobox container suffered from resource exhaustion, filesystem corruption, and lockups when launched via `deb-box-chatgpt.desktop` (`x-scheme-handler/codex`).
+  - **Resolution**: Completely stopped and purged the `deb-box` container and underlying Debian Bookworm container image via Podman. Deleted corrupted cache and data directories (`~/.codex/`, `~/.config/Codex/`). Purged container desktop entries (`deb-box-chatgpt.desktop`, `distrobox-install.desktop`), removed helper script [`dotfiles/scripts/distrobox-install-deb.sh`](file:///home/realdhiru/nix/dotfiles/scripts/distrobox-install-deb.sh), and pruned declarative configurations in [`home.nix`](file:///home/realdhiru/nix/home.nix) and [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix). Updated desktop database to eliminate stale MIME handlers.
+- **Online Wallpaper Search Migration to Native Wallhaven API (`ddg_search.sh`)**:
+  - **Root Cause**: Wallpaper online search used [`get_ddg_links.py`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/get_ddg_links.py), which scraped DuckDuckGo HTML tokens (`vqd`), was constantly throttled/blocked, and ran Python subprocesses.
+  - **Resolution**: Replaced the scraper in [`dotfiles/wallpaper/backend/ddg_search.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/ddg_search.sh) and [`dotfiles/hypr/scripts/quickshell/wallpaper/ddg_search.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/ddg_search.sh) with direct Wallhaven REST API queries using `curl` and `jq`. Removed `get_ddg_links.py` from both locations and updated [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml).
+- **Fast Native Wallpaper Indexer & ML Dependency Purge (`indexer.sh`)**:
+  - **Root Cause**: Wallpaper picker launched [`indexer.py`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.py) which imported heavy Python ML libraries (`numpy`, `pillow`, `scikit-learn`, `scipy`) via `nix-shell`, causing multi-second freezes when opening the wallpaper picker.
+  - **Resolution**: Replaced with native single-pass POSIX `awk` indexer [`dotfiles/hypr/scripts/quickshell/wallpaper/indexer.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.sh), generating `wallpaper_index.json` in ~8ms. Permanently deleted `indexer.py`, `classify.py`, and `registry.py`.
+- **Instant GPU Lockscreen Migration (`hyprlock.conf`, `power.sh`, `hypridle.conf`)**:
+  - **Root Cause**: Screen locking previously captured an on-the-fly JPEG via `grim` and launched an entire cold QuickShell process (`Lock.qml`), incurring ~450ms lag.
+  - **Resolution**: Configured native [`dotfiles/hypr/hyprlock.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hyprlock.conf) with GPU-accelerated blur shaders, Wallust color palettes, and instant PAM authentication (<20ms). Updated [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh) and [`hypridle.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hypridle.conf) to trigger `hyprlock`.
+- **High-Performance Terminal Suite & Cached Zsh**:
+  - Configured `foot` (with `server.enable = true` for ~1.8ms `footclient` instant launch) and `alacritty` alongside `wezterm`.
+  - Added Wallust color templates [`dotfiles/wallust/templates/foot.ini`](file:///home/realdhiru/nix/dotfiles/wallust/templates/foot.ini) and [`dotfiles/wallust/templates/alacritty.toml`](file:///home/realdhiru/nix/dotfiles/wallust/templates/alacritty.toml).
+  - Optimized Zsh in [`modules/home/shell.nix`](file:///home/realdhiru/nix/modules/home/shell.nix) with compiled `.zwc` bytecode caching (`compinit -C`), `fzf-tab`, `zsh-autosuggestions`, `zsh-history-substring-search`, and `zoxide`.
+- **Native Development Tooling (`modules/system/packages.nix`)**:
+  - Added `rustc` and `cargo` to system packages to enable building and maintaining high-performance native binaries for system daemons and QuickShell helpers.
+
 ## 2026-10-08 — Camera Purge, Full Power Cut & Consuming Cursor Zoom
 
 - **Systemwide Python Purge from Hot Paths & Scripts**:
@@ -13,6 +44,15 @@
   - In [`dotfiles/hypr/appearance.lua`](file:///home/realdhiru/nix/dotfiles/hypr/appearance.lua), removed `style = "slide"` from `layersIn`. Desktop layer surfaces now smoothly fade in without jarring vertical sliding jumps from screen edges.
   - In [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), added an explicit layer rule `animation = "none"` for `awww-daemon` and `mpvpaper`, ensuring wallpaper rendering happens without compositor animation jumps.
   - In [`dotfiles/wallpaper/backend/set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), stopped killing `awww-daemon` when launching `mpvpaper`. Since idle `awww-daemon` consumes 0.0% CPU, keeping it running drops image wallpaper switch latency from ~360ms to <15ms. Workspace slide animations (`slidefade 15%`) were strictly preserved.
+- **Dead Python Code & Diagnostic Purge**:
+  - Permanently purged obsolete diagnostic suite `diagnosis/` (`run_full_diagnosis.py`, `results.csv`, `DIAGNOSIS.md`).
+  - Deleted superseded `clip_fetcher.py`.
+  - Deleted unreferenced wallpaper scripts (`eval.py`, `cli.py`, `sort.py`).
+- **Comprehensive Documentation Sweep (Matugen $\\to$ Wallust Migration)**:
+  - Audited and updated [`README.md`](file:///home/realdhiru/nix/README.md) top badge, software stack table, highlights, and directory tree diagram to reflect Wallust.
+  - Updated [`docs/installation.md`](file:///home/realdhiru/nix/docs/installation.md), [`docs/flow.md`](file:///home/realdhiru/nix/docs/flow.md), and [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md).
+  - Cleared lingering legacy comments in QuickShell QML popups ([`WeatherSetupPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/WeatherSetupPopup.qml), [`FocusTimePopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml), [`MonitorPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml), [`SystemUsage.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/SystemUsage.qml), [`Timer.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/Timer.qml)).
+
 
 
 - **Centered Cursor Zoom with Adaptive Sensitivity Dampening (`keybinds.lua`, `misc.lua`)**:

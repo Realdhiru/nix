@@ -22,8 +22,33 @@ mkdir -p "$SEARCH_DIR"
 ACTIVE_TMP=""
 trap 'rm -f "$ACTIVE_TMP" 2>/dev/null' EXIT INT TERM
 
-# 3. The Pipe: Python provides links, OS provides backpressure
-python3 -u "$WALLPAPER_DIR/get_ddg_links.py" "$QUERY" | while IFS='|' read -r thumb_url full_url; do
+# 3. Native REST API Wallhaven fetcher (zero Python / HTML scraping)
+fetch_wallpapers() {
+    local q="$1"
+    local encoded_q
+    encoded_q=$(jq -rn --arg q "$q" '$q|@uri')
+    for page in 1 2 3 4 5; do
+        local state
+        state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
+        [ "$state" = "stop" ] && break
+        while [ "$state" = "pause" ]; do
+            sleep 1
+            state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
+        done
+
+        local url
+        if [ -z "$q" ]; then
+            url="https://wallhaven.cc/api/v1/search?sorting=toplist&order=desc&categories=111&purity=100&atleast=1920x1080&page=${page}"
+        else
+            url="https://wallhaven.cc/api/v1/search?q=${encoded_q}&categories=111&purity=100&sorting=relevance&order=desc&atleast=1920x1080&page=${page}"
+        fi
+
+        curl -s -m 8 -A "Mozilla/5.0 (X11; Linux x86_64)" "$url" 2>/dev/null | \
+            jq -r '.data[]? | "\(.thumbs.large // .thumbs.original // .thumbs.small)|\(.path)"' 2>/dev/null || break
+    done
+}
+
+fetch_wallpapers "$QUERY" | while IFS='|' read -r thumb_url full_url; do
 
     # Safely read control file
     state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')

@@ -232,6 +232,10 @@ Variants {
                 ListElement { wsId: "4"; wsState: "empty" }
                 ListElement { wsId: "5"; wsState: "empty" }
                 ListElement { wsId: "6"; wsState: "empty" }
+                ListElement { wsId: "7"; wsState: "empty" }
+                ListElement { wsId: "8"; wsState: "empty" }
+                ListElement { wsId: "9"; wsState: "empty" }
+                ListElement { wsId: "10"; wsState: "empty" }
             }
 
             function updateNativeWorkspaces() {
@@ -274,7 +278,7 @@ Variants {
                 }
 
                 let newActive = -1;
-                let totalWs = maxWs;
+                let totalWs = Math.max(10, maxWs);
 
                 while (workspacesModel.count < totalWs) {
                     let nextId = (workspacesModel.count + 1).toString();
@@ -698,8 +702,8 @@ Variants {
                                                          ? wsRepeater.itemAt(workspacesModel.activeIndex)
                                                          : null
 
-                                property real targetTop: activePill ? (wsLayout.y + activePill.y) : 0
-                                property real targetHeight: activePill ? activePill.height : 0
+                                property real targetTop: (activePill && activePill.height > 0) ? (wsLayout.y + activePill.y) : actualTop
+                                property real targetHeight: (activePill && activePill.height > 0) ? activePill.height : actualHeight
 
                                 property real actualTop: targetTop
                                 property real actualHeight: targetHeight
@@ -770,7 +774,7 @@ Variants {
                                             anchors.fill: parent
                                             enabled: wsPill.isItemVisible
                                             onClicked: (event) => {
-                                                Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh " + wsName])
+                                                Hyprland.dispatch("workspace", wsName);
                                             }
                                         }
                                     }
@@ -798,9 +802,9 @@ Variants {
                                     if (now - lastWheelTime < 50) return;
                                     lastWheelTime = now;
                                     if (wheel.angleDelta.y > 0) {
-                                        Quickshell.execDetached(["bash", "-c", "hyprctl dispatch workspace e-1"]);
+                                        Hyprland.dispatch("workspace", "e-1");
                                     } else if (wheel.angleDelta.y < 0) {
-                                        Quickshell.execDetached(["bash", "-c", "hyprctl dispatch workspace e+1"]);
+                                        Hyprland.dispatch("workspace", "e+1");
                                     }
                                 }
                             }

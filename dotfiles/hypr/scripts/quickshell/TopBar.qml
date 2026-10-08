@@ -167,6 +167,16 @@ Variants {
             ListModel {
                 id: workspacesModel
                 property int activeIndex: 0
+                ListElement { wsId: "1"; wsState: "active" }
+                ListElement { wsId: "2"; wsState: "empty" }
+                ListElement { wsId: "3"; wsState: "empty" }
+                ListElement { wsId: "4"; wsState: "empty" }
+                ListElement { wsId: "5"; wsState: "empty" }
+                ListElement { wsId: "6"; wsState: "empty" }
+                ListElement { wsId: "7"; wsState: "empty" }
+                ListElement { wsId: "8"; wsState: "empty" }
+                ListElement { wsId: "9"; wsState: "empty" }
+                ListElement { wsId: "10"; wsState: "empty" }
             }
 
             // ── Shared music/cava telemetry (MusicState singleton, sole owner) ──
@@ -271,7 +281,7 @@ Variants {
                 }
 
                 let newActive = -1;
-                let totalWs = maxWs;
+                let totalWs = Math.max(10, maxWs);
 
                 while (workspacesModel.count < totalWs) {
                     let nextId = (workspacesModel.count + 1).toString();
@@ -439,8 +449,8 @@ Variants {
                                                      ? wsRepeater.itemAt(workspacesModel.activeIndex)
                                                      : null
 
-                            property real targetLeft: activePill ? (wsLayout.x + activePill.x) : 0
-                            property real targetWidth: activePill ? activePill.width : 0
+                            property real targetLeft: (activePill && activePill.width > 0) ? (wsLayout.x + activePill.x) : actualLeft
+                            property real targetWidth: (activePill && activePill.width > 0) ? activePill.width : actualWidth
 
                             property real actualLeft: targetLeft
                             property real actualWidth: targetWidth
@@ -533,7 +543,7 @@ Variants {
                                         anchors.fill: parent
                                         enabled: wsPill.isItemVisible
                                         onClicked: (event) => {
-                                            Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh " + wsName])
+                                            Hyprland.dispatch("workspace", wsName);
                                         }
                                     }
                                 }

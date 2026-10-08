@@ -38,7 +38,7 @@ Item {
     }
 
     // =========================================================
-    // --- MATUGEN THEMING & STYLING (MINIMALIST)
+    // --- WALLUST THEMING & STYLING (MINIMALIST)
     // =========================================================
     Theme { id: _theme }
     property color cBase: _theme.base

@@ -67,8 +67,8 @@ hl.bind("CTRL + ALT + Super_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohi
 hl.bind("CTRL + ALT + Super_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
 
 -- Cycle Wallpaper Left / Right
-hl.bind(mainMod .. " + ALT + Left", hl.dsp.exec_cmd(scripts .. "cycle_wallpaper.sh prev"))
-hl.bind(mainMod .. " + ALT + Right", hl.dsp.exec_cmd(scripts .. "cycle_wallpaper.sh next"))
+hl.bind(mainMod .. " + ALT + Left", hl.dsp.exec_cmd(scripts .. "cycle_wallpaper.sh prev"), { repeating = true })
+hl.bind(mainMod .. " + ALT + Right", hl.dsp.exec_cmd(scripts .. "cycle_wallpaper.sh next"), { repeating = true })
 
 -- TopBar Position (Top / Left)
 hl.bind(mainMod .. " + ALT + Up", hl.dsp.exec_cmd(scripts .. "qs_manager.sh position topbar top"))
@@ -79,8 +79,9 @@ hl.bind(mainMod .. " + ALT + Down", hl.dsp.exec_cmd(scripts .. "qs_manager.sh po
 -- Applications
 -- ======================================================
 
-hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("wezterm"))
-hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd('wezterm start -- zsh -c "fastfetch; exec zsh"'))
+hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("footclient || foot"))
+hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd("alacritty"))
+hl.bind(mainMod .. " + CTRL + T", hl.dsp.exec_cmd("wezterm"))
 
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("env QT_QPA_PLATFORMTHEME=qt6ct pcmanfm-qt"))
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_menu.sh app"))

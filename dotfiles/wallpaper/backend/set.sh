@@ -28,6 +28,7 @@ if [ -f "$HOME/.cache/current_wallpaper.txt" ]; then
 fi
 echo "$WALL" > "$HOME/.cache/current_wallpaper.txt"
 echo "$WALL" > "$HOME/.cache/last_wallpaper.txt"
+echo "$WALL" > "$HOME/.cache/target_wallpaper.txt"
 
 WAS_KILLED=0
 [ -f "$HOME/.cache/wallpaper_killed" ] && WAS_KILLED=1

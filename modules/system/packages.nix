@@ -32,11 +32,14 @@ in
     python3
     weathr
     util-linux
-    distrobox
 
     # Development & Terminal
     tmux
     wezterm
+    foot
+    alacritty
+    fzf
+    zoxide
     fastfetch
     htop
 
@@ -129,6 +132,8 @@ in
     nil
     vscode-langservers-extracted
     lua-language-server
+    rustc
+    cargo
   ];
 
   programs.appimage = {

@@ -22,7 +22,7 @@ Item {
 
     readonly property string scriptsDir: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/calendar"
 
-    // Colors (Dynamic Matugen Theme)
+    // Colors (Dynamic Wallust Theme)
     Theme { id: _theme }
     property color base: _theme.base
     property color mantle: _theme.mantle
