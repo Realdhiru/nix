@@ -73,8 +73,8 @@ case "$MODE" in
             --vertical-pad=10
             --inner-pad=6
             --border-radius=12
+            --layer=overlay
             --keyboard-focus=exclusive
-            --no-exit-on-keyboard-focus-loss
             --with-nth=1
             --match-nth=3
             --accept-nth=2

@@ -239,17 +239,12 @@
   programs.foot = {
     enable = true;
     server.enable = true;
-    settings = {
-      main = {
-        font = "JetBrains Mono:size=10";
-        dpi-aware = "yes";
-        pad = "12x12";
-        include = "${config.home.homeDirectory}/.cache/theme/foot-colors.ini";
-      };
-      "colors-dark" = {
-        alpha = "0.89";
-      };
-    };
+  };
+
+  xdg.configFile."foot/foot.ini" = {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/foot/foot.ini";
+    force = true;
   };
 
   programs.alacritty = {

@@ -48,16 +48,11 @@ PanelWindow {
             let effectivelyActive = isClosing ? "hidden" : masterWindow.currentActive;
             console.log("IPC", cmd, targetWidget, effectivelyActive);
 
-            if (targetWidget === "topbar") {
+            if (targetWidget === "topbar" || targetWidget === "bar") {
                 if (cmd === "toggle") Config.topBarVisible = !Config.topBarVisible;
                 else if (cmd === "open" || cmd === "show") Config.topBarVisible = true;
                 else if (cmd === "close" || cmd === "hide") Config.topBarVisible = false;
                 else if (cmd === "position" || cmd === "set_position") Config.setTopBarPosition(arg || "top");
-                return;
-            }
-
-            if (targetWidget === "autohide" || cmd === "autohide") {
-                Config.toggleBarAutohide();
                 return;
             }
 

@@ -44,15 +44,7 @@ Item {
         topBarPosition = pos;
         setSetting("topbarPosition", pos);
     }
-
-    property bool barAutohide: config.getSetting("barAutohide", false)
     property bool isPopupOpen: false
-
-    function toggleBarAutohide() {
-        barAutohide = !barAutohide;
-        setSetting("barAutohide", barAutohide);
-        sh("notify-send -a 'QuickShell' -u low 'Auto-Hide " + (barAutohide ? "ON" : "OFF") + "'");
-    }
 
 
     // =========================================================================
@@ -508,7 +500,6 @@ Item {
         if (config.rawSettings.glassSpecular !== undefined) config.glassSpecular = config.rawSettings.glassSpecular;
         if (config.rawSettings.topbarColorSource !== undefined) config.topbarColorSource = config.rawSettings.topbarColorSource;
         if (config.rawSettings.topbarPosition !== undefined) config.topBarPosition = config.rawSettings.topbarPosition;
-        if (config.rawSettings.barAutohide !== undefined) config.barAutohide = Boolean(config.rawSettings.barAutohide);
         if (config.rawSettings.cardColorSource !== undefined) config.cardColorSource = config.rawSettings.cardColorSource;
         if (config.rawSettings.clockColorSource !== undefined) config.clockColorSource = config.rawSettings.clockColorSource;
         if (config.rawSettings.textColorSource !== undefined) config.textColorSource = config.rawSettings.textColorSource;

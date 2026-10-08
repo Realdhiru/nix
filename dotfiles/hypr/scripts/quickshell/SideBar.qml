@@ -68,44 +68,10 @@ Variants {
 
             property int barThickness: s(46)
 
-            // ── Auto-Hide Architecture ──
-            property bool autohide: Config.barAutohide !== undefined ? Config.barAutohide : false
-            property int autohideTimeout: 1000
-
-            HoverHandler {
-                id: barHover
-                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-            }
-
-            Timer {
-                id: hideTimer
-                interval: barWindow.autohideTimeout
-            }
-
-            function checkHideTimer() {
-                if (!barHover.hovered && barWindow.autohide && !(Config.isPopupOpen !== undefined && Config.isPopupOpen)) {
-                    hideTimer.restart();
-                } else {
-                    hideTimer.stop();
-                }
-            }
-
-            Connections {
-                target: barHover
-                function onHoveredChanged() { barWindow.checkHideTimer(); }
-            }
-
-            Connections {
-                target: Config
-                function onIsPopupOpenChanged() { barWindow.checkHideTimer(); }
-            }
-
-            readonly property bool isRevealed: !autohide || barHover.hovered || hideTimer.running || (Config.isPopupOpen !== undefined && Config.isPopupOpen)
-
             implicitWidth: barThickness
             implicitHeight: Screen.height
             margins { top: s(4); bottom: s(4); left: s(4); right: 0 }
-            exclusiveZone: autohide ? 0 : (barThickness - s(2))
+            exclusiveZone: barThickness - s(2)
             color: "transparent"
             WlrLayershell.namespace: "quickshell"
             WlrLayershell.layer: WlrLayer.Top
@@ -491,16 +457,12 @@ Variants {
                 onTriggered: barWindow.showVolPct = false
             }
 
-            // ── Main Content Wrapper (With Smooth Auto-Hide Translation) ──
+            // ── Main Content Wrapper ──
             Item {
                 id: barContent
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: barWindow.barThickness
-                x: barWindow.isRevealed ? 0 : -(barWindow.barThickness - barWindow.s(4))
-                opacity: barWindow.isRevealed ? 1.0 : 0.0
-                Behavior on x { NumberAnimation { duration: 350; easing.type: Easing.OutQuint } }
-                Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
                 // ── Top Zone: CAVA + Clock pinned to TOP ──
                 Column {

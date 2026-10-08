@@ -199,7 +199,7 @@ Item {
 
                         let targetModel = window.getModelForFilter(window.currentFilter);
                         let wallToFind = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
-                        if (targetModel && targetModel.count > 0 && wallToFind !== "" && window.visible && view.width > 0) {
+                        if (!window.initialFocusSet && targetModel && targetModel.count > 0 && wallToFind !== "" && window.visible && view.width > 0) {
                             let cleanTarget = window.getCleanName(wallToFind);
                             let foundIdx = -1;
                             for (let i = 0; i < targetModel.count; i++) {

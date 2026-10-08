@@ -70,18 +70,13 @@ if [[ "$ACTION" == "toggle" && "$TARGET" == "quickshell" ]]; then
     exit 0
 fi
 
-if [[ "$ACTION" == "toggle" && "$TARGET" == "topbar" ]]; then
+if [[ "$ACTION" == "toggle" && ("$TARGET" == "topbar" || "$TARGET" == "bar") ]]; then
     "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "toggle" "topbar" "" >/dev/null 2>&1 || "$QS_BIN" ipc -p "$SHELL_QML_PATH" call topbar toggle >/dev/null 2>&1
     exit 0
 fi
 
-if [[ "$ACTION" == "position" && "$TARGET" == "topbar" ]]; then
+if [[ "$ACTION" == "position" && ("$TARGET" == "topbar" || "$TARGET" == "bar") ]]; then
     "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "position" "topbar" "$SUBTARGET" >/dev/null 2>&1 || "$QS_BIN" ipc -p "$SHELL_QML_PATH" call topbar setPosition "$SUBTARGET" >/dev/null 2>&1
-    exit 0
-fi
-
-if [[ "$ACTION" == "autohide" || ("$ACTION" == "toggle" && "$TARGET" == "autohide") ]]; then
-    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "autohide" "" "" >/dev/null 2>&1
     exit 0
 fi
 

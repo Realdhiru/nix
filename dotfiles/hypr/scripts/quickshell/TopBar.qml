@@ -77,8 +77,17 @@ Variants {
             Theme {
                 id: mocha
             }
+            function ensureBright(col) {
+                if (!col) return mocha.subtext0;
+                let lum = 0.2126 * col.r + 0.7152 * col.g + 0.0722 * col.b;
+                if (lum < 0.50) {
+                    let f = 0.50 / Math.max(0.08, lum);
+                    return Qt.rgba(Math.min(1.0, col.r * f + 0.2), Math.min(1.0, col.g * f + 0.2), Math.min(1.0, col.b * f + 0.2), 1.0);
+                }
+                return col;
+            }
 
-            readonly property color accentColor: (Config.accentColorSource && mocha[Config.accentColorSource]) ? mocha[Config.accentColorSource] : mocha.primary
+            readonly property color accentColor: ensureBright((Config.accentColorSource && mocha[Config.accentColorSource]) ? mocha[Config.accentColorSource] : mocha.primary)
 
             readonly property color pillBg: {
                 let baseCol = Config.topbarColorSource === "glass" ? Qt.rgba(1, 1, 1, 1) : (mocha[Config.topbarColorSource] || mocha.surface1);
