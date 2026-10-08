@@ -35,7 +35,6 @@ in
 
     # Development & Terminal
     tmux
-    wezterm
     foot
     alacritty
     fzf

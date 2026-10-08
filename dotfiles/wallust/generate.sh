@@ -82,42 +82,6 @@ emit_neutral_theme() {
 }
 EOF
 
-    cat <<'EOF' > "$TARGET_CACHE/wezterm-colors.lua"
-return {
-    foreground = "#EDE6DC",
-    background = "#000000",
-    opacity = 1.0,
-
-    cursor_bg = "#EDE6DC",
-    cursor_fg = "#000000",
-    cursor_border = "#EDE6DC",
-
-    selection_bg = "#313131",
-    selection_fg = "#EDE6DC",
-
-    ansi = {
-        "#151515",  -- Black
-        "#484849",  -- Red
-        "#5E5E60",  -- Green
-        "#747576",  -- Yellow
-        "#7E7E7F",  -- Blue
-        "#878889",  -- Magenta
-        "#ADADAF",  -- Cyan
-        "#EAEBEC"   -- White
-    },
-
-    brights = {
-        "#404040",  -- Bright Black
-        "#4C4D4F",  -- Bright Red
-        "#6A6A6C",  -- Bright Green
-        "#828284",  -- Bright Yellow
-        "#8B8C8E",  -- Bright Blue
-        "#B4B5B7",  -- Bright Magenta
-        "#E6E7E9",  -- Bright Cyan
-        "#FFFFFF"   -- Bright White
-    }
-}
-EOF
 
     mkdir -p "$HOME/.config/cava/themes"
     cat <<'EOF' > "$HOME/.config/cava/themes/wallust"
@@ -159,13 +123,7 @@ if [ "$WALLPAPER" = "--neutral" ]; then
     emit_neutral_theme
 
     # Notify client applications.
-    # NOTE: never SIGHUP wezterm-gui here — SIGHUP terminates the terminal
-    # and kills every pane (including live opencode sessions). Wezterm
-    # hot-reloads on config mtime change, so touching the color files
-    # (same as the normal path below) is sufficient and non-destructive.
     pkill -USR2 cava 2>/dev/null || true
-    touch "$TARGET_CACHE/wezterm-colors.lua" 2>/dev/null || true
-    touch "$HOME/nix/dotfiles/wezterm.lua" 2>/dev/null || true
     RESTORE_SCRIPT="$HOME/.config/hypr/scripts/quickshell/restore_state.sh"
     [ ! -x "$RESTORE_SCRIPT" ] && RESTORE_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh"
     if [ -x "$RESTORE_SCRIPT" ]; then "$RESTORE_SCRIPT" >/dev/null 2>&1 || true; fi
@@ -312,11 +270,6 @@ if [ -n "$ACCENT" ]; then
 \$inactive_border_col = rgb(282828)
 EOF
 
-    if [ -f "$TARGET_CACHE/wezterm-colors.lua" ]; then
-        sed -i "s/cursor_bg = \".*\"/cursor_bg = \"$ACCENT\"/" "$TARGET_CACHE/wezterm-colors.lua"
-        sed -i "s/cursor_border = \".*\"/cursor_border = \"$ACCENT\"/" "$TARGET_CACHE/wezterm-colors.lua"
-        sed -i "s/selection_bg = \".*\"/selection_bg = \"$ACCENT\"/" "$TARGET_CACHE/wezterm-colors.lua"
-    fi
 
     if [ -d "$HOME/.config/cava/themes" ]; then
         r=$((16#${ACCENT:1:2}))
@@ -342,8 +295,6 @@ fi
 
 # Notify client applications if running
 pkill -USR2 cava 2>/dev/null || true
-touch "$TARGET_CACHE/wezterm-colors.lua" 2>/dev/null || true
-touch "$HOME/nix/dotfiles/wezterm.lua" 2>/dev/null || true
 RESTORE_SCRIPT="$HOME/.config/hypr/scripts/quickshell/restore_state.sh"
 [ ! -x "$RESTORE_SCRIPT" ] && RESTORE_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh"
 if [ -x "$RESTORE_SCRIPT" ]; then "$RESTORE_SCRIPT" >/dev/null 2>&1 || true; fi

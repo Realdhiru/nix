@@ -28,6 +28,16 @@
   - Configured `foot` (with `server.enable = true` for ~1.8ms `footclient` instant launch) and `alacritty` alongside `wezterm`.
   - Added Wallust color templates [`dotfiles/wallust/templates/foot.ini`](file:///home/realdhiru/nix/dotfiles/wallust/templates/foot.ini) and [`dotfiles/wallust/templates/alacritty.toml`](file:///home/realdhiru/nix/dotfiles/wallust/templates/alacritty.toml).
   - Optimized Zsh in [`modules/home/shell.nix`](file:///home/realdhiru/nix/modules/home/shell.nix) with compiled `.zwc` bytecode caching (`compinit -C`), `fzf-tab`, `zsh-autosuggestions`, `zsh-history-substring-search`, and `zoxide`.
+- **Foot Terminal 1.28+ Configuration & Lifecycle Fix (`home.nix`, `foot.ini`, `keybinds.lua`)**:
+  - **Root Cause**: Foot 1.28.0 deprecated `[colors]` in favor of `[colors-dark]` and `[colors-light]`, causing Foot to reject color configuration files with `[colors]: invalid section name: colors`. Furthermore, `footclient || foot` in `keybinds.lua` blocked until the terminal window closed; when the shell exited with non-zero exit code, `|| foot` evaluated and immediately spawned another terminal.
+  - **Resolution**: Updated [`dotfiles/wallust/templates/foot.ini`](file:///home/realdhiru/nix/dotfiles/wallust/templates/foot.ini) and [`home.nix`](file:///home/realdhiru/nix/home.nix) to use `[colors-dark]`. Added `-N` (`--no-wait`) flag to `footclient` in [`dotfiles/hypr/keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), ensuring immediate return upon window creation and preventing re-spawning on window close.
+- **WezTerm Systemwide Purge**:
+  - Completely removed `wezterm` from [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix), [`home.nix`](file:///home/realdhiru/nix/home.nix), [`dotfiles/hypr/keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), [`dotfiles/wallust/wallust.toml`](file:///home/realdhiru/nix/dotfiles/wallust/wallust.toml), and [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh).
+  - Deleted legacy configs `dotfiles/wezterm.lua` and `dotfiles/wallust/templates/wezterm-colors.lua`.
+  - Re-routed Fuzzel default terminal to `footclient` in [`dotfiles/fuzzel/fuzzel.ini`](file:///home/realdhiru/nix/dotfiles/fuzzel/fuzzel.ini).
+- **Hyprlock Instant Unlock & Daily Splash Quote (`hyprlock.conf`, `rules.lua`)**:
+  - **Root Cause**: Unlocking had a ~2s lingering dim shade due to `hyprlock`'s default `no_fade_out = false` interacting with Hyprland's decelerating `fadeLayersOut` animation.
+  - **Resolution**: Enabled `no_fade_out = true`, `no_fade_in = true`, and `immediate_render = true` in [`dotfiles/hypr/hyprlock.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hyprlock.conf). Added `layer_rule({ match = { namespace = "^hyprlock$" }, animation = "none" })` in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) to unmap the lock surface instantly upon PAM authorization. Added dynamic Hyprland daily splash quote at bottom center (`hyprctl splash`).
 - **Native Development Tooling (`modules/system/packages.nix`)**:
   - Added `rustc` and `cargo` to system packages to enable building and maintaining high-performance native binaries for system daemons and QuickShell helpers.
 

@@ -37,11 +37,6 @@
     force = true;
   };
 
-  xdg.configFile."wezterm/wezterm.lua" = {
-    source = config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/wezterm.lua";
-    force = true;
-  };
 
   xdg.configFile."fastfetch/config.jsonc" = {
     source = config.lib.file.mkOutOfStoreSymlink
@@ -251,7 +246,7 @@
         pad = "12x12";
         include = "${config.home.homeDirectory}/.cache/theme/foot-colors.ini";
       };
-      colors = {
+      "colors-dark" = {
         alpha = "0.89";
       };
     };
