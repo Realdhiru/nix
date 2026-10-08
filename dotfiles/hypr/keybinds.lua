@@ -220,19 +220,72 @@ hl.bind(mainMod .. " + SHIFT + 9", hl.dsp.window.move({ workspace = 9 }))
 hl.bind(mainMod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = 10 }))
 
 -- ======================================================
--- Cursor Zoom
+-- Cursor Zoom (Centered, Stabilized Sensitivity, Balanced Revert)
 -- ======================================================
 
 local current_zoom = 1.0
+local target_zoom = 1.0
+local anim_seq = 0
+local base_sensitivity = 0.5 -- Default configured sensitivity from input.lua
 
+local function smooth_zoom_to(new_target, custom_easing)
+    target_zoom = new_target
+    anim_seq = anim_seq + 1
+    local current_seq = anim_seq
+    local easing = custom_easing or 0.16
+
+    local function step()
+        if anim_seq ~= current_seq then
+            return
+        end
+        local delta = target_zoom - current_zoom
+        if math.abs(delta) < 0.008 then
+            current_zoom = target_zoom
+            -- Dampen mouse sensitivity proportionally when zoomed in to eliminate hand tremors
+            local target_sens = base_sensitivity
+            if current_zoom > 1.05 then
+                target_sens = math.max(-0.6, base_sensitivity - math.log(current_zoom) * 0.45)
+            end
+            hl.config({
+                cursor = { zoom_factor = current_zoom },
+                input = { sensitivity = target_sens },
+            })
+            return
+        end
+
+        current_zoom = current_zoom + delta * easing
+        local cur_sens = base_sensitivity
+        if current_zoom > 1.05 then
+            cur_sens = math.max(-0.6, base_sensitivity - math.log(current_zoom) * 0.45)
+        end
+        hl.config({
+            cursor = { zoom_factor = current_zoom },
+            input = { sensitivity = cur_sens },
+        })
+        hl.timer(step, { type = "oneshot", timeout = 16 })
+    end
+
+    step()
+end
+
+-- Zoom In: Unlimited zoom (up to 50x) with gentle first step and fast later progression
 hl.bind(mainMod .. " + mouse_up", function()
-    current_zoom = current_zoom + 0.9
-    hl.config({ cursor = { zoom_factor = current_zoom } })
+    local next_target
+    if target_zoom < 1.05 then
+        next_target = 1.28
+    else
+        next_target = math.min(50.0, target_zoom * 1.5)
+    end
+    smooth_zoom_to(next_target, 0.16)
 end)
 
+-- Revert Zoom: Balanced sweet-spot easing (0.15) for a natural, snappy yet smooth return
 hl.bind(mainMod .. " + mouse_down", function()
-    current_zoom = 1.0
-    hl.config({ cursor = { zoom_factor = 1.0 } })
+    smooth_zoom_to(1.0, 0.15)
 end)
+
+
+
+
 
 

@@ -88,7 +88,6 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
     else
         stop_mpvpaper
         rm -f /tmp/mpv-paper-socket
-        "$SCRIPT_DIR/ensure_awww.sh" --stop 8>&- 2>/dev/null || true
         if command -v mpvpaper >/dev/null 2>&1; then
             nohup mpvpaper -p -o "no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0 --input-ipc-server=/tmp/mpv-paper-socket" '*' "$WALL_TARGET" 8>&- > /dev/null 2>&1 &
             disown $! 2>/dev/null || true
@@ -98,8 +97,8 @@ else
     # Images & GIFs: hardware-accelerated smooth transitions via awww
     "$SCRIPT_DIR/ensure_awww.sh" 8>&- 2>/dev/null || true
 
-    TRANS_TYPE="${2:-${AWWW_TRANSITION:-fade}}"
-    TRANS_DURATION="${3:-${AWWW_TRANSITION_DURATION:-0.18}}"
+    TRANS_TYPE="${2:-${AWWW_TRANSITION:-none}}"
+    TRANS_DURATION="${3:-${AWWW_TRANSITION_DURATION:-0.0}}"
     TRANS_FPS="${4:-${AWWW_TRANSITION_FPS:-120}}"
     TRANS_BEZIER="${AWWW_TRANSITION_BEZIER:-.1,.9,.2,1}"
 
@@ -107,6 +106,7 @@ else
         awww img "$WALL" \
             --resize crop \
             --transition-type "$TRANS_TYPE" \
+            --transition-step 255 \
             --transition-duration "$TRANS_DURATION" \
             --transition-fps "$TRANS_FPS" \
             --transition-bezier "$TRANS_BEZIER" > /dev/null 2>&1
@@ -121,6 +121,15 @@ flock -u 8 2>/dev/null || true
 exec 8>&- 2>/dev/null || true
 
 # 3. Clean Decoupled Theme Handoff
+# Cancel any previous in-flight theme generation to prevent CPU contention during rapid switches
+THEME_PID_FILE="/tmp/wallust_theme_handoff.pid"
+if [ -f "$THEME_PID_FILE" ]; then
+    old_pid=$(cat "$THEME_PID_FILE" 2>/dev/null || true)
+    if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+        kill "$old_pid" 2>/dev/null || true
+    fi
+fi
+
 (
     stored=$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null || true)
     [ "$stored" != "$WALL" ] && exit 0
@@ -154,15 +163,6 @@ exec 8>&- 2>/dev/null || true
         [ -s "$frame_seed" ] && SEED="$frame_seed"
     fi
 
-    # Cancel any previous in-flight theme generation to prevent CPU congestion during rapid switches
-    THEME_PID_FILE="/tmp/wallust_theme_handoff.pid"
-    if [ -f "$THEME_PID_FILE" ]; then
-        old_pid=$(cat "$THEME_PID_FILE" 2>/dev/null || true)
-        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
-            kill "$old_pid" 2>/dev/null || true
-        fi
-    fi
-
     # Trigger standalone theme engine if present
     THEME_ENGINE="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
     [ ! -x "$THEME_ENGINE" ] && THEME_ENGINE="$HOME/nix/dotfiles/wallust/generate.sh"
@@ -171,4 +171,4 @@ exec 8>&- 2>/dev/null || true
     fi
     rm -f "$THEME_PID_FILE" 2>/dev/null || true
 ) &
-echo $! > /tmp/wallust_theme_handoff.pid 2>/dev/null || true
+echo $! > "$THEME_PID_FILE" 2>/dev/null || true

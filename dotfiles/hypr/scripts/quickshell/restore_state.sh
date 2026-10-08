@@ -43,41 +43,29 @@ if [ ! -f "$STATE_FILE" ]; then
 EOF
 fi
 
-# Parse state JSON via jq (or python fallback if jq missing)
-if command -v jq >/dev/null 2>&1; then
-    TEMP=$(jq -r '.sunset.temp // 6500' "$STATE_FILE")
-    GAMMA=$(jq -r '.sunset.gamma // 100' "$STATE_FILE")
-    SAT=$(jq -r '.sunset.sat // 100' "$STATE_FILE")
-    GRAIN=$(jq -r '.sunset.grain // 0' "$STATE_FILE")
-    CRT=$(jq -r '.sunset.crt // 0' "$STATE_FILE")
-    GAMING=$(jq -r '.modes.gaming // false' "$STATE_FILE")
-    WP_KILLED=$(jq -r '.modes.wallpaperKilled // false' "$STATE_FILE")
-    DND=$(jq -r '.modes.dnd // false' "$STATE_FILE")
-    COFFEE=$(jq -r '.modes.coffee // false' "$STATE_FILE")
-    POWER_PROF=$(jq -r '.power.profile // "balanced"' "$STATE_FILE")
-else
-    eval $(python3 -c "
-import json, os
-p = os.path.expanduser('$STATE_FILE')
-try:
-    with open(p) as f: d = json.load(f)
-    s = d.get('sunset', {})
-    m = d.get('modes', {})
-    pw = d.get('power', {})
-    print(f'TEMP={s.get(\"temp\", 6500)}')
-    print(f'GAMMA={s.get(\"gamma\", 100)}')
-    print(f'SAT={s.get(\"sat\", 100)}')
-    print(f'GRAIN={s.get(\"grain\", 0)}')
-    print(f'CRT={s.get(\"crt\", 0)}')
-    print(f'GAMING={\"true\" if m.get(\"gaming\", False) else \"false\"}')
-    print(f'WP_KILLED={\"true\" if m.get(\"wallpaperKilled\", False) else \"false\"}')
-    print(f'DND={\"true\" if m.get(\"dnd\", False) else \"false\"}')
-    print(f'COFFEE={\"true\" if m.get(\"coffee\", False) else \"false\"}')
-    print(f'POWER_PROF={pw.get(\"profile\", \"balanced\")}')
-except Exception:
-    print('TEMP=6500\nGAMMA=100\nSAT=100\nGRAIN=0\nCRT=0\nGAMING=false\nWP_KILLED=false\nDND=false\nCOFFEE=false\nPOWER_PROF=balanced')
-")
+# Parse state JSON via jq
+TEMP=6500; GAMMA=100; SAT=100; GRAIN=0; CRT=0
+GAMING=false; WP_KILLED=false; DND=false; COFFEE=false; POWER_PROF="balanced"
+
+if [ -f "$STATE_FILE" ]; then
+    vals=$(jq -r '[
+        (.sunset.temp // 6500),
+        (.sunset.gamma // 100),
+        (.sunset.sat // 100),
+        (.sunset.grain // 0),
+        (.sunset.crt // 0),
+        (.modes.gaming // false),
+        (.modes.wallpaperKilled // false),
+        (.modes.dnd // false),
+        (.modes.coffee // false),
+        (.power.profile // "balanced")
+    ] | @tsv' "$STATE_FILE" 2>/dev/null || true)
+
+    if [ -n "$vals" ]; then
+        read -r TEMP GAMMA SAT GRAIN CRT GAMING WP_KILLED DND COFFEE POWER_PROF <<< "$vals"
+    fi
 fi
+
 
 # 1. Hardware CTM Restoration (hyprsunset)
 if [ "$TEMP" -ne 6500 ] || [ "$GAMMA" -ne 100 ]; then

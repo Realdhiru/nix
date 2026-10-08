@@ -20,6 +20,15 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### 3. QuickShell Architecture & IPC
 - **Decision:** Native C++ event-driven bindings only (`Quickshell.Hyprland`, `Quickshell.Services.Pipewire`, `FileView { watchChanges: true }`, `FileWatcher`).
 - **Rationale:** No periodic bash polling loops or subprocess chains in QML. Eliminates fork storms, process starvation, and CPU wakeups, delivering instantaneous frame-0 startup and zero idle CPU overhead.
+
+### 4. Fast Compiled Execution & Zero-Python Hot Paths
+- **Decision:** Python, Node.js, and heavy interpreted runtimes are strictly prohibited from hot interactive paths (keybind execution, status polling, wallpaper cycling, clipboard fetching, theme generation).
+- **Rationale:** Python startup introduces an unavoidable ~80–150ms interpreter bootstrap latency and continuous VM memory overhead. Interactive shell actions must complete in < 5ms.
+- **Rules:**
+  - All JSON reads and edits in hot shell scripts must use native compiled C utilities (`jq`).
+  - Text and math processing in hooks must use POSIX C utilities (`awk`).
+  - High-frequency utilities must use compiled native binaries (Rust / C++) or direct Wayland/PipeWire IPC.
+
 - **Rules:**
   - Never fork bash `Process` to read files or watch file state (`colors_wait.sh`, `settings_wait.sh`, `solidModeDetector`, `battery_wait.sh`, `av_event_stream.sh`). Use native `Quickshell.Io.FileView` on kernel/tmpfs files.
   - **Sysfs Inotify Incompatibility Rule**: `FileView` on `/sys` or `/proc` virtual files (e.g. `BAT0/capacity`, `status`, `actual_brightness`) never fires because sysfs pseudo-files emit zero `inotify` events (`IN_MODIFY`). Use `udevadm monitor` (`--subsystem-match=power_supply`, `--subsystem-match=backlight`), UPower D-Bus, or a slow timer. Never replace a udev-based watcher with a `FileView` on sysfs. Before replacing any watcher, prove the new event source fires by logging timestamps on a real state change.

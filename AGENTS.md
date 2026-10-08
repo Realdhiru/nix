@@ -17,6 +17,8 @@ After successfully resolving any issue, bug, or feature implementation:
 - **Responsiveness is Non-Negotiable**: Never introduce artificial CPU/GPU frequency caps, delayed polling, or sluggish profile settings that make desktop interactions, browser/IDE tasks, or compositing laggy.
 - **TLP Hardware Authority**: TLP 1.9.1 is the sole authority for hardware power profiles (`PLATFORM_PROFILE_ON_*`, EPP, ASPM). In `asusd.ron`, `change_platform_profile_on_battery/on_ac` must remain `false`. `asusd.service` is enabled strictly to enforce the 80% battery charge ceiling (`charge_control_end_threshold = 80`). `asusd.ron` must keep `bat_profile = Balanced` to prevent hardware firmware throttling on battery.
 - **Balanced Profile Integrity**: The Balanced battery profile (`balance_performance`, Turbo `1`, Platform Profile `balanced`, ASPM `powersupersave`) is empirically validated and must remain untouched.
+- **Fast Compiled Execution & Python Ban in Hot Paths**: Never introduce slow runtime-interpreted scripts (Python, node, ruby) or heavy subprocess pipelines in desktop hot paths (keybind cycling, status polling, IPC handlers, popup data loaders, theme generation). Always use compiled native C/Rust binaries, native C++ Qt/QML bindings, or instant POSIX C utilities (`jq`, `awk`, coreutils). Python is strictly prohibited on hot paths.
+
 
 ### B. QuickShell Architecture & Scaling Rules
 - **Native Event-Driven Bindings Only**: Never launch periodic bash process loops (`workspaces.sh`, `power_state_watcher.sh`, `update_wait.sh`, `wpctl`) inside QML `Process` or `Timer`. Always use native C++ bindings:

@@ -16,4 +16,15 @@ hl.config({
     dwindle = {
         preserve_split = true,
     },
+
+    -- Binds
+    binds = {
+        scroll_event_delay = 0,
+    },
+
+    -- Cursor: Keeps mouse strictly centered inside the magnified viewport
+    cursor = {
+        zoom_rigid = true,
+        zoom_detached_camera = false,
+    },
 })

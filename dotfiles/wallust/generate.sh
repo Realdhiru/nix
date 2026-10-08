@@ -373,16 +373,17 @@ EOF
     fi
 
     if [ -d "$HOME/.config/cava/themes" ]; then
-        python3 -c '
-import sys
-c = sys.argv[1].lstrip("#")
-if len(c) >= 6:
-    r, g, b = int(c[0:2], 16)/255.0, int(c[2:4], 16)/255.0, int(c[4:6], 16)/255.0
-    print("[color]\ngradient = 1\ngradient_count = 8")
-    for i in range(8):
+        r=$((16#${ACCENT:1:2}))
+        g=$((16#${ACCENT:3:2}))
+        b=$((16#${ACCENT:5:2}))
+        awk -v r="$r" -v g="$g" -v b="$b" '
+BEGIN {
+    print "[color]\ngradient = 1\ngradient_count = 8"
+    for (i = 0; i < 8; i++) {
         t = 0.28 + (0.72 * (i / 7.0))
-        print(f"gradient_color_{i+1} = \"#{int(r * t * 255):02x}{int(g * t * 255):02x}{int(b * t * 255):02x}\"")
-' "$ACCENT" > "$HOME/.config/cava/themes/wallust" 2>/dev/null || true
+        printf "gradient_color_%d = \"#%02x%02x%02x\"\n", i+1, int(r * t), int(g * t), int(b * t)
+    }
+}' > "$HOME/.config/cava/themes/wallust" 2>/dev/null || true
     fi
 
     HEX_ACCENT="${ACCENT#'#'}"
@@ -406,34 +407,34 @@ fi
 if command -v gsettings >/dev/null 2>&1; then
     gsettings set org.gnome.desktop.interface gtk-theme "Adwaita" >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface gtk-theme "Adwaita:dark" >/dev/null 2>&1 || true
-    if [ -n "${ACCENT:-}" ]; then
-        GNOME_ACCENT=$(python3 -c '
-import sys, colorsys
-c = sys.argv[1].lstrip("#")
-if len(c) >= 6:
-    r, g, b = int(c[0:2], 16)/255.0, int(c[2:4], 16)/255.0, int(c[4:6], 16)/255.0
-    h, s, v = colorsys.rgb_to_hsv(r, g, b)
-    if s < 0.15:
-        print("slate")
-    elif h < 0.05 or h >= 0.95:
-        print("red")
-    elif h < 0.12:
-        print("orange")
-    elif h < 0.20:
-        print("yellow")
-    elif h < 0.45:
-        print("green")
-    elif h < 0.55:
-        print("teal")
-    elif h < 0.70:
-        print("blue")
-    elif h < 0.82:
-        print("purple")
-    else:
-        print("pink")
-else:
-    print("purple")
-' "$ACCENT" 2>/dev/null || echo "purple")
+    if [ -n "${ACCENT:-}" ] && [ "${#ACCENT}" -ge 7 ]; then
+        r=$((16#${ACCENT:1:2}))
+        g=$((16#${ACCENT:3:2}))
+        b=$((16#${ACCENT:5:2}))
+        GNOME_ACCENT=$(awk -v r="$r" -v g="$g" -v b="$b" '
+BEGIN {
+    rf = r / 255.0; gf = g / 255.0; bf = b / 255.0;
+    max = (rf > gf ? (rf > bf ? rf : bf) : (gf > bf ? gf : bf));
+    min = (rf < gf ? (rf < bf ? rf : bf) : (gf < bf ? gf : bf));
+    delta = max - min;
+    if (delta == 0) { h = 0; s = 0; }
+    else {
+        s = delta / max;
+        if (rf == max) { h = (gf - bf) / delta; if (h < 0) h += 6; }
+        else if (gf == max) { h = 2 + (bf - rf) / delta; }
+        else { h = 4 + (rf - gf) / delta; }
+        h = h / 6.0;
+    }
+    if (s < 0.15) print "slate";
+    else if (h < 0.05 || h >= 0.95) print "red";
+    else if (h < 0.12) print "orange";
+    else if (h < 0.20) print "yellow";
+    else if (h < 0.45) print "green";
+    else if (h < 0.55) print "teal";
+    else if (h < 0.70) print "blue";
+    else if (h < 0.82) print "purple";
+    else print "pink";
+}' 2>/dev/null || echo "purple")
         gsettings set org.gnome.desktop.interface accent-color "$GNOME_ACCENT" >/dev/null 2>&1 || true
     fi
 fi

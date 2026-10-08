@@ -196,7 +196,7 @@ Item {
     Process {
         id: clipFetcher
         running: false
-        command: ["python3", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.py", window.currentOffset, window.fetchLimit, Caching.getCacheDir("clipboard")]
+        command: ["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.sh", window.currentOffset, window.fetchLimit, Caching.getCacheDir("clipboard")]
         
         stdout: StdioCollector {
             onStreamFinished: {
@@ -245,7 +245,7 @@ Item {
         if (isLoading || !hasMore) return;
         isLoading = true;
         currentOffset += fetchLimit;
-        clipFetcher.command = ["python3", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.py", window.currentOffset, window.fetchLimit, Caching.getCacheDir("clipboard")];
+        clipFetcher.command = ["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.sh", window.currentOffset, window.fetchLimit, Caching.getCacheDir("clipboard")];
         clipFetcher.running = true;
     }
 
@@ -336,7 +336,7 @@ Item {
         if (clipFetcher.running) {
             clipFetcher.running = false;
         }
-        clipFetcher.command = ["python3", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.py", 0, window.fetchLimit, Caching.getCacheDir("clipboard")];
+        clipFetcher.command = ["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/clipboard/clip_fetcher.sh", 0, window.fetchLimit, Caching.getCacheDir("clipboard")];
         clipFetcher.running = true;
     }
 

@@ -16,10 +16,8 @@ MONITOR=""
 
 # Focused monitor, fall back to the first one
 if command -v hyprctl >/dev/null 2>&1; then
-    MONITOR=$(hyprctl activeworkspace -j 2>/dev/null \
-        | python3 -c "import json,sys; print(json.load(sys.stdin).get('monitor',''))" 2>/dev/null)
-    [ -n "$MONITOR" ] || MONITOR=$(hyprctl monitors -j 2>/dev/null \
-        | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['name'])" 2>/dev/null)
+    MONITOR=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.monitor // empty' 2>/dev/null || true)
+    [ -n "$MONITOR" ] || MONITOR=$(hyprctl monitors -j 2>/dev/null | jq -r '.[0].name // empty' 2>/dev/null || true)
 fi
 
 [ -n "$MONITOR" ] || exit 1
@@ -32,14 +30,7 @@ elif grep -q "^monitor=$MONITOR,.*,transform,0" "$CACHE_FILE" 2>/dev/null; then
 fi
 
 if [ -z "$CUR" ]; then
-    CUR=$(hyprctl monitors -j 2>/dev/null | python3 -c "
-import json, sys
-try:
-    for m in json.load(sys.stdin):
-        if m['name'] == '$MONITOR':
-            print(m.get('transform', 0)); break
-except: pass
-")
+    CUR=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$MONITOR" '.[] | select(.name == $m) | .transform // 0' 2>/dev/null || true)
 fi
 CUR="${CUR:-0}"
 
@@ -63,17 +54,7 @@ fi
 IFS=',' read -r -a BASE_FIELDS <<< "$BASE"
 if [ "${#BASE_FIELDS[@]}" -lt 4 ]; then
     # Fallback to querying hyprctl monitors directly
-    MON_INFO=$(hyprctl monitors -j 2>/dev/null | python3 -c "
-import json, sys
-try:
-    for m in json.load(sys.stdin):
-        if m['name'] == '$MONITOR':
-            w = m['width']; h = m['height']; rr = round(m['refreshRate'])
-            x = m['x']; y = m['y']; scl = m['scale']
-            print(f'{w}x{h}@{rr},{x}x{y},{scl}')
-            break
-except: pass
-")
+    MON_INFO=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$MONITOR" '.[] | select(.name == $m) | "\(.width)x\(.height)@\(.refreshRate | round),\(.x)x\(.y),\(.scale)"' 2>/dev/null || true)
     if [ -n "$MON_INFO" ]; then
         BASE="$MONITOR,$MON_INFO,bitdepth,10"
         IFS=',' read -r -a BASE_FIELDS <<< "$BASE"

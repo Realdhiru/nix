@@ -19,13 +19,15 @@ cd ~/nix
 Open [`user.nix`](file:///home/realdhiru/nix/user.nix) in your editor:
 ```nix
 {
-  username = "yourusername";      # Your Linux account username
-  name     = "Your Full Name";    # Display name
-  hostname = "yourhostname";      # System hostname
+  username    = "yourusername";      # Your Linux account username
+  name        = "Your Full Name";    # Display name
+  hostname    = "yourhostname";      # System hostname
+  usbDenylist = "";                  # Optional: USB vendor:product IDs to protect from TLP autosuspend (e.g., "3554:fc00")
 }
 ```
 > [!NOTE]
-> This single file configures your NixOS user account, passwordless sudo permissions, Home Manager profile, and systemd user services. You do not need to edit any other Nix files for user configuration.
+> This single file configures your user identity, sudo privileges, Home Manager paths, and optional peripheral power protections. Anyone cloning this repo can freely customize these fields without creating new files or touching system modules.
+
 
 ### Step 3: Generate Hardware Configuration
 Generate the hardware specification for your physical machine and save it to the host configuration:

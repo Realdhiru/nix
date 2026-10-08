@@ -15,18 +15,8 @@ fi
 if [ "$IS_RUNNING" -eq 1 ]; then
     # Currently ON -> Save state and turn OFF
     if [ -f "$STATE_FILE" ]; then
-        python3 -c "
-import json, os
-p = os.path.expanduser('$STATE_FILE')
-s_path = os.path.expanduser('$SAVED_FILE')
-try:
-    with open(p, 'r') as f: d = json.load(f)
-    s = d.get('sunset', {})
-    if s.get('temp', 6500) != 6500 or s.get('gamma', 100) != 100 or s.get('sat', 100) != 100:
-        with open(s_path, 'w') as sf:
-            json.dump(s, sf, indent=2)
-except Exception: pass
-" 2>/dev/null || true
+        jq '.sunset // {} | if (.temp != 6500 or .gamma != 100 or .sat != 100) then . else empty end' "$STATE_FILE" > "$SAVED_FILE.tmp" 2>/dev/null && \
+        mv "$SAVED_FILE.tmp" "$SAVED_FILE" 2>/dev/null || true
     fi
 
     # Disable hyprsunset
@@ -47,21 +37,11 @@ except Exception: pass
 else
     # Currently OFF -> Restore state and turn ON
     RESTORED=0
-    if [ -f "$SAVED_FILE" ]; then
-        python3 -c "
-import json, os
-p = os.path.expanduser('$STATE_FILE')
-s_path = os.path.expanduser('$SAVED_FILE')
-try:
-    with open(p, 'r') as f: d = json.load(f)
-    with open(s_path, 'r') as sf: s = json.load(sf)
-    s['active'] = True
-    d['sunset'] = s
-    with open(p, 'w') as f: json.dump(d, f, indent=2)
-    print('1')
-except Exception:
-    print('0')
-" 2>/dev/null | grep -q "1" && RESTORED=1
+    if [ -s "$SAVED_FILE" ] && [ -f "$STATE_FILE" ]; then
+        if jq --slurpfile s "$SAVED_FILE" '.sunset = ($s[0] + {active: true})' "$STATE_FILE" > "$STATE_FILE.tmp" 2>/dev/null; then
+            mv "$STATE_FILE.tmp" "$STATE_FILE"
+            RESTORED=1
+        fi
     fi
 
     if [ "$RESTORED" -eq 0 ]; then

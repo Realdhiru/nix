@@ -93,7 +93,7 @@ cmd_kill() {
             target="$(cat "$HOME/.cache/last_wallpaper.txt" 2>/dev/null || true)"
         fi
         if [ -n "$target" ] && [ -f "$target" ]; then
-            cmd_set "$target" "fade" "0.18" "120"
+            cmd_set "$target" "none" "0.0" "120"
         else
             rm -f "$HOME/.cache/wallpaper_killed"
             cmd_boot

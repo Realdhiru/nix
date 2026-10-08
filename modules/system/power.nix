@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ lib, pkgs, user ? {}, ... }:
 {
   # --- 1. KERNEL-LEVEL POWER FIXES ---
   boot.kernel.sysctl = {
@@ -49,11 +49,11 @@
       PCIE_ASPM_ON_BAT = "powersupersave";
       PCIE_ASPM_ON_SAV = "powersupersave";
 
-      # Enable USB autosuspend on battery, while denylist protects internal input devices
+      # Enable USB autosuspend on battery, while denylist protects user-specified peripherals
       USB_AUTOSUSPEND = 1;
       USB_AUTOSUSPEND_DISABLE_ON_AC = 1;
       USB_EXCLUDE_BTUSB = 1;
-      USB_DENYLIST = "3554:fc00";
+      USB_DENYLIST = user.usbDenylist or "";
 
       # Wi-Fi Power Save
       WIFI_PWR_ON_AC  = "off";

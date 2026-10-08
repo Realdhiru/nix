@@ -153,3 +153,6 @@ hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, animation = "fade
 hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, blur = true })
 hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, ignore_alpha = 0.05 })
 hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, animation = "none" })
+
+-- Wallpaper Daemons (Instant, Zero Animation Jump)
+hl.layer_rule({ match = { namespace = "^(awww-daemon|mpvpaper)$" }, animation = "none" })

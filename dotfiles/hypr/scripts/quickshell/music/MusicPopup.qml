@@ -612,7 +612,7 @@ Item {
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            root.execCmd("python3 -c \"import subprocess, json; sinks = [l.split('.')[0].strip() for l in subprocess.check_output(['wpctl', 'status'], text=True).split('Sinks:')[1].split('Sources:')[0].splitlines() if '.' in l]; cur = [s for s in sinks if '*' in s]; next_sink = sinks[(sinks.index(cur[0])+1)%len(sinks)] if cur and sinks else (sinks[0] if sinks else ''); next_id = next_sink.replace('*', '').strip(); subprocess.run(['wpctl', 'set-default', next_id]) if next_id else None\"");
+                                            root.execCmd("bash " + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/music/cycle_audio_sink.sh");
                                         }
                                     }
                                 }
