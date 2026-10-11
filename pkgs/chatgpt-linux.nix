@@ -23,11 +23,11 @@ let
 
   fhs = buildFHSEnv {
     name = "chatgpt-fhs";
-    runScriptName = "chatgpt";
+    executableName = "chatgpt";
     runScript = "${unpacked}/usr/lib/chatgpt/ChatGPT";
     extraBwrapArgs = [ "--setenv" "ELECTRON_OZONE_PLATFORM_HINT" "wayland" ];
     targetPkgs = p: with p; [
-      gtk3 libnotify nss nspr at-spi2-core at-spi2-atk atk libdrm mesa libGL
+      gtk3 libnotify nss nspr at-spi2-core at-spi2-atk atk libdrm mesa libgbm libGL
       vulkan-loader alsa-lib cairo cups dbus expat gdk-pixbuf glib
       pango openssl systemd libusb1 libxkbcommon zlib stdenv.cc.cc fontconfig
       libx11 libxcb libxcomposite libxdamage
