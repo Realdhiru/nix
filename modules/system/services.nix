@@ -79,6 +79,8 @@
 
   # Virtual input device support for KDE Connect digitizer / drawing tablet
   hardware.uinput.enable = true;
+  # ydotool supplies a native uinput-backed pointer device for Hyprland binds.
+  programs.ydotool.enable = true;
   services.udev.extraRules = ''
     KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0666", TAG+="uaccess", OPTIONS+="static_node=uinput"
   '';

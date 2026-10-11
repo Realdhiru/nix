@@ -7,6 +7,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/terminal-opacity.sh"
 TARGET_CACHE="$HOME/.cache/theme"
 
 mkdir -p "$TARGET_CACHE"
@@ -116,6 +117,8 @@ EOF
             sed -i -E "s/^(match = ).*/\1EDE6DCff/; s/^(selection-match = ).*/\1EDE6DCff/; s/^(background = ).*/\1000000ff/" "$f" 2>/dev/null || true
         fi
     done
+
+    apply_terminal_opacity
 }
 
 # 1. Handle Neutral Theme Mode (pure pitch-black OLED desktop state)
@@ -193,6 +196,7 @@ if ! wallust run \
     "$WALLPAPER" 2>/dev/null; then
     emit_neutral_theme
 fi
+apply_terminal_opacity
 
 # 3. Read generated palette and select the true signature wallpaper accent
 # Uses direct ImageMagick quantization histogram to capture the authentic dominant chromatic tone

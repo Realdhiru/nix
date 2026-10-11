@@ -700,7 +700,6 @@ Variants {
 
                                         Text {
                                             anchors.centerIn: parent
-                                            anchors.verticalCenterOffset: barWindow.s(-1)
                                             text: wsPill.isItemVisible ? workspacesBox.toKanji(wsName) : ""
                                             font.family: "Noto Sans CJK JP, JetBrains Mono"
                                             font.pixelSize: barWindow.s(14)

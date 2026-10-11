@@ -45,7 +45,8 @@ hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh tog
 
 hl.bind(mainMod .. " + CTRL + SHIFT + V", hl.dsp.exec_cmd(scripts .. "fix_audio.sh"))
 hl.bind(mainMod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle sunset"))
-hl.bind(mainMod .. " + SHIFT + X", hl.dsp.exec_cmd("quickshell ipc -p " .. scripts .. "quickshell/Shell.qml call idle toggleDim"))
+hl.bind(mainMod .. " + SHIFT + X",
+    hl.dsp.exec_cmd("quickshell ipc -p " .. scripts .. "quickshell/Shell.qml call idle toggleDim"))
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(scripts .. "quickshell/toggle_theme_mode.sh"))
 
 -- Reload Compositor, Quickshell, and System
@@ -73,7 +74,7 @@ hl.bind(mainMod .. " + ALT + Down", hl.dsp.exec_cmd(scripts .. "qs_manager.sh po
 -- ======================================================
 
 hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("alacritty"))
-hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd("alacritty -e zsh -c 'fastfetch; exec zsh'"))
+hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd("alacritty -o font.size=7 -e zsh -c 'fastfetch; exec zsh'"))
 
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("env QT_QPA_PLATFORMTHEME=qt6ct pcmanfm-qt"))
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_menu.sh app"))
@@ -88,21 +89,31 @@ hl.bind(mainMod .. " + ALT + V", hl.dsp.exec_cmd("pwvucontrol"))
 -- Web Apps
 -- ======================================================
 
-hl.bind(mainMod .. " + SHIFT + C", hl.dsp.exec_cmd('brave  --profile-directory="Default" --class=chatgpt --name=chatgpt --app=https://chat.openai.com'))
+hl.bind(mainMod .. " + SHIFT + C",
+    hl.dsp.exec_cmd('brave  --profile-directory="Default" --class=chatgpt --name=chatgpt --app=https://chat.openai.com'))
 
-hl.bind(mainMod .. " + SHIFT + A", hl.dsp.exec_cmd('brave  --profile-directory="Default" --class=claude --app=https://claude.ai/new'))
+hl.bind(mainMod .. " + SHIFT + A",
+    hl.dsp.exec_cmd('brave  --profile-directory="Default" --class=claude --app=https://claude.ai/new'))
 
-hl.bind(mainMod .. " + CTRL + SHIFT + A", hl.dsp.exec_cmd('brave  --incognito --profile-directory="Default" --class=claude --app=https://claude.ai/new'))
+hl.bind(mainMod .. " + CTRL + SHIFT + A",
+    hl.dsp.exec_cmd('brave  --incognito --profile-directory="Default" --class=claude --app=https://claude.ai/new'))
 
-hl.bind(mainMod .. " + ALT + M", hl.dsp.exec_cmd('brave  --profile-directory="Default" --class=monkeytype --app=https://monkeytype.com/'))
+hl.bind(mainMod .. " + ALT + M",
+    hl.dsp.exec_cmd('brave  --profile-directory="Default" --class=monkeytype --app=https://monkeytype.com/'))
 
-hl.bind(mainMod .. " + ALT + W", hl.dsp.exec_cmd('brave  --profile-directory="Default" --class=whatsapp --app=https://web.whatsapp.com'))
+hl.bind(mainMod .. " + ALT + W",
+    hl.dsp.exec_cmd('brave  --profile-directory="Default" --class=whatsapp --app=https://web.whatsapp.com'))
 
-hl.bind(mainMod .. " + ALT + N", hl.dsp.exec_cmd('brave  --profile-directory="Default" --class=notion --app=https://www.notion.so/02917993852a4825ab25a38c938de4f8'))
+hl.bind(mainMod .. " + ALT + N",
+    hl.dsp.exec_cmd(
+        'brave  --profile-directory="Default" --class=notion --app=https://www.notion.so/02917993852a4825ab25a38c938de4f8'))
 
-hl.bind(mainMod .. " + ALT + Y", hl.dsp.exec_cmd('brave  --profile-directory="youtube" --class=youtube --app=https://youtube.com'))
+hl.bind(mainMod .. " + ALT + Y",
+    hl.dsp.exec_cmd('brave  --profile-directory="youtube" --class=youtube --app=https://youtube.com'))
 
-hl.bind(mainMod .. " + ALT + D", hl.dsp.exec_cmd('brave  --profile-directory="Default" --class=todo --name=todo --app=https://to-do.live.com/tasks/inbox'))
+hl.bind(mainMod .. " + ALT + D",
+    hl.dsp.exec_cmd(
+        'brave  --profile-directory="Default" --class=todo --name=todo --app=https://to-do.live.com/tasks/inbox'))
 
 -- ======================================================
 -- Screenshots & Recording
@@ -154,6 +165,11 @@ hl.bind("SHIFT + F5", hl.dsp.exec_cmd("playerctl next"), { locked = true, descri
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd(scripts .. "osd.sh vol-up"), { locked = true, repeating = true })
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd(scripts .. "osd.sh vol-down"), { locked = true, repeating = true })
 
+-- The keyboard knob reports XF86Audio volume keys. With Super held, turn
+-- those events into pointer-wheel input through ydotool's uinput device.
+hl.bind(mainMod .. " + XF86AudioRaiseVolume", hl.dsp.exec_cmd("ydotool mousemove --wheel -x 0 -y 1"), { locked = true })
+hl.bind(mainMod .. " + XF86AudioLowerVolume", hl.dsp.exec_cmd("ydotool mousemove --wheel -x 0 -y -1"), { locked = true })
+
 hl.bind("XF86AudioMute", hl.dsp.exec_cmd(scripts .. "osd.sh vol-mute"), { locked = true })
 hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(scripts .. "osd.sh mic-mute"), { locked = true })
 
@@ -175,10 +191,14 @@ hl.bind(mainMod .. " + Down", hl.dsp.focus({ direction = "d" }))
 -- Resize Active Window
 -- ======================================================
 
-hl.bind(mainMod .. " + SHIFT + Right", hl.dsp.window.resize({ x = 30, y = 0, relative = true }), { repeating = true, description = "resize window right" })
-hl.bind(mainMod .. " + SHIFT + Left", hl.dsp.window.resize({ x = -30, y = 0, relative = true }), { repeating = true, description = "resize window left" })
-hl.bind(mainMod .. " + SHIFT + Up", hl.dsp.window.resize({ x = 0, y = -30, relative = true }), { repeating = true, description = "resize window up" })
-hl.bind(mainMod .. " + SHIFT + Down", hl.dsp.window.resize({ x = 0, y = 30, relative = true }), { repeating = true, description = "resize window down" })
+hl.bind(mainMod .. " + SHIFT + Right", hl.dsp.window.resize({ x = 30, y = 0, relative = true }),
+    { repeating = true, description = "resize window right" })
+hl.bind(mainMod .. " + SHIFT + Left", hl.dsp.window.resize({ x = -30, y = 0, relative = true }),
+    { repeating = true, description = "resize window left" })
+hl.bind(mainMod .. " + SHIFT + Up", hl.dsp.window.resize({ x = 0, y = -30, relative = true }),
+    { repeating = true, description = "resize window up" })
+hl.bind(mainMod .. " + SHIFT + Down", hl.dsp.window.resize({ x = 0, y = 30, relative = true }),
+    { repeating = true, description = "resize window down" })
 
 -- ======================================================
 -- Workspaces
@@ -276,9 +296,3 @@ end)
 hl.bind(mainMod .. " + mouse_down", function()
     smooth_zoom_to(1.0, 0.15)
 end)
-
-
-
-
-
-

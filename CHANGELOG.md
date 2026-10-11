@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 2026-10-11 — Super + Volume Knob Scroll
+
+- Added Hyprland binds that translate the keyboard's volume-up/down knob events into pointer-wheel events while Super is held. Enabled the NixOS `ydotool` uinput service and granted the user access through its group; ordinary knob volume binds remain active without Super.
+
+## 2026-10-11 — Compact Fastfetch Terminal Launch
+
+- **Fastfetch tile readability** ([`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua)): `Super + Alt + T` now launches only that Alacritty window at 8pt. The regular NixOS logo and information scale together; global terminal font size is unchanged.
+
+## 2026-10-11 — Workspace Centering, TopBar Contrast, Wallpaper Repeat Sync & Volume Wheel Scroll
+
+- **Terminal Visibility Mode ([`toggle_theme_mode.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/toggle_theme_mode.sh), Wallust terminal templates)**: `Super + L` raises Foot and Alacritty background opacity from `0.30` to `0.60` while QuickShell visibility mode is enabled, then restores `0.30`; terminal colors remain wallpaper-derived and future Wallust generations preserve the active mode.
+
+- **Workspace Number & Kanji Centering ([`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml), [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml))**:
+  - Removed hardcoded `anchors.verticalCenterOffset: barWindow.s(-1)` across TopBar and SideBar workspace pills. Kanji numerals (`一`, `二`, `三`...) are now vertically and horizontally dead-centered.
+- **TopBar Soft Contrast & Date Legibility ([`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml))**:
+  - Replaced harsh raw white (`mocha.text`) on clock digits and weekday text with Wallust-generated palette tone `mocha.subtext0`.
+  - Date text is legible and soft without affecting SideBar styling.
+- **Wallpaper Cycle Fixed 0.3s Cadence Pacing ([`cycle_wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/cycle_wallpaper.sh))**:
+  - Combined non-blocking lock checking (`flock -n 9 || exit 0`) with a high-resolution timestamp delta (`INTERVAL_NS=300000000`).
+  - Holds wallpaper transitions to a steady 0.3-second pacing across all formats while holding `Super+Alt+Left/Right`, eliminating queue lag and stopping immediately upon release.
+
 ## 2026-10-11 — Lockscreen Stray Reaper & KDE Connect Manual Package Restoration
 
 - **Lockscreen Privacy Blur & Smooth Animation Restoration ([`hyprlock.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hyprlock.conf), [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh))**:

@@ -493,7 +493,6 @@ Variants {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        anchors.verticalCenterOffset: barWindow.s(-1)
                                         text: wsPill.isItemVisible ? workspacesBox.toKanji(wsName) : ""
                                         font.family: "Noto Sans CJK JP, JetBrains Mono"
                                         font.pixelSize: barWindow.s(14)
@@ -806,7 +805,7 @@ Variants {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(18)
                                     font.weight: Font.Black
-                                    color: mocha.text
+                                    color: mocha.subtext0
                                 }
 
                                 Text {
@@ -824,7 +823,7 @@ Variants {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(18)
                                     font.weight: Font.Black
-                                    color: mocha.text
+                                    color: mocha.subtext0
                                 }
                             }
 
@@ -838,7 +837,7 @@ Variants {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(10)
                                     font.weight: Font.Black
-                                    color: mocha[Config.textColorSource] || mocha.text
+                                    color: mocha.subtext0
                                     horizontalAlignment: Text.AlignLeft
                                     Layout.fillWidth: true
                                 }

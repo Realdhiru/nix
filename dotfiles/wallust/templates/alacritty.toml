@@ -25,3 +25,6 @@ blue = "{{color12}}"
 magenta = "{{color13}}"
 cyan = "{{color14}}"
 white = "{{color15}}"
+
+[window]
+opacity = 0.30

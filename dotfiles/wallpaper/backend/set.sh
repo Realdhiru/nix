@@ -27,8 +27,9 @@ exec 8>"$LOCKFILE"
 flock 8
 
 # If a newer target was requested while this process was waiting for the lock, skip obsolete render
+# (Do NOT skip if triggered by sequential cycling, ensuring every wallpaper frame is rendered)
 LATEST_TARGET="$(cat "$HOME/.cache/target_wallpaper.txt" 2>/dev/null || true)"
-if [ -n "$LATEST_TARGET" ] && [ "$LATEST_TARGET" != "$WALL" ]; then
+if [ "${FORCE_CYCLE:-0}" -ne 1 ] && [ -n "$LATEST_TARGET" ] && [ "$LATEST_TARGET" != "$WALL" ]; then
     flock -u 8 2>/dev/null || true
     exec 8>&- 2>/dev/null || true
     exit 0

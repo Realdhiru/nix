@@ -11,6 +11,7 @@
       "video"
       "uinput"
       "input"
+      "ydotool"
     ];
     shell = pkgs.zsh;
   };

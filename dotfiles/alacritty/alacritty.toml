@@ -8,7 +8,6 @@ family = "JetBrains Mono"
 import = ["/home/realdhiru/.cache/theme/alacritty-colors.toml"]
 
 [window]
-opacity = 0.30
 
 [window.padding]
 x = 12

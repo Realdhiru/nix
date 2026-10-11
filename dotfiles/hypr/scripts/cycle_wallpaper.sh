@@ -11,10 +11,25 @@ PATHS_FILE="$CACHE_DIR/quickshell/wallpaper_paths.txt"
 TARGET_TXT="$CACHE_DIR/target_wallpaper.txt"
 CURRENT_TXT="$CACHE_DIR/current_wallpaper.txt"
 
-# Serialize target pointer advancement so rapid clicks strictly order: W1 -> W2 -> W3
+# Drop incoming repeat triggers while an application pass is in progress
 CYCLE_LOCK="$CACHE_DIR/cycle_wallpaper.lock"
 exec 9>"$CYCLE_LOCK"
-flock 9
+if ! flock -n 9; then
+    exit 0
+fi
+
+# Enforce consistent 0.3s cadence across all wallpapers while holding the bind
+TS_FILE="$CACHE_DIR/last_cycle_timestamp.txt"
+INTERVAL_NS=300000000
+NOW=$(date +%s%N)
+if [ -f "$TS_FILE" ]; then
+    LAST=$(cat "$TS_FILE" 2>/dev/null || echo 0)
+    DIFF=$((NOW - LAST))
+    if [ "$DIFF" -gt 0 ] && [ "$DIFF" -lt "$INTERVAL_NS" ]; then
+        exit 0
+    fi
+fi
+echo "$NOW" > "$TS_FILE"
 
 # Ensure pre-sorted paths cache exists and is fresh
 if [ -f "$INDEX_FILE" ] && { [ ! -s "$PATHS_FILE" ] || [ "$INDEX_FILE" -nt "$PATHS_FILE" ]; }; then
@@ -106,10 +121,7 @@ fi
 
 if [ -n "$TARGET_PATH" ] && [ -f "$TARGET_PATH" ]; then
     echo "$TARGET_PATH" > "$TARGET_TXT" 2>/dev/null || true
-    # Release lock 9 immediately so subsequent keybind presses can advance pointer in parallel
-    flock -u 9 2>/dev/null || true
-    exec 9>&- 2>/dev/null || true
-    exec "$SCRIPT_DIR/set_wallpaper.sh" "$TARGET_PATH" "none" "0.0" "120"
+    FORCE_CYCLE=1 "$SCRIPT_DIR/set_wallpaper.sh" "$TARGET_PATH" "none" "0.0" "120"
 fi
 
 flock -u 9 2>/dev/null || true
