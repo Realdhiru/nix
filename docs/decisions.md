@@ -280,3 +280,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - **Chromatic Mass Gating:** Enforce strict $\ge 12\%$ chromatic mass threshold ($C \ge 0.030$). Low-chroma images route to `Dark`, `Light`, or `Monochrome` without letting minute high-contrast specks (<12% area) distort whole-image classification.
   - **Open-Set Discovery Pipeline:** 7D descriptor: mean $(L, a, b)$ + prominent chromatic mode $(L, a, b)$ + mean $C$. Novel wallpapers outside theme acceptance radii accumulate in `ThemeRegistry.pending` for agglomerative promotion into new aesthetic categories.
   - **Sub-Millisecond Performance:** Post-decode classification executes in $<1\text{ms}$ ($0.33\text{ms}$ average) using vectorized NumPy array math without iterative clustering overhead.
+
+### 39. Proprietary Electron GUI Packaging via Local FHS Wrapper
+- **Decision:** macOS-only nixpkgs packages (e.g. `pkgs.chatgpt`) must never be added to `systemPackages`. Linux-only GUI apps shipped only as `.deb`/`.rpm` (official ChatGPT/Codex desktop) are packaged in `~/nix/pkgs/chatgpt-linux.nix` via `fetchurl` (pinned sha256) → `dpkg-deb -x` → `buildFHSEnv` wrapping the raw bundled Chromium binary, plus a merge of the real `.desktop`/icon.
+- **Rationale:** No nixpkgs source package exists and upstream offers no AppImage; FHS env resolves all `Depends` libs without polluting system packages.

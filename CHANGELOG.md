@@ -1,8 +1,10 @@
 # CHANGELOG
 
-## 2026-10-11 — ChatGPT Desktop (Codex GUI) Declared in System Packages
+## 2026-10-11 — ChatGPT Desktop (Codex GUI) via Local FHS Wrapper of Official .deb
 
-- **`modules/system/packages.nix`**: Added `pkgs.chatgpt` (official ChatGPT/Codex desktop GUI, v26.803.81509) to `environment.systemPackages` under the AI tooling group alongside `antigravity-hub`/`opencode`/`gram`. Unfree license already permitted via `nixpkgs.config.allowUnfree = true` in [`hosts/nixos/default.nix`](file:///home/realdhiru/nix/hosts/nixos/default.nix#L63). Requires `sudo nixos-rebuild switch --flake ~/nix#nixos`.
+- **`pkgs/chatgpt-linux.nix`** (new): Local derivation packaging the official ChatGPT/Codex Linux app. nixpkgs's `chatgpt` is macOS-only, so this wraps the official Ubuntu `.deb` (`26.1007.21434`, from https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb, pinned sha256 `sha256-J2tTQcPXSyYdOtUhBvf6ft3gaEHkdn/ipAy1QJmx8+0=`) via `dpkg-deb -x` + `buildFHSEnv` (`runScript` → `/usr/lib/chatgpt/ChatGPT`), exposing `bin/chatgpt`, the correct `.desktop`, and the app icon.
+- **`flake.nix`**: Registered `chatgpt` overlay using `prev.callPackage ./pkgs/chatgpt-linux.nix { }`.
+- **`modules/system/packages.nix`**: Added `chatgpt` to `environment.systemPackages` under the AI tooling group alongside `antigravity-hub`/`opencode`/`gram`. Unfree already permitted via `nixpkgs.config.allowUnfree = true` in [`hosts/nixos/default.nix`](file:///home/realdhiru/nix/hosts/nixos/default.nix#L63). Requires `sudo nixos-rebuild switch --flake ~/nix#nixos` (first build downloads ~497 MB).
 
 ## 2026-10-10 — Network Popup Device Discovery, Polling Throttle & Hold Animation Fixes
 
