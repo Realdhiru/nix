@@ -111,18 +111,6 @@ Item {
     // Coffee state lives in SysData (single source); this popup only reads
     // SysData.coffeeActive and writes via SysData.setCoffee().
 
-    property bool hotspotActive: false
-    property string hotspotSsid: "NixOS-Hotspot"
-    property string hotspotPassword: ""
-    property int hotspotClients: 0
-    property bool showHotspotMenu: false
-    property bool hotspotPassVisible: false
-    property bool editingHotspotSsid: false
-    property bool editingHotspotPass: false
-    property string tempHotspotSsid: ""
-    property string tempHotspotPass: ""
-    property bool showConnectedDevices: false
-    property var hotspotDeviceList: []
 
     property var collapsedGroups: ({})
 
@@ -176,9 +164,6 @@ Item {
         introSliders = 1;
         introActions = 1;
         introProfiles = 1;
-        window.showHotspotMenu = false;
-        window.editingHotspotSsid = false;
-        window.editingHotspotPass = false;
         for (var i = 0; i < actionRowRepeater.count; i++) {
             let cap = actionRowRepeater.itemAt(i);
             if (cap) {
@@ -387,46 +372,7 @@ Item {
         }
     }
 
-    Process {
-        id: hotspotPoller
-        command: ["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/hotspot_control.sh", "--json"]
-        running: window.visible
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let txt = this.text ? this.text.trim() : "";
-                if (!txt) return;
-                try {
-                    let d = JSON.parse(txt);
-                    window.hotspotActive = d.active;
-                    window.hotspotSsid = d.ssid || "NixOS-Hotspot";
-                    window.hotspotPassword = d.password || "";
-                    window.hotspotClients = d.clients || 0;
-                    window.hotspotDeviceList = d.devices || [];
-                } catch(e) {}
-            }
-        }
-    }
-
-    Timer {
-        id: hotspotRefreshTimer
-        interval: 300
-        onTriggered: {
-            hotspotPoller.running = false;
-            hotspotPoller.running = true;
-            hotspotRefreshFollowupTimer.restart();
-        }
-    }
-
-    Timer {
-        id: hotspotRefreshFollowupTimer
-        interval: 1000
-        onTriggered: {
-            hotspotPoller.running = false;
-            hotspotPoller.running = true;
-        }
-    }
-
-    // Popup-local telemetry refresh (cap/profile/time-remaining/vol/bri/hotspot).
+    // Popup-local telemetry refresh (cap/profile/time-remaining/vol/bri).
     // Gated to visibility: this popup stays cached in Main.qml's
     // widgetCache after close, so a bare running:true kept spawning bash
     // every 1.5s forever while hidden.
@@ -435,9 +381,6 @@ Item {
         onTriggered: {
             sysPoller.running = false;
             sysPoller.running = true;
-            if (!hotspotPoller.running) {
-                hotspotPoller.running = true;
-            }
         }
     }
 
@@ -574,44 +517,6 @@ Item {
                             opacity: introTop
 
                             Rectangle {
-                                id: hotspotBtn
-                                Layout.preferredWidth: window.s(38)
-                                Layout.preferredHeight: window.s(38)
-                                radius: window.s(12)
-                                color: window.hotspotActive ? Qt.alpha(window.primary, 0.25) : (hotspotMa.containsMouse || window.showHotspotMenu ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08))
-                                border.color: window.hotspotActive ? window.primary : (hotspotMa.containsMouse || window.showHotspotMenu ? window.surface2 : Qt.alpha(window.surface1, 0.3))
-                                border.width: Config.borderWidth
-                                clip: true
-
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                                Behavior on border.color { ColorAnimation { duration: 150 } }
-
-                                Text {
-                                    id: hotspotIcon
-                                    anchors.centerIn: parent
-                                    text: "󰖩"
-                                    font.family: "Iosevka Nerd Font"
-                                    font.pixelSize: window.s(17)
-                                    color: window.hotspotActive ? window.primary : (hotspotMa.containsMouse || window.showHotspotMenu ? window.text : window.subtext0)
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                }
-
-                                MouseArea {
-                                    id: hotspotMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        window.showHotspotMenu = !window.showHotspotMenu;
-                                        if (window.showHotspotMenu) {
-                                            hotspotPoller.running = false;
-                                            hotspotPoller.running = true;
-                                        }
-                                    }
-                                }
-                            }
-
-                            Rectangle {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: window.s(38)
                                 radius: window.s(12)
@@ -628,7 +533,7 @@ Item {
                                         font.family: "Iosevka Nerd Font"
                                         font.pixelSize: window.s(16)
                                         color: window.batColorStart
-                                        text: window.isCharging ? "󰂄" : (window.batCapacity > 20 ? "󰁹" : "󰂃")
+                                        text: SysData.batIcon(window.batCapacity, window.isCharging)
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
 
@@ -793,313 +698,6 @@ Item {
                             }
                         }
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: window.showHotspotMenu ? (hotspotContentCol.implicitHeight + window.s(28)) : 0
-                            visible: Layout.preferredHeight > 0
-                            clip: true
-                            radius: window.s(14)
-                            color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
-                            border.color: Qt.alpha(window.surface1, 0.3)
-                            border.width: Config.borderWidth
-
-                            Behavior on Layout.preferredHeight { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-
-                            ColumnLayout {
-                                id: hotspotContentCol
-                                anchors.fill: parent
-                                anchors.margins: window.s(14)
-                                spacing: window.s(8)
-
-                                // Header row
-                                RowLayout {
-                                    Layout.fillWidth: true
-
-                                    Text {
-                                        text: "Wi-Fi Hotspot"
-                                        font.family: "JetBrains Mono"
-                                        font.weight: Font.Bold
-                                        font.pixelSize: window.s(13)
-                                        color: window.text
-                                        Layout.alignment: Qt.AlignVCenter
-                                    }
-
-                                    Item { Layout.fillWidth: true }
-
-                                    Rectangle {
-                                        Layout.preferredWidth: window.s(76)
-                                        Layout.preferredHeight: window.s(26)
-                                        radius: window.s(13)
-                                        color: window.hotspotActive ? window.surface2 : (hotspotToggleMa.containsMouse ? window.surface2 : window.surface1)
-                                        border.color: window.surface2
-                                        border.width: 1
-                                        opacity: hotspotToggleMa.pressed ? 0.7 : 1.0
-
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: window.hotspotActive ? "ACTIVE" : "OFF"
-                                            font.family: "JetBrains Mono"
-                                            font.weight: Font.Black
-                                            font.pixelSize: window.s(10)
-                                            color: window.text
-                                        }
-
-                                        MouseArea {
-                                            id: hotspotToggleMa
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/hotspot_control.sh", "--toggle"]);
-                                                hotspotRefreshTimer.restart();
-                                            }
-                                        }
-                                    }
-                                }
-
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    height: 1
-                                    color: window.surface1
-                                }
-
-                                // SSID Editor / Display
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: window.s(6)
-
-                                    Text {
-                                        text: "SSID:"
-                                        font.family: "JetBrains Mono"
-                                        font.pixelSize: window.s(11)
-                                        color: window.subtext0
-                                    }
-
-                                    Loader {
-                                        Layout.fillWidth: true
-                                        sourceComponent: window.editingHotspotSsid ? ssidEditComp : ssidDisplayComp
-                                    }
-
-                                    Component {
-                                        id: ssidDisplayComp
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            spacing: window.s(6)
-                                            Text {
-                                                text: window.hotspotSsid
-                                                font.family: "JetBrains Mono"
-                                                font.weight: Font.Bold
-                                                font.pixelSize: window.s(11)
-                                                color: window.text
-                                            }
-                                            Item { Layout.fillWidth: true }
-                                            Rectangle {
-                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11)
-                                                color: editSsidMa.containsMouse ? window.surface2 : window.surface1
-                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰏫"; color: window.text }
-                                                MouseArea {
-                                                    id: editSsidMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                    onClicked: { window.tempHotspotSsid = window.hotspotSsid; window.editingHotspotSsid = true; }
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    Component {
-                                        id: ssidEditComp
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            spacing: window.s(6)
-                                            Rectangle {
-                                                Layout.fillWidth: true; Layout.preferredHeight: window.s(24); radius: window.s(6)
-                                                color: window.surface1; border.color: window.mauve; border.width: 1; clip: true
-                                                TextInput {
-                                                    anchors.fill: parent; anchors.margins: window.s(4); font.family: "JetBrains Mono"; font.pixelSize: window.s(11); color: window.text
-                                                    text: window.tempHotspotSsid; onTextChanged: window.tempHotspotSsid = text; verticalAlignment: TextInput.AlignVCenter
-                                                }
-                                            }
-                                            Rectangle {
-                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11); color: window.green
-                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰄬"; color: window.base }
-                                                MouseArea {
-                                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                                    onClicked: {
-                                                        Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/hotspot_control.sh", "--set-ssid", window.tempHotspotSsid]);
-                                                        window.editingHotspotSsid = false; hotspotRefreshTimer.restart();
-                                                    }
-                                                }
-                                            }
-                                            Rectangle {
-                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11); color: window.surface2
-                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰅖"; color: window.text }
-                                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: window.editingHotspotSsid = false; }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Password Editor / Display
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: window.s(6)
-
-                                    Text {
-                                        text: "Pass:"
-                                        font.family: "JetBrains Mono"
-                                        font.pixelSize: window.s(11)
-                                        color: window.subtext0
-                                    }
-
-                                    Loader {
-                                        Layout.fillWidth: true
-                                        sourceComponent: window.editingHotspotPass ? passEditComp : passDisplayComp
-                                    }
-
-                                    Component {
-                                        id: passDisplayComp
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            spacing: window.s(6)
-                                            Text {
-                                                text: window.hotspotPassVisible ? (window.hotspotPassword || "(None)") : "••••••••••••"
-                                                font.family: "JetBrains Mono"
-                                                font.weight: Font.Bold
-                                                font.pixelSize: window.s(11)
-                                                color: window.text
-                                            }
-                                            Item { Layout.fillWidth: true }
-                                            Rectangle {
-                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11)
-                                                color: passEyeMa.containsMouse ? window.surface2 : window.surface1
-                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(12); text: window.hotspotPassVisible ? "󰈈" : "󰈉"; color: window.text }
-                                                MouseArea {
-                                                    id: passEyeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                    onClicked: window.hotspotPassVisible = !window.hotspotPassVisible
-                                                }
-                                            }
-                                            Rectangle {
-                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11)
-                                                color: editPassMa.containsMouse ? window.surface2 : window.surface1
-                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰏫"; color: window.text }
-                                                MouseArea {
-                                                    id: editPassMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                    onClicked: { window.tempHotspotPass = window.hotspotPassword; window.editingHotspotPass = true; }
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    Component {
-                                        id: passEditComp
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            spacing: window.s(6)
-                                            Rectangle {
-                                                Layout.fillWidth: true; Layout.preferredHeight: window.s(24); radius: window.s(6)
-                                                color: window.surface1; border.color: window.mauve; border.width: 1; clip: true
-                                                TextInput {
-                                                    anchors.fill: parent; anchors.margins: window.s(4); font.family: "JetBrains Mono"; font.pixelSize: window.s(11); color: window.text
-                                                    text: window.tempHotspotPass; onTextChanged: window.tempHotspotPass = text; verticalAlignment: TextInput.AlignVCenter
-                                                }
-                                            }
-                                            Rectangle {
-                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11); color: window.green
-                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰄬"; color: window.base }
-                                                MouseArea {
-                                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                                    onClicked: {
-                                                        Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/network/hotspot_control.sh", "--set-password", window.tempHotspotPass]);
-                                                        window.editingHotspotPass = false; hotspotRefreshTimer.restart();
-                                                    }
-                                                }
-                                            }
-                                            Rectangle {
-                                                Layout.preferredWidth: window.s(22); Layout.preferredHeight: window.s(22); radius: window.s(11); color: window.surface2
-                                                Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(11); text: "󰅖"; color: window.text }
-                                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: window.editingHotspotPass = false; }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Connected Devices Drawer Toggle Row
-                                Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: window.s(26)
-                                    radius: window.s(8)
-                                    color: devDrawerMa.containsMouse ? window.surface1 : "transparent"
-                                    border.color: devDrawerMa.containsMouse ? window.surface2 : "transparent"
-                                    border.width: 1
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: window.s(4)
-                                        Text {
-                                            font.family: "Iosevka Nerd Font"
-                                            font.pixelSize: window.s(13)
-                                            color: window.hotspotClients > 0 ? window.green : window.subtext0
-                                            text: "󰄬"
-                                        }
-                                        Text {
-                                            text: "Connected Devices: " + window.hotspotClients
-                                            font.family: "JetBrains Mono"
-                                            font.weight: Font.Bold
-                                            font.pixelSize: window.s(11)
-                                            color: window.hotspotClients > 0 ? window.green : window.subtext0
-                                        }
-                                        Item { Layout.fillWidth: true }
-                                        Text {
-                                            font.family: "Iosevka Nerd Font"
-                                            font.pixelSize: window.s(12)
-                                            color: window.subtext0
-                                            text: window.showConnectedDevices ? "󰅀" : "󰅂"
-                                        }
-                                    }
-                                    MouseArea {
-                                        id: devDrawerMa
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: window.showConnectedDevices = !window.showConnectedDevices
-                                    }
-                                }
-
-                                // Connected Devices List (visible when expanded)
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    visible: window.showConnectedDevices
-                                    spacing: window.s(4)
-
-                                    Text {
-                                        visible: !window.hotspotDeviceList || window.hotspotDeviceList.length === 0
-                                        text: "No client devices connected."
-                                        font.family: "JetBrains Mono"
-                                        font.pixelSize: window.s(10)
-                                        color: window.subtext0
-                                    }
-
-                                    Repeater {
-                                        model: window.hotspotDeviceList || []
-                                        delegate: Rectangle {
-                                            Layout.fillWidth: true
-                                            Layout.preferredHeight: window.s(22)
-                                            radius: window.s(6)
-                                            color: window.surface1
-                                            RowLayout {
-                                                anchors.fill: parent
-                                                anchors.margins: window.s(4)
-                                                Text { text: modelData.name || "Client"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(10); color: window.text }
-                                                Item { Layout.fillWidth: true }
-                                                Text { text: modelData.ip || ""; font.family: "JetBrains Mono"; font.pixelSize: window.s(9); color: window.green }
-                                                Text { text: modelData.mac || ""; font.family: "JetBrains Mono"; font.pixelSize: window.s(9); color: window.subtext0 }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
 
                         Text {
                             Layout.fillWidth: true
@@ -1673,7 +1271,7 @@ Item {
                                             font.family: "Iosevka Nerd Font"
                                             font.pixelSize: window.s(28)
                                             color: window.batColorStart
-                                            text: window.isCharging ? "󰂄" : (window.batCapacity > 20 ? "󰁹" : "󰂃")
+                                            text: SysData.batIcon(window.batCapacity, window.isCharging)
                                             Behavior on color { ColorAnimation { duration: 400 } }
                                         }
                                         

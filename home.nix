@@ -247,21 +247,12 @@
     force = true;
   };
 
-  programs.alacritty = {
-    enable = true;
-    settings = {
-      general.import = [
-        "${config.home.homeDirectory}/.cache/theme/alacritty-colors.toml"
-      ];
-      window = {
-        opacity = 0.89;
-        padding = { x = 12; y = 12; };
-      };
-      font = {
-        normal = { family = "JetBrains Mono"; };
-        size = 10;
-      };
-    };
+  programs.alacritty.enable = true;
+
+  xdg.configFile."alacritty/alacritty.toml" = {
+    source = config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/nix/dotfiles/alacritty/alacritty.toml";
+    force = true;
   };
 
   home.username = user.username;

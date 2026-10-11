@@ -1,5 +1,134 @@
 # CHANGELOG
 
+## 2026-10-11 — ChatGPT Desktop (Codex GUI) Declared in System Packages
+
+- **`modules/system/packages.nix`**: Added `pkgs.chatgpt` (official ChatGPT/Codex desktop GUI, v26.803.81509) to `environment.systemPackages` under the AI tooling group alongside `antigravity-hub`/`opencode`/`gram`. Unfree license already permitted via `nixpkgs.config.allowUnfree = true` in [`hosts/nixos/default.nix`](file:///home/realdhiru/nix/hosts/nixos/default.nix#L63). Requires `sudo nixos-rebuild switch --flake ~/nix#nixos`.
+
+## 2026-10-10 — Network Popup Device Discovery, Polling Throttle & Hold Animation Fixes
+
+- **Battery Telemetry Stabilization (`SysData.qml`)**:
+  - **Discharge Rate Smoothing (EMA)**: Added exponential moving average smoothing (`_smoothedDischargeRate = 0.70 * prev + 0.30 * raw`) to UPower's instantaneous `changeRate`. Momentary CPU or background disk spikes no longer produce drastic runtime estimate jumps on the SideBar battery pill.
+
+- **Bluetooth Discovery (`bluetooth_panel_logic.sh`)**:
+  - Replaced strict RSSI filtering (`$d.RSSI.data != null`) with paired and active beacon check (`$d.Paired.data == true or $d.RSSI.data != null`), ensuring paired Bluetooth devices (mice, keyboards, headphones) show up immediately in the popup device list when powered on without waiting for continuous signal broadcasts.
+- **Background Polling & Model Thrashing Prevention (`NetworkPopup.qml`, `Config.qml`, `Main.qml`)**:
+  - Bound popup polling timers (`bgPoller`), Bluetooth scanner loops, and the background orbit rotation animation strictly to `isPopupActive` (`Config.isPopupOpen && Config.activeWidget === "network"`), preventing D-Bus and nmcli process loops when the popup is closed.
+  - Implemented `showWidget()` lifecycle hook on `NetworkPopup.qml` to trigger immediate Wi-Fi rescanning and poller refreshes whenever the widget is brought into view.
+  - Preserved cached delegates (`floatCardDelegateContainer.isLoaded = true`) across background updates after first load to eliminate list flickering and rubber-banding.
+- **Hold-to-Fill Selection Animation & Interaction Reliability (`NetworkPopup.qml`)**:
+  - Added `preventStealing: true` to `floatMa` in `NetworkPopup.qml` to prevent mouse gesture stealing during card interactions.
+  - Adjusted press threshold check to allow filling if `fillLevel < 1.0` and verified `floatMa.pressed` upon `fillAnim.onFinished` so releasing the mouse cancels cleanly into `drainAnim`.
+- **Wi-Fi Disconnection Command (`NetworkPopup.qml`)**:
+  - Changed disconnect logic from raw hardware interface teardown (`nmcli device disconnect`) to graceful profile deactivation (`nmcli connection down id '<ssid>'` with fallback), preventing Wi-Fi device unmanaged/locked states.
+
+## 2026-10-10 — Wallpaper Kill Mode 100% Solid Opacity Fix & Dominant Atmosphere Accent Extraction
+
+- **Monitors Widget Geometry, Mode Detection, and Dynamic Apply (`WindowRegistry.js`, `MonitorPopup.qml`)**:
+  - **Bottom-Center Positioning**: Changed `"monitors"` popup anchor to `"bottom-center"` with `mb: 60` in `WindowRegistry.js` to match top-center calendar positioning and emerge cleanly from the bottom bar.
+  - **Removal of Risky "External" Mode**: Removed the "External" display mode button from the selector to avoid accidental internal screen deactivations when no secondary monitor is connected. Retained safe modes: `Extend`, `Mirror`, and `Laptop`.
+  - **3-Way Vertical Mode Stack & Dynamic State Detection**: Refactored display mode controls into a vertical `ColumnLayout` matching system Catppuccin card tokens. Added real-time mode detection on startup and poll (`displayMode` resolves to `mirror`, `internal`, or `extend` depending on active/mirror monitor topology).
+  - **Live Execution & Persistence**: Mode button selection now invokes `triggerApply()` immediately, generating exact Hyprland IPC calls (`hl.monitor` mirror/disable commands), updating `~/.cache/hypr_power_monitor.conf`, and persisting `displayMode` in `~/.config/hypr/settings.json` across refreshes and restarts.
+  - **Desk Geometry Cleanup**: Removed the 2 black table legs under `deskSurface` and expanded surface geometry (`height: s(16)`, `radius: s(8)`) to seamlessly align with container margins without awkward gaps.
+
+- **Dominant Atmosphere Accent Extraction (`dotfiles/wallust/generate.sh`)**:
+  - **Root Cause**: The theme generation engine penalized colors with low saturation ($S < 15\%$) using an aggressive `* 0.4` penalty and dampened pixel counts with `count ^ 0.30`. This allowed tiny, isolated high-saturation micro-details (e.g. a small fox comprising $<0.6\%$ of an atmospheric forest scene) to hijack the primary desktop accent token (`primary` / `accent`), overriding the dominant color scheme.
+  - **Resolution**: Refined the color selection algorithm in `generate.sh` to score candidates using coverage-weighted dominance (`count ^ 0.60`), rewarding prominent atmospheric chromaticity while applying an outlier penalty to micro-clusters ($< 1.5\%$ pixel share). Accents now naturally derive from the dominant scene colors (e.g. muted sage-green `#818881` / `#7D887D` on forest scenes) across all wallpapers without manual hardcoding.
+- **SideBar Date Visibility Fix & Battery Pill Alignment (`SideBar.qml`)**:
+  - **Date Readability without Bulky Container**: Reverted the date container pill to keep the clean column layout. Resolved the visibility issue on light/white wallpapers by setting Day of Month to `mocha.text` with `Font.Black` (14px) and Month to `barWindow.accentColor` with `Font.Bold` (12px), eliminating faint `subtext0` washing out against bright backdrops.
+  - **Bottom Icons & Battery Geometry**: Reverted all secondary inner pills across the entire bottom dock (Brightness, Volume, WiFi, Bluetooth, Tray, and Battery). The battery icon now sits directly inside its glass card (`batBox`), optically centered (`16px`, `-1px` baseline offset) in crisp white (`mocha.text`) without any secondary pill.
+- **TopBar Clock & Date Color Contrast Parity (`TopBar.qml`)**:
+  - **Hours Unification**: Set hour digits (`10`) to solid `mocha.text` matching minutes (`35`) and standard white elements across the bar.
+  - **Date Readability**: Replaced washed-out `subtext0` on the month/day line (`October 10`) and colon separator with high-contrast `barWindow.accentColor`.
+- **SideBar Quick Actions Consolidated Card (`SideBar.qml`)**:
+  - Consolidated Brightness, Volume, WiFi, and Bluetooth into a single outer glass card (`quickActionsBox`, height `s(138)`).
+  - Eliminated all internal dividing lines and subpill containers, presenting a clean, unified column with even vertical spacing.
+
+- **Enforced 100% Solid Window & QuickShell Opacity in Wallpaper Kill Mode (`wallpaper.sh`, `backend/set.sh`, `Config.qml`)**:
+  - **Root Cause**: `cmd_kill()` in `wallpaper.sh` disabled blur and shadows but never evaluated Hyprland's `1.0 override 1.0 override` window rule, leaving active window transparency rules (`0.47`–`0.70`) in effect. Additionally, touching an empty 0-byte file failed to reliably trigger QuickShell's `FileView` watcher to switch `isSolidMode = true`.
+  - **Resolution**:
+    - Added `hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })"` to `cmd_kill()`.
+    - Added `hyprctl reload` to unkill and wallpaper restore paths (`set.sh` and fallback `cmd_boot`) to re-apply default glass window rules when wallpapers are restored.
+- **Fluidity Animations for Wallpaper Kill Mode (`appearance.lua`, `Config.qml`, `wallpaper.sh`)**:
+  - **Resolution**:
+    - Replaced rigid instant opacity snaps with a smooth 180ms `NumberAnimation` on `effectivePopupOpacity`, `effectiveCardOpacity`, and `antiBleedOpacity` in `Config.qml` for soft dissolves between glass and solid.
+    - Updated Hyprland's `fade` animation speed to `3.5` with `easeOutQuart` in `appearance.lua` for snappy, smooth window opacity transitions.
+    - Updated wallpaper restore path in `wallpaper.sh` to use a 0.25s hardware-accelerated fade (`awww --transition-type fade --transition-duration 0.25`), eliminating visual rigidity while keeping toggles fast.
+
+- **Disabled Animations in Gaming Mode (`toggle_gaming_mode.sh`, `reload.sh`, `SysData.qml`)**:
+  - **Resolution**: Updated `toggle_gaming_mode.sh` to enforce `animations = { enabled = false }` when Gaming Mode is engaged, eliminating transition latency during games, and restoring `animations = { enabled = true }` upon exiting. Kept in parity across `reload.sh` and `SysData.qml`.
+
+- **Monitor Popup Layout Refactor & Geometry Alignment (`MonitorPopup.qml`, `WindowRegistry.js`)**:
+  - **Resolution Cards Display Restoration**: Set popup height in `WindowRegistry.js` to `620` (`h: 620`) and set resolution cards container height to `s(260)`, ensuring the full 2-column resolution grid displays without bottom truncation or clipping.
+  - **Desk & Legs Slider Alignment**: Set desk surface to `parent.width` with leg margins at `s(40)` each. Aligned the Rate and Scale sliders directly beneath the desk legs (`Layout.leftMargin: window.s(75)`, `Layout.preferredWidth: window.s(230)`), guaranteeing the sliders start at the left desk leg and terminate at the right desk leg without overshooting.
+  - **Removed Stale Telemetry & Random Dividers**: Removed inaccurate resolution/refresh rate preview label (`2880x1620 @ 60Hz`) and purged extraneous divider lines between sections.
+  - **3-Column Bottom Controls Row**:
+    - Column 1: Sliders for refresh rate and display scale aligned to desk width.
+    - Column 2: Compact 4-way display mode picker (Extend, Mirror, Laptop, External) in borderless pills without icons.
+    - Column 3: Rotation dial and Apply button stacked vertically with matching balanced width.
+
+## 2026-10-09 — Wallpaper Switching Determinism, Zero-Border Theme Engine & Reload Stability
+
+- **Monitor Settings Popup Condensed Layout & Streamlined Controls (`MonitorPopup.qml`, `WindowRegistry.js`)**:
+  - **Dead Space Elimination & Window Condensing**: Reduced popup window height in `WindowRegistry.js` from `720` down to `480` to eliminate excess bottom dead space while keeping all controls visible.
+  - **Left-Aligned Sliders Under Table**: Positioned Refresh Rate and Scale sliders directly below the desk surface on the left with identical margin (`window.s(20)`) and width (`window.s(380)`).
+  - **Borderless & Iconless 4-Way Mode Selector**: Removed outer container borders and icon glyphs from the 4-way picker (`Extend`, `Mirror`, `Laptop`, `External`), rendering clean text pills in a compact box immediately right of the sliders matching slider column height.
+  - **Inline Orientation Dial & Apply Button**: Placed orientation clock dial and compact pill Apply button to the right of the mode selector, fitting the remaining horizontal width without clipping.
+
+- **Purged Hotspot Functionality & Cleaned Battery Header (`BatteryPopup.qml`, `NotifTicker.qml`, `hotspot_control.sh`)**:
+  - **Root Cause**: ASUS single-radio Wi-Fi hardware cannot maintain simultaneous station and AP modes on 5 GHz networks. The hotspot feature failed when Wi-Fi was in use and added unnecessary background polling processes (`hotspot_control.sh --json` every 8 seconds) and UI clutter.
+  - **Resolution**: Permanently deleted the NetworkManager Hotspot connection profile and removed [`hotspot_control.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/hotspot_control.sh). Stripped all hotspot properties, background processes, refresh timers, the header toggle button (`hotspotBtn`), and the expanding configuration/device drawer from [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml). Cleaned obsolete transient notification filter from [`NotifTicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifTicker.qml).
+
+- **macOS-Grade Spotlight File Finder Overhaul (`fuzzel_menu.sh`)**:
+  - **Full User Space Indexing**: Replaced restricted 7-directory list with whole `$HOME` and `~/.config` indexing (`fd --max-depth 6`), unlocking search across `~/Projects`, personal scripts, documents, and config files with instantaneous 20ms response time while cleanly excluding compiler, cache, and build noise (`node_modules`, `.git`, `.cache`, `.cargo`, `target`, `build`, etc.).
+  - **Multi-Token Fuzzy Search (`--match-mode=fzf`, `--match-nth='{3} {4} {5}'`)**: Replaced rigid literal substring matching (`exact`) with `fzf` token search. Files match space-separated queries (e.g. `cheat sheet` matches `TUI_Development_Cheat_Sheet.md`, `nix flake` matches `~/nix/flake.nix`), with filename matches prioritized at word boundaries ahead of directory matches.
+  - **Category & Extension Prefix Filtering (`/docs`, `/image`, `/video`, `/audio`, `/code`, `/<ext>`)**: Injected semantic category tags and extension tokens into Column 5. Users can prefix or suffix queries with `/docs` (or `/doc`), `/image` (or `/img`), `/video`, `/audio` (or `/music`), `/code`, `/archive`, or specific extensions (e.g. `/pdf`, `/png`, `/nix`) to restrict search results exclusively to that file format.
+  - **Location Folder Reveal on Select**: Selecting any file now immediately opens its containing parent folder in `pcmanfm-qt` (`[ -f "$SELECTED_FILE" ] && DIR_PATH=$(dirname "$SELECTED_FILE")`), matching user preference for location-first workflow.
+  - **SideBar Recording Pill Liquid Glass & Layout Alignment (`SideBar.qml`)**:
+    - **Position Relocation**: Moved `recButton` from the bottom slot (between network and battery) to the top of `bottomZone` directly above `trayBox`. When recording starts, it smoothly expands above the tray; when inactive, it collapses to height 0.
+    - **Palette-Synchronized Color**: Replaced dark wallpaper-derived red (`#736A87`) with `barWindow.accentColor` (the exact bright dynamic accent used by the clock and active workspace indicator), guaranteeing high visibility and perfect theme harmony.
+    - **Frosted Glass Parity**: Unified with `barWindow.cardBg`, dynamic hover border, and anti-bleed base layer (`crust` at `antiBleedOpacity`).
+
+- **Terminal Transparency & Out-of-Store Live Edit (`foot.ini`, `alacritty.toml`, `home.nix`)**:
+  - **Root Cause**: `foot` runs as a systemd user daemon (`foot --server`), caching config on daemon startup rather than reading per-client spawn. Alacritty's configuration was previously declared via `programs.alacritty.settings` in `home.nix`, generating an immutable Nix store symlink that prevented live adjustments.
+  - **Resolution**: Set `alpha=0.3` across both dark and light sections in [`dotfiles/foot/foot.ini`](file:///home/realdhiru/nix/dotfiles/foot/foot.ini) and restarted `foot.service`. Created [`dotfiles/alacritty/alacritty.toml`](file:///home/realdhiru/nix/dotfiles/alacritty/alacritty.toml) with `opacity = 0.30` and linked both via `mkOutOfStoreSymlink` in [`home.nix`](file:///home/realdhiru/nix/home.nix). Added live terminal reload hooks (`pkill -USR1 ... foot --server` and `alacritty msg config -r`) into [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh) so terminal palettes sync automatically with wallpaper switches.
+
+- **Canonical Wallpaper Sorting & Continuous Color Gradient (`indexer.sh`, `WallpaperPicker.qml`, `cycle_wallpaper.sh`)**:
+  - **Exact Hierarchy Enforced**: Fixed ordering mismatch between UI picker and keybind cycler. Wallpapers now follow strictly:
+    1. **Static images first** (rank 0): sorted continuously by perceptual HSL color spectrum — Chromatic band 1 ($0^\circ \to 360^\circ$ hue wheel) followed by Achromatic band 0 ($0 \to 100$ lightness gradient).
+    2. **GIFs second** (rank 1).
+    3. **Videos last** (rank 2).
+  - **Native Color Score Indexing**: Implemented native `gawk` `hex2score` HSL conversion in `indexer.sh` generating `band` and `colorKey` directly into `wallpaper_index.json` and generating pre-sorted `wallpaper_paths.txt`.
+  - **Zero Discrepancy UI & Keybind Alignment**: `WallpaperPicker.qml` `getFileTypeRank` updated to match (images=0, gifs=1, videos=2), guaranteeing exact 1:1 parity between visual carousel ordering and keybind (`SUPER + ALT + Left/Right`) cycling.
+- **Full System & QuickShell Process Clean Reload (`reload.sh`)**:
+  - **Resolution**: `reload.sh` now cleanly terminates all running QuickShell processes (`pkill -9 quickshell`), reaps orphan follower processes, triggers a full `hyprctl reload` (applying Hyprland rules and compositor flags), and cleanly relaunches a fresh QuickShell instance. Eliminates in-place bar shifting or geometry snaps.
+
+- **System-Wide Zero-Border Enforcement (`TopBar.qml`, `Floating.qml`, `SunsetPopup.qml`)**:
+  - **Root Cause**: `workspacesBox`, `mediaBox`, `centerBox`, `sysBatPill`, `recButton`, and `peekBar` were hardcoded with `border.width: Math.max(1, Config.borderWidth)`, forcing a 1px border even when borders were configured to 0.
+  - **Resolution**: Replaced `Math.max(1, Config.borderWidth)` with `Config.borderWidth` across all bar widgets and floating popups. With `borderWidth = 0` in `settings.json`, no borders are drawn anywhere.
+
+- **True Signature Wallpaper Tone Extraction & Monochrome Gate (`generate.sh`)**:
+  - **Resolution**: Replaced wallust's default color scanning with direct ImageMagick 16-color quantized histogram extraction in [`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh). Wallpapers like Akira now extract the true signature soft sky blue (`#64B2CE`) instead of washed-out cyan, and minimal cat wallpapers extract warm caramel mocha (`#CE9364`).
+  - **Strict Monochrome Gate**: When black-and-white or near-zero saturation wallpapers are applied (`avg_sat < 0.025` or `best_sat < 0.03`), artificial chromatic boosting is completely bypassed and pure grayscale silver/ivory (`#EAEAEA`) is assigned to all accent and theme tokens, eliminating random blue/green/tint anomalies on monochrome wallpapers. Derived overlay tokens (`overlay0`, `overlay1`, `overlay2`) are also dynamically linked to neutral subtexts instead of hardcoded blue-gray catppuccin values.
+
+- **Clock Day-Number & Crisp White Bar Icons (`SideBar.qml`, `TopBar.qml`)**:
+  - **Resolution**: Replaced hardcoded sapphire on the day-of-month number (`dayNumStr`) in `SideBar.qml` with `mocha.subtext0`. Set all bottom status icons (brightness, audio, WiFi, Bluetooth, normal battery) to crisp wallpaper white (`mocha.text`), unifying the entire bar palette with the workspaces and clock widgets.
+
+- **10-Tier Material Design Battery Glyphs (`SysData.qml`, `BatteryPopup.qml`, `SideBar.qml`, `TopBar.qml`)**:
+  - **Root Cause**: `BatteryPopup.qml` hardcoded the charging bolt `󰂄` on AC and only toggled between 100% `󰁹` and 0% `󰂃`. In `SideBar.qml` and `TopBar.qml`, charging 40% was mapped to the 70% glyph `󰢞`.
+  - **Resolution**: Created centralized `SysData.batIcon(percent, online)` covering all 10 charging (`󰢟` through `󰂅`) and discharging (`󰂃` through `󰁹`) tiers. At 45% charging, it accurately displays the 50% charging glyph `󰢝`. Connected all bar and popup indicators to this single authority.
+
+- **Eliminated Theme Color Blink on Wallpaper Switch (`wallust.toml`, `generate.sh`)**:
+  - **Root Cause**: `wallust` wrote directly to live `~/.cache/theme/colors.json`, triggering QuickShell's `FileView` watcher to reload raw intermediate colors before `generate.sh` could inject the computed accents, creating a visible double-blink.
+  - **Resolution**: Routed wallust template target to `colors.json.raw`. `generate.sh` merges accents and overrides into a temporary file and atomically replaces `colors.json` in a single pass (`mv -f`), guaranteeing instant, glitch-free theme application.
+
+- **Bulletproof Wallpaper Cycling & Rapid-Switch Loop Elimination (`cycle_wallpaper.sh`, `set.sh`, `indexer.sh`)**:
+  - **Sub-10ms Index Cycling & Zero Dropped Keybinds**: [`cycle_wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/cycle_wallpaper.sh) now uses pre-indexed sorted paths ([`wallpaper_paths.txt`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.sh)) and an optimized native `awk` lookup, computing and writing `target_wallpaper.txt` in ~3–8ms. `flock 9` is released immediately after pointer advancement rather than blocking during image rendering. Every manual button click is registered without drops.
+  - **Atomic Obsolete Render Skipping (`set.sh`)**: In [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), `target_wallpaper.txt` is updated prior to waiting on `flock 8`. Upon acquiring the lock, any intermediate process detects `LATEST_TARGET != WALL` and exits in 0ms without running `awww` or decoding images. Only the newest requested wallpaper renders, allowing rapid cycling at full display frame rates with zero queue backlog on key release.
+  - **Wallpaper Picker A → B → A Rapid Switch Architecture**: In [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml), replaced fragile `targetWallName` and stale disk-backed `activeWallpaperName` checks with dedicated QML lifecycle tracking (`applyingWallCleanName` and `appliedWallCleanName`). Switching A $\to$ B $\to$ A now never drops clicks, debounces rapid double-clicks on the same item, and guarantees instant re-application of previous wallpapers.
+
+- **Terminal Blur & Liquid Glass Parity (`rules.lua`)**:
+  - **Resolution**: Added `hl.window_rule({ match = { class = "^(foot|footclient|Alacritty)$" }, opacity = "0.70" })` in [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), bringing Foot and Alacritty to identical transparency and compositor-blurred liquid glass aesthetics matching the rest of the workspace apps.
+
 ## 2026-10-09 — Terminal Color Restoration & Native Tooling
 
 - **Fuzzel Mouse/Touchpad Scrolling & Click-Outside Dismissal (`fuzzel.ini`, `fuzzel_menu.sh`)**:

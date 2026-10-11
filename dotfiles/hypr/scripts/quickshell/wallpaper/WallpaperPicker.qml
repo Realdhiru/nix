@@ -46,14 +46,22 @@ Item {
     property string currentDownloadName: ""
     
     property bool isApplying: false
+    property string applyingWallCleanName: ""
+    property string appliedWallCleanName: ""
     property bool isMonitorSelectorOpen: false
 
     property bool allowAddAnimation: false
     
     Timer {
         id: applyUnlockTimer
-        interval: 50
-        onTriggered: window.isApplying = false
+        interval: 120
+        onTriggered: {
+            window.isApplying = false;
+            if (window.applyingWallCleanName !== "") {
+                window.appliedWallCleanName = window.applyingWallCleanName;
+                window.applyingWallCleanName = "";
+            }
+        }
     }
     
     property bool isStartup: localFolderModel.status === FolderListModel.Loading || srcModel.status === FolderListModel.Loading
@@ -265,22 +273,33 @@ Item {
         onFileChanged: {
             activeWallWatcher.reload();
             window.activeWallpaperPath = (activeWallWatcher.text() || "").trim();
+            let c = window.getCleanName(window.activeWallpaperName);
+            if (c !== "") window.appliedWallCleanName = c;
         }
     }
 
     function applyWallpaper(safeFileName, isVideo) {
-        if (!safeFileName || window.isApplying) return;
+        if (!safeFileName) return;
         
         let cleanTarget = window.getCleanName(safeFileName);
-        let cleanActive = window.getCleanName(window.activeWallpaperName);
-        if (cleanTarget !== "" && cleanTarget === cleanActive) {
-            console.log("[WALLPAPER_PICKER] Clicked wallpaper is already active, ignoring re-apply:", safeFileName);
+
+        // If clicking the EXACT same wallpaper that is already currently applying, ignore duplicate click
+        if (cleanTarget !== "" && cleanTarget === window.applyingWallCleanName) {
+            console.log("[WALLPAPER_PICKER] Wallpaper is already in-flight applying, ignoring duplicate:", safeFileName);
+            return;
+        }
+
+        // If clicking the EXACT same wallpaper that is already active on desktop and idle, ignore redundant click
+        if (cleanTarget !== "" && cleanTarget === window.appliedWallCleanName && !window.isApplying) {
+            console.log("[WALLPAPER_PICKER] Wallpaper is already active, ignoring redundant click:", safeFileName);
             return;
         }
         
         let outputs = window.getMonitorOutputs();
         if (outputs === "none") return;
         
+        window.applyingWallCleanName = cleanTarget;
+        window.targetWallName = safeFileName;
         window.isApplying = true;
         applyUnlockTimer.restart();
         
@@ -376,6 +395,7 @@ Item {
             window.allowAddAnimation = false;
             window.searchIndexRestored = false;
             window.isApplying = false;
+            window.applyingWallCleanName = "";
             window.isMonitorSelectorOpen = false;
             if (window.hasSearched) {
                 window.isSearchPaused = true;
@@ -388,6 +408,10 @@ Item {
             }
         } else {
             Quickshell.execDetached(["bash", "-c", "mkdir -p '" + Caching.getRunDir("wallpaper_picker") + "'; touch '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
+            window.isApplying = false;
+            window.applyingWallCleanName = "";
+            let cur = window.getCleanName(window.activeWallpaperName);
+            if (cur !== "") window.appliedWallCleanName = cur;
             window.isFilterAnimating = true;
             filterAnimationTimer.restart();
             if (window.currentFilter !== "Search") {
@@ -496,11 +520,11 @@ Item {
 
 
     function getFileTypeRank(fileName) {
-        if (!fileName) return 1;
+        if (!fileName) return 0;
         let fn = String(fileName).toLowerCase();
-        if (fn.endsWith(".gif")) return 0; // 1. GIFs FIRST
+        if (fn.endsWith(".gif")) return 1; // 2. GIFs second
         if (window.isVideoFile(fileName)) return 2; // 3. Videos last
-        return 1; // 2. Static images second (sorted by color score)
+        return 0; // 1. Static images first (sorted by color score)
     }
 
     function hexToColorScore(hex) {
@@ -1150,7 +1174,7 @@ Item {
     }
     Shortcut { 
         sequence: "Return"
-        enabled: !searchInput.activeFocus && !window.isApplying
+        enabled: !searchInput.activeFocus
         onActivated: { 
             let targetModel = window.getModelForFilter(window.currentFilter);
             if (view.currentIndex >= 0 && view.currentIndex < targetModel.count) {

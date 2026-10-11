@@ -110,7 +110,6 @@ Item {
                 (notifAppName === "Wi-Fi") ||
                 (notifAppName === "Bluetooth") ||
                 (notifAppName === "Webcam") ||
-                (notifAppName === "Hotspot" && (notifSummary === "Hotspot" || notifSummary === "ON" || notifSummary === "OFF")) ||
                 (notifAppName === "Game Mode") ||
                 (notifAppName.toLowerCase().indexOf("antigravity") !== -1);
 

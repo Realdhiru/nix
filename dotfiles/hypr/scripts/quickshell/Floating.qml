@@ -733,7 +733,7 @@ Variants {
                 radius: floatingWidget.s(6)
 
                 color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
-                border.width: Math.max(1, Config.borderWidth)
+                border.width: Config.borderWidth
                 border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0)
                     ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, Config.borderOpacity)
                     : Qt.rgba(255, 255, 255, Config.glassSpecular)
@@ -895,7 +895,7 @@ Variants {
                         height: parent.height
                         radius: floatingWidget.s(15)
                         color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
-                        border.width: Math.max(1, Config.borderWidth)
+                        border.width: Config.borderWidth
                         border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0)
                             ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, Config.borderOpacity)
                             : Qt.rgba(255, 255, 255, Config.glassSpecular)

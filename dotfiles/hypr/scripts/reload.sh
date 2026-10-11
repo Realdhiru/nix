@@ -3,15 +3,27 @@
 # Strict execution environment: Catch undefined variables and pipe failures
 set -uo pipefail
 
-# 1. Reload Hyprland first (Applies window rules, keybinds, monitor configs instantly)
-# Note: If hyprland.conf contains 'exec = qs...', this may auto-spawn an instance.
+# 1. Quickshell complete process kill (prevents in-place displacement / geometry glitches)
+pkill -9 -f "quickshell" 2>/dev/null || true
+pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
+
+# Reap orphaned follower processes (playerctl, cava, udevadm)
+for pid in $(pgrep -f "playerctl -a --follow" 2>/dev/null || true) $(pgrep -f "cava -p .*cava_topbar.conf" 2>/dev/null || true) $(pgrep -f "udevadm monitor --subsystem-match" 2>/dev/null || true); do
+    [ -n "$pid" ] || continue
+    ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ' || true)
+    if [ "$ppid" = "1" ]; then
+        kill -9 "$pid" 2>/dev/null || true
+    fi
+done
+
+# 2. Hyprland configuration & system-wide reload
 if command -v hyprctl >/dev/null 2>&1; then
     hyprctl reload >/dev/null 2>&1
     # Re-apply persistent compositor flags
     PROFILE="$(cat "$HOME/.cache/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
     if [ -f "$HOME/.cache/wallpaper_killed" ] || [ -f "$HOME/.cache/gaming_mode" ] || [ "$PROFILE" = "power-saver" ]; then
         hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } } })" >/dev/null 2>&1 || true
-        if [ "$PROFILE" = "power-saver" ]; then
+        if [ "$PROFILE" = "power-saver" ] || [ -f "$HOME/.cache/gaming_mode" ]; then
             hyprctl eval "hl.config({ animations = { enabled = false } })" >/dev/null 2>&1 || true
         fi
     fi
@@ -22,19 +34,10 @@ if command -v hyprctl >/dev/null 2>&1; then
     fi
 fi
 
-# 2. Quickshell lifecycle management
+# 3. Clean quickshell spawn
 QS_TARGET="$HOME/.config/hypr/scripts/quickshell/Shell.qml"
+QS_MANAGER="$HOME/nix/dotfiles/hypr/scripts/qs_manager.sh"
+[ ! -x "$QS_MANAGER" ] && QS_MANAGER="$HOME/.config/hypr/scripts/qs_manager.sh"
 
-if pgrep -f "Shell.qml" >/dev/null || pgrep -x qs >/dev/null || pgrep -x quickshell >/dev/null; then
-    # Trigger instantaneous hot reload via native IPC handler
-    if ! quickshell -p "$QS_TARGET" ipc call topbar queueReload >/dev/null 2>&1; then
-        # Fallback if IPC didn't respond (e.g. process hung): restart cleanly
-        pkill -9 quickshell 2>/dev/null || true
-        pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
-        sleep 0.1
-        hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('quickshell -p $QS_TARGET'))" >/dev/null 2>&1 || (nohup quickshell -p "$QS_TARGET" >/dev/null 2>&1 & disown)
-    fi
-else
-    # Not running: spawn cleanly
-    hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('quickshell -p $QS_TARGET'))" >/dev/null 2>&1 || (nohup quickshell -p "$QS_TARGET" >/dev/null 2>&1 & disown)
-fi
+sleep 0.2
+bash "$QS_MANAGER" reload >/dev/null 2>&1 || true

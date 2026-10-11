@@ -85,7 +85,7 @@ cmd_clean() {
 cmd_kill() {
     local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
     if [ -f "$HOME/.cache/wallpaper_killed" ]; then
-        # TOGGLE BACK ON: Restore last active wallpaper (set.sh handles deleting wallpaper_killed and restoring blur/shadows)
+        # TOGGLE BACK ON: Delegate to cmd_set so wallpaper renders on screen BEFORE transparency restores
         local target=""
         if [ -s "$LAST_TXT" ]; then
             target="$(cat "$LAST_TXT" 2>/dev/null || true)"
@@ -93,12 +93,13 @@ cmd_kill() {
             target="$(cat "$HOME/.cache/last_wallpaper.txt" 2>/dev/null || true)"
         fi
         if [ -n "$target" ] && [ -f "$target" ]; then
-            cmd_set "$target" "none" "0.0" "120"
+            cmd_set "$target" "fade" "0.25" "120"
         else
             rm -f "$HOME/.cache/wallpaper_killed"
             cmd_boot
             if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
                 hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+                hyprctl reload >/dev/null 2>&1 || true
             fi
         fi
         [ -x "$state_ctl" ] && bash "$state_ctl" set modes.wallpaperKilled false 2>/dev/null || true
@@ -106,17 +107,17 @@ cmd_kill() {
         return 0
     fi
 
-    "$BACKEND/ensure_awww.sh" --stop 2>/dev/null || true
-    local pids
-    pids=$(pidof .mpvpaper-wrapped 2>/dev/null || true)
-    if [ -n "$pids" ]; then
-        for pid in $pids; do kill -15 "$pid" 2>/dev/null || true; done
-        sleep 0.1
-        pids=$(pidof .mpvpaper-wrapped 2>/dev/null || true)
-        for pid in $pids; do kill -9 "$pid" 2>/dev/null || true; done
+    # TOGGLE OFF:
+    # 1. Immediately enforce 100% solid opacity across windows & popups (frame-0 instant feedback)
+    echo "1" > "$HOME/.cache/wallpaper_killed"
+    [ -x "$state_ctl" ] && bash "$state_ctl" set modes.wallpaperKilled true 2>/dev/null || true
+    if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+        hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+        hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" >/dev/null 2>&1 || true
     fi
-    rm -f /tmp/mpv-paper-socket "$HOME/.cache/mpvpaper.pid"
+    notify-send -a "Wallpaper" -u low "OFF"
 
+    # 2. Preserve wallpaper target file caches
     if [ -s "$CURRENT_TXT" ]; then
         cp -f "$CURRENT_TXT" "$LAST_TXT" 2>/dev/null || true
     elif [ -f "$HOME/.cache/current_wallpaper.txt" ]; then
@@ -125,19 +126,26 @@ cmd_kill() {
     rm -f "$CURRENT_TXT"
     touch "$CURRENT_TXT"
 
-    # Decoupled neutral theme trigger
+    # 3. Clean daemon teardown (fast check without artificial 100ms sleep)
+    "$BACKEND/ensure_awww.sh" --stop 2>/dev/null || true
+    local pids
+    pids=$(pidof .mpvpaper-wrapped 2>/dev/null || true)
+    if [ -n "$pids" ]; then
+        for pid in $pids; do kill -15 "$pid" 2>/dev/null || true; done
+        for i in {1..5}; do pidof .mpvpaper-wrapped >/dev/null 2>&1 || break; sleep 0.01; done
+        pids=$(pidof .mpvpaper-wrapped 2>/dev/null || true)
+        if [ -n "$pids" ]; then
+            for pid in $pids; do kill -9 "$pid" 2>/dev/null || true; done
+        fi
+    fi
+    rm -f /tmp/mpv-paper-socket "$HOME/.cache/mpvpaper.pid"
+
+    # 4. Decoupled neutral theme trigger
     THEME_ENGINE="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
     [ ! -x "$THEME_ENGINE" ] && THEME_ENGINE="$HOME/nix/dotfiles/wallust/generate.sh"
     if [ -x "$THEME_ENGINE" ]; then
         "$THEME_ENGINE" --neutral >/dev/null 2>&1 &
     fi
-
-    if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-        hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
-    fi
-    touch "$HOME/.cache/wallpaper_killed"
-    [ -x "$state_ctl" ] && bash "$state_ctl" set modes.wallpaperKilled true 2>/dev/null || true
-    notify-send -a "Wallpaper" -u low "OFF"
 }
 
 # -----------------------------------------------------------------------------

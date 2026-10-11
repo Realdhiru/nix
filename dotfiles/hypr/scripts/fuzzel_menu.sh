@@ -43,28 +43,12 @@ case "$MODE" in
         ;;
 
     file|files)
-        SEARCH_DIRS=(
-            "$HOME/Downloads"
-            "$HOME/Pictures"
-            "$HOME/Videos"
-            "$HOME/Desktop"
-            "$HOME/Documents"
-            "$HOME/Music"
-            "$HOME/nix"
-        )
-
-        VALID_DIRS=()
-        for d in "${SEARCH_DIRS[@]}"; do
-            [ -d "$d" ] && VALID_DIRS+=("$d")
-        done
-        [ ${#VALID_DIRS[@]} -eq 0 ] && VALID_DIRS=("$HOME")
-
         FUZZEL_ARGS=(
             --dmenu
-            --match-mode=exact
+            --match-mode=fzf
             --hide-before-typing
             --anchor=center
-            --width=38
+            --width=48
             --lines=6
             --line-height=22
             --font="JetBrainsMono Nerd Font:size=9.5"
@@ -76,7 +60,7 @@ case "$MODE" in
             --layer=overlay
             --keyboard-focus=exclusive
             --with-nth=1
-            --match-nth=3
+            --match-nth='{3} {4} {5}'
             --accept-nth=2
             --nth-delimiter=$'\t'
             --prompt="  "
@@ -88,17 +72,31 @@ case "$MODE" in
         fi
 
         SELECTED_FILE=$(
-            fd -H --max-depth 7 \
+            fd --max-depth 6 \
                --exclude .git \
                --exclude node_modules \
                --exclude .cache \
                --exclude .cargo \
                --exclude .rustup \
-               --exclude .local/share \
+               --exclude .local \
                --exclude .mozilla \
                --exclude .direnv \
+               --exclude .gemini \
+               --exclude .var \
+               --exclude .steam \
+               --exclude .wine \
+               --exclude .npm \
+               --exclude .vscode-oss \
+               --exclude .vscode-oss-shared \
+               --exclude .android \
+               --exclude .aws \
+               --exclude .bun \
+               --exclude .terraform.d \
+               --exclude target \
+               --exclude dist \
+               --exclude build \
                --type f . \
-               "${VALID_DIRS[@]}" 2>/dev/null | \
+               "$HOME" "$HOME/.config" 2>/dev/null | \
             awk -v home="$HOME" '{
                 full = $0;
                 sub(home "/?", "~/", full);
@@ -113,20 +111,49 @@ case "$MODE" in
                     ext = tolower(substr(fname, RSTART + 1));
                 }
                 glyph = "󰈔";
-                if (ext ~ /^(png|jpg|jpeg|webp|gif|svg|bmp)$/) { glyph = "󰋩"; }
-                else if (ext ~ /^(mp4|mkv|avi|mov|webm|flv)$/) { glyph = "󰕧"; }
-                else if (ext ~ /^(mp3|flac|wav|ogg|m4a|opus)$/) { glyph = "󰎈"; }
-                else if (ext ~ /^(pdf|djvu|epub)$/) { glyph = "󰈦"; }
-                else if (ext ~ /^(zip|tar|gz|bz2|xz|7z|rar)$/) { glyph = "󰛫"; }
-                else if (ext ~ /^(nix|lua|sh|bash|py|js|ts|rs|go|c|cpp|h|hpp)$/) { glyph = "󰅩"; }
-                else if (ext ~ /^(md|txt|org|json|yaml|yml|toml|conf|ini)$/) { glyph = "󰈙"; }
-                printf "%s %-28s  %s\t%s\t%s\n", glyph, fname, dir, $0, fname;
+                tags = "/file";
+                if (ext ~ /^(png|jpg|jpeg|webp|gif|svg|bmp|ico|tiff|avif|raw)$/) {
+                    glyph = "󰋩";
+                    tags = "/image /images /img /photo /pic";
+                } else if (ext ~ /^(mp4|mkv|avi|mov|webm|flv|wmv|m4v|mpg|mpeg)$/) {
+                    glyph = "󰕧";
+                    tags = "/video /videos /vid /movie";
+                } else if (ext ~ /^(mp3|flac|wav|ogg|m4a|opus|aac|wma|mid|midi)$/) {
+                    glyph = "󰎈";
+                    tags = "/audio /music /song /sound";
+                } else if (ext ~ /^(pdf|djvu|epub)$/) {
+                    glyph = "󰈦";
+                    tags = "/doc /docs /document /pdf";
+                } else if (ext ~ /^(doc|docx|odt|txt|rtf|md|org)$/) {
+                    glyph = "󰈙";
+                    tags = "/doc /docs /document /text";
+                } else if (ext ~ /^(csv|xls|xlsx|ods)$/) {
+                    glyph = "󰈛";
+                    tags = "/doc /docs /document /sheet";
+                } else if (ext ~ /^(ppt|pptx|odp)$/) {
+                    glyph = "󰈧";
+                    tags = "/doc /docs /document /slides";
+                } else if (ext ~ /^(zip|tar|gz|bz2|xz|7z|rar|zst|tgz)$/) {
+                    glyph = "󰛫";
+                    tags = "/archive /zip /tar";
+                } else if (ext ~ /^(json|yaml|yml|toml|conf|ini|desktop)$/) {
+                    glyph = "󰒓";
+                    tags = "/code /conf /config";
+                } else if (ext ~ /^(nix|lua|sh|bash|zsh|fish|py|js|ts|jsx|tsx|rs|go|c|cpp|h|hpp)$/) {
+                    glyph = "󰅩";
+                    tags = "/code /dev /script";
+                }
+                if (ext != "") {
+                    tags = tags " /" ext;
+                }
+                printf "%s %-28s  %s\t%s\t%s\t%s\t%s\n", glyph, fname, dir, $0, fname, dir, tags;
             }' | \
             fuzzel "${FUZZEL_ARGS[@]}" 2>/dev/null || true
         )
 
         if [ -n "$SELECTED_FILE" ] && [ -e "$SELECTED_FILE" ]; then
-            DIR_PATH=$(dirname "$SELECTED_FILE")
+            DIR_PATH="$SELECTED_FILE"
+            [ -f "$SELECTED_FILE" ] && DIR_PATH=$(dirname "$SELECTED_FILE")
             pcmanfm-qt "$DIR_PATH" >/dev/null 2>&1 &
         fi
         ;;

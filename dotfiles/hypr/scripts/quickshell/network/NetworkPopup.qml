@@ -11,13 +11,24 @@ Item {
     id: window
     focus: true
 
+    property bool isPopupActive: Config.isPopupOpen && Config.activeWidget === "network"
+
+    function showWidget() {
+        window.showInfoView = false;
+        window.isInteractingWithCard = false;
+        if (window.activeMode === "eth") ethPoller.running = true;
+        else if (window.activeMode === "wifi") {
+            wifiPoller.running = true;
+            savedNetworksFetcher.running = true;
+            Quickshell.execDetached(["bash", "-c", "nmcli device wifi rescan 2>/dev/null || true"]);
+        } else if (window.activeMode === "bt") btPoller.running = true;
+        syncCores();
+        window._syncBtScan();
+    }
+
     onVisibleChanged: {
         if (visible) {
-            window.showInfoView = false;
-            if (window.activeMode === "eth") ethPoller.running = true;
-            else if (window.activeMode === "wifi") wifiPoller.running = true;
-            else if (window.activeMode === "bt") btPoller.running = true;
-            syncCores();
+            window.showWidget();
         }
     }
 
@@ -758,7 +769,7 @@ Item {
     // tab after the widget was already open, or turning bt on while
     // already on that tab.
     function _syncBtScan() {
-        if (window.visible && window.activeMode === "bt" && window.btPower === "on") {
+        if (window.isPopupActive && window.activeMode === "bt" && window.btPower === "on") {
             if (!window.isScanningBt) {
                 if (btScanStarter.running) btScanStarter.running = false;
                 btScanStarter.running = true;
@@ -773,7 +784,7 @@ Item {
 
     Connections {
         target: window
-        function onVisibleChanged() { window._syncBtScan(); }
+        function onIsPopupActiveChanged() { window._syncBtScan(); }
         function onActiveModeChanged() { window._syncBtScan(); }
         function onBtPowerChanged() { window._syncBtScan(); }
     }
@@ -906,8 +917,8 @@ Item {
 
     Timer {
         interval: (Object.keys(window.busyTasks).length > 0 || Object.keys(window.disconnectingDevices).length > 0) ? 1000 : 3000
-        // Gate polling: do not run background polls while a connection handshake is active
-        running: window.visible && window.connectingId === "" && !connectProcess.running; repeat: true
+        // Gate polling: do not run background polls while popup is hidden or a connection handshake is active
+        running: window.isPopupActive && window.connectingId === "" && !connectProcess.running; repeat: true
         onTriggered: {
             if (!ethPoller.running) ethPoller.running = true;
             if (!wifiPoller.running) wifiPoller.running = true;
@@ -917,7 +928,7 @@ Item {
 
     property real globalOrbitAngle: 0
     NumberAnimation on globalOrbitAngle {
-        from: 0; to: Math.PI * 2; duration: 200000; loops: Animation.Infinite; running: window.visible
+        from: 0; to: Math.PI * 2; duration: 200000; loops: Animation.Infinite; running: window.isPopupActive
     }
 
     property real introState: 0.0
@@ -1600,7 +1611,7 @@ Item {
                                     if (disconnectProcess.running) disconnectProcess.running = false;
                                     disconnectProcess.targetMode = window.activeMode;
                                     if (window.activeMode === "eth") disconnectProcess.command = ["nmcli", "device", "disconnect", coreContainer.myId];
-                                    else if (window.activeMode === "wifi") disconnectProcess.command = ["bash", "-c", "nmcli device disconnect $(nmcli -t -f DEVICE,TYPE d | grep wifi | cut -d: -f1 | head -n1)"];
+                                    else if (window.activeMode === "wifi") disconnectProcess.command = ["bash", "-c", "nmcli connection down id '" + coreContainer.myId.replace(/'/g, "'\\''") + "' 2>/dev/null || nmcli device disconnect $(nmcli -t -f DEVICE,TYPE d | grep wifi | cut -d: -f1 | head -n1)"];
                                     else disconnectProcess.command = ["bash", window.scriptsDir + "/bluetooth_panel_logic.sh", "--disconnect", coreContainer.myId];
                                     disconnectProcess.running = true;
 
@@ -1639,7 +1650,7 @@ Item {
                             id: floatCardDelegateContainer
                             width: window.s(170); height: window.s(60)
 
-                            property bool isLoaded: false
+                            property bool isLoaded: (window.activeMode === "wifi" ? !window.wifiFirstLoad : (window.activeMode === "bt" ? !window.btFirstLoad : !window.ethFirstLoad))
                             opacity: isLoaded ? 1.0 : 0.0
                             visible: opacity > 0.01
                             Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
@@ -1648,7 +1659,7 @@ Item {
                             Behavior on entryAnim { NumberAnimation { duration: 600; easing.type: Easing.OutBack } }
 
                             Timer {
-                                running: true
+                                running: !floatCardDelegateContainer.isLoaded
                                 interval: window.activeMode === "eth" ? (600 + (index * 80)) : (40 + (index * 30))
                                 onTriggered: floatCardDelegateContainer.isLoaded = true
                             }
@@ -2125,10 +2136,12 @@ Item {
                                         }
                                     }
 
+                                    preventStealing: true
+
                                     onPressed: {
                                         if (cmdStr === "TOGGLE_VIEW" || isInfoNode) return;
                                         window.isInteractingWithCard = true;
-                                        if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel === 0.0) {
+                                        if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel < 1.0) {
                                             if (window.pendingWifiId !== "") {
                                                 window.pendingWifiId = ""; window.pendingWifiSsid = "";
                                             }
@@ -2162,6 +2175,10 @@ Item {
                                     duration: 600 * (1.0 - floatCard.fillLevel)
                                     easing.type: Easing.InSine
                                     onFinished: {
+                                        if (!floatMa.pressed) {
+                                            drainAnim.start();
+                                            return;
+                                        }
                                         floatCard.triggered = true;
                                         floatCard.flashOpacity = 0.6;
                                         cardFlashAnim.start();

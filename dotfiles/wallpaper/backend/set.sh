@@ -18,8 +18,23 @@ EXT="${WALL##*.}"
 EXT="${EXT,,}"
 BASENAME=$(basename "$WALL")
 
-# 1. Update wallpaper state caches
+# Serialize wallpaper switches to prevent overlapping process race conditions
 mkdir -p "$HOME/.cache"
+echo "$WALL" > "$HOME/.cache/target_wallpaper.txt"
+
+LOCKFILE="$HOME/.cache/set_wallpaper.lock"
+exec 8>"$LOCKFILE"
+flock 8
+
+# If a newer target was requested while this process was waiting for the lock, skip obsolete render
+LATEST_TARGET="$(cat "$HOME/.cache/target_wallpaper.txt" 2>/dev/null || true)"
+if [ -n "$LATEST_TARGET" ] && [ "$LATEST_TARGET" != "$WALL" ]; then
+    flock -u 8 2>/dev/null || true
+    exec 8>&- 2>/dev/null || true
+    exit 0
+fi
+
+# 1. Update wallpaper state caches atomically inside lock
 if [ -f "$HOME/.cache/current_wallpaper.txt" ]; then
     OLD_WALL="$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null || true)"
     if [ -n "$OLD_WALL" ] && [ "$OLD_WALL" != "$WALL" ] && [ -f "$OLD_WALL" ]; then
@@ -28,34 +43,11 @@ if [ -f "$HOME/.cache/current_wallpaper.txt" ]; then
 fi
 echo "$WALL" > "$HOME/.cache/current_wallpaper.txt"
 echo "$WALL" > "$HOME/.cache/last_wallpaper.txt"
-echo "$WALL" > "$HOME/.cache/target_wallpaper.txt"
 
 WAS_KILLED=0
 [ -f "$HOME/.cache/wallpaper_killed" ] && WAS_KILLED=1
 rm -f "$HOME/.cache/wallpaper_killed"
 
-if [ "$WAS_KILLED" -eq 1 ]; then
-    STATE_CTL="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
-    [ -x "$STATE_CTL" ] && bash "$STATE_CTL" set modes.wallpaperKilled false 2>/dev/null || true
-    if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-        CURRENT_PROFILE="$(cat "$HOME/.cache/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
-        if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$HOME/.cache/gaming_mode" ]; then
-            hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
-        fi
-    fi
-fi
-
-# Serialize wallpaper switches to prevent overlapping process race conditions
-LOCKFILE="$HOME/.cache/set_wallpaper.lock"
-exec 8>"$LOCKFILE"
-flock 8
-
-# Abort if a newer wallpaper change arrived while waiting for lock
-if [ "$(cat "$HOME/.cache/current_wallpaper.txt" 2>/dev/null)" != "$WALL" ]; then
-    flock -u 8 2>/dev/null || true
-    exec 8>&- 2>/dev/null || true
-    exit 0
-fi
 
 mpvpaper_pids() {
     pidof .mpvpaper-wrapped 2>/dev/null || true
@@ -120,6 +112,19 @@ fi
 # Release lock now that wallpaper daemon has taken over
 flock -u 8 2>/dev/null || true
 exec 8>&- 2>/dev/null || true
+
+# Restore compositor visual transparency AFTER wallpaper is already active on screen
+if [ "$WAS_KILLED" -eq 1 ]; then
+    STATE_CTL="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
+    [ -x "$STATE_CTL" ] && bash "$STATE_CTL" set modes.wallpaperKilled false 2>/dev/null || true
+    if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+        CURRENT_PROFILE="$(cat "$HOME/.cache/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
+        if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$HOME/.cache/gaming_mode" ]; then
+            hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+            hyprctl reload >/dev/null 2>&1 || true
+        fi
+    fi
+fi
 
 # 3. Clean Decoupled Theme Handoff
 # Cancel any previous in-flight theme generation to prevent CPU contention during rapid switches

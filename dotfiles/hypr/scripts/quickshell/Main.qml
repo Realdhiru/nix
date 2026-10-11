@@ -225,6 +225,7 @@ PanelWindow {
     }
 
     property string currentActive: "hidden"
+    onCurrentActiveChanged: Config.activeWidget = currentActive
 
     // NOTE: the old `echo > runDir/current_widget` hook is gone — its only
     // reader (TopBar's widgetPoller) was dead code, so this was a bash spawn

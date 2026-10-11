@@ -67,7 +67,7 @@ hl.animation({ leaf = "windows", enabled = true, speed = 2.8, bezier = "menu_dec
 hl.animation({ leaf = "windowsIn", enabled = true, speed = 2.8, bezier = "menu_decel", style = "popin 80%" })
 hl.animation({ leaf = "windowsOut", enabled = true, speed = 1.8, bezier = "menu_accel", style = "popin 85%" })
 hl.animation({ leaf = "border", enabled = true, speed = 4, bezier = "default" })
-hl.animation({ leaf = "fade", enabled = true, speed = 2.5, bezier = "menu_decel" })
+hl.animation({ leaf = "fade", enabled = true, speed = 3.5, bezier = "easeOutQuart" })
 -- hl.animation({ leaf = "layers", enabled = true, speed = 2, bezier = "md3_decel", style = "slide" })
 hl.animation({ leaf = "layersIn", enabled = true, speed = 3.5, bezier = "menu_decel" })
 hl.animation({ leaf = "layersOut", enabled = true, speed = 1.8, bezier = "menu_accel" })

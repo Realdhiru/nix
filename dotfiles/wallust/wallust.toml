@@ -8,7 +8,7 @@ palette = "saliencedark16"
 check_contrast = true
 
 [templates]
-colors = { template = "colors.json", target = "~/.cache/theme/colors.json" }
+colors = { template = "colors.json", target = "~/.cache/theme/colors.json.raw" }
 cava = { template = "cava", target = "~/.config/cava/themes/wallust" }
 gtk = { template = "gtk.css", target = "~/.cache/theme/gtk.css" }
 qtct = { template = "qtct.conf", target = "~/.cache/theme/qtct.conf" }

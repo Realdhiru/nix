@@ -126,6 +126,7 @@ in
     gsettings-desktop-schemas
 
     antigravity-hub
+    chatgpt
     opencode
     gram
     nil

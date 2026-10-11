@@ -194,25 +194,173 @@ if ! wallust run \
     emit_neutral_theme
 fi
 
-# 3. Read generated palette metadata directly from Wallust's colors.json
-ACCENT=""
-TEXT_COLOR=""
-SUBTEXT0=""
-SUBTEXT1=""
-if [ -f "$TARGET_CACHE/colors.json" ]; then
-    ACCENT=$(jq -r '.accent // .primary // .color4 // ""' "$TARGET_CACHE/colors.json" 2>/dev/null || true)
-    TEXT_COLOR=$(jq -r '.text // .foreground // ""' "$TARGET_CACHE/colors.json" 2>/dev/null || true)
-    SUBTEXT0=$(jq -r '.subtext0 // ""' "$TARGET_CACHE/colors.json" 2>/dev/null || true)
-    SUBTEXT1=$(jq -r '.subtext1 // ""' "$TARGET_CACHE/colors.json" 2>/dev/null || true)
-fi
+# 3. Read generated palette and select the true signature wallpaper accent
+# Uses direct ImageMagick quantization histogram to capture the authentic dominant chromatic tone
+RAW_HIST=$(magick "$WALL_INPUT" -resize 64x64\! -colors 16 -format "%c" histogram:info: 2>/dev/null || true)
 
-[ -z "$TEXT_COLOR" ] && TEXT_COLOR=$([ "$MODE" = "light" ] && echo "#181926" || echo "#EDE6DC")
-[ -z "$SUBTEXT0" ] && SUBTEXT0=$([ "$MODE" = "light" ] && echo "#494d64" || echo "#C9BFB5")
-[ -z "$SUBTEXT1" ] && SUBTEXT1=$([ "$MODE" = "light" ] && echo "#5b6078" || echo "#A89F95")
-[ -z "$ACCENT" ] && ACCENT=$([ "$MODE" = "light" ] && echo "#2D3139" || echo "#EDE6DC")
+ACCENT=$(echo "$RAW_HIST" | awk '
+function hex2hsl(h,   r, g, b, max, min, d, hue, sat, lum) {
+    h = substr(h, 2);
+    r = strtonum("0x" substr(h, 1, 2)) / 255.0;
+    g = strtonum("0x" substr(h, 3, 2)) / 255.0;
+    b = strtonum("0x" substr(h, 5, 2)) / 255.0;
+    max = (r > g) ? ((r > b) ? r : b) : ((g > b) ? g : b);
+    min = (r < g) ? ((r < b) ? r : b) : ((g < b) ? g : b);
+    lum = (max + min) / 2.0;
+    if (max == min) { hue = 0; sat = 0; }
+    else {
+        d = max - min;
+        sat = lum > 0.5 ? d / (2.0 - max - min) : d / (max + min);
+        if (max == r) hue = (g - b) / d + (g < b ? 6 : 0);
+        else if (max == g) hue = (b - r) / d + 2;
+        else hue = (r - g) / d + 4;
+        hue /= 6.0;
+    }
+    return hue " " sat " " lum;
+}
+function hsl2rgb(h, s, l,   q, p, c, t, i) {
+    q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+    p = 2.0 * l - q;
+    for (i = 1; i <= 3; i++) {
+        t = (i == 1) ? h + 1.0/3.0 : ((i == 2) ? h : h - 1.0/3.0);
+        if (t < 0) t += 1.0;
+        if (t > 1) t -= 1.0;
+        if (t < 1.0/6.0) c[i] = p + (q - p) * 6.0 * t;
+        else if (t < 1.0/2.0) c[i] = q;
+        else if (t < 2.0/3.0) c[i] = p + (q - p) * (2.0/3.0 - t) * 6.0;
+        else c[i] = p;
+    }
+    return sprintf("#%02X%02X%02X", int(c[1]*255 + 0.5), int(c[2]*255 + 0.5), int(c[3]*255 + 0.5));
+}
+BEGIN {
+    total_sat = 0;
+    total_cnt = 0;
+    n = 0;
+}
+{
+    match($0, /#[0-9A-Fa-f]{6}/);
+    if (RSTART > 0) {
+        hex_arr[n] = substr($0, RSTART, RLENGTH);
+        cnt_arr[n] = $1 + 0;
+        split(hex2hsl(hex_arr[n]), hsl, " ");
+        h_arr[n] = hsl[1];
+        s_arr[n] = hsl[2];
+        l_arr[n] = hsl[3];
+        total_sat += s_arr[n] * cnt_arr[n];
+        total_cnt += cnt_arr[n];
+        n++;
+    }
+}
+END {
+    avg_sat = (total_cnt > 0) ? (total_sat / total_cnt) : 0;
+    best_score = -1;
+    best_idx = -1;
 
-# 4. Merge metadata & vibrant accent into colors.json in-place
-if [ -f "$TARGET_CACHE/colors.json" ]; then
+    # Evaluate each palette color using coverage-weighted atmospheric dominance
+    for (i = 0; i < n; i++) {
+        cov = (total_cnt > 0) ? (cnt_arr[i] / total_cnt) : 0;
+        cl = l_arr[i];
+        cs = s_arr[i];
+
+        # Exclude deep void shadows (< 0.20) and extreme white highlights (> 0.90)
+        if (cl >= 0.20 && cl <= 0.90) {
+            cov_factor = (cnt_arr[i] ^ 0.60);
+            # Reward chromatic identity over dead neutral gray:
+            chroma_factor = (cs >= 0.025) ? (cs ^ 0.40) : (cs * 5.0);
+            # Ideal midtone luminance for UI legibility:
+            lum_factor = 1.0 - (cl - 0.52) * (cl - 0.52) * 2.0;
+            if (lum_factor < 0.2) lum_factor = 0.2;
+
+            # Penalize isolated micro-details (< 1.5% pixel share) to avoid spot outliers:
+            outlier_mult = (cov < 0.015) ? 0.08 : 1.0;
+
+            score = cov_factor * chroma_factor * lum_factor * outlier_mult;
+            if (score > best_score) {
+                best_score = score;
+                best_idx = i;
+            }
+        }
+    }
+
+    # MONOCHROME GATE: If wallpaper has virtually zero saturation (< 2.5%),
+    # it is strictly black and white. Never invent blue/green/yellow accents!
+    if (avg_sat < 0.025 || (best_idx >= 0 && s_arr[best_idx] < 0.025)) {
+        print "#EAEAEA";
+        exit;
+    }
+
+    if (best_idx >= 0) {
+        final_h = h_arr[best_idx];
+        final_s = s_arr[best_idx];
+        final_l = l_arr[best_idx];
+
+        # Ensure optimal midtone contrast without distorting authentic saturation
+        if (final_l < 0.50) final_l = 0.52;
+        if (final_l > 0.68) final_l = 0.60;
+
+        print hsl2rgb(final_h, final_s, final_l);
+    } else {
+        print "#EAEAEA";
+    }
+}' 2>/dev/null || echo "#EAEAEA")
+
+[ -z "$ACCENT" ] && ACCENT=$([ "$MODE" = "light" ] && echo "#2D3139" || echo "#EAEAEA")
+
+# 4. Generate high-contrast wallpaper-tinted white typography
+DERIVED_COLORS=$(awk -v hex="$ACCENT" '
+function hex2rgb(h,   rgb) {
+    h = substr(h, 2);
+    rgb["r"] = strtonum("0x" substr(h, 1, 2)) / 255.0;
+    rgb["g"] = strtonum("0x" substr(h, 3, 2)) / 255.0;
+    rgb["b"] = strtonum("0x" substr(h, 5, 2)) / 255.0;
+    return rgb["r"] "," rgb["g"] "," rgb["b"];
+}
+function rgb2hsl(r, g, b,   max, min, d, h, s, l) {
+    max = (r > g) ? ((r > b) ? r : b) : ((g > b) ? g : b);
+    min = (r < g) ? ((r < b) ? r : b) : ((g < b) ? g : b);
+    l = (max + min) / 2.0;
+    if (max == min) {
+        h = 0; s = 0;
+    } else {
+        d = max - min;
+        sat = l > 0.5 ? d / (2.0 - max - min) : d / (max + min);
+        if (max == r) h = (g - b) / d + (g < b ? 6 : 0);
+        else if (max == g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+        h /= 6.0;
+    }
+    return h "," s "," l;
+}
+function hsl2rgb(h, s, l,   q, p, c, t, i) {
+    q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+    p = 2.0 * l - q;
+    for (i = 1; i <= 3; i++) {
+        t = (i == 1) ? h + 1.0/3.0 : ((i == 2) ? h : h - 1.0/3.0);
+        if (t < 0) t += 1.0;
+        if (t > 1) t -= 1.0;
+        if (t < 1.0/6.0) c[i] = p + (q - p) * 6.0 * t;
+        else if (t < 1.0/2.0) c[i] = q;
+        else if (t < 2.0/3.0) c[i] = p + (q - p) * (2.0/3.0 - t) * 6.0;
+        else c[i] = p;
+    }
+    return sprintf("#%02X%02X%02X", int(c[1]*255 + 0.5), int(c[2]*255 + 0.5), int(c[3]*255 + 0.5));
+}
+BEGIN {
+    split(hex2rgb(hex), rgb, ",");
+    split(rgb2hsl(rgb[1], rgb[2], rgb[3]), hsl, ",");
+    h = hsl[1];
+    # Crisp wallpaper-tinted white (L=96%, subtle 7.5% tint matching wallpaper hue)
+    # Subtext0: 82% luminance
+    # Subtext1: 70% luminance
+    printf "%s %s %s", hsl2rgb(h, 0.075, 0.96), hsl2rgb(h, 0.075, 0.82), hsl2rgb(h, 0.075, 0.70);
+}' 2>/dev/null || echo "#F2F1F0 #D2CECC #B3AEA9")
+
+read -r TEXT_COLOR SUBTEXT0 SUBTEXT1 <<< "$DERIVED_COLORS"
+
+# 5. Merge metadata & vibrant accent into colors.json in-place
+RAW_COLORS="$TARGET_CACHE/colors.json.raw"
+[ ! -f "$RAW_COLORS" ] && RAW_COLORS="$TARGET_CACHE/colors.json"
+if [ -f "$RAW_COLORS" ]; then
     jq --argjson il "$IS_LIGHT_VAL" --arg tl "$TOP_LUM_VAL" --arg ac "$ACCENT" --arg tx "$TEXT_COLOR" --arg s0 "$SUBTEXT0" --arg s1 "$SUBTEXT1" \
         '. + {
             isLight: $il,
@@ -224,17 +372,18 @@ if [ -f "$TARGET_CACHE/colors.json" ]; then
             cursor_border: (if $ac != "" then $ac else .primary end),
             selection_bg: (if $ac != "" then $ac else .primary end),
             active_border_1: (if $ac != "" then $ac else .primary end),
-            active_border_2: (if $s0 != "" then $s0 else .subtext0 end),
-            text: (if $tx != "" then $tx else .text end),
-            foreground: (if $tx != "" then $tx else .text end),
-            subtext0: (if $s0 != "" then $s0 else .subtext0 end),
-            subtext1: (if $s1 != "" then $s1 else .subtext1 end),
-            overlay0: "#6c7086",
-            overlay1: "#7f849c",
-            overlay2: "#9399b2"
+            active_border_2: $s0,
+            text: $tx,
+            foreground: $tx,
+            subtext0: $s0,
+            subtext1: $s1,
+            overlay0: (if .overlay0 == "#6c7086" or .overlay0 == null then $s1 else .overlay0 end),
+            overlay1: (if .overlay1 == "#7f849c" or .overlay1 == null then $s0 else .overlay1 end),
+            overlay2: (if .overlay2 == "#9399b2" or .overlay2 == null then $tx else .overlay2 end)
         }' \
-        "$TARGET_CACHE/colors.json" > "$TARGET_CACHE/colors.json.tmp" 2>/dev/null && \
-    mv "$TARGET_CACHE/colors.json.tmp" "$TARGET_CACHE/colors.json"
+        "$RAW_COLORS" > "$TARGET_CACHE/colors.json.tmp" 2>/dev/null && \
+    mv -f "$TARGET_CACHE/colors.json.tmp" "$TARGET_CACHE/colors.json"
+    rm -f "$TARGET_CACHE/colors.json.raw" 2>/dev/null || true
 fi
 
 # 5. Inject dynamic wallpaper palette into GTK, Qt, WezTerm, and Cava
@@ -295,6 +444,8 @@ fi
 
 # Notify client applications if running
 pkill -USR2 cava 2>/dev/null || true
+pkill -USR1 -u "${USER:-$LOGNAME}" -f "foot --server" 2>/dev/null || true
+alacritty msg config -r >/dev/null 2>&1 || true
 RESTORE_SCRIPT="$HOME/.config/hypr/scripts/quickshell/restore_state.sh"
 [ ! -x "$RESTORE_SCRIPT" ] && RESTORE_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh"
 if [ -x "$RESTORE_SCRIPT" ]; then "$RESTORE_SCRIPT" >/dev/null 2>&1 || true; fi

@@ -58,6 +58,7 @@ Item {
     // -------------------------------------------------------------------------
     property int activeEditIndex: 0
     property int activeFocusIndex: 0 // 0: Res, 1: Orientation, 2: Frame, 3: Scale, 4: Apply
+    property string displayMode: "extend"
     property real uiScale: 0.10
 
     // Wayland Absolute Anchor tracking
@@ -540,6 +541,26 @@ Item {
 
                         if (data[i].focused) window.activeEditIndex = i;
                     }
+
+                    let hasMirror = false;
+                    let activeExtCount = 0;
+                    for (let i = 0; i < data.length; i++) {
+                        if (data[i].mirrorOf && data[i].mirrorOf !== "none" && data[i].mirrorOf !== "") {
+                            hasMirror = true;
+                        }
+                        if (data[i].name && !data[i].name.match(/^(eDP|LVDS|MIPI)/)) {
+                            activeExtCount++;
+                        }
+                    }
+
+                    if (hasMirror) {
+                        window.displayMode = "mirror";
+                    } else if (activeExtCount === 0) {
+                        window.displayMode = "internal";
+                    } else {
+                        window.displayMode = "extend";
+                    }
+
                     if (batch.length > 0) monitorsModel.append(batch);
 
                     window.forceLayoutUpdate();
@@ -571,7 +592,7 @@ Item {
                 x: 0, y: 0, scale: m.sysScale, transform: m.transform
             }];
             let safeJson = JSON.stringify(jsonMonitorsArray).replace(/'/g, "'\\''");
-            let jsonCmd = "jq '.monitors = " + safeJson + "' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
+            let jsonCmd = "jq '.monitors = " + safeJson + " | .displayMode = \"" + window.displayMode + "\"' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
             let postReloadCmd = "~/.config/hypr/scripts/ensure_awww.sh --restart";
 
             let cacheWriteCmd = "echo 'monitor=" + monitorStr + "' > ~/.cache/hypr_power_monitor.conf";
@@ -582,6 +603,77 @@ Item {
             Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; " + evalCmd + " ; " + jsonCmd + " ; " + postReloadCmd]);
 
             window.debugLog("Executed single monitor apply.");
+        } else if (window.displayMode === "internal") {
+            let internalMon = null;
+            let otherMons = [];
+            for (let i = 0; i < monitorsModel.count; i++) {
+                let m = monitorsModel.get(i);
+                if (m.name.match(/^(eDP|LVDS|MIPI)/)) {
+                    internalMon = m;
+                } else {
+                    otherMons.push(m);
+                }
+            }
+            if (!internalMon && monitorsModel.count > 0) internalMon = monitorsModel.get(0);
+
+            let monitorStr = internalMon.name + "," + internalMon.resW + "x" + internalMon.resH + "@" + internalMon.rate + ",0x0," + internalMon.sysScale + ",bitdepth,10";
+            if (internalMon.transform !== 0) monitorStr += ",transform," + internalMon.transform;
+
+            let evalCmds = ["hl.monitor({output='" + internalMon.name + "',mode='" + internalMon.resW + "x" + internalMon.resH + "@" + internalMon.rate + "',position='0x0',scale='" + internalMon.sysScale + "',bitdepth=10" + (internalMon.transform !== 0 ? ",transform=" + internalMon.transform : "") + "})"];
+            let confLines = ["monitor=" + monitorStr];
+
+            for (let i = 0; i < otherMons.length; i++) {
+                evalCmds.push("hl.monitor({output='" + otherMons[i].name + "',mode='disable'})");
+                confLines.push("monitor=" + otherMons[i].name + ",disable");
+            }
+
+            let jsonMonitorsArray = [{
+                name: internalMon.name, resW: internalMon.resW, resH: internalMon.resH, rate: parseInt(internalMon.rate),
+                x: 0, y: 0, scale: internalMon.sysScale, transform: internalMon.transform
+            }];
+            let safeJson = JSON.stringify(jsonMonitorsArray).replace(/'/g, "'\\''");
+            let jsonCmd = "jq '.monitors = " + safeJson + " | .displayMode = \"internal\"' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
+            let postReloadCmd = "~/.config/hypr/scripts/ensure_awww.sh --restart";
+            let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
+            let fullEvalCmd = evalCmds.map(lua => "hyprctl eval '" + lua.replace(/'/g, "'\\''") + "'").join(" ; ");
+
+            Quickshell.execDetached(["notify-send", "Display Applied"]);
+            Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; " + fullEvalCmd + " ; " + jsonCmd + " ; " + postReloadCmd]);
+        } else if (window.displayMode === "mirror") {
+            let primaryMon = monitorsModel.get(0);
+            let evalCmds = [];
+            let confLines = [];
+            let jsonMonitorsArray = [];
+
+            let primStr = primaryMon.name + "," + primaryMon.resW + "x" + primaryMon.resH + "@" + primaryMon.rate + ",0x0," + primaryMon.sysScale + ",bitdepth,10";
+            if (primaryMon.transform !== 0) primStr += ",transform," + primaryMon.transform;
+            evalCmds.push("hl.monitor({output='" + primaryMon.name + "',mode='" + primaryMon.resW + "x" + primaryMon.resH + "@" + primaryMon.rate + "',position='0x0',scale='" + primaryMon.sysScale + "',bitdepth=10" + (primaryMon.transform !== 0 ? ",transform=" + primaryMon.transform : "") + "})");
+            confLines.push("monitor=" + primStr);
+            jsonMonitorsArray.push({
+                name: primaryMon.name, resW: primaryMon.resW, resH: primaryMon.resH, rate: parseInt(primaryMon.rate),
+                x: 0, y: 0, scale: primaryMon.sysScale, transform: primaryMon.transform
+            });
+
+            for (let i = 1; i < monitorsModel.count; i++) {
+                let secMon = monitorsModel.get(i);
+                let secStr = secMon.name + "," + secMon.resW + "x" + secMon.resH + "@" + secMon.rate + ",0x0," + secMon.sysScale + ",mirror," + primaryMon.name + ",bitdepth,10";
+                if (secMon.transform !== 0) secStr += ",transform," + secMon.transform;
+                evalCmds.push("hl.monitor({output='" + secMon.name + "',mode='" + secMon.resW + "x" + secMon.resH + "@" + secMon.rate + "',position='0x0',scale='" + secMon.sysScale + "',mirror='" + primaryMon.name + "',bitdepth=10" + (secMon.transform !== 0 ? ",transform=" + secMon.transform : "") + "})");
+                confLines.push("monitor=" + secStr);
+                jsonMonitorsArray.push({
+                    name: secMon.name, resW: secMon.resW, resH: secMon.resH, rate: parseInt(secMon.rate),
+                    x: 0, y: 0, scale: secMon.sysScale, transform: secMon.transform, mirrorOf: primaryMon.name
+                });
+            }
+
+            let safeJson = JSON.stringify(jsonMonitorsArray).replace(/'/g, "'\\''");
+            let jsonCmd = "jq '.monitors = " + safeJson + " | .displayMode = \"mirror\"' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
+            let postReloadCmd = "~/.config/hypr/scripts/ensure_awww.sh --restart";
+            let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
+            let fullEvalCmd = evalCmds.map(lua => "hyprctl eval '" + lua.replace(/'/g, "'\\''") + "'").join(" ; ");
+
+            Quickshell.execDetached(["notify-send", "Display Applied"]);
+            Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; " + fullEvalCmd + " ; " + jsonCmd + " ; " + postReloadCmd]);
         } else {
             let rects = [];
             let finalMinX = 999999;
@@ -675,7 +767,7 @@ Item {
 
             let fullHyprCmd = batchCmds.map(lua => "hyprctl eval '" + lua.replace(/'/g, "'\\''") + "'").join(" ; ");
             let safeJson = JSON.stringify(jsonMonitorsArray).replace(/'/g, "'\\''");
-            let jsonCmd = "jq '.monitors = " + safeJson + "' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
+            let jsonCmd = "jq '.monitors = " + safeJson + " | .displayMode = \"extend\"' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
             let postReloadCmd = "~/.config/hypr/scripts/ensure_awww.sh --restart";
             let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
 
@@ -739,9 +831,10 @@ Item {
             Item {
                 id: leftVisualArea
                 width: window.s(380)
-                height: window.s(300)
+                height: window.s(260)
                 anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.top: parent.top
+                anchors.topMargin: window.s(20)
                 anchors.leftMargin: window.s(20)
 
                 // --------------------------------------------------
@@ -764,37 +857,14 @@ Item {
 
                         Rectangle {
                             id: deskSurface
-                            width: window.s(1000)
-                            height: window.s(14)
-                            radius: window.s(6)
+                            width: parent.width
+                            height: window.s(16)
+                            radius: window.s(8)
                             anchors.top: standBase.bottom
                             anchors.horizontalCenter: parent.horizontalCenter
                             color: window.mantle
                             border.color: window.surface0
                             border.width: 1
-
-                            Rectangle {
-                                width: window.s(24)
-                                height: window.s(350)
-                                radius: window.s(4)
-                                color: window.crust
-                                anchors.top: parent.bottom
-                                anchors.topMargin: window.s(-5)
-                                anchors.left: parent.left
-                                anchors.leftMargin: window.s(100)
-                                z: -1
-                            }
-                            Rectangle {
-                                width: window.s(24)
-                                height: window.s(350)
-                                radius: window.s(4)
-                                color: window.crust
-                                anchors.top: parent.bottom
-                                anchors.topMargin: window.s(-5)
-                                anchors.right: parent.right
-                                anchors.rightMargin: window.s(100)
-                                z: -1
-                            }
                         }
 
                         Rectangle {
@@ -926,13 +996,7 @@ Item {
                                             color: window.text
                                             text: monitorsModel.count > 0 ? monitorsModel.get(0).name : "Unknown"
                                         }
-                                        Text {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            font.family: "JetBrains Mono"
-                                            font.pixelSize: window.s(12)
-                                            color: window.subtext0
-                                            text: window.currentSimW + "x" + window.currentSimH + " @ " + SysData.displayRefreshRate + "Hz"
-                                        }
+
                                     }
                                 }
                             }
@@ -1201,201 +1265,514 @@ Item {
             }
 
             // ==========================================
-            // INTERACTIVE SELECTION GRIDS
+            // TOP RIGHT: RESOLUTION CARDS
             // ==========================================
-            Item {
+Item {
                 id: rightSideOuter
                 anchors.left: leftVisualArea.right
                 anchors.right: parent.right
                 anchors.top: parent.top
-                anchors.bottom: parent.bottom
+                height: window.s(260)
                 anchors.topMargin: window.s(20)
-                anchors.bottomMargin: window.s(20)
                 anchors.leftMargin: window.s(10)
                 anchors.rightMargin: window.s(24)
 
                 opacity: window.introProgress
                 transform: Translate { y: window.uiYOffset }
 
-                SequentialAnimation {
-                    id: menuTransitionAnim
-                    ParallelAnimation {
-                        ScaleAnimator {
-                            target: rightSideContainer
-                            from: 0.99
-                            to: 1.0
-                            duration: 200
-                            easing.type: Easing.OutSine
-                        }
-                        NumberAnimation {
-                            target: highlightFlash
-                            property: "opacity"
-                            from: 0.05
-                            to: 0.0
-                            duration: 250
-                            easing.type: Easing.OutQuad
-                        }
-                    }
-                }
-
-                Rectangle {
-                    id: highlightFlash
-                    anchors.fill: rightSideContainer
-                    anchors.margins: window.s(-10)
-                    color: window.selectedResAccent
-                    opacity: 0.0
-                    radius: window.s(12)
-                }
-
-                ColumnLayout {
+                Item {
                     id: rightSideContainer
                     anchors.fill: parent
-                    spacing: window.s(8)
+                    clip: true
 
-                    // --- RESOLUTION CARDS SECTION (SCROLLABLE & RESPONSIVE) ---
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        clip: true
+                    Flickable {
+                        id: resFlickable
+                        anchors.fill: parent
+                        contentWidth: width
+                        contentHeight: resGrid.implicitHeight
+                        boundsBehavior: Flickable.StopAtBounds
 
-                        Flickable {
-                            id: resFlickable
-                            anchors.fill: parent
-                            contentWidth: width
-                            contentHeight: resGrid.implicitHeight
-                            boundsBehavior: Flickable.StopAtBounds
+                        GridLayout {
+                            id: resGrid
+                            width: resFlickable.width - (resFlickable.contentHeight > resFlickable.height ? window.s(10) : 0)
+                            columns: 2
+                            columnSpacing: window.s(8)
+                            rowSpacing: window.s(8)
 
-                            GridLayout {
-                                id: resGrid
-                                width: resFlickable.width - (resFlickable.contentHeight > resFlickable.height ? window.s(10) : 0)
-                                columns: 2
-                                columnSpacing: window.s(8)
-                                rowSpacing: window.s(8)
+                            Repeater {
+                                model: window.resList
 
-                                Repeater {
-                                    model: window.resList
+                                delegate: Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: window.s(42)
+                                    radius: window.s(10)
 
-                                    delegate: Rectangle {
-                                        // Built-in Repeater `modelData` role (the resList element)
-                                        // is used directly — no shadow binding, so recycled delegates
-                                        // can never render a stale index's tile as a phantom duplicate.
-                                        Layout.fillWidth: true
-                                        Layout.preferredHeight: window.s(42)
-                                        radius: window.s(10)
+                                    property bool isSel: {
+                                        if (monitorsModel.count === 0) return false;
+                                        let activeMon = monitorsModel.get(window.activeEditIndex);
+                                        return activeMon.resW === modelData.w && activeMon.resH === modelData.h;
+                                    }
+                                    property color accentColor: modelData.accent
 
-                                        property bool isSel: {
-                                            if (monitorsModel.count === 0) return false;
-                                            let activeMon = monitorsModel.get(window.activeEditIndex);
-                                            return activeMon.resW === modelData.w && activeMon.resH === modelData.h;
-                                        }
-                                        property color accentColor: modelData.accent
+                                    color: isSel ? Qt.alpha(accentColor, 0.15) : (resMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.12) : (Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)))
+                                    border.color: isSel ? accentColor : (resMa.containsMouse ? Qt.alpha(window.text, 0.2) : Qt.alpha(window.surface1, 0.3))
+                                    border.width: isSel ? window.s(2) : window.s(1)
 
-                                        color: isSel ? Qt.alpha(accentColor, 0.15) : (resMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.12) : (Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)))
-                                        border.color: isSel ? accentColor : (resMa.containsMouse ? Qt.alpha(window.text, 0.2) : Qt.alpha(window.surface1, 0.3))
-                                        border.width: isSel ? window.s(2) : window.s(1)
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Behavior on border.color { ColorAnimation { duration: 200 } }
 
-                                        Behavior on color { ColorAnimation { duration: 200 } }
-                                        Behavior on border.color { ColorAnimation { duration: 200 } }
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: window.s(10)
+                                        spacing: window.s(6)
 
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.margins: window.s(10)
-                                            spacing: window.s(6)
-
-                                            Text {
-                                                font.family: "JetBrains Mono"
-                                                font.weight: isSel ? Font.Black : Font.Bold
-                                                font.pixelSize: window.s(14)
-                                                color: isSel ? accentColor : window.text
-                                                text: modelData.l
-                                                Behavior on color { ColorAnimation { duration: 200 } }
-                                            }
-
-                                            Item { Layout.fillWidth: true }
-
-                                            Text {
-                                                font.family: "JetBrains Mono"
-                                                font.pixelSize: window.s(10)
-                                                color: isSel ? window.text : window.subtext0
-                                                text: modelData.w + "x" + modelData.h
-                                                Behavior on color { ColorAnimation { duration: 200 } }
-                                            }
+                                        Text {
+                                            font.family: "JetBrains Mono"
+                                            font.weight: isSel ? Font.Black : Font.Bold
+                                            font.pixelSize: window.s(14)
+                                            color: isSel ? accentColor : window.text
+                                            text: modelData.l
+                                            Behavior on color { ColorAnimation { duration: 200 } }
                                         }
 
-                                        scale: resMa.pressed ? 0.96 : 1.0
-                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutSine } }
+                                        Item { Layout.fillWidth: true }
 
-                                        MouseArea {
-                                            id: resMa
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                window.activeFocusIndex = 0;
-                                                if (monitorsModel.count > 0) {
-                                                    window.selectedResAccent = accentColor;
-                                                    monitorsModel.setProperty(window.activeEditIndex, "resW", modelData.w);
-                                                    monitorsModel.setProperty(window.activeEditIndex, "resH", modelData.h);
-                                                    window._resEpoch++;
-                                                    delayedLayoutUpdate.restart();
-                                                }
+                                        Text {
+                                            font.family: "JetBrains Mono"
+                                            font.pixelSize: window.s(10)
+                                            color: isSel ? window.text : window.subtext0
+                                            text: modelData.w + "x" + modelData.h
+                                            Behavior on color { ColorAnimation { duration: 200 } }
+                                        }
+                                    }
+
+                                    scale: resMa.pressed ? 0.96 : 1.0
+                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutSine } }
+
+                                    MouseArea {
+                                        id: resMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            window.activeFocusIndex = 0;
+                                            if (monitorsModel.count > 0) {
+                                                window.selectedResAccent = accentColor;
+                                                monitorsModel.setProperty(window.activeEditIndex, "resW", modelData.w);
+                                                monitorsModel.setProperty(window.activeEditIndex, "resH", modelData.h);
+                                                window._resEpoch++;
+                                                delayedLayoutUpdate.restart();
                                             }
                                         }
                                     }
                                 }
                             }
                         }
+                    }
 
-                        // Scroll Indicator
+                    // Scroll Indicator
+                    Rectangle {
+                        id: scrollBarTrack
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: window.s(4)
+                        radius: window.s(2)
+                        color: "transparent"
+                        visible: resFlickable.contentHeight > resFlickable.height
+
                         Rectangle {
-                            id: scrollBarTrack
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-                            width: window.s(4)
-                            radius: window.s(2)
-                            color: "transparent"
-                            visible: resFlickable.contentHeight > resFlickable.height
+                            width: parent.width
+                            height: Math.max(window.s(24), resFlickable.height * (resFlickable.height / Math.max(1, resFlickable.contentHeight)))
+                            y: resFlickable.contentHeight > resFlickable.height ? (resFlickable.contentY / (resFlickable.contentHeight - resFlickable.height)) * (resFlickable.height - height) : 0
+                            radius: parent.radius
+                            color: Qt.alpha(window.text, 0.25)
+                        }
+                    }
+
+                    WheelHandler {
+                        target: resFlickable
+                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        onWheel: (event) => {
+                            let delta = -event.angleDelta.y * 0.8;
+                            resFlickable.contentY = Math.max(0, Math.min(resFlickable.contentHeight - resFlickable.height, resFlickable.contentY + delta));
+                        }
+                    }
+                }
+            }
+
+            // ==========================================
+
+            // ==========================================
+            // BOTTOM CONTROLS ROW
+            // [ Sliders (Left) | 4-Way Picker | Rotation + Apply (Right) ]
+            // ==========================================
+Item {
+                id: bottomControlsArea
+                anchors.top: leftVisualArea.bottom
+                anchors.topMargin: window.s(0)
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: window.s(12)
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: window.s(20)
+                anchors.rightMargin: window.s(20)
+                opacity: window.introProgress
+
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: window.s(14)
+
+                    // ------------------------------------------------------
+                    // 1. SLIDERS COLUMN (Rate & Scale)
+                    // Aligned with the black table legs and condensed to match
+                    // ------------------------------------------------------
+                    ColumnLayout {
+                        Layout.leftMargin: window.s(75)
+                        Layout.preferredWidth: window.s(230)
+                        Layout.fillWidth: false
+                        Layout.fillHeight: true
+                        spacing: window.s(8)
+                        Layout.alignment: Qt.AlignVCenter
+
+                        // --- Refresh Rate Slider ---
+                        Item {
+                            id: sliderContainer
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: window.s(38)
+
+                            property var rates: window.rateList.length > 0 ? window.rateList : [60, 120]
+                            property int currentIndex: {
+                                if (monitorsModel.count === 0) return 0;
+                                let currentVal = parseInt(monitorsModel.get(window.activeEditIndex).rate) || 60;
+                                let closestIdx = 0;
+                                let minDiff = 9999;
+                                for (let i = 0; i < rates.length; i++) {
+                                    let diff = Math.abs(rates[i] - currentVal);
+                                    if (diff < minDiff) {
+                                        minDiff = diff;
+                                        closestIdx = i;
+                                    }
+                                }
+                                return closestIdx;
+                            }
+                            property real visualPct: currentIndex / Math.max(1, rates.length - 1)
+
+                            onCurrentIndexChanged: {
+                                if (!sliderMa.pressed) visualPct = currentIndex / Math.max(1, rates.length - 1);
+                            }
+
+                            function updateSelectionVisual(idx) {
+                                if (monitorsModel.count === 0) return;
+                                visualPct = idx / Math.max(1, rates.length - 1);
+                                monitorsModel.setProperty(window.activeEditIndex, "rate", rates[idx].toString());
+                                window.selectedRateAccent = window.primary;
+                            }
 
                             Rectangle {
-                                width: parent.width
-                                height: Math.max(window.s(24), resFlickable.height * (resFlickable.height / Math.max(1, resFlickable.contentHeight)))
-                                y: resFlickable.contentHeight > resFlickable.height ? (resFlickable.contentY / (resFlickable.contentHeight - resFlickable.height)) * (resFlickable.height - height) : 0
-                                radius: parent.radius
-                                color: Qt.alpha(window.text, 0.25)
+                                id: track
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.verticalCenterOffset: window.s(-8)
+                                height: window.s(8)
+                                radius: window.s(4)
+                                color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.10)
+                                border.color: Qt.alpha(window.surface2, 0.3)
+                                border.width: Config.borderWidth
+
+                                Rectangle {
+                                    id: trackFill
+                                    width: Math.max(0, knob.x + knob.width / 2)
+                                    height: parent.height
+                                    radius: parent.radius
+                                    color: window.selectedRateAccent
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                }
+
+                                Rectangle {
+                                    id: knob
+                                    width: window.s(18)
+                                    height: window.s(18)
+                                    radius: window.s(9)
+                                    color: sliderMa.containsPress ? window.selectedRateAccent : window.text
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    x: (sliderContainer.visualPct * parent.width) - width / 2
+
+                                    Behavior on x {
+                                        enabled: !sliderMa.pressed
+                                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+                                    }
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                                    border.width: (sliderMa.containsMouse || window.activeFocusIndex === 2) ? window.s(3) : 0
+                                    border.color: Qt.alpha(window.selectedRateAccent, 0.4)
+                                    Behavior on border.width { NumberAnimation { duration: 150 } }
+                                }
+                            }
+
+                            Repeater {
+                                model: sliderContainer.rates.length
+                                Item {
+                                    x: track.x + (index / Math.max(1, sliderContainer.rates.length - 1)) * track.width
+                                    y: track.y + window.s(14)
+
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: sliderContainer.rates[index]
+                                        font.family: "JetBrains Mono"
+                                        font.pixelSize: window.s(10)
+                                        font.weight: sliderContainer.currentIndex === index ? Font.Bold : Font.Normal
+                                        color: sliderContainer.currentIndex === index ? window.selectedRateAccent : window.subtext0
+                                        Behavior on color { ColorAnimation { duration: 200 } }
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                id: sliderMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+
+                                function updateSelection(mouseX, snapToGrid) {
+                                    if (monitorsModel.count === 0) return;
+                                    window.activeFocusIndex = 2;
+
+                                    let pct = (mouseX - track.x) / track.width;
+                                    pct = Math.max(0, Math.min(1, pct));
+                                    let idx = Math.round(pct * (sliderContainer.rates.length - 1));
+
+                                    if (snapToGrid) {
+                                        sliderContainer.visualPct = idx / Math.max(1, sliderContainer.rates.length - 1);
+                                    } else {
+                                        sliderContainer.visualPct = pct;
+                                    }
+
+                                    monitorsModel.setProperty(window.activeEditIndex, "rate", sliderContainer.rates[idx].toString());
+                                    window.selectedRateAccent = window.primary;
+                                }
+
+                                onPressed: (mouse) => updateSelection(mouse.x, false)
+                                onPositionChanged: (mouse) => { if (pressed) updateSelection(mouse.x, false) }
+                                onReleased: (mouse) => updateSelection(mouse.x, true)
+                                onCanceled: () => sliderContainer.visualPct = sliderContainer.currentIndex / Math.max(1, sliderContainer.rates.length - 1)
                             }
                         }
 
-                        WheelHandler {
-                            target: resFlickable
-                            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                            onWheel: (event) => {
-                                let delta = -event.angleDelta.y * 0.8;
-                                resFlickable.contentY = Math.max(0, Math.min(resFlickable.contentHeight - resFlickable.height, resFlickable.contentY + delta));
+                        // --- Display Scale Slider ---
+                        Item {
+                            id: scaleSliderContainer
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: window.s(38)
+
+                            property var scales: [1.0, 1.25, 1.33, 1.5, 1.8, 2.0, 2.5]
+                            property var scaleLabels: ["1x", "1.25", "1.33", "1.5", "1.8", "2x", "2.5x"]
+
+                            property int currentIndex: {
+                                if (monitorsModel.count === 0) return 0;
+                                let currentVal = parseFloat(monitorsModel.get(window.activeEditIndex).sysScale) || 1.0;
+                                let closestIdx = 0;
+                                let minDiff = 9999;
+                                for (let i = 0; i < scales.length; i++) {
+                                    let diff = Math.abs(scales[i] - currentVal);
+                                    if (diff < minDiff) {
+                                        minDiff = diff;
+                                        closestIdx = i;
+                                    }
+                                }
+                                return closestIdx;
+                            }
+
+                            property real visualPct: currentIndex / (scales.length - 1)
+
+                            onCurrentIndexChanged: {
+                                if (!scaleSliderMa.pressed) visualPct = currentIndex / (scales.length - 1);
+                            }
+
+                            function updateSelectionVisual(idx) {
+                                if (monitorsModel.count === 0) return;
+                                visualPct = idx / (scales.length - 1);
+                                monitorsModel.setProperty(window.activeEditIndex, "sysScale", scales[idx]);
+                                window.selectedScaleAccent = window.primary;
+                                delayedLayoutUpdate.restart();
+                            }
+
+                            Rectangle {
+                                id: scaleTrack
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.verticalCenterOffset: window.s(-8)
+                                height: window.s(8)
+                                radius: window.s(4)
+                                color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.10)
+                                border.color: Qt.alpha(window.surface2, 0.3)
+                                border.width: Config.borderWidth
+
+                                Rectangle {
+                                    id: scaleTrackFill
+                                    width: Math.max(0, scaleKnob.x + scaleKnob.width / 2)
+                                    height: parent.height
+                                    radius: parent.radius
+                                    color: window.selectedScaleAccent
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                }
+
+                                Rectangle {
+                                    id: scaleKnob
+                                    width: window.s(18)
+                                    height: window.s(18)
+                                    radius: window.s(9)
+                                    color: scaleSliderMa.containsPress ? window.selectedScaleAccent : window.text
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    x: (scaleSliderContainer.visualPct * parent.width) - width / 2
+
+                                    Behavior on x {
+                                        enabled: !scaleSliderMa.pressed
+                                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+                                    }
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                                    border.width: (scaleSliderMa.containsMouse || window.activeFocusIndex === 3) ? window.s(3) : 0
+                                    border.color: Qt.alpha(window.selectedScaleAccent, 0.4)
+                                    Behavior on border.width { NumberAnimation { duration: 150 } }
+                                }
+                            }
+
+                            Repeater {
+                                model: scaleSliderContainer.scales.length
+                                Item {
+                                    x: scaleTrack.x + (index / (scaleSliderContainer.scales.length - 1)) * scaleTrack.width
+                                    y: scaleTrack.y + window.s(14)
+
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: scaleSliderContainer.scaleLabels[index]
+                                        font.family: "JetBrains Mono"
+                                        font.pixelSize: window.s(10)
+                                        font.weight: scaleSliderContainer.currentIndex === index ? Font.Bold : Font.Normal
+                                        color: scaleSliderContainer.currentIndex === index ? window.selectedScaleAccent : window.subtext0
+                                        Behavior on color { ColorAnimation { duration: 200 } }
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                id: scaleSliderMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+
+                                function updateSelection(mouseX, snapToGrid) {
+                                    if (monitorsModel.count === 0) return;
+                                    window.activeFocusIndex = 3;
+
+                                    let pct = (mouseX - scaleTrack.x) / scaleTrack.width;
+                                    pct = Math.max(0, Math.min(1, pct));
+                                    let idx = Math.round(pct * (scaleSliderContainer.scales.length - 1));
+
+                                    if (snapToGrid) {
+                                        scaleSliderContainer.visualPct = idx / (scaleSliderContainer.scales.length - 1);
+                                    } else {
+                                        scaleSliderContainer.visualPct = pct;
+                                    }
+
+                                    monitorsModel.setProperty(window.activeEditIndex, "sysScale", scaleSliderContainer.scales[idx]);
+                                    window.selectedScaleAccent = window.primary;
+                                    delayedLayoutUpdate.restart();
+                                }
+
+                                onPressed: (mouse) => updateSelection(mouse.x, false)
+                                onPositionChanged: (mouse) => { if (pressed) updateSelection(mouse.x, false) }
+                                onReleased: (mouse) => updateSelection(mouse.x, true)
+                                onCanceled: () => scaleSliderContainer.visualPct = scaleSliderContainer.currentIndex / (scaleSliderContainer.scales.length - 1)
                             }
                         }
                     }
 
-                    Item { Layout.preferredHeight: window.s(2) }
+                    // ------------------------------------------------------
+                    // 2. 3-WAY DISPLAY MODE SELECTOR (VERTICAL STACK)
+                    // Extend, Mirror, Laptop (External removed for safety)
+                    // ------------------------------------------------------
+                    ColumnLayout {
+                        id: modeSelectorContainer
+                        Layout.preferredWidth: window.s(96)
+                        Layout.fillWidth: false
+                        Layout.fillHeight: false
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: window.s(5)
 
-                    // --- ROTATION CLOCK DIAL SECTION ---
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: window.s(120)
+                        property var modeItems: [
+                            { mode: "extend",   label: "Extend" },
+                            { mode: "mirror",   label: "Mirror" },
+                            { mode: "internal", label: "Laptop" }
+                        ]
 
-                        Item { Layout.fillWidth: true }
+                        Repeater {
+                            model: parent.modeItems
 
+                            delegate: Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: window.s(24)
+                                radius: window.s(7)
+
+                                property bool isSelected: window.displayMode === modelData.mode
+
+                                color: isSelected ? Qt.alpha(window.primary, 0.22) : (modeItemMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.12) : (Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)))
+                                border.color: isSelected ? window.primary : (modeItemMa.containsMouse ? Qt.alpha(window.text, 0.2) : Qt.alpha(window.surface1, 0.3))
+                                border.width: isSelected ? window.s(1.5) : window.s(1)
+
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    font.family: "JetBrains Mono"
+                                    font.weight: isSelected ? Font.Bold : Font.Normal
+                                    font.pixelSize: window.s(10)
+                                    color: isSelected ? window.primary : window.text
+                                    text: modelData.label
+                                }
+
+                                MouseArea {
+                                    id: modeItemMa
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        window.activeFocusIndex = 4;
+                                        window.displayMode = modelData.mode;
+                                        window.triggerApply();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ------------------------------------------------------
+                    // 3. RIGHT COLUMN: ROTATION DIAL + APPLY BUTTON (STACKED)
+                    // Exactly 3 columns total in the bottom row
+                    // ------------------------------------------------------
+                    ColumnLayout {
+                        Layout.preferredWidth: window.s(90)
+                        Layout.fillWidth: false
+                        Layout.fillHeight: true
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: window.s(6)
+
+                        // --- ROTATION CLOCK DIAL ---
                         Rectangle {
                             id: clockDial
-                            Layout.preferredWidth: window.s(120)
-                            Layout.preferredHeight: window.s(120)
-                            Layout.alignment: Qt.AlignCenter
+                            Layout.preferredWidth: window.s(72)
+                            Layout.preferredHeight: window.s(72)
+                            Layout.alignment: Qt.AlignHCenter
 
                             radius: width / 2
                             color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
 
                             border.color: window.activeFocusIndex === 1 ? window.primary : Qt.alpha(window.surface1, 0.3)
-                            border.width: window.activeFocusIndex === 1 ? window.s(3) : window.s(2)
+                            border.width: window.activeFocusIndex === 1 ? window.s(2) : window.s(1)
                             Behavior on border.color { ColorAnimation { duration: 200 } }
                             Behavior on border.width { NumberAnimation { duration: 200 } }
 
@@ -1406,12 +1783,12 @@ Item {
                                     anchors.fill: parent
                                     rotation: index * 30
                                     Rectangle {
-                                        width: index % 3 === 0 ? window.s(4) : window.s(2)
-                                        height: index % 3 === 0 ? window.s(8) : window.s(4)
+                                        width: index % 3 === 0 ? window.s(2) : window.s(1)
+                                        height: index % 3 === 0 ? window.s(4) : window.s(2)
                                         radius: width / 2
                                         color: index % 3 === 0 ? window.subtext0 : window.surface2
                                         anchors.top: parent.top
-                                        anchors.topMargin: window.s(4)
+                                        anchors.topMargin: window.s(2)
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
                                 }
@@ -1425,25 +1802,23 @@ Item {
                                 rotation: activeTransform * 90
                                 Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
 
-                                // Pointer Line
                                 Rectangle {
-                                    width: window.s(5)
-                                    height: parent.height / 2 - window.s(20)
-                                    radius: window.s(2.5)
+                                    width: window.s(3)
+                                    height: parent.height / 2 - window.s(8)
+                                    radius: window.s(1.5)
                                     color: window.primary
                                     anchors.bottom: parent.verticalCenter
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     Behavior on color { ColorAnimation { duration: 300 } }
                                 }
 
-                                // Center Dot
                                 Rectangle {
-                                    width: window.s(18)
-                                    height: window.s(18)
+                                    width: window.s(10)
+                                    height: window.s(10)
                                     radius: width / 2
                                     color: window.base
                                     border.color: window.primary
-                                    border.width: window.s(4)
+                                    border.width: window.s(2)
                                     anchors.centerIn: parent
                                     Behavior on border.color { ColorAnimation { duration: 300 } }
                                 }
@@ -1462,7 +1837,7 @@ Item {
                                     let dx = mouse.x - width / 2;
                                     let dy = mouse.y - height / 2;
 
-                                    if (Math.hypot(dx, dy) < window.s(20)) return;
+                                    if (Math.hypot(dx, dy) < window.s(10)) return;
 
                                     let snap = 0;
                                     if (Math.abs(dx) > Math.abs(dy)) {
@@ -1480,364 +1855,89 @@ Item {
                             }
                         }
 
-                        Item { Layout.fillWidth: true }
-                    }
-                    Item { Layout.preferredHeight: window.s(2) }
+                        // --- COMPACT APPLY BUTTON ---
+                        Item {
+                            id: applyButtonContainer
+                            Layout.preferredWidth: window.s(90)
+                            Layout.preferredHeight: window.s(32)
+                            Layout.alignment: Qt.AlignHCenter
 
-                    // --- REFRESH RATE SLIDER SECTION ---
-                    Item {
-                        id: sliderContainer
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: window.s(45)
-                        Layout.leftMargin: window.s(6)
-                        Layout.rightMargin: window.s(6)
-
-                        property var rates: window.rateList.length > 0 ? window.rateList : [60, 120]
-
-                        property int currentIndex: {
-                            if (monitorsModel.count === 0) return 0;
-                            let currentVal = parseInt(monitorsModel.get(window.activeEditIndex).rate) || 60;
-                            let closestIdx = 0;
-                            let minDiff = 9999;
-                            for (let i = 0; i < rates.length; i++) {
-                                let diff = Math.abs(rates[i] - currentVal);
-                                if (diff < minDiff) {
-                                    minDiff = diff;
-                                    closestIdx = i;
-                                }
-                            }
-                            return closestIdx;
-                        }
-
-                        property real visualPct: currentIndex / Math.max(1, rates.length - 1)
-
-                        onCurrentIndexChanged: {
-                            if (!sliderMa.pressed) visualPct = currentIndex / Math.max(1, rates.length - 1);
-                        }
-
-                        function updateSelectionVisual(idx) {
-                            if (monitorsModel.count === 0) return;
-                            visualPct = idx / Math.max(1, rates.length - 1);
-                            monitorsModel.setProperty(window.activeEditIndex, "rate", rates[idx].toString());
-                            window.selectedRateAccent = window.primary;
-                        }
-
-                        Rectangle {
-                            id: track
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.leftMargin: window.s(15)
-                            anchors.rightMargin: window.s(15)
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.verticalCenterOffset: window.s(-10)
-                            height: window.s(12)
-                            radius: window.s(6)
-                            color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.10)
-                            border.color: Qt.alpha(window.surface2, 0.3)
-                            border.width: Config.borderWidth
-
-                            Rectangle {
-                                id: trackFill
-                                width: Math.max(0, knob.x + knob.width / 2)
-                                height: parent.height
-                                radius: parent.radius
-                                color: window.selectedRateAccent
-                                Behavior on color { ColorAnimation { duration: 200 } }
+                            MultiEffect {
+                                source: applyBtn
+                                anchors.fill: applyBtn
+                                shadowEnabled: true
+                                shadowColor: window.primary
+                                shadowBlur: window.applyHovered || window.activeFocusIndex === 5 ? 1.0 : 0.4
+                                shadowOpacity: window.applyHovered || window.activeFocusIndex === 5 ? 0.5 : 0.15
+                                shadowVerticalOffset: window.s(2)
+                                z: -1
+                                Behavior on shadowBlur { NumberAnimation { duration: 250 } }
+                                Behavior on shadowOpacity { NumberAnimation { duration: 250 } }
                             }
 
                             Rectangle {
-                                id: knob
-                                width: window.s(24)
-                                height: window.s(24)
-                                radius: window.s(12)
-                                color: sliderMa.containsPress ? window.selectedRateAccent : window.text
-                                anchors.verticalCenter: parent.verticalCenter
-                                x: (sliderContainer.visualPct * parent.width) - width / 2
-
-                                Behavior on x {
-                                    enabled: !sliderMa.pressed
-                                    NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
-                                }
-                                Behavior on color { ColorAnimation { duration: 150 } }
-
-                                border.width: (sliderMa.containsMouse || window.activeFocusIndex === 2) ? window.s(4) : 0
-                                border.color: Qt.alpha(window.selectedRateAccent, 0.4)
-                                Behavior on border.width { NumberAnimation { duration: 150 } }
-                            }
-                        }
-
-                        Repeater {
-                            model: sliderContainer.rates.length
-                            Item {
-                                x: track.x + (index / Math.max(1, sliderContainer.rates.length - 1)) * track.width
-                                y: track.y + window.s(20)
-
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: sliderContainer.rates[index]
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: window.s(13)
-                                    font.weight: sliderContainer.currentIndex === index ? Font.Bold : Font.Normal
-                                    color: sliderContainer.currentIndex === index ? window.selectedRateAccent : window.subtext0
-                                    Behavior on color { ColorAnimation { duration: 200 } }
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            id: sliderMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-
-                            function updateSelection(mouseX, snapToGrid) {
-                                if (monitorsModel.count === 0) return;
-                                window.activeFocusIndex = 2;
-
-                                let pct = (mouseX - track.x) / track.width;
-                                pct = Math.max(0, Math.min(1, pct));
-                                let idx = Math.round(pct * (sliderContainer.rates.length - 1));
-
-                                if (snapToGrid) {
-                                    sliderContainer.visualPct = idx / Math.max(1, sliderContainer.rates.length - 1);
-                                } else {
-                                    sliderContainer.visualPct = pct;
-                                }
-
-                                monitorsModel.setProperty(window.activeEditIndex, "rate", sliderContainer.rates[idx].toString());
-                                window.selectedRateAccent = window.primary;
-                            }
-
-                            onPressed: (mouse) => updateSelection(mouse.x, false)
-                            onPositionChanged: (mouse) => { if (pressed) updateSelection(mouse.x, false) }
-                            onReleased: (mouse) => updateSelection(mouse.x, true)
-                            onCanceled: () => sliderContainer.visualPct = sliderContainer.currentIndex / Math.max(1, sliderContainer.rates.length - 1)
-                        }
-                    }
-
-                    Item { Layout.preferredHeight: window.s(2) }
-
-                    // --- SCALE SLIDER SECTION ---
-                    Item {
-                        id: scaleSliderContainer
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: window.s(45)
-                        Layout.leftMargin: window.s(6)
-                        Layout.rightMargin: window.s(6)
-
-                        property var scales: [1.0, 1.25, 1.33, 1.5, 1.8, 2.0, 2.5]
-                        property var scaleLabels: ["1x", "1.25", "1.33", "1.5", "1.8", "2x", "2.5x"]
-
-                        property int currentIndex: {
-                            if (monitorsModel.count === 0) return 0;
-                            let currentVal = parseFloat(monitorsModel.get(window.activeEditIndex).sysScale) || 1.0;
-                            let closestIdx = 0;
-                            let minDiff = 9999;
-                            for (let i = 0; i < scales.length; i++) {
-                                let diff = Math.abs(scales[i] - currentVal);
-                                if (diff < minDiff) {
-                                    minDiff = diff;
-                                    closestIdx = i;
-                                }
-                            }
-                            return closestIdx;
-                        }
-
-                        property real visualPct: currentIndex / (scales.length - 1)
-
-                        onCurrentIndexChanged: {
-                            if (!scaleSliderMa.pressed) visualPct = currentIndex / (scales.length - 1);
-                        }
-
-                        function updateSelectionVisual(idx) {
-                            if (monitorsModel.count === 0) return;
-                            visualPct = idx / (scales.length - 1);
-                            monitorsModel.setProperty(window.activeEditIndex, "sysScale", scales[idx]);
-                            window.selectedScaleAccent = window.primary;
-                            delayedLayoutUpdate.restart();
-                        }
-
-                        Rectangle {
-                            id: scaleTrack
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.leftMargin: window.s(15)
-                            anchors.rightMargin: window.s(15)
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.verticalCenterOffset: window.s(-10)
-                            height: window.s(12)
-                            radius: window.s(6)
-                            color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.10)
-                            border.color: Qt.alpha(window.surface2, 0.3)
-                            border.width: Config.borderWidth
-
-                            Rectangle {
-                                id: scaleTrackFill
-                                width: Math.max(0, scaleKnob.x + scaleKnob.width / 2)
-                                height: parent.height
-                                radius: parent.radius
-                                color: window.selectedScaleAccent
-                                Behavior on color { ColorAnimation { duration: 200 } }
-                            }
-
-                            Rectangle {
-                                id: scaleKnob
-                                width: window.s(24)
-                                height: window.s(24)
-                                radius: window.s(12)
-                                color: scaleSliderMa.containsPress ? window.selectedScaleAccent : window.text
-                                anchors.verticalCenter: parent.verticalCenter
-                                x: (scaleSliderContainer.visualPct * parent.width) - width / 2
-
-                                Behavior on x {
-                                    enabled: !scaleSliderMa.pressed
-                                    NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
-                                }
-                                Behavior on color { ColorAnimation { duration: 150 } }
-
-                                border.width: (scaleSliderMa.containsMouse || window.activeFocusIndex === 3) ? window.s(4) : 0
-                                border.color: Qt.alpha(window.selectedScaleAccent, 0.4)
-                                Behavior on border.width { NumberAnimation { duration: 150 } }
-                            }
-                        }
-
-                        Repeater {
-                            model: scaleSliderContainer.scales.length
-                            Item {
-                                x: scaleTrack.x + (index / (scaleSliderContainer.scales.length - 1)) * scaleTrack.width
-                                y: scaleTrack.y + window.s(20)
-
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: scaleSliderContainer.scaleLabels[index]
-                                    font.family: "JetBrains Mono"
-                                    font.pixelSize: window.s(13)
-                                    font.weight: scaleSliderContainer.currentIndex === index ? Font.Bold : Font.Normal
-                                    color: scaleSliderContainer.currentIndex === index ? window.selectedScaleAccent : window.subtext0
-                                    Behavior on color { ColorAnimation { duration: 200 } }
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            id: scaleSliderMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-
-                            function updateSelection(mouseX, snapToGrid) {
-                                if (monitorsModel.count === 0) return;
-                                window.activeFocusIndex = 3;
-
-                                let pct = (mouseX - scaleTrack.x) / scaleTrack.width;
-                                pct = Math.max(0, Math.min(1, pct));
-                                let idx = Math.round(pct * (scaleSliderContainer.scales.length - 1));
-
-                                if (snapToGrid) {
-                                    scaleSliderContainer.visualPct = idx / (scaleSliderContainer.scales.length - 1);
-                                } else {
-                                    scaleSliderContainer.visualPct = pct;
-                                }
-
-                                monitorsModel.setProperty(window.activeEditIndex, "sysScale", scaleSliderContainer.scales[idx]);
-                                window.selectedScaleAccent = window.primary;
-                                delayedLayoutUpdate.restart();
-                            }
-
-                            onPressed: (mouse) => updateSelection(mouse.x, false)
-                            onPositionChanged: (mouse) => { if (pressed) updateSelection(mouse.x, false) }
-                            onReleased: (mouse) => updateSelection(mouse.x, true)
-                            onCanceled: () => scaleSliderContainer.visualPct = scaleSliderContainer.currentIndex / (scaleSliderContainer.scales.length - 1)
-                        }
-                    }
-
-                    Item { Layout.preferredHeight: window.s(15) }
-
-                    // ==========================================
-                    // FLOATING APPLY BUTTON
-                    // ==========================================
-                    Item {
-                        id: applyButtonContainer
-                        Layout.alignment: Qt.AlignRight
-                        Layout.preferredWidth: window.s(170)
-                        Layout.preferredHeight: window.s(50)
-
-                        MultiEffect {
-                            source: applyBtn
-                            anchors.fill: applyBtn
-                            shadowEnabled: true
-                            shadowColor: window.primary
-                            shadowBlur: window.applyHovered || window.activeFocusIndex === 4 ? 1.2 : 0.6
-                            shadowOpacity: window.applyHovered || window.activeFocusIndex === 4 ? 0.6 : 0.2
-                            shadowVerticalOffset: window.s(4)
-                            z: -1
-                            Behavior on shadowBlur { NumberAnimation { duration: 300 } }
-                            Behavior on shadowOpacity { NumberAnimation { duration: 300 } }
-                            Behavior on shadowColor { ColorAnimation { duration: 400 } }
-                        }
-
-                        Rectangle {
-                            id: applyBtn
-                            anchors.fill: parent
-                            radius: window.s(25)
-                            color: window.primary
-                            Behavior on color { ColorAnimation { duration: 300 } }
-
-                            border.color: window.activeFocusIndex === 4 ? window.crust : "transparent"
-                            border.width: window.activeFocusIndex === 4 ? window.s(2) : 0
-
-                            scale: window.applyPressed ? 0.94 : (window.applyHovered || window.activeFocusIndex === 4 ? 1.04 : 1.0)
-                            Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-
-                            Rectangle {
-                                id: flashRect
+                                id: applyBtn
                                 anchors.fill: parent
-                                radius: window.s(25)
-                                color: window.text
-                                opacity: 0.0
-                                PropertyAnimation on opacity {
-                                    id: applyFlashAnim
-                                    to: 0.0
-                                    duration: 400
-                                    easing.type: Easing.OutExpo
+                                radius: window.s(16)
+                                color: window.primary
+                                Behavior on color { ColorAnimation { duration: 250 } }
+
+                                border.color: window.activeFocusIndex === 5 ? window.crust : "transparent"
+                                border.width: window.activeFocusIndex === 5 ? window.s(2) : 0
+
+                                scale: window.applyPressed ? 0.94 : (window.applyHovered || window.activeFocusIndex === 5 ? 1.04 : 1.0)
+                                Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+
+                                Rectangle {
+                                    id: flashRect
+                                    anchors.fill: parent
+                                    radius: window.s(16)
+                                    color: window.text
+                                    opacity: 0.0
+                                    PropertyAnimation on opacity {
+                                        id: applyFlashAnim
+                                        to: 0.0
+                                        duration: 400
+                                        easing.type: Easing.OutExpo
+                                    }
+                                }
+
+                                RowLayout {
+                                    anchors.centerIn: parent
+                                    spacing: window.s(6)
+
+                                    Text {
+                                        font.family: "Iosevka Nerd Font"
+                                        font.pixelSize: window.s(15)
+                                        color: window.crust
+                                        text: "󰸵"
+                                    }
+
+                                    Text {
+                                        font.family: "JetBrains Mono"
+                                        font.weight: Font.Black
+                                        font.pixelSize: window.s(12)
+                                        color: window.crust
+                                        text: "Apply"
+                                    }
                                 }
                             }
 
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: window.s(8)
+                            MouseArea {
+                                id: applyMa
+                                anchors.fill: parent
+                                z: 10
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
 
-                                Text {
-                                    font.family: "Iosevka Nerd Font"
-                                    font.pixelSize: window.s(20)
-                                    color: window.crust
-                                    text: "󰸵"
-                                }
+                                onEntered: { window.applyHovered = true; window.activeFocusIndex = 5; }
+                                onExited: window.applyHovered = false
+                                onPressed: window.applyPressed = true
+                                onReleased: window.applyPressed = false
+                                onCanceled: window.applyPressed = false
 
-                                Text {
-                                    font.family: "JetBrains Mono"
-                                    font.weight: Font.Black
-                                    font.pixelSize: window.s(14)
-                                    color: window.crust
-                                    text: monitorsModel.count > 1 ? "Apply All" : "Apply"
-                                }
+                                onClicked: window.triggerApply()
                             }
-                        }
-
-                        MouseArea {
-                            id: applyMa
-                            anchors.fill: parent
-                            z: 10
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-
-                            onEntered: { window.applyHovered = true; window.activeFocusIndex = 4; }
-                            onExited: window.applyHovered = false
-                            onPressed: window.applyPressed = true
-                            onReleased: window.applyPressed = false
-                            onCanceled: window.applyPressed = false
-
-                            onClicked: window.triggerApply()
                         }
                     }
                 }

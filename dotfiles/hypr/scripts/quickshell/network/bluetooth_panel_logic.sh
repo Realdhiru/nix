@@ -132,7 +132,7 @@ get_status() {
             | select(.value["org.bluez.Device1"] != null) 
             | .value["org.bluez.Device1"] as $d 
             | select($d.Connected.data != true)
-            | select($d.RSSI.data != null)
+            | select($d.Paired.data == true or $d.RSSI.data != null)
             | select($d.Name.data != null and $d.Name.data != "")
             | [
                 $d.Address.data,

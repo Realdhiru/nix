@@ -45,6 +45,7 @@ Item {
         setSetting("topbarPosition", pos);
     }
     property bool isPopupOpen: false
+    property string activeWidget: "hidden"
 
 
     // =========================================================================
@@ -149,9 +150,14 @@ Item {
 
     Theme { id: _theme }
     property bool isSolidMode: false
-    readonly property real effectivePopupOpacity: config.isSolidMode ? 1.0 : (_theme.isLightMode ? 0.30 : config.popupOpacity)
-    readonly property real effectiveCardOpacity: config.isSolidMode ? 1.0 : config.cardOpacity
-    readonly property real antiBleedOpacity: config.isSolidMode ? 0.0 : (_theme.isLightMode ? 0.18 : 0.04)
+    property real effectivePopupOpacity: config.isSolidMode ? 1.0 : (_theme.isLightMode ? 0.30 : config.popupOpacity)
+    Behavior on effectivePopupOpacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
+
+    property real effectiveCardOpacity: config.isSolidMode ? 1.0 : config.cardOpacity
+    Behavior on effectiveCardOpacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
+
+    property real antiBleedOpacity: config.isSolidMode ? 0.0 : (_theme.isLightMode ? 0.18 : 0.04)
+    Behavior on antiBleedOpacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
     property bool topbarHelpIcon: true
     property int workspaceCount: 8
     property int initialWorkspaceCount: 8
@@ -477,10 +483,34 @@ Item {
         }
     }
 
+    FileView {
+        id: stateJsonWatcher
+        path: config.homeDir + "/.cache/quickshell/state.json"
+        watchChanges: true
+        onLoadedChanged: config.updateSolidMode()
+        onTextChanged: config.updateSolidMode()
+        onFileChanged: {
+            stateJsonWatcher.reload();
+            config.updateSolidMode();
+        }
+    }
+
     function updateSolidMode() {
         let wpKilled = wpKilledWatcher.loaded;
         let gamingMode = gamingModeWatcher.loaded;
         let profile = (powerProfileWatcher.loaded ? (powerProfileWatcher.text() || "").trim() : "");
+        if (!wpKilled || !gamingMode) {
+            let stateText = stateJsonWatcher.loaded ? (stateJsonWatcher.text() || "") : "";
+            if (stateText.indexOf('"wallpaperKilled": true') !== -1 || stateText.indexOf('"wallpaperKilled":true') !== -1) {
+                wpKilled = true;
+            }
+            if (stateText.indexOf('"gaming": true') !== -1 || stateText.indexOf('"gaming":true') !== -1) {
+                gamingMode = true;
+            }
+            if (!profile && stateText.indexOf('"profile": "power-saver"') !== -1) {
+                profile = "power-saver";
+            }
+        }
         config.isSolidMode = wpKilled || gamingMode || (profile === "power-saver");
     }
 

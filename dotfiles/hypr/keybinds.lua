@@ -48,23 +48,16 @@ hl.bind(mainMod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd(scripts .. "qs_manager
 hl.bind(mainMod .. " + SHIFT + X", hl.dsp.exec_cmd("quickshell ipc -p " .. scripts .. "quickshell/Shell.qml call idle toggleDim"))
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(scripts .. "quickshell/toggle_theme_mode.sh"))
 
--- Toggle Quickshell
-hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle quickshell"))
+-- Reload Compositor, Quickshell, and System
+hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(scripts .. "reload.sh"))
 
--- Toggle TopBar only (deliberate 4-key chord: the old 2-mod
--- SUPER+ALT+ALT_L/R fired on either Alt alone because Hyprland counts
--- the pressed Alt toward the mod mask, so plain binds cannot require
--- "both Alts". CTRL gates it against accidental presses.)
-hl.bind(mainMod .. " + CTRL + ALT + ALT_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle topbar"))
-hl.bind(mainMod .. " + CTRL + ALT + ALT_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle topbar"))
-
--- Toggle Bar Auto-Hide (CTRL + MOD + ALT)
-hl.bind(mainMod .. " + CTRL + ALT_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
-hl.bind(mainMod .. " + CTRL + ALT_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
-hl.bind(mainMod .. " + ALT + Control_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
-hl.bind(mainMod .. " + ALT + Control_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
-hl.bind("CTRL + ALT + Super_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
-hl.bind("CTRL + ALT + Super_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh autohide"))
+-- Toggle Active Bar Only (SUPER + CTRL + ALT in any press order)
+hl.bind(mainMod .. " + CTRL + Alt_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle bar"))
+hl.bind(mainMod .. " + CTRL + Alt_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle bar"))
+hl.bind(mainMod .. " + ALT + Control_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle bar"))
+hl.bind(mainMod .. " + ALT + Control_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle bar"))
+hl.bind("CTRL + ALT + Super_L", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle bar"))
+hl.bind("CTRL + ALT + Super_R", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle bar"))
 
 -- Cycle Wallpaper Left / Right
 hl.bind(mainMod .. " + ALT + Left", hl.dsp.exec_cmd(scripts .. "cycle_wallpaper.sh prev"), { repeating = true })

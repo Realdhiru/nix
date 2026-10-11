@@ -300,8 +300,8 @@ EOF
         anchors.fill: parent
         radius: root.s(20)
         color: Qt.rgba(root.base.r, root.base.g, root.base.b, Config.effectivePopupOpacity)
-        border.color: Config.borderWidth > 0 ? Qt.rgba(255, 255, 255, Config.borderOpacity) : Qt.rgba(255, 255, 255, Config.glassSpecular)
-        border.width: Math.max(1, Config.borderWidth)
+        border.width: 0
+        border.color: "transparent"
         clip: true
 
         // Subtle anti-bleed base layer
@@ -323,9 +323,9 @@ EOF
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.s(64)
                 radius: root.s(12)
-                color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
-                border.width: 1
-                border.color: root.selectedControl === 0 ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.50) : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.25)
+                color: root.selectedControl === 0 ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.55) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
+                border.width: 0
+                border.color: "transparent"
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -340,9 +340,8 @@ EOF
                             width: root.s(6)
                             height: root.s(6)
                             radius: root.s(3)
-                            color: root.selectedControl === 0 ? root.primary : "transparent"
-                            border.color: root.selectedControl === 0 ? root.primary : Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.4)
-                            border.width: 1
+                            color: root.selectedControl === 0 ? root.primary : Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.4)
+                            border.width: 0
                         }
 
                         Text {
@@ -350,7 +349,7 @@ EOF
                             font.family: "JetBrains Mono"
                             font.pixelSize: root.s(12)
                             font.weight: Font.DemiBold
-                            color: root.selectedControl === 0 ? root.primary : root.text
+                            color: root.text
                         }
 
                         Item { Layout.fillWidth: true }
@@ -359,7 +358,8 @@ EOF
                             width: tempValText.implicitWidth + root.s(12)
                             height: root.s(18)
                             radius: root.s(5)
-                            color: Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.18)
+                            color: Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.35)
+                            border.width: 0
 
                             Text {
                                 id: tempValText
@@ -368,7 +368,7 @@ EOF
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: root.s(11)
                                 font.weight: Font.Bold
-                                color: root.primary
+                                color: root.text
                             }
                         }
                     }
@@ -391,12 +391,14 @@ EOF
                             height: root.s(6)
                             radius: root.s(3)
                             color: Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6)
+                            border.width: 0
 
                             Rectangle {
                                 width: tempSlider.visualPosition * parent.width
                                 height: parent.height
                                 radius: root.s(3)
                                 color: root.primary
+                                border.width: 0
                             }
                         }
 
@@ -407,8 +409,7 @@ EOF
                             height: root.s(16)
                             radius: root.s(8)
                             color: tempSlider.pressed ? root.primary : root.text
-                            border.width: root.selectedControl === 0 ? root.s(2) : root.s(1)
-                            border.color: root.selectedControl === 0 ? root.primary : root.crust
+                            border.width: 0
                         }
                     }
                 }
@@ -419,9 +420,9 @@ EOF
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.s(64)
                 radius: root.s(12)
-                color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
-                border.width: 1
-                border.color: root.selectedControl === 1 ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.50) : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.25)
+                color: root.selectedControl === 1 ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.55) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
+                border.width: 0
+                border.color: "transparent"
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -436,9 +437,8 @@ EOF
                             width: root.s(6)
                             height: root.s(6)
                             radius: root.s(3)
-                            color: root.selectedControl === 1 ? root.primary : "transparent"
-                            border.color: root.selectedControl === 1 ? root.primary : Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.4)
-                            border.width: 1
+                            color: root.selectedControl === 1 ? root.primary : Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.4)
+                            border.width: 0
                         }
 
                         Text {
@@ -446,7 +446,7 @@ EOF
                             font.family: "JetBrains Mono"
                             font.pixelSize: root.s(12)
                             font.weight: Font.DemiBold
-                            color: root.selectedControl === 1 ? root.primary : root.text
+                            color: root.text
                         }
 
                         Item { Layout.fillWidth: true }
@@ -455,7 +455,8 @@ EOF
                             width: gammaValText.implicitWidth + root.s(12)
                             height: root.s(18)
                             radius: root.s(5)
-                            color: Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.18)
+                            color: Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.35)
+                            border.width: 0
 
                             Text {
                                 id: gammaValText
@@ -464,7 +465,7 @@ EOF
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: root.s(11)
                                 font.weight: Font.Bold
-                                color: root.primary
+                                color: root.text
                             }
                         }
                     }
@@ -487,12 +488,14 @@ EOF
                             height: root.s(6)
                             radius: root.s(3)
                             color: Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6)
+                            border.width: 0
 
                             Rectangle {
                                 width: gammaSlider.visualPosition * parent.width
                                 height: parent.height
                                 radius: root.s(3)
                                 color: root.primary
+                                border.width: 0
                             }
                         }
 
@@ -503,8 +506,7 @@ EOF
                             height: root.s(16)
                             radius: root.s(8)
                             color: gammaSlider.pressed ? root.primary : root.text
-                            border.width: root.selectedControl === 1 ? root.s(2) : root.s(1)
-                            border.color: root.selectedControl === 1 ? root.primary : root.crust
+                            border.width: 0
                         }
                     }
                 }
@@ -515,9 +517,9 @@ EOF
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.s(64)
                 radius: root.s(12)
-                color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
-                border.width: 1
-                border.color: root.selectedControl === 2 ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.50) : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.25)
+                color: root.selectedControl === 2 ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.55) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
+                border.width: 0
+                border.color: "transparent"
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -532,9 +534,8 @@ EOF
                             width: root.s(6)
                             height: root.s(6)
                             radius: root.s(3)
-                            color: root.selectedControl === 2 ? root.primary : "transparent"
-                            border.color: root.selectedControl === 2 ? root.primary : Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.4)
-                            border.width: 1
+                            color: root.selectedControl === 2 ? root.primary : Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.4)
+                            border.width: 0
                         }
 
                         Text {
@@ -542,7 +543,7 @@ EOF
                             font.family: "JetBrains Mono"
                             font.pixelSize: root.s(12)
                             font.weight: Font.DemiBold
-                            color: root.selectedControl === 2 ? root.primary : root.text
+                            color: root.text
                         }
 
                         Item { Layout.fillWidth: true }
@@ -551,7 +552,8 @@ EOF
                             width: satValText.implicitWidth + root.s(12)
                             height: root.s(18)
                             radius: root.s(5)
-                            color: Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.18)
+                            color: Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.35)
+                            border.width: 0
 
                             Text {
                                 id: satValText
@@ -560,7 +562,7 @@ EOF
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: root.s(11)
                                 font.weight: Font.Bold
-                                color: root.primary
+                                color: root.text
                             }
                         }
                     }
@@ -583,12 +585,14 @@ EOF
                             height: root.s(6)
                             radius: root.s(3)
                             color: Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6)
+                            border.width: 0
 
                             Rectangle {
                                 width: satSlider.visualPosition * parent.width
                                 height: parent.height
                                 radius: root.s(3)
                                 color: root.primary
+                                border.width: 0
                             }
                         }
 
@@ -599,8 +603,7 @@ EOF
                             height: root.s(16)
                             radius: root.s(8)
                             color: satSlider.pressed ? root.primary : root.text
-                            border.width: root.selectedControl === 2 ? root.s(2) : root.s(1)
-                            border.color: root.selectedControl === 2 ? root.primary : root.crust
+                            border.width: 0
                         }
                     }
                 }
@@ -611,9 +614,9 @@ EOF
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.s(64)
                 radius: root.s(12)
-                color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
-                border.width: 1
-                border.color: root.selectedControl === 3 ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.50) : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.25)
+                color: root.selectedControl === 3 ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.55) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
+                border.width: 0
+                border.color: "transparent"
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -628,9 +631,8 @@ EOF
                             width: root.s(6)
                             height: root.s(6)
                             radius: root.s(3)
-                            color: root.selectedControl === 3 ? root.primary : "transparent"
-                            border.color: root.selectedControl === 3 ? root.primary : Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.4)
-                            border.width: 1
+                            color: root.selectedControl === 3 ? root.primary : Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.4)
+                            border.width: 0
                         }
 
                         Text {
@@ -638,7 +640,7 @@ EOF
                             font.family: "JetBrains Mono"
                             font.pixelSize: root.s(12)
                             font.weight: Font.DemiBold
-                            color: root.selectedControl === 3 ? root.primary : root.text
+                            color: root.text
                         }
 
                         Item { Layout.fillWidth: true }
@@ -647,7 +649,8 @@ EOF
                             width: grainValText.implicitWidth + root.s(12)
                             height: root.s(18)
                             radius: root.s(5)
-                            color: Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.18)
+                            color: Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.35)
+                            border.width: 0
 
                             Text {
                                 id: grainValText
@@ -656,7 +659,7 @@ EOF
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: root.s(11)
                                 font.weight: Font.Bold
-                                color: root.primary
+                                color: root.text
                             }
                         }
                     }
@@ -679,12 +682,14 @@ EOF
                             height: root.s(6)
                             radius: root.s(3)
                             color: Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6)
+                            border.width: 0
 
                             Rectangle {
                                 width: grainSlider.visualPosition * parent.width
                                 height: parent.height
                                 radius: root.s(3)
                                 color: root.primary
+                                border.width: 0
                             }
                         }
 
@@ -695,8 +700,7 @@ EOF
                             height: root.s(16)
                             radius: root.s(8)
                             color: grainSlider.pressed ? root.primary : root.text
-                            border.width: root.selectedControl === 3 ? root.s(2) : root.s(1)
-                            border.color: root.selectedControl === 3 ? root.primary : root.crust
+                            border.width: 0
                         }
                     }
                 }
@@ -707,9 +711,9 @@ EOF
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.s(64)
                 radius: root.s(12)
-                color: Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
-                border.width: 1
-                border.color: root.selectedControl === 4 ? Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.50) : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.25)
+                color: root.selectedControl === 4 ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.55) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
+                border.width: 0
+                border.color: "transparent"
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -724,9 +728,8 @@ EOF
                             width: root.s(6)
                             height: root.s(6)
                             radius: root.s(3)
-                            color: root.selectedControl === 4 ? root.primary : "transparent"
-                            border.color: root.selectedControl === 4 ? root.primary : Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.4)
-                            border.width: 1
+                            color: root.selectedControl === 4 ? root.primary : Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.4)
+                            border.width: 0
                         }
 
                         Text {
@@ -734,7 +737,7 @@ EOF
                             font.family: "JetBrains Mono"
                             font.pixelSize: root.s(12)
                             font.weight: Font.DemiBold
-                            color: root.selectedControl === 4 ? root.primary : root.text
+                            color: root.text
                         }
 
                         Item { Layout.fillWidth: true }
@@ -743,7 +746,8 @@ EOF
                             width: crtValText.implicitWidth + root.s(12)
                             height: root.s(18)
                             radius: root.s(5)
-                            color: Qt.rgba(root.primary.r, root.primary.g, root.primary.b, 0.18)
+                            color: Qt.rgba(root.surface2.r, root.surface2.g, root.surface2.b, 0.35)
+                            border.width: 0
 
                             Text {
                                 id: crtValText
@@ -752,7 +756,7 @@ EOF
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: root.s(11)
                                 font.weight: Font.Bold
-                                color: root.primary
+                                color: root.text
                             }
                         }
                     }
@@ -775,12 +779,14 @@ EOF
                             height: root.s(6)
                             radius: root.s(3)
                             color: Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6)
+                            border.width: 0
 
                             Rectangle {
                                 width: crtSlider.visualPosition * parent.width
                                 height: parent.height
                                 radius: root.s(3)
                                 color: root.primary
+                                border.width: 0
                             }
                         }
 
@@ -791,8 +797,7 @@ EOF
                             height: root.s(16)
                             radius: root.s(8)
                             color: crtSlider.pressed ? root.primary : root.text
-                            border.width: root.selectedControl === 4 ? root.s(2) : root.s(1)
-                            border.color: root.selectedControl === 4 ? root.primary : root.crust
+                            border.width: 0
                         }
                     }
                 }

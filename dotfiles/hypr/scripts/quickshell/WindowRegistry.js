@@ -9,7 +9,7 @@ const WIDGETS = {
     "battery":   { w: 801,  h: 660, anchor: "top-right",     mx: 0, my: 60, mr: 4, mb: 0, path: "battery/BatteryPopup.qml" },
     "network":   { w: 900,  h: 700, anchor: "top-right",     mx: 0, my: 60, mr: 4, mb: 0, path: "network/NetworkPopup.qml" },
     "clipboard": { w: 800,  h: 700, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "clipboard/ClipboardManager.qml" },
-    "monitors":  { w: 800,  h: 720, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "monitors/MonitorPopup.qml" },
+    "monitors":  { w: 700,  h: 410, anchor: "bottom-center", mx: 0, my: 0,  mr: 0, mb: 60, path: "monitors/MonitorPopup.qml" },
     "focustime": { w: 900,  h: 700, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "focustime/FocusTimePopup.qml" },
     "weather_setup": { w: 500,  h: 350, anchor: "center",     mx: 0, my: 0,  mr: 0, mb: 0, path: "calendar/WeatherSetupPopup.qml" },
     "calendar":      { w: 1450, h: 510, anchor: "top-center", mx: 0, my: 60, mr: 0, mb: 0, path: "calendar/CalendarPopup.qml" },

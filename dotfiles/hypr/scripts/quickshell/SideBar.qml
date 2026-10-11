@@ -119,6 +119,10 @@ Variants {
                 return activeModules[name] !== false;
             }
 
+            // ── Startup Stabilization ──
+            property bool isStartupReady: false
+            Timer { interval: 10; running: true; onTriggered: barWindow.isStartupReady = true }
+
             // ── Clock & Date ──
             property string timeStr: ""
             property string fullDateStr: ""
@@ -164,29 +168,8 @@ Variants {
             readonly property bool isDesktop: !SysData.hasBattery
             readonly property int batCap: SysData.batCapacity
             readonly property bool isCharging: SysData.acOnline
-            readonly property string batIcon: _batIcon(SysData.batCapacity, SysData.acOnline)
-            function _batIcon(percent, online) {
-                if (online) {
-                    if (percent >= 90) return "󰂅";
-                    if (percent >= 80) return "󰂋";
-                    if (percent >= 60) return "󰂊";
-                    if (percent >= 40) return "󰢞";
-                    if (percent >= 20) return "󰂆";
-                    return "󰢜";
-                }
-                if (percent >= 90) return "󰁹";
-                if (percent >= 80) return "󰂂";
-                if (percent >= 70) return "󰂁";
-                if (percent >= 60) return "󰂀";
-                if (percent >= 50) return "󰁿";
-                if (percent >= 40) return "󰁾";
-                if (percent >= 30) return "󰁽";
-                if (percent >= 20) return "󰁼";
-                if (percent >= 10) return "󰁻";
-                return "󰁺";
-            }
+            readonly property string batIcon: SysData.batIcon(SysData.batCapacity, SysData.acOnline)
             readonly property string iconFont: "JetBrainsMono Nerd Font, Iosevka Nerd Font, Symbols Nerd Font"
-            readonly property color batDynamicColor: mocha.text
 
             // ── Workspaces Model & Native Bindings ──
             ListModel {
@@ -497,7 +480,7 @@ Variants {
                             anchors.centerIn: parent
                             spacing: barWindow.s(4)
 
-                            // Hours (Enlarged to 19px JetBrains Mono Black, dynamic wallpaper accent)
+                            // Hours (Enlarged to 19px JetBrains Mono Black, wallpaper accent color)
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: barWindow.timeStr.split(":")[0] || "00"
@@ -507,7 +490,7 @@ Variants {
                                 color: barWindow.accentColor
                             }
 
-                            // Minutes (Enlarged to 19px JetBrains Mono Black, text white)
+                            // Minutes (Enlarged to 19px JetBrains Mono Black, tinted white)
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: barWindow.timeStr.split(":")[1] || "00"
@@ -526,24 +509,24 @@ Variants {
                                 color: Qt.rgba(barWindow.accentColor.r, barWindow.accentColor.g, barWindow.accentColor.b, 0.45)
                             }
 
-                            // Day of Month (Enlarged to 14px, secondary clock palette)
+                            // Day of Month (Enlarged to 14px, solid high-contrast white text)
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: barWindow.dayNumStr
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: barWindow.s(14)
-                                font.weight: Font.Bold
-                                color: (mocha[Config.clockColorSource] && Config.clockColorSource !== "text") ? mocha[Config.clockColorSource] : (mocha.sapphire || mocha.text)
+                                font.weight: Font.Black
+                                color: mocha.text
                             }
 
-                            // Month (Enlarged to 12px)
+                            // Month (Signature wallpaper accent, never washes out)
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: barWindow.monthStr
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: barWindow.s(12)
                                 font.weight: Font.Bold
-                                color: mocha.subtext0
+                                color: barWindow.accentColor
                             }
                         }
 
@@ -598,7 +581,7 @@ Variants {
                         height: barWindow.isModuleActive("workspaces")
                                 ? (clampedCount * barWindow.s(32) + Math.max(0, clampedCount - 1) * barWindow.s(6) + barWindow.s(20))
                                 : 0
-                        Behavior on height { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                        Behavior on height { NumberAnimation { duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutCubic } }
 
                         function toKanji(num) {
                             let n = parseInt(num);
@@ -670,8 +653,8 @@ Variants {
                                 property real actualTop: targetTop
                                 property real actualHeight: targetHeight
 
-                                Behavior on actualTop { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
-                                Behavior on actualHeight { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
+                                Behavior on actualTop { NumberAnimation { duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutExpo } }
+                                Behavior on actualHeight { NumberAnimation { duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutExpo } }
 
                                 y: actualTop
                                 height: actualHeight
@@ -701,7 +684,7 @@ Variants {
 
                                         property real targetHeight: isItemVisible ? barWindow.s(32) : 0
                                         height: targetHeight
-                                        Behavior on targetHeight { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                                        Behavior on targetHeight { NumberAnimation { duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutCubic } }
 
                                         width: isItemVisible ? barWindow.s(32) : 0
                                         radius: barWindow.s(10)
@@ -781,7 +764,65 @@ Variants {
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: barWindow.s(8)
 
-                    // System Tray Card (At the top of bottom icons)
+                    // Recording Pill (Pinned above Tray)
+                    Rectangle {
+                        id: recButton
+                        visible: barWindow.isModuleActive("record") && barWindow.isRecording
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: barWindow.barThickness
+                        height: barWindow.isRecording ? barWindow.s(36) : 0
+                        radius: barWindow.s(14)
+                        color: barWindow.cardBg
+                        border.width: Config.borderWidth
+                        border.color: recMouse.containsMouse ? barWindow.accentColor : barWindow.cardBorder
+                        opacity: barWindow.isRecording ? 1.0 : 0.0
+                        clip: true
+
+                        Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
+                        Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                        // Anti-bleed base layer
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: parent.radius
+                            color: Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, Config.antiBleedOpacity)
+                            z: -1
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: ""
+                            font.family: barWindow.iconFont
+                            font.pixelSize: barWindow.s(18)
+                            color: barWindow.accentColor
+
+                            SequentialAnimation on opacity {
+                                running: barWindow.isRecording && !recMouse.containsMouse
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 0.35; duration: 600; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                            }
+                            SequentialAnimation on scale {
+                                running: barWindow.isRecording && !recMouse.containsMouse
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 1.15; duration: 600; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                            }
+                        }
+
+                        MouseArea {
+                            id: recMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                barWindow.isRecording = false;
+                                Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/record.sh"]);
+                            }
+                        }
+                    }
+
+                    // System Tray Card (Below Recording Pill)
                     Rectangle {
                         id: trayBox
                         property var filteredTrayItems: {
@@ -917,17 +958,17 @@ Variants {
                         }
                     }
 
-                    // Brightness / Sunset & Volume Combined Pill
+                    // Quick Actions Combined Card (4 icons: Brightness, Volume, WiFi, Bluetooth - zero divider lines, clean direct layout)
                     Rectangle {
-                        id: brightVolBox
+                        id: quickActionsBox
                         visible: true
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: barWindow.barThickness
-                        height: barWindow.s(66)
+                        height: barWindow.s(138)
                         radius: barWindow.s(14)
                         color: barWindow.cardBg
                         border.width: Config.borderWidth
-                        border.color: (sunsetMouse.containsMouse || volMouse.containsMouse) ? barWindow.accentColor : barWindow.cardBorder
+                        border.color: (sunsetMouse.containsMouse || volMouse.containsMouse || wifiMouse.containsMouse || btMouse.containsMouse) ? barWindow.accentColor : barWindow.cardBorder
                         clip: true
 
                         Rectangle {
@@ -938,11 +979,12 @@ Variants {
                         }
 
                         Column {
-                            anchors.fill: parent
+                            anchors.centerIn: parent
+                            spacing: barWindow.s(2)
 
-                            // Brightness / Sunset Half
+                            // 1. Brightness / Sunset
                             Item {
-                                width: parent.width
+                                width: barWindow.barThickness
                                 height: barWindow.s(32)
 
                                 Text {
@@ -975,17 +1017,9 @@ Variants {
                                 }
                             }
 
-                            // Divider
-                            Rectangle {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: parent.width - barWindow.s(12)
-                                height: 1
-                                color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.12)
-                            }
-
-                            // Volume Half
+                            // 2. Volume
                             Item {
-                                width: parent.width
+                                width: barWindow.barThickness
                                 height: barWindow.s(32)
 
                                 Text {
@@ -994,7 +1028,7 @@ Variants {
                                     font.family: barWindow.showVolPct ? "JetBrains Mono" : barWindow.iconFont
                                     font.pixelSize: barWindow.showVolPct ? barWindow.s(10.5) : barWindow.s(15)
                                     font.weight: barWindow.showVolPct ? Font.Black : Font.Normal
-                                    color: barWindow.isMuted ? mocha.red : (volMouse.containsMouse ? mocha.text : barWindow.volColor)
+                                    color: volMouse.containsMouse ? mocha.text : barWindow.volColor
                                     Behavior on color { ColorAnimation { duration: 150 } }
                                 }
 
@@ -1006,17 +1040,12 @@ Variants {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: (mouse) => {
                                         if (mouse.button === Qt.RightButton) {
-                                            // Single wpctl mechanism everywhere (osd.sh,
-                                            // battery slider): native sink.audio writes
-                                            // silently no-op when the node is stale.
                                             Quickshell.execDetached(["bash", "-c", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"]);
                                         } else {
                                             Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh toggle music"]);
                                         }
                                     }
                                     onWheel: (wheel) => {
-                                        // Mirrors osd.sh vol-up/down exactly (incl.
-                                        // unmute-on-raise and 100% cap).
                                         if (wheel.angleDelta.y > 0) {
                                             Quickshell.execDetached(["bash", "-c", "wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+"]);
                                         } else if (wheel.angleDelta.y < 0) {
@@ -1025,35 +1054,10 @@ Variants {
                                     }
                                 }
                             }
-                        }
-                    }
 
-                    // Network Pill (Discrete WiFi and Bluetooth halves)
-                    Rectangle {
-                        id: netBox
-                        visible: barWindow.isModuleActive("network")
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: barWindow.barThickness
-                        height: barWindow.s(66)
-                        radius: barWindow.s(14)
-                        color: barWindow.cardBg
-                        border.width: Config.borderWidth
-                        border.color: (wifiMouse.containsMouse || btMouse.containsMouse) ? barWindow.accentColor : barWindow.cardBorder
-                        clip: true
-
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            color: Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, Config.antiBleedOpacity)
-                            z: -1
-                        }
-
-                        Column {
-                            anchors.fill: parent
-
-                            // Wifi Half
+                            // 3. WiFi
                             Item {
-                                width: parent.width
+                                width: barWindow.barThickness
                                 height: barWindow.s(32)
 
                                 Text {
@@ -1074,17 +1078,9 @@ Variants {
                                 }
                             }
 
-                            // Divider
-                            Rectangle {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: parent.width - barWindow.s(12)
-                                height: 1
-                                color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.12)
-                            }
-
-                            // Bluetooth Half
+                            // 4. Bluetooth
                             Item {
-                                width: parent.width
+                                width: barWindow.barThickness
                                 height: barWindow.s(32)
 
                                 Text {
@@ -1107,58 +1103,13 @@ Variants {
                         }
                     }
 
-                    // Recording Pill
-                    Rectangle {
-                        id: recButton
-                        visible: barWindow.isModuleActive("record") && barWindow.isRecording
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: barWindow.barThickness
-                        height: barWindow.isRecording ? barWindow.s(36) : 0
-                        radius: barWindow.s(14)
-                        color: recMouse.containsMouse ? mocha.surface2 : mocha.surface1
-                        border.width: Config.borderWidth
-                        border.color: barWindow.accentColor
-                        opacity: barWindow.isRecording ? 1.0 : 0.0
-                        clip: true
-
-                        Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
-                        Behavior on opacity { NumberAnimation { duration: 250 } }
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: ""
-                            font.family: barWindow.iconFont
-                            font.pixelSize: barWindow.s(18)
-                            color: mocha.red
-
-                            SequentialAnimation on scale {
-                                running: barWindow.isRecording
-                                loops: Animation.Infinite
-                                NumberAnimation { to: 1.15; duration: 600; easing.type: Easing.InOutSine }
-                                NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
-                            }
-                        }
-
-                        MouseArea {
-                            id: recMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                barWindow.isRecording = false;
-                                Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/record.sh"]);
-                            }
-                        }
-                    }
-
-                    // Battery Pill (battery icon; coffee indicator stacked
-                    // Battery Pill (Dynamic icon only, no percentage text)
+                    // Battery Pill (Dynamic icon inside proportional inner pill)
                     Rectangle {
                         id: batBox
                         visible: barWindow.isModuleActive("battery")
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: barWindow.barThickness
-                        height: barWindow.s(38)
+                        height: barWindow.s(52)
                         radius: barWindow.s(14)
                         color: barWindow.cardBg
                         border.width: Config.borderWidth
@@ -1173,19 +1124,27 @@ Variants {
                         }
 
                         Text {
+                            width: parent.width
+                            height: parent.height
                             anchors.centerIn: parent
+                            anchors.verticalCenterOffset: barWindow.s(-1)
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
                             visible: !batMouse.containsMouse
                             text: barWindow.isDesktop ? "" : barWindow.batIcon
                             font.family: barWindow.iconFont
-                            font.pixelSize: barWindow.s(18)
-                            color: barWindow.batDynamicColor
+                            font.pixelSize: barWindow.s(16)
+                            color: mocha.text
                             Behavior on color { ColorAnimation { duration: 250 } }
                         }
 
                         // Hover: remaining runtime from native UPower telemetry
-                        // (SysData.batRuntimeText). In-bar swap, no geometry change.
                         Text {
+                            width: parent.width
+                            height: parent.height
                             anchors.centerIn: parent
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
                             visible: batMouse.containsMouse && !barWindow.isDesktop
                             text: SysData.batRuntimeText
                             font.family: "JetBrains Mono Nerd Font, JetBrains Mono"

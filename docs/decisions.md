@@ -113,7 +113,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** System Tray moved from TopBar into Battery Popup. Frameless (zero-border) visual standard across QuickShell.
 - **Rationale:**
   - Status bar declutter: TopBar remains minimal, preserving space for dynamic workspace pills, CAVA audio visualizer with top-to-bottom vertical gradient, and clock/date.
-  - Tray access consolidated: Quick access tray icons live directly alongside system toggles (Hotspot, DND, volume, brightness, power profiles) in BatteryPopup header.
+  - Tray access consolidated: Quick access tray icons live directly alongside system controls (DND, volume, brightness, power profiles) in BatteryPopup header.
   - Zero-border design: Explicitly removed artificial hairline borders, rotating shape masks, and outer stroke containers across all widget popups (`MusicPopup`, `BatteryPopup`, `CalendarPopup`, `PopupCard`, `MonitorPopup`, `FocusTimePopup`, `NetworkPopup`, `ClipboardManager`). Default `borderWidth = 0` and `borderOpacity = 0.0` in `settings.json`.
 
 ### 10. Terminal Dynamic ANSI Extraction & OLED Surface Authority

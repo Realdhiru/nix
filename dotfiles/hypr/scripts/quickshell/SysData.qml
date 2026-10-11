@@ -241,6 +241,34 @@ Item {
         return (charging ? "+" : "") + m + "m";
     }
 
+    function batIcon(percent, online) {
+        let p = (typeof percent === "number") ? percent : (parseInt(percent) || 0);
+        if (online) {
+            if (p >= 95) return "󰂅";
+            if (p >= 85) return "󰂋";
+            if (p >= 75) return "󰂊";
+            if (p >= 65) return "󰢞";
+            if (p >= 55) return "󰂉";
+            if (p >= 45) return "󰢝";
+            if (p >= 35) return "󰂈";
+            if (p >= 25) return "󰂇";
+            if (p >= 15) return "󰂆";
+            if (p >= 5)  return "󰢜";
+            return "󰢟";
+        }
+        if (p >= 95) return "󰁹";
+        if (p >= 85) return "󰂂";
+        if (p >= 75) return "󰂁";
+        if (p >= 65) return "󰂀";
+        if (p >= 55) return "󰁿";
+        if (p >= 45) return "󰁾";
+        if (p >= 35) return "󰁽";
+        if (p >= 25) return "󰁼";
+        if (p >= 15) return "󰁻";
+        if (p >= 5)  return "󰁺";
+        return "󰂃";
+    }
+
     // Public API consumed by the SideBar battery hover text.
     // Direction comes from UPower.onBattery — never from timeToFull, which
     // is 0 when UPower can't estimate. The old code then ran DISCHARGE math
@@ -249,19 +277,29 @@ Item {
     // Charging:    (energy_full - energy_now) * 3600 / power_now
     // On AC without active fill (trickle/capped/full, or estimate > 10h):
     // "AC". Pill display clamps at 11:59 (never "99h00m" overflow).
+    // Exponential moving average for discharge rate to eliminate momentary spike distortion
+    property real _smoothedDischargeRate: 0.0
+
     readonly property string batRuntimeText: {
         if (!root.hasBattery) return "";
         let d = UPower.displayDevice;
         if (!d) return "";
-        let rate = Math.abs(d.changeRate);
+        let rawRate = Math.abs(d.changeRate);
         let rem;
         let charging = false;
         if (UPower.onBattery) {
-            if (rate < 1) return "";
+            if (rawRate < 1) return "";
+            if (root._smoothedDischargeRate <= 0.5) {
+                root._smoothedDischargeRate = rawRate;
+            } else {
+                root._smoothedDischargeRate = (root._smoothedDischargeRate * 0.70) + (rawRate * 0.30);
+            }
+            let rate = Math.max(1.0, root._smoothedDischargeRate);
             rem = (d.energy * 3600) / rate;
         } else {
-            if (rate < 1 || d.timeToFull <= 0) return "AC";
-            rem = ((d.energyCapacity - d.energy) * 3600) / rate;
+            root._smoothedDischargeRate = 0.0;
+            if (rawRate < 1 || d.timeToFull <= 0) return "AC";
+            rem = ((d.energyCapacity - d.energy) * 3600) / rawRate;
             if (rem > 36000) return "AC";
             charging = true;
         }
@@ -386,7 +424,7 @@ Item {
                         hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
                         hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
                     elif [ -f "$HOME/.cache/gaming_mode" ]; then
-                        hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = true }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
+                        hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = true }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = false } })" 2>/dev/null
                         hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
                     else
                         hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, general = { allow_tearing = false }, decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null

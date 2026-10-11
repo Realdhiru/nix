@@ -151,27 +151,7 @@ Variants {
             // always-on udevadm event watcher. TopBar no longer runs its own
             // duplicate batteryPoller/batteryWaiter pair.
             property bool acOnline: SysData.acOnline
-            property string batIcon: _batIcon(SysData.batCapacity, SysData.acOnline)
-            function _batIcon(percent, online) {
-                if (online) {
-                    if (percent >= 90) return "󰂅";
-                    if (percent >= 80) return "󰂋";
-                    if (percent >= 60) return "󰂊";
-                    if (percent >= 40) return "󰢞";
-                    if (percent >= 20) return "󰂆";
-                    return "󰢜";
-                }
-                if (percent >= 90) return "󰁹";
-                if (percent >= 80) return "󰂂";
-                if (percent >= 70) return "󰂁";
-                if (percent >= 60) return "󰂀";
-                if (percent >= 50) return "󰁿";
-                if (percent >= 40) return "󰁾";
-                if (percent >= 30) return "󰁽";
-                if (percent >= 20) return "󰁼";
-                if (percent >= 10) return "󰁻";
-                return "󰁺";
-            }
+            property string batIcon: SysData.batIcon(SysData.batCapacity, SysData.acOnline)
 
             ListModel {
                 id: workspacesModel
@@ -243,8 +223,9 @@ Variants {
             property int batCap: parseInt(barWindow.batPercent) || 0
             property bool isCharging: barWindow.acOnline
             property color batDynamicColor: {
-                if (isCharging) return barWindow.accentColor;
-                if (batCap <= 20) return barWindow.accentColor;
+                if (isCharging) return mocha.text;
+                if (batCap < 15) return mocha.red;
+                if (batCap < 30) return (mocha.peach || mocha.yellow || mocha.text);
                 return mocha.text;
             }
 
@@ -399,7 +380,7 @@ Variants {
                         id: workspacesBox
                         color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
                         radius: barWindow.s(14)
-                        border.width: Math.max(1, Config.borderWidth)
+                        border.width: Config.borderWidth
                         border.color: Config.borderWidth > 0 ? barWindow.pillBorder : Qt.rgba(255, 255, 255, Config.glassSpecular)
                         Behavior on color { ColorAnimation { duration: 250 } }
                         Behavior on border.color { ColorAnimation { duration: 250 } }
@@ -464,8 +445,8 @@ Variants {
                             property real actualLeft: targetLeft
                             property real actualWidth: targetWidth
 
-                            Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: 250; easing.type: Easing.OutExpo } }
-                            Behavior on actualWidth { NumberAnimation { id: widthAnim; duration: 250; easing.type: Easing.OutExpo } }
+                            Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutExpo } }
+                            Behavior on actualWidth { NumberAnimation { id: widthAnim; duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutExpo } }
 
                             x: actualLeft
                             width: actualWidth
@@ -504,28 +485,7 @@ Variants {
                                     scale: isHovered && stateLabel !== "active" ? 1.08 : 1.0
                                     Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
-                                    property bool initAnimTrigger: false
-                                    opacity: initAnimTrigger && isItemVisible ? 1 : 0
-                                    transform: Translate {
-                                        y: wsPill.initAnimTrigger ? 0 : barWindow.s(10)
-                                        Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-                                    }
-
-                                    Component.onCompleted: {
-                                        if (!barWindow.startupCascadeFinished) {
-                                            animTimer.interval = index * 25;
-                                            animTimer.start();
-                                        } else {
-                                            initAnimTrigger = true;
-                                        }
-                                    }
-
-                                    Timer {
-                                        id: animTimer
-                                        running: false
-                                        repeat: false
-                                        onTriggered: wsPill.initAnimTrigger = true
-                                    }
+                                    opacity: isItemVisible ? 1 : 0
 
                                     Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                                     Behavior on color { ColorAnimation { duration: 180 } }
@@ -564,7 +524,7 @@ Variants {
                         id: mediaBox
                         color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
                         radius: barWindow.s(14)
-                        border.width: Math.max(1, Config.borderWidth)
+                        border.width: Config.borderWidth
                         border.color: Config.borderWidth > 0 ? barWindow.pillBorder : Qt.rgba(255, 255, 255, Config.glassSpecular)
                         Behavior on color { ColorAnimation { duration: 250 } }
                         Behavior on border.color { ColorAnimation { duration: 250 } }
@@ -784,7 +744,7 @@ Variants {
                             property bool notifActive: NotifTicker.tickerVisible
                             color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
                             radius: barWindow.s(14)
-                            border.width: Math.max(1, Config.borderWidth)
+                            border.width: Config.borderWidth
                             border.color: Config.borderWidth > 0 ? (isHovered ? barWindow.pillBorderHover : barWindow.pillBorder) : Qt.rgba(255, 255, 255, Config.glassSpecular)
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -798,25 +758,11 @@ Variants {
                             }
 
                         height: barWindow.barHeight
-                        Behavior on height { NumberAnimation { duration: 260; easing.type: Easing.OutExpo } }
+                        Behavior on height { NumberAnimation { duration: barWindow.isStartupReady ? 260 : 0; easing.type: Easing.OutExpo } }
                         width: (centerBox.notifActive ? notifLayout.implicitWidth : centerLayout.implicitWidth) + barWindow.s(36)
-                        Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutExpo } }
+                        Behavior on width { NumberAnimation { duration: barWindow.isStartupReady ? 260 : 0; easing.type: Easing.OutExpo } }
                         clip: true
-
-                        property bool showLayout: false
-                        opacity: showLayout ? 1 : 0
-                        transform: Translate {
-                            y: centerBox.showLayout ? 0 : barWindow.s(-30)
-                            Behavior on y { NumberAnimation { duration: 800; easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
-                        }
-
-                        Timer {
-                            running: barWindow.isStartupReady
-                            interval: 150
-                            onTriggered: centerBox.showLayout = true
-                        }
-
-                        Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
+                        opacity: 1
 
                         scale: isHovered ? 1.03 : 1.0
                         Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
@@ -849,14 +795,36 @@ Variants {
                             opacity: !centerBox.notifActive ? 1.0 : 0.0
                             Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
-                            Text {
-                                text: barWindow.timeStr
-                                renderType: Text.NativeRendering
-                                font.family: "JetBrains Mono"
-                                font.pixelSize: barWindow.s(18)
-                                font.weight: Font.Black
-                                color: mocha[Config.clockColorSource] || barWindow.accentColor
+                            RowLayout {
+                                spacing: 0
                                 Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: barWindow.timeStr.split(':')[0] || "00"
+                                    renderType: Text.NativeRendering
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: barWindow.s(18)
+                                    font.weight: Font.Black
+                                    color: mocha.text
+                                }
+
+                                Text {
+                                    text: ":"
+                                    renderType: Text.NativeRendering
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: barWindow.s(18)
+                                    font.weight: Font.Black
+                                    color: barWindow.accentColor
+                                }
+
+                                Text {
+                                    text: barWindow.timeStr.split(':')[1] || "00"
+                                    renderType: Text.NativeRendering
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: barWindow.s(18)
+                                    font.weight: Font.Black
+                                    color: mocha.text
+                                }
                             }
 
                             ColumnLayout {
@@ -880,7 +848,7 @@ Variants {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(10)
                                     font.weight: Font.Bold
-                                    color: mocha.subtext0
+                                    color: barWindow.accentColor
                                     horizontalAlignment: Text.AlignLeft
                                     Layout.fillWidth: true
                                 }
@@ -1132,23 +1100,10 @@ Variants {
                         id: rightContent
                         spacing: barWindow.s(4)
 
-                        property bool showLayout: false
-                        opacity: showLayout ? 1 : 0
-                        transform: Translate {
-                            x: rightContent.showLayout ? 0 : barWindow.s(30)
-                            Behavior on x { NumberAnimation { duration: 800; easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
-                        }
-
-                        Timer {
-                            running: barWindow.isStartupReady && barWindow.isDataReady
-                            interval: 50
-                            onTriggered: rightContent.showLayout = true
-                        }
-
                         Rectangle {
                             height: barWindow.barHeight
                             radius: barWindow.s(14)
-                            border.width: Math.max(1, Config.borderWidth)
+                            border.width: Config.borderWidth
                             border.color: Config.borderWidth > 0 ? barWindow.pillBorder : Qt.rgba(255, 255, 255, Config.glassSpecular)
                             color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
                             clip: true
@@ -1188,16 +1143,12 @@ Variants {
 
                                     property real targetWidth: barWindow.isDesktop ? barWindow.s(34) : batLayoutRow.implicitWidth + barWindow.s(24)
                                     width: targetWidth
-                                    Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutQuint } }
+                                    Behavior on width { NumberAnimation { duration: barWindow.isStartupReady ? 500 : 0; easing.type: Easing.OutQuint } }
 
                                     scale: isHovered ? 1.05 : 1.0
                                     Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
                                     Behavior on color { ColorAnimation { duration: 200 } }
-
-                                    property bool initAnimTrigger: rightContent.showLayout
-                                    opacity: initAnimTrigger ? 1 : 0
-                                    transform: Translate { y: sysBatPill.initAnimTrigger ? 0 : barWindow.s(10); Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } } }
-                                    Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                                    opacity: 1
 
                                     Row {
                                         id: batLayoutRow
@@ -1222,7 +1173,7 @@ Variants {
 
                             color: isHovered ? barWindow.pillBgHover : barWindow.pillBg
                             radius: barWindow.s(14)
-                            border.width: Math.max(1, Config.borderWidth)
+                            border.width: Config.borderWidth
                             border.color: Config.borderWidth > 0 ? (isHovered ? barWindow.pillBorderHover : barWindow.pillBorder) : Qt.rgba(255, 255, 255, Config.glassSpecular)
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
