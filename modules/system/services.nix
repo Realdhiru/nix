@@ -74,8 +74,8 @@
   # Screen recording.
   programs.gpu-screen-recorder.enable = true;
 
-  # KDE Connect completely disabled per user preference
-  programs.kdeconnect.enable = false;
+  # KDE Connect enabled (firewall/ports & packages available, manual launch only, zero autostart)
+  programs.kdeconnect.enable = true;
 
   # Virtual input device support for KDE Connect digitizer / drawing tablet
   hardware.uinput.enable = true;
@@ -138,13 +138,21 @@
     '';
   };
 
+  # Systemd Manager timeouts for clean, instant shutdown and silent watchdog
+  systemd.settings.Manager = {
+    DefaultTimeoutStopSec = "5s";
+    DefaultTimeoutAbortSec = "5s";
+    RebootWatchdogSec = "0s";
+  };
+
   # Polkit authentication agent.
   systemd.user.services.polkit-gnome-authentication-agent-1 = {
     description = "polkit-gnome-authentication-agent-1";
 
-    wantedBy = [ "graphical-session.target" ];
-    wants = [ "graphical-session.target" ];
-    after = [ "graphical-session.target" ];
+    wantedBy = [ "hyprland-session.target" ];
+    wants = [ "hyprland-session.target" ];
+    after = [ "hyprland-session.target" ];
+    partOf = [ "hyprland-session.target" ];
 
     serviceConfig = {
       Type = "simple";
@@ -194,7 +202,7 @@
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-session --cmd start-hyprland";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --time-format '%a %b %d  %I:%M %p' --battery --remember --remember-session --cmd start-hyprland";
         user = "greeter";
       };
     };

@@ -224,7 +224,10 @@ Item {
     Timer { id: btPendingReset; interval: 8000; onTriggered: { window.btPowerPending = false; window.expectedBtPower = ""; } }
 
     property bool showInfoView: false
-    onShowInfoViewChanged: refreshOrbitModel()
+    onShowInfoViewChanged: {
+        if (showInfoView) updateInfoNodes();
+        refreshOrbitModel(true);
+    }
 
     property string pendingWifiSsid: ""
     property string pendingWifiId: ""
@@ -417,8 +420,8 @@ Item {
 
     property var infoList: []
 
-    function refreshOrbitModel() {
-        if (window.isListLocked) return;
+    function refreshOrbitModel(force = false) {
+        if (window.isListLocked && !force) return;
         let dataArray = [];
         if (window.currentConn && window.showInfoView) {
             dataArray = window.nextInfoList !== null ? window.nextInfoList : window.infoList;
@@ -439,48 +442,55 @@ Item {
         }
 
         let maxCount = Math.min(dataArray.length, 30);
-        
-        // Fast path: if counts match and IDs match, just update properties in place without touching tree
-        let matches = (listModel.count === maxCount);
-        if (matches) {
-            for (let i = 0; i < maxCount; i++) {
-                if (listModel.get(i).id !== dataArray[i].id) {
-                    matches = false;
-                    break;
-                }
+        let desired = dataArray.slice(0, maxCount);
+        let desiredMap = {};
+        for (let i = 0; i < desired.length; i++) {
+            let id = desired[i].id || "";
+            desiredMap[id] = desired[i];
+        }
+
+        // 1. Remove elements from listModel that are no longer present
+        for (let i = listModel.count - 1; i >= 0; i--) {
+            let currentId = listModel.get(i).id;
+            if (!desiredMap[currentId]) {
+                listModel.remove(i);
             }
         }
 
-        if (matches) {
-            for (let i = 0; i < maxCount; i++) {
-                let d = dataArray[i];
-                let item = listModel.get(i);
+        // 2. Build index lookup for existing items
+        let currentMap = {};
+        for (let i = 0; i < listModel.count; i++) {
+            currentMap[listModel.get(i).id] = i;
+        }
+
+        // 3. Update existing items in place and append new items
+        for (let i = 0; i < desired.length; i++) {
+            let d = desired[i];
+            let id = d.id || "";
+            if (currentMap[id] !== undefined) {
+                let idx = currentMap[id];
+                let item = listModel.get(idx);
                 for (let key in d) {
                     if (item[key] !== d[key]) {
-                        listModel.setProperty(i, key, d[key]);
+                        listModel.setProperty(idx, key, d[key]);
                     }
                 }
+            } else {
+                listModel.append({
+                    id: d.id || "",
+                    ssid: d.ssid || "",
+                    mac: d.mac || "",
+                    name: d.name || d.ssid || "",
+                    icon: d.icon || "",
+                    security: d.security || "",
+                    action: d.action || "",
+                    isInfoNode: d.isInfoNode || false,
+                    isActionable: d.isActionable !== undefined ? d.isActionable : false,
+                    cmdStr: d.cmdStr || "",
+                    parentIndex: d.parentIndex !== undefined ? d.parentIndex : -1
+                });
+                currentMap[id] = listModel.count - 1;
             }
-            return;
-        }
-
-        // Structural change: atomic clear + repopulate avoids Qt6 QQuickItem::stackBefore reordering crash
-        listModel.clear();
-        for (let i = 0; i < maxCount; i++) {
-            let d = dataArray[i];
-            listModel.append({
-                id: d.id || "",
-                ssid: d.ssid || "",
-                mac: d.mac || "",
-                name: d.name || d.ssid || "",
-                icon: d.icon || "",
-                security: d.security || "",
-                action: d.action || "",
-                isInfoNode: d.isInfoNode || false,
-                isActionable: d.isActionable !== undefined ? d.isActionable : false,
-                cmdStr: d.cmdStr || "",
-                parentIndex: d.parentIndex !== undefined ? d.parentIndex : -1
-            });
         }
     }
 
@@ -601,7 +611,7 @@ Item {
                 }
             }
             if (window.activeMode !== "eth") {
-                nodes.push({ id: "action_scan", name: "Scan Devices", icon: "󰍉", action: "Switch View", isInfoNode: true, isActionable: true, cmdStr: "TOGGLE_VIEW", parentIndex: -1 });
+                nodes.unshift({ id: "action_scan", name: "Scan Devices", icon: "󰍉", action: "Switch View", isInfoNode: true, isActionable: true, cmdStr: "TOGGLE_VIEW", parentIndex: -1 });
             }
         }
 
@@ -701,7 +711,7 @@ Item {
             newNetworks.sort((a, b) => a.id.localeCompare(b.id));
 
             if (isNowWifiConn && window.activeMode === "wifi") {
-                newNetworks.push({ id: "action_settings", ssid: "Current Device", mac: "", name: "Current Device", icon: "󰒓", security: "", action: "View Info", isInfoNode: false, isActionable: true, cmdStr: "TOGGLE_VIEW", parentIndex: -1 });
+                newNetworks.unshift({ id: "action_settings", ssid: "Current Device", mac: "", name: "Current Device", icon: "󰒓", security: "", action: "View Info", isInfoNode: false, isActionable: true, cmdStr: "TOGGLE_VIEW", parentIndex: -1 });
             }
 
             if (JSON.stringify(window.wifiList) !== JSON.stringify(newNetworks)) {
@@ -826,7 +836,7 @@ Item {
             newDevices.sort((a, b) => a.id.localeCompare(b.id));
 
             if (isNowBtConn && window.activeMode === "bt") {
-                newDevices.push({ id: "action_settings", ssid: "", mac: "action_settings", name: "Current Device", icon: "󰒓", action: "View Info", isInfoNode: false, isActionable: true, cmdStr: "TOGGLE_VIEW", parentIndex: -1 });
+                newDevices.unshift({ id: "action_settings", ssid: "", mac: "action_settings", name: "Current Device", icon: "󰒓", action: "View Info", isInfoNode: false, isActionable: true, cmdStr: "TOGGLE_VIEW", parentIndex: -1 });
             }
 
             if (JSON.stringify(window.btList) !== JSON.stringify(newDevices)) {
@@ -916,7 +926,7 @@ Item {
     }
 
     Timer {
-        interval: (Object.keys(window.busyTasks).length > 0 || Object.keys(window.disconnectingDevices).length > 0) ? 1000 : 3000
+        interval: (Object.keys(window.busyTasks).length > 0 || Object.keys(window.disconnectingDevices).length > 0) ? 1000 : 6000
         // Gate polling: do not run background polls while popup is hidden or a connection handshake is active
         running: window.isPopupActive && window.connectingId === "" && !connectProcess.running; repeat: true
         onTriggered: {
@@ -1177,7 +1187,7 @@ Item {
 
                         Behavior on activeTransition {
                             enabled: window.introState >= 1.0;
-                            NumberAnimation { duration: 1400; easing.type: Easing.OutExpo }
+                            NumberAnimation { duration: 800; easing.type: Easing.OutCubic }
                         }
 
                         property real multiShift: window.activeMode === "wifi" || window.activeMode === "eth" ? 0.0 : window.multiTransitionState
@@ -1187,7 +1197,7 @@ Item {
 
                         property real myBaseAngle: (window.coreVisualIndices[index] / Math.max(1, window.activeCoreCount)) * Math.PI * 2
                         property real animatedBaseAngle: myBaseAngle
-                        Behavior on animatedBaseAngle { NumberAnimation { duration: 1000; easing.type: Easing.InOutExpo } }
+                        Behavior on animatedBaseAngle { NumberAnimation { duration: 800; easing.type: Easing.InOutCubic } }
 
                         property real coreOrbitAngle: window.globalOrbitAngle * 1.5 + animatedBaseAngle
 
@@ -1236,8 +1246,8 @@ Item {
                             SequentialAnimation on bumpScale {
                                 id: coreBumpAnim
                                 running: false
-                                NumberAnimation { to: 1.15; duration: 200; easing.type: Easing.OutBack }
-                                NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.OutQuint }
+                                NumberAnimation { to: 1.06; duration: 300; easing.type: Easing.OutCubic }
+                                NumberAnimation { to: 1.0; duration: 400; easing.type: Easing.OutQuad }
                             }
 
                             gradient: Gradient {
@@ -1581,6 +1591,12 @@ Item {
                                         coreDrainAnim.start();
                                     }
                                 }
+                                onCanceled: {
+                                    if (!centralCore.disconnectTriggered && !isMyDisconnecting && !showPassword) {
+                                        coreFillAnim.stop();
+                                        coreDrainAnim.start();
+                                    }
+                                }
                             }
 
                             NumberAnimation {
@@ -1589,7 +1605,7 @@ Item {
                                 property: "disconnectFill"
                                 to: 1.0
                                 duration: 700 * (1.0 - centralCore.disconnectFill)
-                                easing.type: Easing.InSine
+                                easing.type: Easing.Linear
                                 onFinished: {
                                     if (!coreMa.pressed) {
                                         centralCore.disconnectFill = 0.0;
@@ -1650,19 +1666,12 @@ Item {
                             id: floatCardDelegateContainer
                             width: window.s(170); height: window.s(60)
 
-                            property bool isLoaded: (window.activeMode === "wifi" ? !window.wifiFirstLoad : (window.activeMode === "bt" ? !window.btFirstLoad : !window.ethFirstLoad))
+                            property bool isLoaded: true
                             opacity: isLoaded ? 1.0 : 0.0
                             visible: opacity > 0.01
-                            Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                            Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
 
-                            property real entryAnim: isLoaded ? 1.0 : 0.0
-                            Behavior on entryAnim { NumberAnimation { duration: 600; easing.type: Easing.OutBack } }
-
-                            Timer {
-                                running: !floatCardDelegateContainer.isLoaded
-                                interval: window.activeMode === "eth" ? (600 + (index * 80)) : (40 + (index * 30))
-                                onTriggered: floatCardDelegateContainer.isLoaded = true
-                            }
+                            property real entryAnim: 1.0
 
                             property int myParentIdx: model.parentIndex !== undefined ? model.parentIndex : -1
 
@@ -1704,14 +1713,14 @@ Item {
 
                             property real targetSingleBaseAngle: (index / Math.max(1, orbitRepeater.count)) * Math.PI * 2
                             property real singleBaseAngle: targetSingleBaseAngle
-                            Behavior on singleBaseAngle { NumberAnimation { duration: 800; easing.type: Easing.OutExpo } }
+                            Behavior on singleBaseAngle { NumberAnimation { duration: 700; easing.type: Easing.OutCubic } }
 
                             property real singleLiveAngle: (window.globalOrbitAngle * 1.5) + singleBaseAngle
 
                             property real arcSpread: Math.PI * 0.8
                             property real targetNodeOffset: (siblingsCount > 1) ? ((localIndex / (siblingsCount - 1)) - 0.5) * arcSpread : 0
                             property real nodeOffset: targetNodeOffset
-                            Behavior on nodeOffset { NumberAnimation { duration: 800; easing.type: Easing.OutExpo } }
+                            Behavior on nodeOffset { NumberAnimation { duration: 700; easing.type: Easing.OutCubic } }
 
                             property real parentCoreAngle: (window.globalOrbitAngle * 1.5) + parentBaseAngle
                             property real multiLiveAngle: myParentIdx === -1 ? singleLiveAngle : (parentCoreAngle + nodeOffset)
@@ -1719,7 +1728,7 @@ Item {
                             property int ringIndex: isInfoNode ? 0 : index % 2
                             property real targetRingOffset: ringIndex * window.s(40)
                             property real ringOffset: targetRingOffset
-                            Behavior on ringOffset { NumberAnimation { duration: 800; easing.type: Easing.OutExpo } }
+                            Behavior on ringOffset { NumberAnimation { duration: 700; easing.type: Easing.OutCubic } }
 
                             property real singleRadX: isInfoNode ? window.s(280) : window.s(320) + ringOffset
                             property real singleRadY: isInfoNode ? window.s(180) : window.s(200) + ringOffset
@@ -1801,8 +1810,8 @@ Item {
                                 SequentialAnimation on bumpScale {
                                     id: cardBumpAnim
                                     running: false
-                                    NumberAnimation { to: 1.2; duration: 200; easing.type: Easing.OutBack }
-                                    NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.OutQuint }
+                                    NumberAnimation { to: 1.08; duration: 300; easing.type: Easing.OutCubic }
+                                    NumberAnimation { to: 1.0; duration: 400; easing.type: Easing.OutQuad }
                                 }
 
                                 property real nameImplicitWidth: baseNameText.implicitWidth
@@ -2104,65 +2113,30 @@ Item {
 
                                     cursorShape: (floatCard.triggered || floatCard.isMyBusy || floatCard.renderFill === 1.0 || !floatCard.isInteractable) ? Qt.ArrowCursor : Qt.PointingHandCursor
 
-                                    onClicked: {
-                                        if (cmdStr === "TOGGLE_VIEW") {
-                                            fillAnim.stop();
-                                            drainAnim.stop();
-                                            floatCard.fillLevel = 0.0;
-                                            window.playSfx("switch.wav");
-                                            window.showInfoView = !window.showInfoView;
-                                            return;
-                                        }
-                                        if (isInfoNode && action === "IP Address") {
-                                            fillAnim.stop();
-                                            drainAnim.stop();
-                                            floatCard.fillLevel = 0.0;
-                                            if (name && name !== "No IP" && name !== "Unknown") {
-                                                window.playSfx("switch.wav");
-                                                let safeIp = name.replace(/'/g, "'\\''");
-                                                Quickshell.execDetached(["bash", "-c", "printf '%s' '" + safeIp + "' | wl-copy"]);
-                                            }
-                                            floatCard.triggered = true;
-                                            cardFlashAnim.start();
-                                            return;
-                                        }
-                                        if (isInfoNode && cmdStr) {
-                                            fillAnim.stop();
-                                            drainAnim.stop();
-                                            floatCard.fillLevel = 0.0;
-                                            Quickshell.execDetached(["sh", "-c", cmdStr]);
-                                            if (window.activeMode === "bt") btPoller.running = true;
-                                            return;
-                                        }
-                                    }
-
                                     preventStealing: true
 
                                     onPressed: {
-                                        if (cmdStr === "TOGGLE_VIEW" || isInfoNode) return;
                                         window.isInteractingWithCard = true;
                                         if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel < 1.0) {
                                             if (window.pendingWifiId !== "") {
                                                 window.pendingWifiId = ""; window.pendingWifiSsid = "";
                                             }
-                                            drainAnim.stop()
-                                            fillAnim.start()
+                                            drainAnim.stop();
+                                            fillAnim.start();
                                         }
                                     }
                                     onReleased: {
-                                        if (cmdStr === "TOGGLE_VIEW" || isInfoNode) return;
                                         window.isInteractingWithCard = false;
                                         if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel < 1.0) {
-                                            fillAnim.stop()
-                                            drainAnim.start()
+                                            fillAnim.stop();
+                                            drainAnim.start();
                                         }
                                     }
                                     onCanceled: {
-                                        if (cmdStr === "TOGGLE_VIEW" || isInfoNode) return;
                                         window.isInteractingWithCard = false;
                                         if (floatCard.isInteractable && !floatCard.triggered && !floatCard.isMyBusy && floatCard.fillLevel < 1.0) {
-                                            fillAnim.stop()
-                                            drainAnim.start()
+                                            fillAnim.stop();
+                                            drainAnim.start();
                                         }
                                     }
                                 }
@@ -2172,8 +2146,8 @@ Item {
                                     target: floatCard
                                     property: "fillLevel"
                                     to: 1.0
-                                    duration: 600 * (1.0 - floatCard.fillLevel)
-                                    easing.type: Easing.InSine
+                                    duration: 700 * (1.0 - floatCard.fillLevel)
+                                    easing.type: Easing.Linear
                                     onFinished: {
                                         if (!floatMa.pressed) {
                                             drainAnim.start();
@@ -2186,8 +2160,20 @@ Item {
 
                                         if (cmdStr === "TOGGLE_VIEW") {
                                             window.playSfx("switch.wav");
-                                            window.showInfoView = !window.showInfoView;
                                             floatCard.triggered = false;
+                                            window.isInteractingWithCard = false;
+                                            window.hoveredCardCount = 0;
+                                            window.showInfoView = !window.showInfoView;
+                                            if (!window.showInfoView) {
+                                                if (window.activeMode === "wifi") {
+                                                    if (wifiPoller.running) wifiPoller.running = false;
+                                                    wifiPoller.running = true;
+                                                } else if (window.activeMode === "bt") {
+                                                    if (btPoller.running) btPoller.running = false;
+                                                    btPoller.running = true;
+                                                }
+                                            }
+                                            window.refreshOrbitModel(true);
                                             drainAnim.start();
                                         } else if (isInfoNode && action === "IP Address") {
                                             if (name && name !== "No IP" && name !== "Unknown") {

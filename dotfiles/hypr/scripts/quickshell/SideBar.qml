@@ -67,11 +67,12 @@ Variants {
             }
 
             property int barThickness: s(46)
+            readonly property int barMargin: s(Config.barEdgeMargin)
 
             implicitWidth: barThickness
             implicitHeight: Screen.height
-            margins { top: s(4); bottom: s(4); left: s(4); right: 0 }
-            exclusiveZone: barThickness - s(2)
+            margins { top: barWindow.barMargin; bottom: barWindow.barMargin; left: barWindow.barMargin; right: 0 }
+            exclusiveZone: barThickness + barWindow.barMargin
             color: "transparent"
             WlrLayershell.namespace: "quickshell"
             WlrLayershell.layer: WlrLayer.Top
@@ -328,7 +329,7 @@ Variants {
             // ── Hardware Backlight Service (sysfs inotify, zero polling) ──
             FileView {
                 id: brightCurView
-                path: "/sys/class/backlight/intel_backlight/brightness"
+                path: Config.backlightDevice + "/brightness"
                 watchChanges: true
                 onLoadedChanged: barWindow.updateBrightness()
                 onTextChanged: barWindow.updateBrightness()
@@ -337,7 +338,7 @@ Variants {
 
             FileView {
                 id: brightMaxView
-                path: "/sys/class/backlight/intel_backlight/max_brightness"
+                path: Config.backlightDevice + "/max_brightness"
                 onLoadedChanged: barWindow.updateBrightness()
             }
 

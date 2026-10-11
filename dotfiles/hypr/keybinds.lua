@@ -72,8 +72,8 @@ hl.bind(mainMod .. " + ALT + Down", hl.dsp.exec_cmd(scripts .. "qs_manager.sh po
 -- Applications
 -- ======================================================
 
-hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("footclient -N || foot"))
-hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd("footclient -N -e zsh -c 'fastfetch; exec zsh' || foot -e zsh -c 'fastfetch; exec zsh'"))
+hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("alacritty"))
+hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd("alacritty -e zsh -c 'fastfetch; exec zsh'"))
 
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("env QT_QPA_PLATFORMTHEME=qt6ct pcmanfm-qt"))
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_menu.sh app"))

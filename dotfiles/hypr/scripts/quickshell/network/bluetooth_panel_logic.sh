@@ -132,8 +132,9 @@ get_status() {
             | select(.value["org.bluez.Device1"] != null) 
             | .value["org.bluez.Device1"] as $d 
             | select($d.Connected.data != true)
-            | select($d.Paired.data == true or $d.RSSI.data != null)
+            | select($d.Paired.data == true or ($d.RSSI.data != null and $d.RSSI.data >= -88))
             | select($d.Name.data != null and $d.Name.data != "")
+            | select((($d.Name.data // $d.Alias.data) | test("^[0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}$")) | not)
             | [
                 $d.Address.data,
                 ($d.Name.data // $d.Alias.data),

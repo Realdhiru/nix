@@ -21,6 +21,23 @@
         "type": "github"
       }
     },
+    "chatgpt": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791715924,
+        "narHash": "sha256-sHJXuRenyQpr+CNr+SOrY4zd8JWqyUiPfgHqcwP1MRM=",
+        "path": "/home/realdhiru/Projects/codex-flake",
+        "type": "path"
+      },
+      "original": {
+        "path": "/home/realdhiru/Projects/codex-flake",
+        "type": "path"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -154,6 +171,7 @@
     "root": {
       "inputs": {
         "anifetch": "anifetch",
+        "chatgpt": "chatgpt",
         "helium": "helium",
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs_2",

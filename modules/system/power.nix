@@ -1,14 +1,9 @@
 { lib, pkgs, user ? {}, ... }:
 {
-  # --- 1. KERNEL-LEVEL POWER FIXES ---
+  # Generic sysctl kernel writeback (safe for all machines)
   boot.kernel.sysctl = {
     "vm.dirty_writeback_centisecs" = 6000;
   };
-
-  boot.kernelParams = [
-    "i915.enable_fbc=1"
-    "i915.enable_psr=1"
-  ];
 
   # --- 2. TLP CONFIGURATION (SOLE POWER MANAGER) ---
   # NixOS strictly forbids running both TLP and power-profiles-daemon
@@ -39,6 +34,8 @@
       PLATFORM_PROFILE_ON_BAT = "balanced";
       PLATFORM_PROFILE_ON_SAV = "balanced";
 
+      CPU_MAX_PERF_ON_AC  = 100;
+      CPU_MAX_PERF_ON_BAT = 100;
       CPU_MAX_PERF_ON_SAV = 60;
 
       RUNTIME_PM_ON_AC  = "auto";

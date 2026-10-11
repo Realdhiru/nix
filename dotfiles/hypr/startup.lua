@@ -2,8 +2,9 @@ local home = os.getenv("HOME") or ("/home/" .. (os.getenv("USER") or "user"))
 local scripts = home .. "/.config/hypr/scripts/"
 
 hl.on("hyprland.start", function()
-    -- 1. Critical: Sync Wayland environment to D-Bus and start Hyprland session target
-    hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP")
+    -- 1. Critical: Sync Wayland environment synchronously before triggering session target
+    os.execute("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP")
+    os.execute("systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP")
     hl.exec_cmd("systemctl --user start hyprland-session.target")
 
     -- 2. Quickshell: Launch immediately so TopBar & master window render concurrently

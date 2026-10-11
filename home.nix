@@ -165,7 +165,7 @@
     force = true;
     text = ''
       [System]
-      Terminal=foot
+      Terminal=alacritty
       Archiver=lxqt-archiver
 
       [Thumbnail]

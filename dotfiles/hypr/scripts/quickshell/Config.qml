@@ -17,6 +17,32 @@ Item {
     readonly property string settingsJsonPath: hyprDir + "/settings.json"
     readonly property string weatherEnvPath: qsScriptsDir + "/calendar/.env"
 
+    // Dynamic Hardware Sysfs Discovery (Multi-Hardware / Multi-Vendor Portability)
+    property string backlightDevice: "/sys/class/backlight/intel_backlight"
+    property string batteryDevice: "/sys/class/power_supply/BAT0"
+    property string acDevice: "/sys/class/power_supply/AC0"
+
+    Process {
+        id: hwDiscoveryProc
+        running: true
+        command: ["bash", "-c", "ls -d /sys/class/backlight/* 2>/dev/null | head -n1; ls -d /sys/class/power_supply/BAT* 2>/dev/null | head -n1; ls -d /sys/class/power_supply/AC* /sys/class/power_supply/ADP* 2>/dev/null | head -n1"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (!this.text) return;
+                let lines = this.text.trim().split("\n");
+                if (lines[0] && lines[0].startsWith("/sys/class/backlight/")) {
+                    config.backlightDevice = lines[0].trim();
+                }
+                if (lines[1] && lines[1].startsWith("/sys/class/power_supply/")) {
+                    config.batteryDevice = lines[1].trim();
+                }
+                if (lines[2] && lines[2].startsWith("/sys/class/power_supply/")) {
+                    config.acDevice = lines[2].trim();
+                }
+            }
+        }
+    }
+
     // State Tracking
     property bool dataReady: false
     property var rawSettings: ({})
@@ -46,6 +72,8 @@ Item {
     }
     property bool isPopupOpen: false
     property string activeWidget: "hidden"
+    property int gapsOut: 12
+    property int barEdgeMargin: 5
 
 
     // =========================================================================
@@ -416,6 +444,7 @@ Item {
     // =========================================================================
     Component.onCompleted: {
         parseSettingsTextSync();
+        parseAppearanceSync();
         sh("mkdir -p ~/.cache && touch ~/.cache/hypr_power_monitor.conf");
         envReader.running = false; envReader.running = true;
         config.updateSolidMode();
@@ -599,6 +628,36 @@ Item {
         }
     }
 
+
+    function parseAppearanceSync() {
+        try {
+            let txt = "";
+            if (typeof appearanceFileWatcher.text === "function") txt = appearanceFileWatcher.text();
+            else if (typeof appearanceFileWatcher.text === "string") txt = appearanceFileWatcher.text;
+            if (txt) {
+                let match = txt.match(/gaps_out\s*=\s*(\d+)/);
+                if (match && match[1]) {
+                    let parsed = parseInt(match[1]);
+                    if (!isNaN(parsed) && parsed >= 0) {
+                        config.gapsOut = parsed;
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+
+    FileView {
+        id: appearanceFileWatcher
+        path: config.hyprDir + "/appearance.lua"
+        watchChanges: true
+        blockLoading: true
+        onLoadedChanged: config.parseAppearanceSync()
+        onFileChanged: {
+            appearanceFileWatcher.reload();
+            config.parseAppearanceSync();
+        }
+        onTextChanged: config.parseAppearanceSync()
+    }
 
     FileView {
         id: settingsFileWatcher

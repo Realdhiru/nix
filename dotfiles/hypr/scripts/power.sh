@@ -20,9 +20,11 @@ LOCK_QML="$HOME/.config/hypr/scripts/quickshell/Lock.qml"
 STATE_FILE="$HOME/.cache/idle_inhibit.pid"
 
 is_locked() {
-    # Match only real quickshell lock processes, never shells/scripts that
-    # merely mention the path (test commands, agents, wrappers) — a bare
-    # pgrep -f false-positives on those and silently swallows lock attempts.
+    # Check for active hyprlock
+    if pgrep -x hyprlock >/dev/null 2>&1; then
+        return 0
+    fi
+    # Match only real quickshell lock processes
     local pid
     for pid in $(pgrep -f 'quickshell.*Lock\.qml' 2>/dev/null || true); do
         [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ] || continue
@@ -39,6 +41,9 @@ is_locked() {
 # PAM-lessly forever and poisons is_locked). Kill only those; young
 # processes may still be acquiring, live ones are untouched.
 reap_stray_locks() {
+    # Fast exit: if no lock process exists, skip loginctl session queries entirely
+    pgrep -x hyprlock >/dev/null 2>&1 || pgrep -f 'quickshell.*Lock\.qml' >/dev/null 2>&1 || return 0
+
     local sess hint now start age pid
     sess="${XDG_SESSION_ID:-}"
     if [ -z "$sess" ]; then
@@ -49,12 +54,23 @@ reap_stray_locks() {
     hint=$(loginctl show-session "$sess" -p LockedHint 2>/dev/null | cut -d= -f2 || true)
     [ "$hint" = "no" ] || return 0
     now=$(date +%s)
+    # 1. Clean orphaned hyprlock processes when session is unlocked
+    for pid in $(pgrep -x hyprlock 2>/dev/null || true); do
+        [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ] || continue
+        start=$(stat -c %Y "/proc/$pid" 2>/dev/null || echo "$now")
+        age=$((now - start))
+        if [ "$age" -gt 30 ]; then
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+
+    # 2. Clean orphaned quickshell Lock.qml processes
     for pid in $(pgrep -f 'quickshell.*Lock\.qml' 2>/dev/null || true); do
         [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ] || continue
         ps -o args= -p "$pid" 2>/dev/null | grep -qE '(^|/)(\.quickshell-wrapped|quickshell|qs)( |$).*Lock\.qml' || continue
         start=$(stat -c %Y "/proc/$pid" 2>/dev/null || echo "$now")
         age=$((now - start))
-        if [ "$age" -gt 45 ]; then
+        if [ "$age" -gt 30 ]; then
             kill -9 "$pid" 2>/dev/null || true
         fi
     done
@@ -75,13 +91,13 @@ cmd_lock() {
         exit 0
     fi
 
+    reap_stray_locks
+
     if is_locked; then
         flock -u 9 2>/dev/null || true
         exec 9>&- 2>/dev/null || true
         exit 0
     fi
-
-    reap_stray_locks
 
     if command -v hyprlock >/dev/null 2>&1; then
         exec hyprlock

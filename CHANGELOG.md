@@ -1,10 +1,108 @@
 # CHANGELOG
 
-## 2026-10-11 — Battery Telemetry Smoothing & Unified Popup Sync
+## 2026-10-11 — Lockscreen Stray Reaper & KDE Connect Manual Package Restoration
 
-- **Battery Telemetry Unification (`SysData.qml`, `BatteryPopup.qml`)**:
-  - **Shared Source of Truth**: Unified time-remaining estimation by exposing `batRuntimeSeconds`, `batHours`, and `batMins` directly from the `SysData` singleton instead of running a redundant, un-smoothed subshell in `BatteryPopup.qml`.
-  - **Spike Filter**: Both the SideBar battery hover pill and the main Battery Popup now share the exponential moving average (EMA) rate smoothing, eliminating wild swings during momentary CPU/disk spikes.
+- **Lockscreen Privacy Blur & Smooth Animation Restoration ([`hyprlock.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hyprlock.conf), [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh))**:
+  - Removed `--immediate-render` which was causing the black screen by rendering the buffer before the compositor screenshot was completed.
+  - Restored smooth animations (`fadeIn 3, fadeOut 2`) eliminating the jarring static transition.
+  - Set clean blur: `blur_passes = 2`, `blur_size = 5` and removed frosted tint layer for a clean, natural background look.
+  - Purged obsolete config keys (`disable_loading_bar`, `grace`, `no_fade_in`, `fail_transition`) preventing hyprlock config parse warnings.
+- **KDE Connect Restoration (Manual Launch Only) ([`services.nix`](file:///home/realdhiru/nix/modules/system/services.nix))**:
+  - Re-enabled `programs.kdeconnect.enable = true;` in `modules/system/services.nix` (opens required firewall ports and installs packages).
+  - Zero autostart: `kdeconnect-indicator` remains commented out in `startup.lua`, ensuring it only runs when explicitly launched by the user.
+
+## 2026-10-11 — Linked Bar Edge Margin (5px) & Window Gap Harmonization
+
+- **Linked Bar Edge Margin (5px)**:
+  - **Shared Token ([`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml))**: Added `property int barEdgeMargin: 5` as the single source of truth for both SideBar and TopBar outer screen-edge cushions.
+  - **Synchronized Bar Margins ([`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml), [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml))**:
+    - SideBar left margin adjusted from `4px` to `5px` (`left: barMargin`, `exclusiveZone: barThickness + barMargin`).
+    - TopBar top margin adjusted from `2px` to `5px` (`top: barMargin`, `exclusiveZone: barHeight + barMargin`).
+  - **Tiling Boundary Alignment ([`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js))**:
+    - Preserved Hyprland's `gaps_out = 12` intact around all 4 sides of tiled windows.
+    - Derived popup workspace boundaries based on the combined 51px bar footprint (`BAR_TOTAL = 46 + 5`), ensuring all widget popups dock in exact vertical/horizontal alignment with tiled application windows.
+
+- **Instantaneous Battery Runtime Recalculation ([`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml))**:
+  - Bound direct sysfs reading of `/sys/class/power_supply/BAT*/power_now` (uW) and `energy_now` (uWh) alongside UPower D-Bus changes.
+  - In `setPowerProfile(name)`, reset `_smoothedDischargeRate = 0.0` and immediately trigger `_syncSysfsBattery()`, enabling immediate runtime estimation updates upon power mode switching without waiting for slow exponential moving averages.
+- **Power Saver Wallpaper Kill & Compositor Consolidation ([`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml))**:
+  - Merged wallpaper teardown and game compositor flags directly into `_applyVisualOverrides("power-saver")`: stops `awww-daemon` / pauses `mpvpaper`, sets Samsung OLED pixels to pure black (`#000000`, 0 nits, 0 mA draw), enforces 100% solid opacity across all windows and quickshell panels, disables blur/shadows/animations, and enables direct scanout (`2`) + VRR (`1`).
+  - Restoring to `balanced` or `performance` seamlessly restarts wallpaper daemons via `wallpaper.sh boot` and restores transparency, blur, and animations.
+- **Hardware Architecture Portability & Decoupling**:
+  - **Dynamic Backlight & Power Supply Discovery ([`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml), [`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml), [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml))**: Centralized dynamic sysfs resolution in `Config.qml` (`Config.backlightDevice`, `Config.batteryDevice`, `Config.acDevice`). Replaced all hardcoded `/sys/class/backlight/intel_backlight` references across QuickShell with dynamic properties, allowing seamless portability across Intel, AMD (`amdgpu_bl0`), and Nvidia machines.
+  - **Vendor CLI Safeguards ([`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml))**: Guarded all `asusctl` calls with `command -v asusctl >/dev/null 2>&1`, ensuring non-ASUS machines never encounter errors or delays.
+  - **System Layer Decoupling ([`power.nix`](file:///home/realdhiru/nix/modules/system/power.nix), [`hosts/nixos/default.nix`](file:///home/realdhiru/nix/hosts/nixos/default.nix))**: Extracted Intel-specific kernel parameters (`i915.enable_fbc=1`, `i915.enable_psr=1`) out of generic `power.nix` and into host-specific `hosts/nixos/default.nix`, leaving `power.nix` 100% universal and hardware-agnostic.
+
+## 2026-10-11 — Network Popup Paired Bluetooth Discovery & Card Animation Normalization
+
+- **Paired Bluetooth Devices Discovery ([`bluetooth_panel_logic.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/bluetooth_panel_logic.sh))**:
+  - Restored `select($d.Paired.data == true or ($d.RSSI.data != null and $d.RSSI.data >= -88))` so saved/paired devices appear in the list for connection immediately instead of requiring an active discovery broadcast first.
+  - Retained strict regex filtering to prevent unresolvable raw MAC address beacon placeholders from entering the device list.
+- **Card Entry & Loading Animations ([`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml))**:
+  - Eliminated staggered index timers (`index * 30ms`) and `Easing.OutBack` scale flips that caused cards to jitter and jump across frames during list updates.
+  - Cards now enter smoothly with stable scene-graph visibility and immediate property binding.
+- **Instant View Transition on Hold-to-Fill Completion ([`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml))**:
+  - Added `force = true` override to `refreshOrbitModel(force)` and `onShowInfoViewChanged` to bypass `window.isListLocked`. Previously, holding a card locked model updates (`locksList: isInteractable && floatMa.pressed`), causing the UI to silently drop view changes until the cursor moved away seconds later.
+- **Constant Linear Fill Speed & Action Button Priority ([`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml))**:
+  - Restored constant linear fill speed (`Easing.Linear`, uniform 700ms) on both cards and central core disconnect fill.
+  - Switched "Scan Devices" (`action_scan`) and "View Info" (`action_settings`) from `push()` to `unshift()`. Action buttons are now anchored at index 0 rather than being pushed to the tail end, ensuring they are always visible even when dense scan results fill the list.
+- **Animation Curve & Timing Smoothing ([`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml))**:
+  - Replaced aggressive `Easing.InSine` and `Easing.OutExpo` curves across hold-to-fill and orbit layout shifts with fluid `Easing.OutCubic` / `Easing.InOutCubic`.
+  - Tuned card fill duration to `850ms` and central core disconnect fill to `900ms` for smooth progress feedback.
+  - Softened card bump triggers to `1.08x` (`300ms OutCubic -> 400ms OutQuad`) and core bump to `1.06x`, eliminating harsh overshoot popping.
+
+
+## 2026-10-11 — Boot, Shutdown, Tuigreet & Dynamic Window-Margin Popup Positioning
+
+- **Uniform Floating Island Rice & Symmetrical Guttering (Option A)**:
+  - **Dynamic Bar Margin Alignment ([`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml), [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml))**: Replaced hardcoded margins (`s(4)`, `s(2)`) with `Config.gapsOut` (`margins { top: gap; bottom: gap; left: gap; right: 0 }`). The gap between the screen edge and the bar now exactly equals the gap between the bar and tiled windows (`12px`), creating a perfectly balanced aesthetic gutter.
+  - **Full-Bleed Viewport Correction ([`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js), [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**: Full-width carousels (`config.w === -1`) now bound their width dynamically to `usableW = mw - usableLeft - gap` rather than raw `Screen.width`. Bound `WallpaperPicker` to `layoutWidth` so carousel centering and item margins are 100% symmetrical between left and right window borders.
+- **Dynamic Window-Margin Popup Positioning (Zero Hardcoding)**:
+  - **Dynamic Inset Reactor ([`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml))**: Added native `FileView` watching [`appearance.lua`](file:///home/realdhiru/nix/dotfiles/hypr/appearance.lua) to extract `gaps_out` dynamically. Live inotify propagates gap changes instantly to QuickShell without restarts.
+  - **Usable Workspace Positioning Engine ([`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js))**: Rewrote `getLayout()` to derive usable boundaries from bar positions and `gapsOut` (`usableTop`, `usableBottom`, `usableLeft`, `usableRight`). Stripped hardcoded `mr: 4` and `mx: 5` offsets so `battery`, `network`, `music`, and other popups strictly align with Hyprland tiled window margins in both Top Bar and Left Bar modes.
+  - **Boundary Clamping & Cache Keys ([`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml))**: Bound `Config.gapsOut` into layout cache keys and `Registry.getLayout()`.
+- **Boot, Login & Shutdown Reliability**:
+  - **Fast, Silent Shutdown ([`services.nix`](file:///home/realdhiru/nix/modules/system/services.nix))**: Added `systemd.settings.Manager` with `DefaultTimeoutStopSec = "5s"` and `RebootWatchdogSec = "0s"`, stopping slow hanging services and eliminating the `"watchdog0: watchdog did not stop!"` warnings at shutdown.
+  - **Startup Environment Export ([`startup.lua`](file:///home/realdhiru/nix/dotfiles/hypr/startup.lua))**: Switched `dbus-update-activation-environment` and `systemctl --user import-environment` to synchronous execution before launching `hyprland-session.target`.
+  - **Session-Bound Polkit Agent ([`services.nix`](file:///home/realdhiru/nix/modules/system/services.nix))**: Bound `polkit-gnome-authentication-agent-1` to `hyprland-session.target` with `PartOf=hyprland-session.target` to eliminate race conditions, early crashes, and startup display stalls.
+  - **Tuigreet Enhancements ([`services.nix`](file:///home/realdhiru/nix/modules/system/services.nix))**: Added `--battery` and clean time formatting (`--time --time-format '%a %b %d  %I:%M %p'`). Kept password input completely hidden with no mask.
+
+- **Default Terminal Migration to Alacritty**:
+  - **Hyprland Keybindings (`dotfiles/hypr/keybinds.lua`)**: Re-bound `Super + T` to `alacritty` and `Super + Alt + T` to `alacritty -e zsh -c 'fastfetch; exec zsh'`.
+  - **Launcher Default (`dotfiles/fuzzel/fuzzel.ini`)**: Configured `terminal = "alacritty"` in Fuzzel.
+  - **File Manager Integration (`home.nix`)**: Switched PCManFM-Qt "Open Terminal Here" to `Terminal=alacritty`.
+  - **Rebuild Health Gate (`scripts/health-check.sh`)**: Migrated isolated health probe from Foot to Alacritty (`timeout 20 alacritty -e sh -c 'sleep 6'`), tracking `comm == "alacritty"` for PID-level GPU-hang attribution.
+- **Foot Auxiliary Setup Harmonization**:
+  - **Liquid Blur Transparency (`dotfiles/wallust/templates/foot.ini`)**: Added `alpha=0.3` to the `[colors-dark]` template section, ensuring background translucency is preserved when colors are generated and properly caught by Hyprland's blur shader.
+  - **Font Scale Normalization (`dotfiles/foot/foot.ini`)**: Updated font size from `size=6` to `JetBrains Mono:size=10`.
+  - **Dynamic Theme Signals (`dotfiles/wallust/generate.sh`)**: Added `pkill -USR1 -x foot` alongside `pkill -USR1 -f "foot --server"` to ensure both standalone and daemon Foot instances hot-reload color palettes when wallpapers change.
+
+
+
+- **Network Popup In-Place Keyed Synchronization (`NetworkPopup.qml`)**:
+  - **Zero Delegate Destruction / Rebuilds**: Replaced atomic `listModel.clear() + listModel.append()` in `syncModel()` with in-place keyed reconciliation. Existing delegates persist in the scene graph without resetting animations, coordinates, or mouse interaction state.
+  - **Hold-to-Fill Reliability**: Because items are updated in place by ID, delegate hold progress (`fillLevel`) and interaction state (`locksList`) are preserved across background telemetry updates without resetting midway through user clicks or holds.
+  - **Polling Cycle Relaxation**: Increased idle poll interval from 3000ms to 6000ms (maintaining 1000ms during active connection/handshake tasks), preventing background refresh thrash and jitter while allowing stable device inspection.
+- **Available-Device Filtering (`bluetooth_panel_logic.sh`, `wifi_panel_logic.sh`)**:
+  - **Bluetooth Available Filtering**: Filtered out offline/powered-off devices with null RSSI, raw MAC address beacon placeholders, and weak signals (`RSSI < -88 dBm`), ensuring only actively connectable in-range devices are presented.
+  - **Wi-Fi Available Filtering**: Added `signal >= 25%` threshold in AWK filter to discard unconnectable fringe/ghost beacons and eliminate list oscillation.
+
+
+## 2026-10-11 — ChatGPT package extracted to a standalone, publishable flake
+
+- **New repo `~/Projects/codex-flake`** (own git repo, ready to push): self-contained flake exposing `packages.chatgpt`/`default`, `overlays.default`, `nixosModules.default`, `homeModules.default`, plus README (install/usage/reproducibility/troubleshooting), MIT `LICENSE`, `CHANGELOG.md`, pinned `flake.lock`. `nix flake check` passes; built artifact verified (`bin/chatgpt`, `.desktop`, icon).
+- **`~/nix` now consumes it** as a flake input: `chatgpt.url = "path:/home/realdhiru/Projects/codex-flake"` (+ `inputs.nixpkgs.follows = "nixpkgs"`), overlay pulled via `inputs.chatgpt.overlays.default`. Removed the in-tree duplicate `pkgs/chatgpt-linux.nix` (single source of truth). Full system config re-evaluates cleanly.
+- After publishing, switch the input URL to `github:Realdhiru/codex-flake` and run `nix flake lock`.
+- Docs: `docs/decisions.md` §39 updated; `docs/nixos-app-packaging.md` path references updated.
+
+## 2026-10-11 — Battery Telemetry Smoothing & Power Modes Hardware Persistence
+
+- **Power Modes Lifecycle & Startup Race Resolution ([`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml))**:
+  - **Cold-Start & Reload Race Fix**: Resolved frame-0 race condition in `SysData.qml` where early empty `FileView` reads fell through to default `_reconcileStartupProfile` branches, clobbering user selection with default `"balanced"`. Gated reconciliation strictly on loaded cache data (`onLoaded` and synchronous fallback reader).
+  - **Eliminated False AC Override on Boot**: Removed early `_handleAcTransition` invocation that occurred before sysfs power supplies initialized, preventing battery boots from falsely identifying as AC connections.
+  - **Asusctl Hardware Profile Synchronization**: Paired all `sudo tlp <profile>` commands with native `asusctl profile set <Quiet|Balanced|Performance>`, synchronizing platform ACPI fan curves and thermal limits alongside TLP's CPU governor and EPP policies.
+  - **Max Performance Scaling Policy Restoration ([`power.nix`](file:///home/realdhiru/nix/modules/system/power.nix))**: Added explicit `CPU_MAX_PERF_ON_BAT = 100` and `CPU_MAX_PERF_ON_AC = 100` to prevent `intel_pstate` from getting stuck at 60% after toggling out of power-saver mode.
+  - **Zero Bloat / Native Hot-Paths**: Zero extraneous background daemons or bash polling loops introduced; fully compliant with QuickShell event-driven architecture.
 
 ## 2026-10-11 — Rebuild Health Gate: WezTerm Probe Replaced with Isolated Foot Probe
 
@@ -20,6 +118,8 @@
 - **`flake.nix`**: Registered `chatgpt` overlay using `prev.callPackage ./pkgs/chatgpt-linux.nix { }`.
 - **`modules/system/packages.nix`**: Added `chatgpt` to `environment.systemPackages` under the AI tooling group alongside `antigravity-hub`/`opencode`/`gram`. Unfree already permitted via `nixpkgs.config.allowUnfree = true` in [`hosts/nixos/default.nix`](file:///home/realdhiru/nix/hosts/nixos/default.nix#L63). Requires `sudo nixos-rebuild switch --flake ~/nix#nixos` (first build downloads ~497 MB).
 - **Launch fixes**: (1) FHS wrapper binary was named `chatgpt-fhs` (buildFHSEnv names it from `name`; this nixpkgs uses `executableName`, not `runScriptName`) so the desktop `Exec=chatgpt` found nothing → set `executableName = "chatgpt"`. (2) Runtime `libgbm.so.1` missing — `mesa` no longer bundles it (split into `libgbm`) → added `libgbm`. Verified live: `result/bin/chatgpt` starts, reveals window, initializes Codex CLI (v0.162.0-alpha.17.2).
+- **Docs**: New [`docs/nixos-app-packaging.md`](file:///home/realdhiru/nix/docs/nixos-app-packaging.md) — detailed guide on packaging `.deb`/`.rpm`/AppImage apps for NixOS via `buildFHSEnv`, generalizing to any app (decision tree + standalone-flake template), and maintaining it day-to-day (version bumps, hash pinning, GC).
+- **Wayland:** Replaced `ELECTRON_OZONE_PLATFORM_HINT` (no-op on OpenAI's custom Chromium "owl" runtime) with `--ozone-platform=wayland` launch flag; updated `pkgs/chatgpt-linux.nix` → replaced by standalone `~/Projects/codex-flake/pkgs/chatgpt.nix` with launcher script.
 
 ## 2026-10-10 — Network Popup Device Discovery, Polling Throttle & Hold Animation Fixes
 

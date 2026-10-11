@@ -31,7 +31,7 @@ Item {
     // (STOP_CHARGE_THRESH_BAT0 in power.nix) reports status="Not charging"
     // once the cap is hit even while plugged in -- keying off the status
     // string alone made the whole system blind to "plugged in" above that %.
-    property bool acOnline: true
+    property bool acOnline: !UPower.onBattery
     readonly property bool isCharging: root.acOnline
 
     property bool _lowBatteryNotified: false
@@ -145,17 +145,27 @@ Item {
 
     FileView {
         id: batCapView
-        path: "/sys/class/power_supply/BAT0/capacity"
+        path: Config.batteryDevice + "/capacity"
     }
 
     FileView {
         id: batStatView
-        path: "/sys/class/power_supply/BAT0/status"
+        path: Config.batteryDevice + "/status"
+    }
+
+    FileView {
+        id: batEnergyNowView
+        path: Config.batteryDevice + "/energy_now"
+    }
+
+    FileView {
+        id: batPowerNowView
+        path: Config.batteryDevice + "/power_now"
     }
 
     FileView {
         id: acOnlineView
-        path: "/sys/class/power_supply/AC0/online"
+        path: Config.acDevice + "/online"
     }
 
     Process {
@@ -189,6 +199,8 @@ Item {
     }
 
     function _syncSysfsBattery() {
+        batEnergyNowView.reload();
+        batPowerNowView.reload();
         let capTxt = batCapView.text ? (typeof batCapView.text === "function" ? batCapView.text() : batCapView.text).trim() : "";
         let statTxt = batStatView.text ? (typeof batStatView.text === "function" ? batStatView.text() : batStatView.text).trim() : "";
         let acTxt = acOnlineView.text ? (typeof acOnlineView.text === "function" ? acOnlineView.text() : acOnlineView.text).trim() : "";
@@ -283,20 +295,40 @@ Item {
     readonly property int batRuntimeSeconds: {
         if (!root.hasBattery) return 0;
         let d = UPower.displayDevice;
-        if (!d) return 0;
-        let rawRate = Math.abs(d.changeRate);
+        let onBat = UPower.onBattery || (root.batStatus === "Discharging");
         let rem = 0;
-        if (UPower.onBattery) {
-            if (rawRate < 1) return 0;
+
+        if (onBat) {
+            // Check direct sysfs power_now (uW) and energy_now (uWh) first for instantaneous telemetry
+            let pNowTxt = batPowerNowView.text ? (typeof batPowerNowView.text === "function" ? batPowerNowView.text() : batPowerNowView.text).trim() : "";
+            let eNowTxt = batEnergyNowView.text ? (typeof batEnergyNowView.text === "function" ? batEnergyNowView.text() : batEnergyNowView.text).trim() : "";
+            let pNow = parseInt(pNowTxt) || 0;
+            let eNow = parseInt(eNowTxt) || 0;
+
+            let rawRate = 0;
+            if (pNow > 500000 && eNow > 0) {
+                // power_now is in microwatts -> convert to Watts
+                rawRate = pNow / 1000000.0;
+            } else if (d) {
+                rawRate = Math.abs(d.changeRate);
+            }
+
+            if (rawRate < 1.0) return 0;
+
             if (root._smoothedDischargeRate <= 0.5) {
                 root._smoothedDischargeRate = rawRate;
             } else {
-                root._smoothedDischargeRate = (root._smoothedDischargeRate * 0.70) + (rawRate * 0.30);
+                root._smoothedDischargeRate = (root._smoothedDischargeRate * 0.50) + (rawRate * 0.50);
             }
             let rate = Math.max(1.0, root._smoothedDischargeRate);
-            rem = (d.energy * 3600) / rate;
+            let energyWh = (eNow > 0) ? (eNow / 1000000.0) : (d ? d.energy : 0);
+            if (energyWh > 0) {
+                rem = (energyWh * 3600) / rate;
+            }
         } else {
             root._smoothedDischargeRate = 0.0;
+            if (!d) return 0;
+            let rawRate = Math.abs(d.changeRate);
             if (rawRate < 1 || d.timeToFull <= 0) return 0;
             rem = ((d.energyCapacity - d.energy) * 3600) / rawRate;
             if (rem > 36000) return 0;
@@ -328,15 +360,15 @@ Item {
                 let prof = this.text ? this.text.trim() : "";
                 if (prof === "performance") {
                     root.powerProfile = "performance";
-                } else if (prof === "balanced") {
-                    root.powerProfile = "balanced";
                 } else if (prof === "quiet" || prof === "low-power") {
-                    // If user manually chose balanced or default battery profile is balanced,
-                    // keep balanced unless user explicitly requested power-saver
-                    if (root.requestedProfile === "balanced") {
-                        root.powerProfile = "balanced";
-                    } else {
+                    root.powerProfile = "power-saver";
+                } else if (prof === "balanced") {
+                    // TLP power-saver sets PLATFORM_PROFILE_ON_SAV=balanced in hardware ACPI node.
+                    // Preserve power-saver if user explicitly requested power-saver!
+                    if (root.requestedProfile === "power-saver") {
                         root.powerProfile = "power-saver";
+                    } else {
+                        root.powerProfile = "balanced";
                     }
                 } else {
                     root.powerProfile = root.requestedProfile || "balanced";
@@ -386,6 +418,7 @@ Item {
         }
     }
 
+    property bool _profileLoaded: false
     property bool _manualOverride: false
     property bool _acInitialized: false
 
@@ -393,6 +426,26 @@ Item {
         id: profileCacheFile
         path: Quickshell.env("HOME") + "/.cache/qs_power_profile"
         watchChanges: true
+        onLoaded: {
+            let t = profileCacheFile.text();
+            if (t && t.trim().length > 0) {
+                root._reconcileStartupProfile(root.acOnline, t.trim());
+            }
+        }
+    }
+
+    Process {
+        id: initProfileReader
+        command: ["bash", "-c", "cat $HOME/.cache/qs_power_profile 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo ''"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let prof = this.text ? this.text.trim() : "";
+                if (prof === "power-saver" || prof === "performance" || prof === "balanced") {
+                    root._reconcileStartupProfile(root.acOnline, prof);
+                }
+            }
+        }
     }
 
     function _applyVisualOverrides(targetProfile) {
@@ -401,18 +454,28 @@ Item {
                 root.saverVisualState = "applying-saver";
                 let cmd = `
                     rm -f /tmp/qs_saver_visuals_ok
+                    # Pause mpvpaper if active
                     if [ -S /tmp/mpv-paper-socket ]; then
                         echo '{ "command": ["set_property", "pause", true] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
                     fi
+
+                    # Stop awww-daemon to kill background wallpaper rendering and shut off OLED pixels
+                    if [ ! -f "$HOME/.cache/wallpaper_killed" ]; then
+                        touch "$HOME/.cache/wallpaper_killed"
+                        touch "$HOME/.cache/saver_killed_wp"
+                        bash "$HOME/.config/hypr/scripts/quickshell/state_ctl.sh" set modes.wallpaperKilled true 2>/dev/null || true
+                        ~/.config/wallpaper/backend/ensure_awww.sh --stop 2>/dev/null || true
+                    fi
+
                     hyprctl -j getoption decoration:blur:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_blur.conf 2>/dev/null
                     hyprctl -j getoption decoration:shadow:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null
                     hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
 
+                    # Full solid opacity + zero blur/shadow/animations + direct scanout 2 + VRR 1
                     hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = false }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '' }, animations = { enabled = false } })" 2>/dev/null
                     hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null && touch /tmp/qs_saver_visuals_ok
                 `;
                 Quickshell.execDetached(["bash", "-c", cmd]);
-                // Set state to saver-applied once transaction completes
                 root.saverVisualState = "saver-applied";
             }
         } else {
@@ -423,6 +486,14 @@ Item {
                     if [ -S /tmp/mpv-paper-socket ]; then
                         echo '{ "command": ["set_property", "pause", false] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
                     fi
+
+                    # Restore wallpaper if it was killed specifically by power-saver
+                    if [ -f "$HOME/.cache/saver_killed_wp" ]; then
+                        rm -f "$HOME/.cache/saver_killed_wp" "$HOME/.cache/wallpaper_killed"
+                        bash "$HOME/.config/hypr/scripts/quickshell/state_ctl.sh" set modes.wallpaperKilled false 2>/dev/null || true
+                        ~/.config/wallpaper/wallpaper.sh boot 2>/dev/null || true
+                    fi
+
                     PREV_BLUR=$(cat ~/.cache/qs_pre_saver_blur.conf 2>/dev/null || echo "true")
                     PREV_SHADOW=$(cat ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null || echo "true")
                     PREV_SHADER=$(cat ~/.cache/qs_pre_saver_shader.conf 2>/dev/null || echo "")
@@ -438,6 +509,7 @@ Item {
                         hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
                     else
                         hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, general = { allow_tearing = false }, decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
+                        hyprctl reload >/dev/null 2>&1 || true
                     fi
                     touch /tmp/qs_normal_visuals_ok
                 `;
@@ -447,15 +519,18 @@ Item {
         }
     }
 
-    function _reconcileStartupProfile(isOnline) {
-        let raw = (typeof profileCacheFile.text === "function") ? profileCacheFile.text() : profileCacheFile.text;
+    function _reconcileStartupProfile(isOnline, explicitCached) {
+        let raw = explicitCached || (typeof profileCacheFile.text === "function" ? profileCacheFile.text() : profileCacheFile.text);
         let cached = raw ? raw.trim() : "";
         if (cached === "power-saver" || cached === "performance" || cached === "balanced") {
-            root._manualOverride = (cached === "power-saver");
+            root._manualOverride = true;
             root.requestedProfile = cached;
             root.powerProfile = cached;
-            Quickshell.execDetached(["sh", "-c", "echo '" + cached + "' > /tmp/qs_requested_profile; echo '" + cached + "' > /tmp/qs_power_profile"]);
+            Quickshell.execDetached(["sh", "-c", "echo '" + cached + "' > /tmp/qs_requested_profile; echo '" + cached + "' > /tmp/qs_power_profile; echo '" + cached + "' > $HOME/.cache/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile '" + cached + "'"]);
             root._applyVisualOverrides(cached);
+            let tlpCmd = (cached === "performance") ? "performance" : (cached === "power-saver") ? "power-saver" : "balanced";
+            let asusProf = (cached === "performance") ? "Performance" : (cached === "power-saver") ? "Quiet" : "Balanced";
+            Quickshell.execDetached(["bash", "-c", "sudo /run/current-system/sw/bin/tlp " + tlpCmd + " && (command -v asusctl >/dev/null 2>&1 && asusctl profile set " + asusProf + " 2>/dev/null || true)"]);
             return;
         }
 
@@ -463,21 +538,22 @@ Item {
             root._manualOverride = false;
             root.requestedProfile = "performance";
             root.powerProfile = "performance";
-            Quickshell.execDetached(["sh", "-c", "echo 'performance' > $HOME/.cache/qs_power_profile; echo 'performance' > /tmp/qs_requested_profile; echo 'performance' > /tmp/qs_power_profile"]);
+            Quickshell.execDetached(["sh", "-c", "echo 'performance' > $HOME/.cache/qs_power_profile; echo 'performance' > /tmp/qs_requested_profile; echo 'performance' > /tmp/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile 'performance'"]);
             root._applyVisualOverrides("performance");
+            Quickshell.execDetached(["bash", "-c", "sudo /run/current-system/sw/bin/tlp performance && (command -v asusctl >/dev/null 2>&1 && asusctl profile set Performance 2>/dev/null || true)"]);
         } else {
             root._manualOverride = false;
             root.requestedProfile = "balanced";
             root.powerProfile = "balanced";
-            Quickshell.execDetached(["sh", "-c", "echo 'balanced' > $HOME/.cache/qs_power_profile; echo 'balanced' > /tmp/qs_requested_profile; echo 'balanced' > /tmp/qs_power_profile"]);
+            Quickshell.execDetached(["sh", "-c", "echo 'balanced' > $HOME/.cache/qs_power_profile; echo 'balanced' > /tmp/qs_requested_profile; echo 'balanced' > /tmp/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile 'balanced'"]);
             root._applyVisualOverrides("balanced");
+            Quickshell.execDetached(["bash", "-c", "sudo /run/current-system/sw/bin/tlp balanced && (command -v asusctl >/dev/null 2>&1 && asusctl profile set Balanced 2>/dev/null || true)"]);
         }
     }
 
     function _handleAcTransition(wasOnline, isOnline) {
         if (!root._acInitialized) {
             root._acInitialized = true;
-            root._reconcileStartupProfile(isOnline);
             return;
         }
         if (wasOnline === isOnline) return;
@@ -517,11 +593,14 @@ Item {
 
         root._applyVisualOverrides(name);
 
-        if (isManual) {
-            let tlpCmd = (name === "performance") ? "performance" : (name === "power-saver") ? "power-saver" : "balanced";
-            Quickshell.execDetached(["sudo", "/run/current-system/sw/bin/tlp", tlpCmd]);
-            profileRefreshTimer.restart();
-        }
+        // Instantaneous battery recalculation on profile switch: reset EMA smoothing and sync sysfs
+        root._smoothedDischargeRate = 0.0;
+        root._syncSysfsBattery();
+
+        let tlpCmd = (name === "performance") ? "performance" : (name === "power-saver") ? "power-saver" : "balanced";
+        let asusProf = (name === "performance") ? "Performance" : (name === "power-saver") ? "Quiet" : "Balanced";
+        Quickshell.execDetached(["bash", "-c", "sudo /run/current-system/sw/bin/tlp " + tlpCmd + " && (command -v asusctl >/dev/null 2>&1 && asusctl profile set " + asusProf + " 2>/dev/null || true)"]);
+        profileRefreshTimer.restart();
 
         let targetRR = (name === "performance") ? "120" : "60";
 

@@ -72,7 +72,7 @@ fi
 # AWK processes the entire network list natively, zero sub-shells
 # Excludes both connected SSID and the active hotspot SSID
 NETWORKS_JSON=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wifi list --rescan "$RESCAN_MODE" 2>/dev/null | awk -F: -v conn="$ssid" -v hs="$HOTSPOT_SSID" '
-    $2 == "Infra" && $3 != "" && $3 != conn && (hs == "" || $3 != hs) && !seen[$3]++ {
+    $2 == "Infra" && $3 != "" && $3 != conn && (hs == "" || $3 != hs) && ($4+0) >= 25 && !seen[$3]++ {
         ssid=$3; signal=$4; security=$5;
         
         # Escape quotes and backslashes inside strings

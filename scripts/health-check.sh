@@ -11,10 +11,9 @@
 #   2  warnings only    (never triggers rollback)
 #
 # Rules (earned 2026-08-16, i915 hang incident):
-#   - NEVER kill, touch, or disrupt pre-existing foot terminals or servers.
-#   - The foot probe runs ISOLATED in a private XDG_RUNTIME_DIR (the resident
-#     foot server socket is invisible, so foot spawns its own self-closing
-#     GUI process); only THIS probe's own pid may ever be killed.
+#   - NEVER kill, touch, or disrupt pre-existing terminals.
+#   - The alacritty probe runs ISOLATED in a private XDG_RUNTIME_DIR;
+#     only THIS probe's own pid may ever be killed.
 #   - GPU-HANG detection is scoped to [start, now] AND to the probe pid.
 set -u
 
@@ -40,12 +39,12 @@ else
   fail "Hyprland dead (hyprctl + pgrep both failed) — session gone"
 fi
 
-# -------------------------------------------------------- isolated foot probe
-# Default terminal is foot (wezterm removed; keybinds use 'footclient -N || foot').
+# ---------------------------------------------------- isolated alacritty probe
+# Default terminal is alacritty (keybind: alacritty).
 # Launch a dedicated standalone instance whose command self-exits after 6s; the
 # window closes itself. Existing windows/processes are never touched.
 runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-probe_runtime=$(mktemp -d) || probe_runtime="$HOME/.cache/footprobe-$$"
+probe_runtime=$(mktemp -d) || probe_runtime="$HOME/.cache/alacrittyprobe-$$"
 mkdir -p "$probe_runtime"
 if [ -e "$runtime/wayland-1" ]; then
   ln -s "$runtime/wayland-1" "$probe_runtime/wayland-1"
@@ -53,11 +52,11 @@ if [ -e "$runtime/wayland-1" ]; then
     && ln -s "$runtime/wayland-1.lock" "$probe_runtime/wayland-1.lock"
 fi
 
-XDG_RUNTIME_DIR="$probe_runtime" timeout 20 foot sh -c 'sleep 6' \
+XDG_RUNTIME_DIR="$probe_runtime" timeout 20 alacritty -e sh -c 'sleep 6' \
   >/dev/null 2>&1 &
 wcli_pid=$!
 
-# Find the probe's foot pid(s) — single pgrep ancestor walk instead
+# Find the probe's alacritty pid(s) — single pgrep ancestor walk instead
 # of repeated BFS over full ps table.
 probe_pids=""
 for _ in $(seq 1 20); do
@@ -72,7 +71,7 @@ for _ in $(seq 1 20); do
   for p in $all; do
     [ -z "$p" ] && continue
     comm=$(cat "/proc/$p/comm" 2>/dev/null || true)
-    [ "$comm" = "foot" ] && gui_pids="$gui_pids $p"
+    [ "$comm" = "alacritty" ] && gui_pids="$gui_pids $p"
   done
   probe_pids=$(echo "$gui_pids" | tr ' ' '\n' | sort -un | tr '\n' ' ')
   [ -n "$(echo "$probe_pids" | tr -d ' ')" ] && break
@@ -88,16 +87,16 @@ if [ -n "$(echo "$probe_pids" | tr -d ' ')" ]; then
   for p in $probe_pids; do
     [ -z "$p" ] && continue
     n=$(journalctl -k --since "$START" --no-pager 2>/dev/null \
-      | grep -c "foot\[$p\]" || true)
+      | grep -c "alacritty\[$p\]" || true)
     probe_hangs=$((probe_hangs + n))
   done
 fi
 
 echo "probe: cli_rc=$rc pids=[${probe_pids:-none}] probe_attributed_gpu_hangs=$probe_hangs"
 
-[ "$rc" -eq 0 ] || fail "foot probe failed (rc=$rc) — terminal did not launch/close cleanly"
-[ -n "$wpid" ] || fail "foot probe never spawned a gui process"
-[ "$probe_hangs" -eq 0 ] || fail "i915 GPU HANG attributed to probe foot (see below)"
+[ "$rc" -eq 0 ] || fail "alacritty probe failed (rc=$rc) — terminal did not launch/close cleanly"
+[ -n "$wpid" ] || fail "alacritty probe never spawned a gui process"
+[ "$probe_hangs" -eq 0 ] || fail "i915 GPU HANG attributed to probe alacritty (see below)"
 
 # Only ever kill THIS probe's own pids if it leaked past the 20s backstop.
 for p in $probe_pids; do

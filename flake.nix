@@ -29,6 +29,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Local (publishable) flake: official ChatGPT/Codex Linux app via FHS wrapper.
+    # Standalone repo: ~/Projects/codex-flake. After publishing, swap the URL to
+    # "github:Realdhiru/codex-flake".
+    chatgpt = {
+      url = "path:/home/realdhiru/Projects/codex-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
   outputs = inputs@{ nixpkgs, home-manager, ... }:
@@ -45,19 +53,19 @@
       };
 
       modules = [
-        ({ pkgs, ... }: {
+        ({ pkgs, inputs, ... }: {
           nixpkgs.overlays = [
             (final: prev: {
               buuf-nestort-icon-theme =
                 prev.callPackage ./pkgs/buuf-nestort.nix { };
               hypr-kdeconnect-portal =
                 prev.callPackage ./pkgs/hypr-kdeconnect-portal.nix { };
-              chatgpt =
-                prev.callPackage ./pkgs/chatgpt-linux.nix { };
               pcmanfm-qt = prev.pcmanfm-qt.overrideAttrs (old: {
                 patches = (old.patches or [ ]) ++ [ ./pkgs/pcmanfm-qt-appid.patch ];
               });
             })
+            # chatgpt from the standalone ~/Projects/codex-flake flake.
+            inputs.chatgpt.overlays.default
           ];
         })
 

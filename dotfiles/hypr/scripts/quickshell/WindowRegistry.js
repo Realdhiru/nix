@@ -6,16 +6,16 @@ const MIN_SCALE = 0.35;
 const HIDE_OFFSET = -5000;
 
 const WIDGETS = {
-    "battery":   { w: 801,  h: 660, anchor: "top-right",     mx: 0, my: 60, mr: 4, mb: 0, path: "battery/BatteryPopup.qml" },
-    "network":   { w: 900,  h: 700, anchor: "top-right",     mx: 0, my: 60, mr: 4, mb: 0, path: "network/NetworkPopup.qml" },
-    "clipboard": { w: 800,  h: 700, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "clipboard/ClipboardManager.qml" },
-    "monitors":  { w: 700,  h: 410, anchor: "bottom-center", mx: 0, my: 0,  mr: 0, mb: 60, path: "monitors/MonitorPopup.qml" },
-    "focustime": { w: 900,  h: 700, anchor: "center",        mx: 0, my: 0,  mr: 0, mb: 0, path: "focustime/FocusTimePopup.qml" },
-    "weather_setup": { w: 500,  h: 350, anchor: "center",     mx: 0, my: 0,  mr: 0, mb: 0, path: "calendar/WeatherSetupPopup.qml" },
-    "calendar":      { w: 1450, h: 510, anchor: "top-center", mx: 0, my: 60, mr: 0, mb: 0, path: "calendar/CalendarPopup.qml" },
-    "wallpaper": { w: -1,   h: 650, anchor: "center-fill",   mx: 0, my: 0,  mr: 0, mb: 0, path: "wallpaper/WallpaperPicker.qml" },
-    "music":     { w: 700,  h: 650, anchor: "top-left",      mx: 5, my: 60, mr: 0, mb: 0, path: "music/MusicPopup.qml" },
-    "sunset":    { w: 320,  h: 390, anchor: "bottom-left", mx: 52, my: 0,  mr: 0, mb: 12, path: "sunset/SunsetPopup.qml" }
+    "battery":       { w: 801,  h: 660, anchor: "top-right",     path: "battery/BatteryPopup.qml" },
+    "network":       { w: 900,  h: 700, anchor: "top-right",     path: "network/NetworkPopup.qml" },
+    "clipboard":     { w: 800,  h: 700, anchor: "center",        path: "clipboard/ClipboardManager.qml" },
+    "monitors":      { w: 700,  h: 410, anchor: "bottom-center", path: "monitors/MonitorPopup.qml" },
+    "focustime":     { w: 900,  h: 700, anchor: "center",        path: "focustime/FocusTimePopup.qml" },
+    "weather_setup": { w: 500,  h: 350, anchor: "center",        path: "calendar/WeatherSetupPopup.qml" },
+    "calendar":      { w: 1450, h: 510, anchor: "top-center",    path: "calendar/CalendarPopup.qml" },
+    "wallpaper":     { w: -1,   h: 650, anchor: "center-fill",   path: "wallpaper/WallpaperPicker.qml" },
+    "music":         { w: 700,  h: 650, anchor: "top-left",      path: "music/MusicPopup.qml" },
+    "sunset":        { w: 320,  h: 390, anchor: "bottom-left",   path: "sunset/SunsetPopup.qml" }
 };
 
 function getScale(mw, mh, userScale) {
@@ -45,7 +45,7 @@ function s(val, scale) {
     return Math.round(val * scale);
 }
 
-function getLayout(name, mx, my, mw, mh, userScale, barPos) {
+function getLayout(name, mx, my, mw, mh, userScale, barPos, gapsOut) {
     if (name === "hidden") {
         return { 
             w: 1, 
@@ -61,11 +61,29 @@ function getLayout(name, mx, my, mw, mh, userScale, barPos) {
     const config = WIDGETS[name];
     if (!config) return null;
 
+    let isLeftBar = (barPos === "left");
+    let gap = (gapsOut !== undefined && gapsOut !== null && gapsOut >= 0) ? gapsOut : 12;
+
+    // Bar dimensions (TopBar height: 46px; SideBar thickness: 46px).
+    // In Floating Island mode (Option A), the bar itself has margin = gap.
+    // Therefore, windows and popups start at: barThickness + (2 * gap).
+    // Bar dimensions (46px) + margin cushion (5px) = 51px total bar footprint
+    const BAR_TOTAL = 51;
+
+    // Derived usable workspace boundaries matching Hyprland window tiling margins
+    let usableLeft = isLeftBar ? (BAR_TOTAL + gap) : gap;
+    let usableRight = mw - gap;
+    let usableTop = isLeftBar ? gap : (BAR_TOTAL + gap);
+    let usableBottom = mh - gap;
+
+    let usableW = Math.max(0, usableRight - usableLeft);
+    let usableH = Math.max(0, usableBottom - usableTop);
+
     let scale = getScale(mw, mh, userScale);
     let finalW = config.w === -1 ? mw : s(config.w, scale);
     let finalH = s(config.h, scale);
 
-    // Responsive ceiling: clamp to 96% width and 94% height to prevent off-screen clipping
+    // Responsive ceiling: clamp to screen bounds to prevent off-screen clipping
     let maxAllowedW = Math.floor(mw * 0.96);
     let maxAllowedH = Math.floor(mh * 0.94);
     if (config.w !== -1 && finalW > maxAllowedW) {
@@ -74,50 +92,49 @@ function getLayout(name, mx, my, mw, mh, userScale, barPos) {
     if (finalH > maxAllowedH) {
         finalH = maxAllowedH;
     }
-    
-    let isLeftBar = (barPos === "left");
+
     let rx = 0;
     let ry = 0;
 
     switch (config.anchor) {
         case "top-left":
-            rx = isLeftBar ? 52 : s(config.mx, scale);
-            ry = isLeftBar ? 10 : s(config.my, scale);
+            rx = usableLeft;
+            ry = usableTop;
             break;
         case "bottom-left":
-            rx = isLeftBar ? 52 : (s(config.mx, scale) || 12);
-            ry = mh - finalH - (isLeftBar ? 12 : s(config.mb, scale));
+            rx = usableLeft;
+            ry = usableBottom - finalH;
             break;
         case "top-right":
             if (isLeftBar) {
-                rx = 52;
-                // battery and network pop up at bottom-left next to sidebar icons
-                ry = (name === "battery" || name === "network") ? (mh - finalH - 12) : 10;
+                // Dock alongside sidebar icons at bottom-left
+                rx = usableLeft;
+                ry = (name === "battery" || name === "network") ? (usableBottom - finalH) : usableTop;
             } else {
-                rx = mw - finalW - s(config.mr, scale);
-                ry = s(config.my, scale);
+                rx = usableRight - finalW;
+                ry = usableTop;
             }
             break;
         case "top-center":
-            rx = Math.floor((mw / 2) - (finalW / 2)) + (isLeftBar ? 26 : 0);
-            ry = isLeftBar ? 10 : s(config.my, scale);
+            rx = usableLeft + Math.floor((usableW - finalW) / 2);
+            ry = usableTop;
             break;
         case "center":
-            rx = Math.floor((mw / 2) - (finalW / 2)) + (isLeftBar ? 26 : 0);
-            ry = Math.floor((mh / 2) - (finalH / 2));
+            rx = usableLeft + Math.floor((usableW - finalW) / 2);
+            ry = usableTop + Math.floor((usableH - finalH) / 2);
             break;
         case "center-fill":
-            rx = isLeftBar ? 48 : 0;
-            ry = Math.floor((mh / 2) - (finalH / 2));
+            rx = isLeftBar ? usableLeft : 0;
+            ry = usableTop + Math.floor((usableH - finalH) / 2);
             break;
         case "bottom-center":
-            rx = Math.floor((mw / 2) - (finalW / 2)) + (isLeftBar ? 26 : 0);
-            ry = mh - finalH - s(config.mb, scale);
+            rx = usableLeft + Math.floor((usableW - finalW) / 2);
+            ry = usableBottom - finalH;
             break;
     }
 
-    // Safety boundary clamp: ensure popups never render outside screen edges
-    let minX = isLeftBar ? 48 : 0;
+    // Safety boundary clamp: ensure popups strictly stay within window margin bounds
+    let minX = isLeftBar ? usableLeft : 0;
     rx = Math.max(minX, Math.min(rx, Math.max(0, mw - finalW)));
     ry = Math.max(0, Math.min(ry, Math.max(0, mh - finalH)));
 

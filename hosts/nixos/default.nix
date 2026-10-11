@@ -25,6 +25,8 @@
   boot.resumeDevice = "/dev/disk/by-uuid/d0a20f82-2287-41fd-b017-617b84e4d4b6";
   boot.kernelParams = [
     "i915.fastboot=1"
+    "i915.enable_fbc=1"
+    "i915.enable_psr=1"
     "resume_offset=39880704"
   ];
 

@@ -88,7 +88,8 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 
 ### 5. Rebuild Safety Pipeline (`modules/home/shell.nix`, `scripts/health-check.sh`)
 - **Decision:** All system switches must route through `rebuild()`.
-- **Rationale:** Pre-records previous generation, stages/commits, performs health-gated validation (Hyprland alive + isolated foot GPU-hang probe), and executes automated rollback if critical checks fail. Bad generations are kept bootable in bootloader.
+- **Rationale:** Pre-records previous generation, stages/commits, performs health-gated validation (Hyprland alive + isolated alacritty GPU-hang probe), and executes automated rollback if critical checks fail. Bad generations are kept bootable in bootloader.
+- **Default Terminal Architecture:** Alacritty serves as the default system terminal across keybinds (`Super + T`), application launcher (`fuzzel.ini`), file manager actions (`pcmanfm-qt`), and health validation probes. Foot remains installed and configured as an auxiliary terminal accessible from application launchers with normalized font size and Wallust glass-blur transparency.
 
 ### 6. Declarative Symlinks & Theming
 - **Decision:** Out-of-store symlinks (`mkOutOfStoreSymlink`) for `dotfiles/` to enable instant live reloading without rebuilds.
@@ -282,5 +283,13 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - **Sub-Millisecond Performance:** Post-decode classification executes in $<1\text{ms}$ ($0.33\text{ms}$ average) using vectorized NumPy array math without iterative clustering overhead.
 
 ### 39. Proprietary Electron GUI Packaging via Local FHS Wrapper
-- **Decision:** macOS-only nixpkgs packages (e.g. `pkgs.chatgpt`) must never be added to `systemPackages`. Linux-only GUI apps shipped only as `.deb`/`.rpm` (official ChatGPT/Codex desktop) are packaged in `~/nix/pkgs/chatgpt-linux.nix` via `fetchurl` (pinned sha256) → `dpkg-deb -x` → `buildFHSEnv` wrapping the raw bundled Chromium binary, plus a merge of the real `.desktop`/icon.
-- **Rationale:** No nixpkgs source package exists and upstream offers no AppImage; FHS env resolves all `Depends` libs without polluting system packages.
+- **Decision:** macOS-only nixpkgs packages (e.g. `pkgs.chatgpt`) must never be added to `systemPackages`. Linux-only GUI apps shipped only as `.deb`/`.rpm` (official ChatGPT/Codex desktop) are packaged via `fetchurl` (pinned sha256) → `dpkg-deb -x` → `buildFHSEnv` wrapping the raw bundled Chromium binary, plus a merge of the real `.desktop`/icon.
+- **Placement (superseding the original in-tree location):** The package now lives in a **standalone, publishable flake at `~/Projects/codex-flake`** (own git repo: `flake.nix`, `pkgs/chatgpt.nix`, `nixosModules.default`, `overlays.default`, README/LICENSE). `~/nix` consumes it as a flake input (`chatgpt.url = "path:..."`, `inputs.nixpkgs.follows = "nixpkgs"`) and pulls the overlay via `inputs.chatgpt.overlays.default`. This keeps a single source of truth and lets the package be shared/versioned independently of the personal config. On publish, the input URL switches to `github:Realdhiru/codex-flake`.
+- **Wayland (runtime note):** OpenAI's Linux build is a custom Chromium "owl" runtime (not stock Electron). `ELECTRON_OZONE_PLATFORM_HINT` is a no-op for that runtime; native Wayland is forced with the raw Chromium switch `--ozone-platform=wayland` via a small launcher script inside the derivation. `NIXOS_OZONE_WL=1` (Electron-specific) does not affect this app.
+- **Rationale:** No nixpkgs source package exists and upstream offers no AppImage; FHS env resolves all `Depends` libs without polluting system packages. A separate flake (vs. an in-tree `pkgs/*.nix`) makes it reusable by other NixOS users and independently maintained.
+
+### 40. Dynamic Window-Margin Popup Positioning & Inset Derivation
+- **Decision:** QuickShell popup geometries in [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js) must never hardcode arbitrary margin values (e.g. `mr: 4`, `mx: 5`). Outer margins are dynamically derived from Hyprland's single source of truth: [`appearance.lua`](file:///home/realdhiru/nix/dotfiles/hypr/appearance.lua) (`gaps_out`).
+- **Architecture:**
+  - [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml) monitors `appearance.lua` with a native `FileView`, dynamically updating `Config.gapsOut` via live inotify without restarting daemons.
+  - [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js) derives the usable workspace insets based on active bar state (`usableTop`, `usableBottom`, `usableLeft`, `usableRight`), ensuring all popups (`battery`, `network`, `music`, `calendar`, `monitors`) strictly respect and align with the outer boundaries of tiled Hyprland windows in both Top Bar and Left Bar modes.

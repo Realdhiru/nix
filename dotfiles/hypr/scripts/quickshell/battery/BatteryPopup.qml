@@ -311,12 +311,12 @@ Item {
 
     FileView {
         id: briView
-        path: "/sys/class/backlight/intel_backlight/actual_brightness"
+        path: Config.backlightDevice + "/actual_brightness"
     }
 
     FileView {
         id: maxBriView
-        path: "/sys/class/backlight/intel_backlight/max_brightness"
+        path: Config.backlightDevice + "/max_brightness"
     }
 
     function syncBrightness() {

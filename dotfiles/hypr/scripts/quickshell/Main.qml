@@ -329,9 +329,9 @@ PanelWindow {
         let mw = masterWindow.width > 0 ? masterWindow.width : logicalW;
         let mh = masterWindow.height > 0 ? masterWindow.height : logicalH;
 
-        let key = name + "|" + mw + "|" + mh + "|" + masterWindow.globalUiScale + "|" + Config.topBarPosition;
+        let key = name + "|" + mw + "|" + mh + "|" + masterWindow.globalUiScale + "|" + Config.topBarPosition + "|" + Config.gapsOut;
         if (_layoutCacheKey === key) return _layoutCache[key];
-        let result = Registry.getLayout(name, 0, 0, mw, mh, masterWindow.globalUiScale, Config.topBarPosition);
+        let result = Registry.getLayout(name, 0, 0, mw, mh, masterWindow.globalUiScale, Config.topBarPosition, Config.gapsOut);
 
         if (result && result.comp && typeof result.comp === "string") {
             result.comp = resolveComponent(result.comp);
