@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-10-11 — Monochrome Wallpaper Terminal Color Sync
+
+- **Monochrome & Low-Saturation Wallpaper Terminal Color Sync ([`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh))**:
+  - Fixed bug where black-and-white or low-saturation wallpapers caused Wallust to error (`Error: Not enough colors!`), invoking `emit_neutral_theme` which previously only generated `colors.json`, `gtk.css`, and `qtct.conf` while omitting `foot-colors.ini` and `alacritty-colors.toml`.
+  - Added full neutral/monochrome color template generation for Foot and Alacritty in `emit_neutral_theme`, ensuring terminals and window borders update to pure black/white/monochrome palettes when switching to black-and-white wallpapers instead of retaining previous wallpaper colors.
+
 ## 2026-10-11 — Super + Volume Knob Scroll
 
 - Added Hyprland binds that translate the keyboard's volume-up/down knob events into pointer-wheel events while Super is held. Enabled the NixOS `ydotool` uinput service and granted the user access through its group; ordinary knob volume binds remain active without Super.

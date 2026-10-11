@@ -112,6 +112,70 @@ $active_border_col_2 = rgb(C9BFB5)
 $inactive_border_col = rgb(282828)
 EOF
 
+    cat <<'EOF' > "$TARGET_CACHE/foot-colors.ini"
+[colors-dark]
+alpha=0.30
+background=000000
+foreground=EDE6DC
+regular0=111116
+regular1=484849
+regular2=5E5E60
+regular3=747576
+regular4=EDE6DC
+regular5=B4B5B7
+regular6=ADADAF
+regular7=EDE6DC
+bright0=22222a
+bright1=4C4D4F
+bright2=6A6A6C
+bright3=828284
+bright4=EDE6DC
+bright5=B4B5B7
+bright6=E6E7E9
+bright7=FFFFFF
+16=EDE6DC
+17=EDE6DC
+selection-foreground=000000
+selection-background=EDE6DC
+urls=EDE6DC
+
+[colors-light]
+alpha=0.30
+EOF
+
+    cat <<'EOF' > "$TARGET_CACHE/alacritty-colors.toml"
+[colors.primary]
+background = "#000000"
+foreground = "#EDE6DC"
+
+[colors.cursor]
+text = "#000000"
+cursor = "#EDE6DC"
+
+[colors.normal]
+black = "#111116"
+red = "#484849"
+green = "#5E5E60"
+yellow = "#747576"
+blue = "#EDE6DC"
+magenta = "#B4B5B7"
+cyan = "#ADADAF"
+white = "#EDE6DC"
+
+[colors.bright]
+black = "#22222a"
+red = "#4C4D4F"
+green = "#6A6A6C"
+yellow = "#828284"
+blue = "#EDE6DC"
+magenta = "#B4B5B7"
+cyan = "#E6E7E9"
+white = "#FFFFFF"
+
+[window]
+opacity = 0.30
+EOF
+
     for f in "$HOME/.config/fuzzel/fuzzel.ini" "$HOME/nix/dotfiles/fuzzel/fuzzel.ini"; do
         if [ -f "$f" ]; then
             sed -i -E "s/^(match = ).*/\1EDE6DCff/; s/^(selection-match = ).*/\1EDE6DCff/; s/^(background = ).*/\1000000ff/" "$f" 2>/dev/null || true
