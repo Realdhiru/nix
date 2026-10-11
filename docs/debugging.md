@@ -107,7 +107,7 @@ A chronological, categorized index of all system and rice issues resolved in thi
 - **Symptom:** Bad system updates could cause silent compositor GPU hangs, stranding the session.
 - **Solution:** All rebuilds route through [`modules/home/shell.nix`](file:///home/realdhiru/nix/modules/home/shell.nix) `rebuild()`:
   - Automates git commit and records previous known-good generation.
-  - Gated switch: executes [`scripts/health-check.sh`](file:///home/realdhiru/nix/scripts/health-check.sh) (checks Hyprland alive + isolated WezTerm GPU-hang probe).
+  - Gated switch: executes [`scripts/health-check.sh`](file:///home/realdhiru/nix/scripts/health-check.sh) (checks Hyprland alive + isolated foot GPU-hang probe).
   - Auto-rolls back to prior generation on failure, keeping failed generation in bootloader for debugging.
 
 ### Standalone AppImage Execution on NixOS

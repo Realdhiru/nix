@@ -165,7 +165,7 @@
     force = true;
     text = ''
       [System]
-      Terminal=wezterm start --always-new-process --cwd .
+      Terminal=foot
       Archiver=lxqt-archiver
 
       [Thumbnail]

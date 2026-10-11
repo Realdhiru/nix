@@ -99,8 +99,8 @@ Item {
     readonly property string batStatus: SysData.batStatus
     readonly property string powerProfile: SysData.powerProfile
     
-    property int upHours: 0
-    property int upMins: 0
+    readonly property int upHours: SysData.batHours
+    readonly property int upMins: SysData.batMins
 
     property real sysVolume: 0
     property bool sysMuted: false

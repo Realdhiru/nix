@@ -88,7 +88,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 
 ### 5. Rebuild Safety Pipeline (`modules/home/shell.nix`, `scripts/health-check.sh`)
 - **Decision:** All system switches must route through `rebuild()`.
-- **Rationale:** Pre-records previous generation, stages/commits, performs health-gated validation (Hyprland alive + isolated WezTerm GPU-hang probe), and executes automated rollback if critical checks fail. Bad generations are kept bootable in bootloader.
+- **Rationale:** Pre-records previous generation, stages/commits, performs health-gated validation (Hyprland alive + isolated foot GPU-hang probe), and executes automated rollback if critical checks fail. Bad generations are kept bootable in bootloader.
 
 ### 6. Declarative Symlinks & Theming
 - **Decision:** Out-of-store symlinks (`mkOutOfStoreSymlink`) for `dotfiles/` to enable instant live reloading without rebuilds.

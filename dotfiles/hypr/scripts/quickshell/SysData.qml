@@ -280,15 +280,14 @@ Item {
     // Exponential moving average for discharge rate to eliminate momentary spike distortion
     property real _smoothedDischargeRate: 0.0
 
-    readonly property string batRuntimeText: {
-        if (!root.hasBattery) return "";
+    readonly property int batRuntimeSeconds: {
+        if (!root.hasBattery) return 0;
         let d = UPower.displayDevice;
-        if (!d) return "";
+        if (!d) return 0;
         let rawRate = Math.abs(d.changeRate);
-        let rem;
-        let charging = false;
+        let rem = 0;
         if (UPower.onBattery) {
-            if (rawRate < 1) return "";
+            if (rawRate < 1) return 0;
             if (root._smoothedDischargeRate <= 0.5) {
                 root._smoothedDischargeRate = rawRate;
             } else {
@@ -298,13 +297,24 @@ Item {
             rem = (d.energy * 3600) / rate;
         } else {
             root._smoothedDischargeRate = 0.0;
-            if (rawRate < 1 || d.timeToFull <= 0) return "AC";
+            if (rawRate < 1 || d.timeToFull <= 0) return 0;
             rem = ((d.energyCapacity - d.energy) * 3600) / rawRate;
-            if (rem > 36000) return "AC";
-            charging = true;
+            if (rem > 36000) return 0;
         }
         if (rem > 43199) rem = 43199;
         if (rem < 0) rem = 0;
+        return Math.round(rem);
+    }
+    readonly property int batHours: Math.floor(root.batRuntimeSeconds / 3600)
+    readonly property int batMins: Math.floor((root.batRuntimeSeconds % 3600) / 60)
+
+    readonly property string batRuntimeText: {
+        if (!root.hasBattery) return "";
+        let d = UPower.displayDevice;
+        if (!d) return "";
+        let rem = root.batRuntimeSeconds;
+        let charging = !UPower.onBattery;
+        if (!UPower.onBattery && rem <= 0) return "AC";
         return root._fmtRuntime(rem, charging);
     }
 

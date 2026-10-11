@@ -28,10 +28,10 @@ let
     extraBwrapArgs = [ "--setenv" "ELECTRON_OZONE_PLATFORM_HINT" "wayland" ];
     targetPkgs = p: with p; [
       gtk3 libnotify nss nspr at-spi2-core at-spi2-atk atk libdrm mesa libGL
-      mesa.drivers vulkan-loader alsa-lib cairo cups dbus expat gdk-pixbuf glib
+      vulkan-loader alsa-lib cairo cups dbus expat gdk-pixbuf glib
       pango openssl systemd libusb1 libxkbcommon zlib stdenv.cc.cc fontconfig
-      xorg.libX11 xorg.libxcb xorg.libXcomposite xorg.libXdamage
-      xorg.libXext xorg.libXfixes xorg.libXrandr
+      libx11 libxcb libxcomposite libxdamage
+      libxext libxfixes libxrandr
       xdg-utils git
     ];
   };

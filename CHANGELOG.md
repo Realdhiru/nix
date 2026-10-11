@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2026-10-11 — Battery Telemetry Smoothing & Unified Popup Sync
+
+- **Battery Telemetry Unification (`SysData.qml`, `BatteryPopup.qml`)**:
+  - **Shared Source of Truth**: Unified time-remaining estimation by exposing `batRuntimeSeconds`, `batHours`, and `batMins` directly from the `SysData` singleton instead of running a redundant, un-smoothed subshell in `BatteryPopup.qml`.
+  - **Spike Filter**: Both the SideBar battery hover pill and the main Battery Popup now share the exponential moving average (EMA) rate smoothing, eliminating wild swings during momentary CPU/disk spikes.
+
+## 2026-10-11 — Rebuild Health Gate: WezTerm Probe Replaced with Isolated Foot Probe
+
+- **Root Cause**: `wezterm` was fully purged (see 2026-10-10 entry) in favour of `foot`/`alacritty`, but `scripts/health-check.sh` still probed `wezterm` (`timeout 20 wezterm start …`). `wezterm` is no longer on `PATH` → probe returned `rc=127` → `CRITICAL wezterm probe failed` / `never spawned a gui process` → **false auto-rollback** of an otherwise-healthy generation. Unrelated to the ChatGPT package.
+- **Fix (`scripts/health-check.sh`)**: Probe `foot` (the actual default terminal, keybind `footclient -N || foot`). Runs an isolated standalone `foot` in a private `XDG_RUNTIME_DIR` (real foot server socket hidden) so it spawns its own self-closing GUI process (`comm=foot`) for pid-level GPU-hang attribution — the existing foot server/windows are never touched. Attribution grep updated `wezterm-gui` → `foot`.
+- Verified: manual gate run exits `WARNINGS` only (`probe: cli_rc=0 pids=[…] probe_attributed_gpu_hangs=0`), no more CRITICAL.
+- Docs: `docs/decisions.md` §5, `docs/debugging.md` §6, and `SKILL.md` updated to reference the foot probe.
+- **`home.nix:168`**: pcmanfm-qt "Open Terminal Here" still ran the removed `wezterm start --always-new-process --cwd .`. Changed `Terminal=foot`. Verified via libfm-qt `launchTerminal()` source that the folder is passed as the spawned process's **working directory** (`g_spawn_async(dir, …)`), never as an argument — and foot propagates the client cwd through its running server (empirically confirmed).
+
 ## 2026-10-11 — ChatGPT Desktop (Codex GUI) via Local FHS Wrapper of Official .deb
 
 - **`pkgs/chatgpt-linux.nix`** (new): Local derivation packaging the official ChatGPT/Codex Linux app. nixpkgs's `chatgpt` is macOS-only, so this wraps the official Ubuntu `.deb` (`26.1007.21434`, from https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb, pinned sha256 `sha256-J2tTQcPXSyYdOtUhBvf6ft3gaEHkdn/ipAy1QJmx8+0=`) via `dpkg-deb -x` + `buildFHSEnv` (`runScript` → `/usr/lib/chatgpt/ChatGPT`), exposing `bin/chatgpt`, the correct `.desktop`, and the app icon.
