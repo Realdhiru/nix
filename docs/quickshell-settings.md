@@ -1,4 +1,6 @@
-# QuickShell Settings Reference (`~/.config/hypr/settings.json`)
+# QuickShell Settings Reference
+
+Live values are stored in [`dotfiles/hypr/settings.json`](../dotfiles/hypr/settings.json), linked to `~/.config/hypr/settings.json` by Home Manager. Changes are watched at runtime.
 
 All QuickShell visual controls are centralized in `~/.config/hypr/settings.json`.
 Changes take effect **instantly** via native C++ inotify file watchers without requiring any bash processes or shell restarts.
@@ -40,7 +42,7 @@ Every color option below accepts any of these tokens extracted dynamically from 
 {
   "themeMode": "dark",
   "popupBackgroundSource": "base",
-  "popupOpacity": 0.20,
+  "popupOpacity": 0.14,
   "cardColorSource": "glass",
   "cardOpacity": 0.04,
   "topbarColorSource": "surface1",
@@ -49,8 +51,8 @@ Every color option below accepts any of these tokens extracted dynamically from 
   "clockColorSource": "text",
   "textColorSource": "text",
   "accentColorSource": "primary",
-  "borderWidth": 1,
-  "borderOpacity": 0.08,
+  "borderWidth": 0,
+  "borderOpacity": 0.0,
   "glassSpecular": 0.04
 }
 ```

@@ -1,23 +1,17 @@
-# Advisor Context & Architectural Memory
+# Advisor Context
 
-## Display & Shader Architecture Split
+Use this short file as an entry point when giving an external AI context about
+the desktop. Repository agents should follow [`AGENTS.md`](../AGENTS.md) and
+the [NixOS / Hyprland skill](../.agents/skills/nixos-hyprland/SKILL.md) as the
+operational source of truth.
 
-- **hyprsunset daemon** owns **Temperature + Gamma** (hardware CTM/gamma LUT).
-- **Hyprland's single `decoration:screen_shader` slot** owns **Saturation + Paper Grain + CRT Curvature** together in one unified GLSL file, since Hyprland only supports one active `screen_shader` at a time.
-- These two systems are fully independent — verify this separation before adding any new visual effect toggle, to avoid accidentally colliding with whichever mechanism already owns that property.
+## Display shader ownership
 
-## Sysfs Inotify & Event Source Watcher Rules
+- `hyprsunset` owns display temperature and gamma through the hardware CTM/LUT.
+- Hyprland's single `decoration:screen_shader` slot owns saturation, paper
+  grain, and CRT curvature together in one GLSL shader.
+- These are separate mechanisms. A new display effect must use the slot that
+  owns that property and must not replace the other subsystem's configuration.
 
-- `FileView` on `/sys` or `/proc` never fires (`sysfs` emits no `inotify` events). Use `udevadm monitor`, UPower D-Bus, or a slow timer. Never replace a udev-based watcher with a `FileView` on sysfs.
-- Before replacing any watcher, prove the new event source fires by logging timestamps on a real state change.
-
-## Lockscreen Safety Rule
-
-- **Never test/spawn lockscreen directly/autonomously**: Testing or executing the lockscreen manually breaks the PAM session and session lock state when attempting to log back in.
-
-## Projects Directory Protection Rule
-
-- **Never delete files or directories inside `~/Projects/`**: `~/Projects/` and its subdirectories contain user backups, reference repositories, and independent projects. Never run `rm` or delete paths under `~/Projects/`.
-
-
-
+See [`decisions.md`](decisions.md) for the architectural rationale and
+[`debugging.md`](debugging.md) for past failures and verified recovery steps.

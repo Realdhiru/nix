@@ -55,7 +55,7 @@
       #   record known-good -> commit -> BUILD (no activation on failure) ->
       #   switch -> health gate -> auto-rollback on critical checks.
       # The bad generation is NEVER deleted: it stays selectable in the
-      # profile and bootable via bootctl. See docs/flow.md §12.
+      # profile and bootable via bootctl. See docs/flow.md §5–7.
       rebuild() {
         cd ~/nix || return
 
@@ -87,7 +87,7 @@
 
         sudo nixos-rebuild switch --flake .#nixos || {
           echo "SWITCH FAILED — still on generation $gen (build itself was fine)."
-          echo "Manual recovery: ~/nix/docs/flow.md §13"
+          echo "Manual recovery: ~/nix/docs/flow.md §7"
           return 1
         }
         local new_gen
@@ -116,7 +116,7 @@
           echo "Restored generation: $(readlink /nix/var/nix/profiles/system)"
           echo "Health report: $(ls -t "$HOME"/.cache/nix_health_*.log 2>/dev/null | head -1)"
           echo "Investigate: journalctl -k --since '$start' | grep -iE 'GPU HANG|call trace'"
-          echo "Docs: ~/nix/docs/flow.md §12–13"
+          echo "Docs: ~/nix/docs/flow.md §5–7"
           return 1
         fi
       }

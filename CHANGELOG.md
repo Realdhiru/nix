@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-10-12 — Nix Repository Documentation & Dead Package Cleanup
+
+- Moved the QuickShell settings guide from the deployed Hyprland dotfiles into `docs/`, corrected its examples to match current settings, and updated references.
+- Repaired the execution-flow guide: clipboard watchers are documented as systemd user services, and rebuild, health-gate, and rollback sections now match the actual scripts and links.
+- Removed the unused `hypr-kdeconnect-portal` overlay/package; the configured portal set never consumed it. KDE Connect itself remains enabled.
+- Reduced duplicated advisor context to its unique shader ownership rule and recorded that rule in architecture decisions. Removed stale generated wallpaper-picker Python bytecode.
+
 ## 2026-10-12 — Lockscreen Stability & Sunset Widget Navigation Fixes
 
 - **Sole Idle Authority Enforcement & Dead Code Purge ([`Shell.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Shell.qml), [`idle/`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/idle/))**:
@@ -14,7 +21,7 @@
 
 ## 2026-10-12 — Volume Knob Scroll Bypasses Super-Wheel Zoom
 
-- Scoped the existing Super + mouse-wheel zoom binds to all pointer devices except ydotool's virtual pointer. The keyboard knob's injected wheel events now reach the focused app as scroll input, while physical mouse-wheel zoom remains unchanged.
+- Scoped the existing Super + mouse-wheel zoom binds to all pointer devices except Hyprland's reported ydotool device name (`ydotoold-virtual-device-1`). The knob's injected wheel events can reach the focused app as scroll input while physical mouse-wheel zoom remains unchanged.
 
 ## 2026-10-11 — Monochrome Wallpaper Terminal Color Sync
 

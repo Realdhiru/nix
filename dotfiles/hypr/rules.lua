@@ -35,16 +35,18 @@ end
 if not is_opaque then
     hl.window_rule({ match = { class = "^app.liten.Gram$" }, opacity = "0.76" })
     hl.window_rule({ match = { class = "^antigravity$" }, opacity = "0.47" })
+    hl.window_rule({ match = { class = "^chatgpt$" }, opacity = "0.47" })
     hl.window_rule({ match = { class = "^Chatgpt$" }, opacity = "0.5" })
     hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.6" })
     hl.window_rule({ match = { class = "^(foot|footclient|Alacritty)$" }, opacity = "0.70" })
 
     -- Brave Apps
-    hl.window_rule({ match = { class = "^brave-chat\\.openai\\.com__-Default$" }, opacity = "0.57" })                        -- ChatGPT
-    hl.window_rule({ match = { class = "^brave-gemini\\.google\\.com__app-Default$" }, opacity = "0.57" })                   -- Gemini
-    hl.window_rule({ match = { class = "^brave-claude\\.ai__new-Default$" }, opacity = "0.57" })                              -- Claude
-    hl.window_rule({ match = { class = "^brave-monkeytype\\.com__-Default$" }, opacity = "0.57" })                            -- Monkeytype
-    hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab25a38c938de4f8-Default$" }, opacity = "0.57" }) -- Notion
+    hl.window_rule({ match = { class = "^brave-chat\\.openai\\.com__-Default$" }, opacity = "0.57" })                               -- ChatGPT
+    hl.window_rule({ match = { class = "^brave-gemini\\.google\\.com__app-Default$" }, opacity = "0.57" })                          -- Gemini
+    hl.window_rule({ match = { class = "^brave-claude\\.ai__new-Default$" }, opacity = "0.57" })                                    -- Claude
+    hl.window_rule({ match = { class = "^brave-monkeytype\\.com__-Default$" }, opacity = "0.57" })                                  -- Monkeytype
+    hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab25a38c938de4f8-Default$" }, opacity =
+    "0.57" })                                                                                                                       -- Notion
 
     -- Spotify Lyrics (Chromium)
     hl.window_rule({ match = { class = "^(chromium-browser)$" }, opacity = "0.85" })

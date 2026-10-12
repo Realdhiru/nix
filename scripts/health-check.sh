@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Post-switch health gate for rebuild() — see ~/nix/docs/flow.md §12.
+# Post-switch health gate for rebuild() — see ~/nix/docs/flow.md §6.
 #
 # Usage: health-check.sh <ISO-8601 start timestamp>
 #   The timestamp scopes all journal scans: only events AFTER the switch

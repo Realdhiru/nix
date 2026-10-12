@@ -462,4 +462,4 @@ shim, so changes are localized to one file.
 - [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix) — `systemPackages`.
 - [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md) §7 (Distrobox) & §39 (this approach).
 - [`docs/debugging.md`](file:///home/realdhiru/nix/docs/debugging.md) §6 — packaging & rebuild safety.
-- [`docs/flow.md`](file:///home/realdhiru/nix/docs/flow.md) §12–13 — rebuild → health gate → rollback.
+- [`docs/flow.md`](file:///home/realdhiru/nix/docs/flow.md) §5–7 — rebuild → health gate → rollback.

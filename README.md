@@ -147,7 +147,7 @@ Built for **100% portability** — fork it, edit one file, and deploy the entire
 
 ### Declarative System Infrastructure
 - **Safety-Gated Rebuild Workflow**: A custom rebuild pipeline validates builds before activation, runs a post-switch health gate with automated rollbacks, and retains a 14-day garbage collection safety window while tracking floating `nixos-unstable`.
-- **Integrated System Packaging**: Declarative custom derivations (including `hypr-kdeconnect-portal` for remote input over `/dev/uinput`), native AppImage execution via Linux kernel `binfmt_misc`, and declarative Flathub integration.
+- **Integrated System Packaging**: Declarative custom derivations, native AppImage execution via Linux kernel `binfmt_misc`, and declarative Flathub integration.
 - **On-Demand `.deb` Compatibility**: Zero-daemon rootless Podman + Distrobox integration for Debian/Ubuntu `.deb` packages. Right-click installs directly from PCManFM-Qt, auto-exports desktop entries into Fuzzel, and shuts down containers on app exit for zero idle power drain.
 - **Clean Display Authentication**: Lightweight TTY display manager (`ly`) with PAM authentication, cleanly decoupling graphical login from session startup.
 
@@ -162,7 +162,6 @@ nix/
 ├── home.nix                           # Home Manager root configuration
 ├── pkgs/                              # Custom Nix package derivations & patches
 │   ├── buuf-nestort.nix
-│   ├── hypr-kdeconnect-portal.nix
 │   └── pcmanfm-qt-appid.patch
 ├── hosts/
 │   └── nixos/
@@ -210,6 +209,7 @@ nix/
     ├── debugging.md                   # Historical issues, root causes & verified fixes
     ├── flow.md                        # Boot, startup sequencing & emergency recovery
     ├── installation.md                # Fresh machine setup & deployment guide
+    ├── quickshell-settings.md         # settings.json controls and valid values
     └── assets/                        # High-resolution showcase media
 ```
 
@@ -297,3 +297,4 @@ Deep-dive architecture and deployment guides are documented in [`docs/`](docs/):
 * **[Architecture Decisions (ADR)](docs/decisions.md)** — Core design principles, TLP authority, and system non-negotiables.
 * **[Debugging & Troubleshooting](docs/debugging.md)** — Complete historical catalog of solved hardware and desktop quirks.
 * **[Execution Flows](docs/flow.md)** — Boot pipeline, startup sequencing, and emergency recovery paths.
+* **[QuickShell Settings](docs/quickshell-settings.md)** — Runtime settings keys, choices, and current defaults.

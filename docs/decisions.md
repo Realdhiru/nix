@@ -299,3 +299,11 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### 41. Fastfetch-Only Terminal Font Scaling
 - **Decision:** The Fastfetch launch binding may override Alacritty's font size per window, leaving normal terminal windows and the built-in NixOS logo unchanged. Lowering terminal font size scales the logo and information together; Fastfetch's built-in ASCII logo has no independent scale control.
 - **OpenCode runtime note:** OpenCode's `system` theme uses terminal colors, but the installed 1.18.34 TUI exposes no supported live palette re-query. Keep its selected `system` theme; palette refresh requires upstream support or restarting the TUI.
+
+### 42. Super + External Keyboard Knob Scrolling
+- **Decision:** The knob emits volume-up/down key events. Hyprland binds those events with Super held to `ydotool` wheel injection; without Super, the existing volume controls remain unchanged.
+- **Collision fix:** Injected wheel events initially matched the existing Super + mouse-wheel zoom binds. Those binds now exclude Hyprland's virtual pointer device (`ydotoold-virtual-device-1`), preserving zoom on physical pointers while allowing knob scroll events to reach the focused app.
+
+### Display Shader Ownership Split
+- **Decision:** `hyprsunset` owns temperature and gamma through the hardware CTM/LUT. Hyprland's single `decoration:screen_shader` slot owns saturation, paper grain, and CRT curvature together.
+- **Reason:** These are independent mechanisms, and Hyprland supports one active screen shader. New effects must preserve the ownership split rather than replacing an unrelated effect.

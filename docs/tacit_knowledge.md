@@ -28,7 +28,7 @@
 
 ### Naming & Structural Conventions
 - **Dynamic Semantic Tokens in QML:** Use dynamic tokens (`root.primary`, `root.base`, `Theme.colors.primary`) instead of legacy `mocha.*` names or literal color strings.
-- **Centralized Settings Authority:** Visual and behavioral parameters across QuickShell must be defined in `settings.json` / `QUICKSHELL_SETTINGS.md`. Individual widget files must never hardcode localized styling or opacity overrides.
+- **Centralized Settings Authority:** Visual and behavioral parameters across QuickShell must be defined in `settings.json` and documented in [`docs/quickshell-settings.md`](quickshell-settings.md). Individual widget files must never hardcode localized styling or opacity overrides.
 - **Modular Widget Architecture:** QuickShell widgets must remain self-contained with localized `Scaler.qml` and `Theme` adapters, eliminating brittle relative parent traversals (`import "../"`) that break when files are relocated.
 
 ---
