@@ -307,3 +307,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### Display Shader Ownership Split
 - **Decision:** `hyprsunset` owns temperature and gamma through the hardware CTM/LUT. Hyprland's single `decoration:screen_shader` slot owns saturation, paper grain, and CRT curvature together.
 - **Reason:** These are independent mechanisms, and Hyprland supports one active screen shader. New effects must preserve the ownership split rather than replacing an unrelated effect.
+
+### Native Touchpad Gesture Bindings
+- **Decision:** Use Hyprland's built-in Lua gestures for workspace swipes and Super-modified pinch zoom. The pinch callbacks share the existing zoom functions and state with mouse-wheel zoom; no gesture daemon is needed.
+- **Workspace behavior:** Enable `gestures.workspace_swipe_forever` so a single long swipe can continue past the adjacent workspace.

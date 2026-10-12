@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-10-12 — Multi-Workspace Touchpad Swipe
+
+- Enabled `gestures.workspace_swipe_forever` so a long three-finger swipe can traverse multiple workspaces instead of stopping at the adjacent one.
+
+## 2026-10-12 — Native Touchpad Workspace and Zoom Gestures
+
+- Enabled Hyprland's native three-finger horizontal workspace swipe.
+- Added Super + two-finger pinch: pinch out reuses the existing zoom-in step; pinch in reuses the existing reset. Mouse-wheel zoom and injected-device filtering remain intact.
+
 ## 2026-10-12 — Launcher Clutter & Foot Terminal Purge
 
 - **Application Launcher Clutter Suppression ([`home.nix`](file:///home/realdhiru/nix/home.nix))**: Added declarative `xdg.desktopEntries` with `noDisplay = true` to hide misleading PCManFM-Qt wallpaper tool (`pcmanfm-qt-desktop-pref.desktop` displaying as "Desktop") and unsupported `rog-control-center.desktop` from Fuzzel.

@@ -281,8 +281,8 @@ local function smooth_zoom_to(new_target, custom_easing)
     step()
 end
 
--- Zoom In: Unlimited zoom (up to 50x) with gentle first step and fast later progression
-hl.bind(mainMod .. " + mouse_up", function()
+-- Share the same zoom state and easing across wheel and Super + pinch gestures.
+local function zoom_in()
     local next_target
     if target_zoom < 1.05 then
         next_target = 1.28
@@ -290,9 +290,21 @@ hl.bind(mainMod .. " + mouse_up", function()
         next_target = math.min(50.0, target_zoom * 1.5)
     end
     smooth_zoom_to(next_target, 0.16)
-end, { device = { inclusive = false, list = { "ydotoold-virtual-device-1" } } })
+end
 
--- Revert Zoom: Balanced sweet-spot easing (0.15) for a natural, snappy yet smooth return
-hl.bind(mainMod .. " + mouse_down", function()
+local function zoom_out()
     smooth_zoom_to(1.0, 0.15)
-end, { device = { inclusive = false, list = { "ydotoold-virtual-device-1" } } })
+end
+
+-- Mouse wheel zoom remains unchanged; the virtual ydotool pointer is excluded
+-- because it injects wheel events for the external keyboard volume knob.
+hl.bind(mainMod .. " + mouse_up", zoom_in, {
+    device = { inclusive = false, list = { "ydotoold-virtual-device-1" } },
+})
+hl.bind(mainMod .. " + mouse_down", zoom_out, {
+    device = { inclusive = false, list = { "ydotoold-virtual-device-1" } },
+})
+
+-- Super + two-finger pinch uses the same zoom steps and shared zoom state.
+hl.gesture({ fingers = 2, direction = "pinchout", mods = mainMod, action = zoom_in })
+hl.gesture({ fingers = 2, direction = "pinchin", mods = mainMod, action = zoom_out })
