@@ -313,7 +313,6 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Workspace behavior:** Enable `gestures.workspace_swipe_forever` so a single long swipe can continue past the adjacent workspace.
 
 ### Claude Desktop Packaging
-- **Decision:** Package Anthropic's official Linux `.deb` in a separate flake with a pinned version/hash and an FHS runtime, following the existing Codex flake pattern.
-- **Distribution:** Keep the flake in its own public GitHub repository and consume it as a locked GitHub input; automated upstream version bumps land through build-verified pull requests.
-- **Wayland:** Launch the bundled Chromium app with native Wayland flags.
-- **Cowork:** Keep QEMU, OVMF, and `virtiofsd` in an optional package variant so users who only need Chat/Code do not pull the Cowork VM dependency closure.
+- **Decision:** Keep the official Linux `.deb` packaging in the separate public `Realdhiru/claude-desktop-nix` flake, with a pinned version/hash, FHS runtime, native Wayland launcher, and build-verified automated update PRs.
+- **System use:** Claude Desktop was removed from this system's inputs and packages at the user's request; the standalone repository remains published and maintained.
+- **Cowork:** The repo keeps QEMU, OVMF, and `virtiofsd` in an optional package variant to avoid that dependency closure for the default package.

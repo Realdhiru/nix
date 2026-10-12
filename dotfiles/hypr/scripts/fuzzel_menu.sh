@@ -45,7 +45,7 @@ case "$MODE" in
     file|files)
         FUZZEL_ARGS=(
             --dmenu
-            --match-mode=fzf
+            --match-mode=exact
             --hide-before-typing
             --anchor=center
             --width=48
@@ -60,7 +60,7 @@ case "$MODE" in
             --layer=overlay
             --keyboard-focus=exclusive
             --with-nth=1
-            --match-nth='{3} {4} {5}'
+            --match-nth=3
             --accept-nth=2
             --nth-delimiter=$'\t'
             --prompt="  "
@@ -95,6 +95,16 @@ case "$MODE" in
                --exclude target \
                --exclude dist \
                --exclude build \
+               --exclude '*/Session Storage' \
+               --exclude '*/Local Storage' \
+               --exclude '*/IndexedDB' \
+               --exclude '*/Service Worker' \
+               --exclude '*/Partitions' \
+               --exclude '*/Crash Reports' \
+               --exclude '*/Crashpad' \
+               --exclude '*/GPUCache' \
+               --exclude '*/Code Cache' \
+               --exclude '*/blob_storage' \
                --type f . \
                "$HOME" "$HOME/.config" 2>/dev/null | \
             awk -v home="$HOME" '{

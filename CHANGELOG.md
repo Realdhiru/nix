@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-10-12 — Fuzzel File Search Exact Substring & Database Exclusion Fix
+
+- **Exact Substring Matching & Single-Column Targeting ([`fuzzel_menu.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/fuzzel_menu.sh))**:
+  - Replaced `--match-mode=fzf` with `--match-mode=exact` in file search mode, enforcing contiguous substring queries instead of character-by-character subsequence scattering.
+  - Restricted search targeting from bloated multi-column string `--match-nth='{3} {4} {5}'` down to `--match-nth=3` (filename only), preventing queries from matching random letters scattered across parent directory paths or file type tags.
+  - Added exclusions for Chromium, Electron, and browser runtime database directories (`IndexedDB`, `Session Storage`, `Local Storage`, `Partitions`, `Service Worker`, `Crashpad`, `Crash Reports`, `GPUCache`, `Code Cache`, `blob_storage`) to prevent internal lock/log database files from entering the search pipeline.
+
 ## 2026-10-12 — Claude Desktop Nix Flake
 
 - Added a standalone flake for Anthropic's official Claude Desktop Linux `.deb`,
@@ -8,6 +15,8 @@
   the system flake and package list.
 - Switched the system input from the local project path to the published
   `github:Realdhiru/claude-desktop-nix` flake.
+- Removed Claude Desktop from the system input and package list at the user's
+  request. The standalone GitHub repo and its update workflow remain intact.
 
 ## 2026-10-12 — Super Pinch Zoom Matches Wheel Behavior
 
