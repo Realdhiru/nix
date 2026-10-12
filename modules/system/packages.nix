@@ -29,6 +29,7 @@ in
     yq-go
     bc
     socat
+    libinput
     python3
     weathr
     util-linux

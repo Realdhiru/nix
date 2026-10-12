@@ -392,6 +392,7 @@ Item {
     onVisibleChanged: {
         if (!visible) {
             window.initialFocusSet = false;
+            window.targetWallName = "";
             window.allowAddAnimation = false;
             window.searchIndexRestored = false;
             window.isApplying = false;
@@ -775,15 +776,12 @@ Item {
     function centerActiveWallpaper() {
         if (!window.visible) return;
         window.currentFilter = "All";
-        let activeWall = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
-        if (activeWall === "") {
-            activeWallWatcher.reload();
-            let p = (activeWallWatcher.text() || "").trim();
-            if (p !== "") {
-                window.activeWallpaperPath = p;
-                activeWall = window.activeWallpaperName;
-            }
+        activeWallWatcher.reload();
+        let p = (activeWallWatcher.text() || "").trim();
+        if (p !== "") {
+            window.activeWallpaperPath = p;
         }
+        let activeWall = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
         if (activeWall === "") return;
 
         let cleanActive = window.getCleanName(activeWall);
@@ -796,10 +794,13 @@ Item {
             }
         }
         if (foundIdx !== -1) {
+            window.isModelChanging = true;
+            window.targetWallName = localProxyModel.get(foundIdx).fileName || activeWall;
             view.currentIndex = foundIdx;
             view.forceLayout();
             view.positionViewAtIndex(foundIdx, ListView.Center);
             window.initialFocusSet = true;
+            window.isModelChanging = false;
         }
     }
 
@@ -808,10 +809,15 @@ Item {
         window.currentFilter = "All";
         activeWallWatcher.reload();
         let p = (activeWallWatcher.text() || "").trim();
-        if (p !== "") window.activeWallpaperPath = p;
-        let activeWall = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
-        if (activeWall !== "") {
-            window.targetWallName = activeWall;
+        if (p !== "") {
+            window.activeWallpaperPath = p;
+            let parts = p.split("/");
+            let fname = parts[parts.length - 1];
+            if (fname !== "") {
+                window.targetWallName = fname;
+            }
+        } else if (window.activeWallpaperName !== "") {
+            window.targetWallName = window.activeWallpaperName;
         }
         window.applyFilters(true);
         view.forceActiveFocus();
@@ -1140,7 +1146,8 @@ Item {
             return;
         }
 
-        let cleanTarget = window.getCleanName(window.targetWallName);
+        let searchTarget = window.targetWallName !== "" ? window.targetWallName : window.activeWallpaperName;
+        let cleanTarget = window.getCleanName(searchTarget);
         let targetIndex = -1;
 
         if (cleanTarget !== "") {

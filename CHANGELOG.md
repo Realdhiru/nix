@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 2026-10-12 — Super Pinch Zoom Matches Wheel Behavior
+
+- Replaced live relative compositor zoom with direction-specific callbacks sharing the mouse-wheel zoom state: pinch-out applies one zoom step; pinch-in resets to 1.0.
+- Added `libinput` to system packages so the `libinput` diagnostic CLI is installed.
+
+## 2026-10-12 — QuickShell Wallpaper Picker Initial Active Centering Fix
+
+- **Wallpaper Picker Centering ([`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**:
+  - Fixed wallpaper picker opening at index 0 instead of centering on the currently applied wallpaper.
+  - Reset `window.targetWallName = ""` when closing so stale default index 0 state is not preserved across opens.
+  - Made `showWidget()` and `centerActiveWallpaper()` synchronously extract the active wallpaper filename from `activeWallWatcher` and guard index positioning with `window.isModelChanging = true` to prevent `onCurrentIndexChanged` from overwriting the selection.
+  - Added fallback to `activeWallpaperName` in `applyFilters()` when `targetWallName` is unset or not found.
+
 ## 2026-10-12 — Multi-Workspace Touchpad Swipe
 
 - Enabled `gestures.workspace_swipe_forever` so a long three-finger swipe can traverse multiple workspaces instead of stopping at the adjacent one.

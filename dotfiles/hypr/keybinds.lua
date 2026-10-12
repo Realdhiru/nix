@@ -305,6 +305,7 @@ hl.bind(mainMod .. " + mouse_down", zoom_out, {
     device = { inclusive = false, list = { "ydotoold-virtual-device-1" } },
 })
 
--- Super + two-finger pinch uses the same zoom steps and shared zoom state.
+-- Match the wheel zoom semantics exactly: spread = one zoom step; pinch in = reset.
+-- These callbacks share current_zoom/target_zoom with the wheel binds above.
 hl.gesture({ fingers = 2, direction = "pinchout", mods = mainMod, action = zoom_in })
 hl.gesture({ fingers = 2, direction = "pinchin", mods = mainMod, action = zoom_out })

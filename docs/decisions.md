@@ -309,5 +309,5 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Reason:** These are independent mechanisms, and Hyprland supports one active screen shader. New effects must preserve the ownership split rather than replacing an unrelated effect.
 
 ### Native Touchpad Gesture Bindings
-- **Decision:** Use Hyprland's built-in Lua gestures for workspace swipes and Super-modified pinch zoom. The pinch callbacks share the existing zoom functions and state with mouse-wheel zoom; no gesture daemon is needed.
+- **Decision:** Use Hyprland's built-in Lua gestures for workspace swipes and Super-modified pinch zoom. Pinch-out calls the same step-in function as wheel-up; pinch-in calls the same reset-to-1.0 function as wheel-down. No gesture daemon or external plugin is needed.
 - **Workspace behavior:** Enable `gestures.workspace_swipe_forever` so a single long swipe can continue past the adjacent workspace.
