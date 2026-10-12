@@ -39,6 +39,26 @@
         "type": "github"
       }
     },
+    "claudeDesktop": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791791038,
+        "narHash": "sha256-/Bgsxz+ullnPIASWVwKPQQ/sSGbmTK96bYPLh8yGpAI=",
+        "owner": "Realdhiru",
+        "repo": "claude-desktop-nix",
+        "rev": "27e246ecec6937dd7f0ba4afa576a3153cdd3484",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Realdhiru",
+        "repo": "claude-desktop-nix",
+        "type": "github"
+      }
+    },
     "flake-compat": {
       "flake": false,
       "locked": {
@@ -173,6 +193,7 @@
       "inputs": {
         "anifetch": "anifetch",
         "chatgpt": "chatgpt",
+        "claudeDesktop": "claudeDesktop",
         "helium": "helium",
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs_2",

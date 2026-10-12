@@ -37,6 +37,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Official Claude Desktop Linux beta, packaged in ~/Projects/claude-desktop-nix.
+    claudeDesktop = {
+      url = "github:Realdhiru/claude-desktop-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
   outputs = inputs@{ nixpkgs, home-manager, ... }:
@@ -64,6 +70,8 @@
             })
             # chatgpt from the standalone ~/Projects/codex-flake flake.
             inputs.chatgpt.overlays.default
+            # Claude Desktop from the standalone ~/Projects/claude-desktop-nix flake.
+            inputs.claudeDesktop.overlays.default
           ];
         })
 

@@ -127,6 +127,7 @@ in
 
     antigravity-hub
     chatgpt
+    claude-desktop
     opencode
     gram
     nil

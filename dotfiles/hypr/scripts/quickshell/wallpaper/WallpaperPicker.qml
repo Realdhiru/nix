@@ -785,6 +785,11 @@ Item {
         if (activeWall === "") return;
 
         let cleanActive = window.getCleanName(activeWall);
+        if (localProxyModel.count === 0) {
+            centerOnActiveTimer.restart();
+            return;
+        }
+
         let foundIdx = -1;
         for (let i = 0; i < localProxyModel.count; i++) {
             let fn = localProxyModel.get(i).fileName || "";
@@ -794,13 +799,8 @@ Item {
             }
         }
         if (foundIdx !== -1) {
-            window.isModelChanging = true;
             window.targetWallName = localProxyModel.get(foundIdx).fileName || activeWall;
-            view.currentIndex = foundIdx;
-            view.forceLayout();
-            view.positionViewAtIndex(foundIdx, ListView.Center);
-            window.initialFocusSet = true;
-            window.isModelChanging = false;
+            window.executeFocusRestore(foundIdx, false, true);
         }
     }
 
@@ -838,10 +838,19 @@ Item {
         if (targetIndex !== -1 && targetIndex < targetModel.count) {
             window.isModelChanging = true;
             view.currentIndex = targetIndex;
+            let item = targetModel.get(targetIndex);
+            if (item && item.fileName) {
+                window.targetWallName = String(item.fileName);
+            }
             if (requirePositioning && window.visible && view.width > 0) {
                 view.forceLayout();
                 view.positionViewAtIndex(targetIndex, ListView.Center);
                 window.initialFocusSet = true;
+                Qt.callLater(() => {
+                    if (window.visible && view.width > 0 && targetIndex < targetModel.count) {
+                        view.positionViewAtIndex(targetIndex, ListView.Center);
+                    }
+                });
             } else if (!requirePositioning) {
                 window.initialFocusSet = true;
             }
@@ -1290,18 +1299,23 @@ Item {
         let targetModel = window.getModelForFilter(window.currentFilter);
         if (targetModel && targetModel.count > 0 && window.currentFilter !== "Search" && window.visible && view.width > 0) {
             let foundIndex = -1;
-            if (preservedTarget !== "") {
-                let cleanTarget = window.getCleanName(preservedTarget);
+            let effectiveTarget = preservedTarget !== "" ? preservedTarget : window.activeWallpaperName;
+            if (effectiveTarget !== "") {
+                let cleanTarget = window.getCleanName(effectiveTarget);
                 for (let i = 0; i < targetModel.count; i++) {
                     let fn = targetModel.get(i).fileName || "";
-                    if (fn === preservedTarget || window.getCleanName(fn) === cleanTarget) {
+                    if (fn === effectiveTarget || window.getCleanName(fn) === cleanTarget) {
                         foundIndex = i;
                         break;
                     }
                 }
             }
-            let finalIndex = foundIndex !== -1 ? foundIndex : Math.min(Math.max(0, fallbackIndex), targetModel.count - 1);
-            window.executeFocusRestore(finalIndex, false, true);
+            if (foundIndex !== -1) {
+                window.executeFocusRestore(foundIndex, false, true);
+            } else if (window.initialFocusSet) {
+                let finalIndex = Math.min(Math.max(0, fallbackIndex), targetModel.count - 1);
+                window.executeFocusRestore(finalIndex, false, true);
+            }
         }
         if (window.visible && !window.initialFocusSet) {
             centerOnActiveTimer.restart();
@@ -1376,7 +1390,7 @@ Item {
         reuseItems: false
         cacheBuffer: Math.round(window.itemWidth * 2)
 
-        highlightRangeMode: window.initialFocusSet ? ListView.StrictlyEnforceRange : ListView.NoHighlightRange
+        highlightRangeMode: ListView.StrictlyEnforceRange
         preferredHighlightBegin: Math.max(0, (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset)
         preferredHighlightEnd: Math.max(0, (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset)
         highlightMoveDuration: (window.initialFocusSet && !window.isFilterAnimating && !window.isModelChanging) ? 350 : 0
@@ -1393,7 +1407,7 @@ Item {
         onCurrentIndexChanged: {
             window.isItemAnimating = true;
             itemAnimationTimer.restart();
-            if (!window.isModelChanging && currentIndex >= 0 && currentIndex < window.activeModel.count) {
+            if (window.initialFocusSet && !window.isModelChanging && currentIndex >= 0 && currentIndex < window.activeModel.count) {
                 let item = window.activeModel.get(currentIndex);
                 if (item && item.fileName) {
                     let fname = String(item.fileName);

@@ -311,3 +311,9 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### Native Touchpad Gesture Bindings
 - **Decision:** Use Hyprland's built-in Lua gestures for workspace swipes and Super-modified pinch zoom. Pinch-out calls the same step-in function as wheel-up; pinch-in calls the same reset-to-1.0 function as wheel-down. No gesture daemon or external plugin is needed.
 - **Workspace behavior:** Enable `gestures.workspace_swipe_forever` so a single long swipe can continue past the adjacent workspace.
+
+### Claude Desktop Packaging
+- **Decision:** Package Anthropic's official Linux `.deb` in a separate flake with a pinned version/hash and an FHS runtime, following the existing Codex flake pattern.
+- **Distribution:** Keep the flake in its own public GitHub repository and consume it as a locked GitHub input; automated upstream version bumps land through build-verified pull requests.
+- **Wayland:** Launch the bundled Chromium app with native Wayland flags.
+- **Cowork:** Keep QEMU, OVMF, and `virtiofsd` in an optional package variant so users who only need Chat/Code do not pull the Cowork VM dependency closure.

@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-10-12 — Claude Desktop Nix Flake
+
+- Added a standalone flake for Anthropic's official Claude Desktop Linux `.deb`,
+  with a pinned checksum, FHS runtime, and native Wayland launcher.
+- Added an optional Cowork runtime variant and wired the default package into
+  the system flake and package list.
+- Switched the system input from the local project path to the published
+  `github:Realdhiru/claude-desktop-nix` flake.
+
 ## 2026-10-12 — Super Pinch Zoom Matches Wheel Behavior
 
 - Replaced live relative compositor zoom with direction-specific callbacks sharing the mouse-wheel zoom state: pinch-out applies one zoom step; pinch-in resets to 1.0.
@@ -8,10 +17,13 @@
 ## 2026-10-12 — QuickShell Wallpaper Picker Initial Active Centering Fix
 
 - **Wallpaper Picker Centering ([`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**:
-  - Fixed wallpaper picker opening at index 0 instead of centering on the currently applied wallpaper.
+  - Guarded `onCurrentIndexChanged` with `window.initialFocusSet` to prevent early frame-0 initialization from clobbering `window.targetWallName` with index 0 before active wallpaper focus is established.
+  - Synchronized `window.targetWallName` in `executeFocusRestore()` and added a deferred layout pass via `Qt.callLater` to guarantee `view.positionViewAtIndex(targetIndex, ListView.Center)` centers correctly once offscreen delegates materialize.
+  - Enforced `highlightRangeMode: ListView.StrictlyEnforceRange` unconditionally on the carousel `ListView` to eliminate range recalculation snapping back to index 0 on frame 0/1.
+  - Fixed `centerActiveWallpaper()` to reschedule via `centerOnActiveTimer` when `localProxyModel` has not finished populating, preventing dropped centering attempts.
+  - Updated `syncLocalModel()` to fallback directly to `activeWallpaperName` and prevented premature focus restore fallback to index 0 when initial focus has not yet been established.
   - Reset `window.targetWallName = ""` when closing so stale default index 0 state is not preserved across opens.
-  - Made `showWidget()` and `centerActiveWallpaper()` synchronously extract the active wallpaper filename from `activeWallWatcher` and guard index positioning with `window.isModelChanging = true` to prevent `onCurrentIndexChanged` from overwriting the selection.
-  - Added fallback to `activeWallpaperName` in `applyFilters()` when `targetWallName` is unset or not found.
+  - Synchronously extract the active wallpaper filename from `activeWallWatcher` on `showWidget()` and route focus restore through `executeFocusRestore()` with positioning.
 
 ## 2026-10-12 — Multi-Workspace Touchpad Swipe
 
