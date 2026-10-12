@@ -14,6 +14,5 @@ gtk = { template = "gtk.css", target = "~/.cache/theme/gtk.css" }
 qtct = { template = "qtct.conf", target = "~/.cache/theme/qtct.conf" }
 qt_style = { template = "qt-style.qss", target = "~/.cache/theme/qt-style.qss" }
 hyprland = { template = "hyprland-colors.conf", target = "~/.cache/theme/hyprland-colors.conf" }
-foot = { template = "foot.ini", target = "~/.cache/theme/foot-colors.ini" }
 alacritty = { template = "alacritty.toml", target = "~/.cache/theme/alacritty-colors.toml" }
 

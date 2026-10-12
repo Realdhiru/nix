@@ -112,36 +112,6 @@ $active_border_col_2 = rgb(C9BFB5)
 $inactive_border_col = rgb(282828)
 EOF
 
-    cat <<'EOF' > "$TARGET_CACHE/foot-colors.ini"
-[colors-dark]
-alpha=0.30
-background=000000
-foreground=EDE6DC
-regular0=111116
-regular1=484849
-regular2=5E5E60
-regular3=747576
-regular4=EDE6DC
-regular5=B4B5B7
-regular6=ADADAF
-regular7=EDE6DC
-bright0=22222a
-bright1=4C4D4F
-bright2=6A6A6C
-bright3=828284
-bright4=EDE6DC
-bright5=B4B5B7
-bright6=E6E7E9
-bright7=FFFFFF
-16=EDE6DC
-17=EDE6DC
-selection-foreground=000000
-selection-background=EDE6DC
-urls=EDE6DC
-
-[colors-light]
-alpha=0.30
-EOF
 
     cat <<'EOF' > "$TARGET_CACHE/alacritty-colors.toml"
 [colors.primary]
@@ -512,8 +482,6 @@ fi
 
 # Notify client applications if running
 pkill -USR2 cava 2>/dev/null || true
-pkill -USR1 -u "${USER:-$LOGNAME}" -x foot 2>/dev/null || true
-pkill -USR1 -u "${USER:-$LOGNAME}" -f "foot --server" 2>/dev/null || true
 alacritty msg config -r >/dev/null 2>&1 || true
 RESTORE_SCRIPT="$HOME/.config/hypr/scripts/quickshell/restore_state.sh"
 [ ! -x "$RESTORE_SCRIPT" ] && RESTORE_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh"

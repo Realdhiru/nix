@@ -62,6 +62,17 @@
     force = true;
   };
 
+  # Hide misleading / unused entries from application launcher (Fuzzel)
+  xdg.desktopEntries."pcmanfm-qt-desktop-pref" = {
+    name = "Desktop";
+    noDisplay = true;
+  };
+
+  xdg.desktopEntries."org.opengamingcollective.rog-control-center" = {
+    name = "ROG Control Center";
+    noDisplay = true;
+  };
+
   # Mutable user-managed MIME associations (allows casual right-click "Set as Default" in PCManFM-Qt)
   xdg.mimeApps.enable = false;
 
@@ -236,16 +247,6 @@
     };
   };
 
-  programs.foot = {
-    enable = true;
-    server.enable = true;
-  };
-
-  xdg.configFile."foot/foot.ini" = {
-    source = config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/nix/dotfiles/foot/foot.ini";
-    force = true;
-  };
 
   programs.alacritty.enable = true;
 

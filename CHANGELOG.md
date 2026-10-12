@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 2026-10-12 — Launcher Clutter & Foot Terminal Purge
+
+- **Application Launcher Clutter Suppression ([`home.nix`](file:///home/realdhiru/nix/home.nix))**: Added declarative `xdg.desktopEntries` with `noDisplay = true` to hide misleading PCManFM-Qt wallpaper tool (`pcmanfm-qt-desktop-pref.desktop` displaying as "Desktop") and unsupported `rog-control-center.desktop` from Fuzzel.
+- **Foot Terminal Removal ([`packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix), [`home.nix`](file:///home/realdhiru/nix/home.nix), [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), [`wallust`](file:///home/realdhiru/nix/dotfiles/wallust))**: Completely removed `foot` package, dotfiles, daemon unit, opacity window rules, and Wallust color palette hooks.
+
 ## 2026-10-12 — Nix Repository Documentation & Dead Package Cleanup
 
 - Moved the QuickShell settings guide from the deployed Hyprland dotfiles into `docs/`, corrected its examples to match current settings, and updated references.

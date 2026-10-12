@@ -38,7 +38,7 @@ if not is_opaque then
     hl.window_rule({ match = { class = "^chatgpt$" }, opacity = "0.47" })
     hl.window_rule({ match = { class = "^Chatgpt$" }, opacity = "0.5" })
     hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.6" })
-    hl.window_rule({ match = { class = "^(foot|footclient|Alacritty)$" }, opacity = "0.70" })
+    hl.window_rule({ match = { class = "^(Alacritty)$" }, opacity = "0.70" })
 
     -- Brave Apps
     hl.window_rule({ match = { class = "^brave-chat\\.openai\\.com__-Default$" }, opacity = "0.57" })                               -- ChatGPT

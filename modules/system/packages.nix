@@ -35,7 +35,6 @@ in
 
     # Development & Terminal
     tmux
-    foot
     alacritty
     fzf
     zoxide
