@@ -33,7 +33,7 @@
     # Standalone repo: ~/Projects/codex-flake. After publishing, swap the URL to
     # "github:Realdhiru/codex-flake".
     chatgpt = {
-      url = "path:/home/realdhiru/Projects/codex-flake";
+      url = "github:Realdhiru/codex-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
