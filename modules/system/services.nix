@@ -76,6 +76,7 @@
 
   # KDE Connect enabled (firewall/ports & packages available, manual launch only, zero autostart)
   programs.kdeconnect.enable = true;
+  services.udev.packages = [ pkgs.kdePackages.kdeconnect-kde ];
 
   # Virtual input device support for KDE Connect digitizer / drawing tablet
   hardware.uinput.enable = true;
@@ -179,6 +180,7 @@
     extraPortals = with pkgs; [
       xdg-desktop-portal-hyprland
       xdg-desktop-portal-gtk
+      hypr-kdeconnect-portal
     ];
     config = {
       common = {
@@ -186,6 +188,7 @@
       };
       hyprland = {
         default = [ "hyprland" "gtk" ];
+        "org.freedesktop.impl.portal.RemoteDesktop" = [ "hypr-kdeconnect" ];
       };
     };
   };

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2026-10-13 — Restore KDE Connect Input Support on Hyprland
+
+- Restored the pinned `hypr-kdeconnect-portal` backend and routed Hyprland RemoteDesktop requests to it. KDE Connect uses this portal for remote pointer/keyboard input and presentation controls because the packaged Hyprland portal does not currently provide the required RemoteDesktop `ConnectToEIS` path.
+- Restored KDE Connect udev rules for its drawing-tablet digitizer. Existing `uinput` enablement and user-group access remain in place.
+- KDE Connect remains manual launch; no indicator or daemon autostart was added.
+
 ## 2026-10-12 — Fuzzel File Search Exact Substring & Database Exclusion Fix
 
 - **Exact Substring Matching & Single-Column Targeting ([`fuzzel_menu.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/fuzzel_menu.sh))**:
@@ -25,14 +31,12 @@
 
 ## 2026-10-12 — QuickShell Wallpaper Picker Initial Active Centering Fix
 
-- **Wallpaper Picker Centering ([`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**:
-  - Guarded `onCurrentIndexChanged` with `window.initialFocusSet` to prevent early frame-0 initialization from clobbering `window.targetWallName` with index 0 before active wallpaper focus is established.
-  - Synchronized `window.targetWallName` in `executeFocusRestore()` and added a deferred layout pass via `Qt.callLater` to guarantee `view.positionViewAtIndex(targetIndex, ListView.Center)` centers correctly once offscreen delegates materialize.
-  - Enforced `highlightRangeMode: ListView.StrictlyEnforceRange` unconditionally on the carousel `ListView` to eliminate range recalculation snapping back to index 0 on frame 0/1.
-  - Fixed `centerActiveWallpaper()` to reschedule via `centerOnActiveTimer` when `localProxyModel` has not finished populating, preventing dropped centering attempts.
-  - Updated `syncLocalModel()` to fallback directly to `activeWallpaperName` and prevented premature focus restore fallback to index 0 when initial focus has not yet been established.
-  - Reset `window.targetWallName = ""` when closing so stale default index 0 state is not preserved across opens.
-  - Synchronously extract the active wallpaper filename from `activeWallWatcher` on `showWidget()` and route focus restore through `executeFocusRestore()` with positioning.
+- **Wallpaper Picker Centering & Animation Suite ([`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**:
+  - Removed `window.targetWallName` reassignment from `onCurrentIndexChanged` so index 0 during cold start never overwrites the active wallpaper filename.
+  - Set `highlightRangeMode: ListView.StrictlyEnforceRange` statically and configured dynamic `highlightMoveDuration: (window.isFilterAnimating || window.isModelChanging) ? 0 : 350`.
+  - Ported the full Serpantinum transition suite (`add`, `addDisplaced`, `move`, `moveDisplaced`, `remove`, `removeDisplaced`, `displaced`) with 400ms `Easing.OutCubic` motion, automatically suppressed during filter/model switches.
+  - Guarded `syncLocalModel()` against premature index 0 fallback when `initialFocusSet` is false.
+  - Added self-retrying deferred centering in `centerActiveWallpaper()` when `localProxyModel` is still populating or `view.width <= 0`, executing `positionViewAtIndex(foundIdx, ListView.Center)` reliably upon open.
 
 ## 2026-10-12 — Multi-Workspace Touchpad Swipe
 

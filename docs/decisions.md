@@ -308,6 +308,11 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** `hyprsunset` owns temperature and gamma through the hardware CTM/LUT. Hyprland's single `decoration:screen_shader` slot owns saturation, paper grain, and CRT curvature together.
 - **Reason:** These are independent mechanisms, and Hyprland supports one active screen shader. New effects must preserve the ownership split rather than replacing an unrelated effect.
 
+### KDE Connect Input on Hyprland
+- **Decision:** Keep the small `hypr-kdeconnect-portal` backend while the packaged Hyprland portal lacks RemoteDesktop with `ConnectToEIS`. Route only RemoteDesktop to it; retain Hyprland and GTK for other portal interfaces.
+- **Input paths:** Mousepad and presentation control use the RemoteDesktop portal. Drawing-tablet mode uses KDE Connect's digitizer and `/dev/uinput`, with KDE Connect's udev rules and the existing `uinput` group access.
+- **Removal lesson:** The per-user portal files already selected `hypr-kdeconnect`, but the backend package had been removed and the NixOS portal config lacked that route. Keep these aligned until upstream support is present in the active Nixpkgs version.
+
 ### Native Touchpad Gesture Bindings
 - **Decision:** Use Hyprland's built-in Lua gestures for workspace swipes and Super-modified pinch zoom. Pinch-out calls the same step-in function as wheel-up; pinch-in calls the same reset-to-1.0 function as wheel-down. No gesture daemon or external plugin is needed.
 - **Workspace behavior:** Enable `gestures.workspace_swipe_forever` so a single long swipe can continue past the adjacent workspace.

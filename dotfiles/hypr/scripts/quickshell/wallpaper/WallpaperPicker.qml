@@ -775,6 +775,10 @@ Item {
 
     function centerActiveWallpaper() {
         if (!window.visible) return;
+        if (localProxyModel.count === 0 || view.width <= 0) {
+            centerOnActiveTimer.restart();
+            return;
+        }
         window.currentFilter = "All";
         activeWallWatcher.reload();
         let p = (activeWallWatcher.text() || "").trim();
@@ -1300,8 +1304,12 @@ Item {
                     }
                 }
             }
-            let finalIndex = foundIndex !== -1 ? foundIndex : Math.min(Math.max(0, fallbackIndex), targetModel.count - 1);
-            window.executeFocusRestore(finalIndex, false, true);
+            if (foundIndex !== -1) {
+                window.executeFocusRestore(foundIndex, false, true);
+            } else if (window.initialFocusSet) {
+                let finalIndex = Math.min(Math.max(0, fallbackIndex), targetModel.count - 1);
+                window.executeFocusRestore(finalIndex, false, true);
+            }
         }
         if (window.visible && !window.initialFocusSet) {
             centerOnActiveTimer.restart();
@@ -1376,10 +1384,10 @@ Item {
         reuseItems: false
         cacheBuffer: Math.round(window.itemWidth * 2)
 
-        highlightRangeMode: window.initialFocusSet ? ListView.StrictlyEnforceRange : ListView.NoHighlightRange
+        highlightRangeMode: ListView.StrictlyEnforceRange
         preferredHighlightBegin: Math.max(0, (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset)
         preferredHighlightEnd: Math.max(0, (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset)
-        highlightMoveDuration: (window.initialFocusSet && !window.isFilterAnimating && !window.isModelChanging) ? 350 : 0
+        highlightMoveDuration: (window.isFilterAnimating || window.isModelChanging) ? 0 : 350
         focus: true
         
         onWidthChanged: {
@@ -1393,29 +1401,47 @@ Item {
         onCurrentIndexChanged: {
             window.isItemAnimating = true;
             itemAnimationTimer.restart();
-            if (!window.isModelChanging && currentIndex >= 0 && currentIndex < window.activeModel.count) {
-                let item = window.activeModel.get(currentIndex);
-                if (item && item.fileName) {
-                    let fname = String(item.fileName);
-                    window.targetWallName = fname;
-                    if (window.currentFilter === "Search" && window.hasSearched && window.searchIndexRestored) {
-                        window.lastSearchName = fname;
-                        searchState.lastName = fname;
+            if (window.currentFilter === "Search") {
+                if (!window.isModelChanging && window.hasSearched && window.searchIndexRestored) {
+                    if (currentIndex >= 0 && currentIndex < window.activeModel.count) {
+                        let item = window.activeModel.get(currentIndex);
+                        if (item && item.fileName) {
+                            let fname = String(item.fileName);
+                            window.lastSearchName = fname;
+                            searchState.lastName = fname;
+                        }
                     }
                 }
             }
         }
         
         add: Transition {
-            enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating
-            ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 400; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "scale"; from: 0.5; to: 1; duration: 400; easing.type: Easing.OutBack }
-            }
+            enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
+            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
         }
         addDisplaced: Transition {
-            enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating
-            NumberAnimation { property: "x"; duration: 400; easing.type: Easing.OutCubic }
+            enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
+            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+        }
+        move: Transition {
+            enabled: !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
+            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+        }
+        moveDisplaced: Transition {
+            enabled: !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
+            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+        }
+        remove: Transition {
+            enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
+            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+        }
+        removeDisplaced: Transition {
+            enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
+            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+        }
+        displaced: Transition {
+            enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
+            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
         }
 
         header: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset) }
