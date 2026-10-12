@@ -28,14 +28,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1791767329,
-        "narHash": "sha256-prHqeuqW0FU/a23bqxy7fZq6Zba061JFVB8f4S6Aq5o=",
-        "path": "/home/realdhiru/Projects/codex-flake",
-        "type": "path"
+        "owner": "Realdhiru",
+        "repo": "codex-flake",
+        "rev": "8f0e7aaf8ad7ac4f1c703c6160002d80d174b688",
+        "type": "github"
       },
       "original": {
-        "path": "/home/realdhiru/Projects/codex-flake",
-        "type": "path"
+        "owner": "Realdhiru",
+        "repo": "codex-flake",
+        "type": "github"
       }
     },
     "flake-compat": {
