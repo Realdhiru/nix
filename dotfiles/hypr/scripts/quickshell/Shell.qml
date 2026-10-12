@@ -3,7 +3,6 @@ import QtQuick
 import Quickshell
 
 import "polkit"
-import "idle"
 
 ShellRoot {
     Connections {
@@ -24,5 +23,4 @@ ShellRoot {
     SideBar {}
     Floating {}
     Polkit {}
-    Idle {}
 }

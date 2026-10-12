@@ -42,7 +42,12 @@ Item {
     property bool isActive: false
     property int selectedControl: 0 // 0 = Temp, 1 = Gamma, 2 = Saturation, 3 = Grain, 4 = CRT
 
-    Component.onCompleted: root.forceActiveFocus()
+    function showWidget() {
+        root.forceActiveFocus();
+        root.reloadState();
+    }
+
+    Component.onCompleted: root.showWidget()
 
     Keys.onPressed: (event) => {
         if (event.key === Qt.Key_Down || event.key === Qt.Key_Tab) {
@@ -135,24 +140,34 @@ Item {
         onTriggered: root.doApplyBackend()
     }
 
-    Process {
-        id: stateReader
-        command: ["bash", "-c", `if [ -f "${root.stateFile}" ]; then cat "${root.stateFile}"; else echo '{"sunset": {"temp": 6500, "gamma": 100, "sat": 100, "grain": 0, "crt": 0, "active": false}}'; fi`]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    let full = JSON.parse(this.text.trim());
-                    let d = full.sunset || full;
-                    if (d.temp !== undefined) root.currentTemp = d.temp;
-                    if (d.gamma !== undefined) root.currentGamma = d.gamma;
-                    if (d.sat !== undefined) root.currentSat = d.sat;
-                    if (d.grain !== undefined) root.currentGrain = d.grain;
-                    if (d.crt !== undefined) root.currentCrt = d.crt;
-                    if (d.active !== undefined) root.isActive = d.active;
-                } catch(e) {}
-            }
+    FileView {
+        id: stateFileView
+        path: root.stateFile
+        watchChanges: true
+        onTextChanged: root.parseStateJson(stateFileView.text())
+        onFileChanged: {
+            stateFileView.reload();
+            root.parseStateJson(stateFileView.text());
         }
+    }
+
+    function reloadState() {
+        stateFileView.reload();
+        parseStateJson(stateFileView.text());
+    }
+
+    function parseStateJson(txt) {
+        if (!txt || txt.trim() === "") return;
+        try {
+            let full = JSON.parse(txt.trim());
+            let d = full.sunset || full;
+            if (d.temp !== undefined) root.currentTemp = d.temp;
+            if (d.gamma !== undefined) root.currentGamma = d.gamma;
+            if (d.sat !== undefined) root.currentSat = d.sat;
+            if (d.grain !== undefined) root.currentGrain = d.grain;
+            if (d.crt !== undefined) root.currentCrt = d.crt;
+            if (d.active !== undefined) root.isActive = d.active;
+        } catch(e) {}
     }
 
     // Backend Synchronizer with debounced slider updates & auto-spawning daemon & cleanup on default
@@ -327,6 +342,15 @@ EOF
                 border.width: 0
                 border.color: "transparent"
 
+                MouseArea {
+                    anchors.fill: parent
+                    z: -1
+                    onClicked: {
+                        root.selectedControl = 0;
+                        root.forceActiveFocus();
+                    }
+                }
+
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: root.s(10)
@@ -377,11 +401,18 @@ EOF
                         id: tempSlider
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.s(20)
+                        focusPolicy: Qt.NoFocus
                         from: 6500
                         to: 1000
                         stepSize: 50
                         value: root.currentTemp
 
+                        onPressedChanged: {
+                            if (pressed) {
+                                root.selectedControl = 0;
+                                root.forceActiveFocus();
+                            }
+                        }
                         onMoved: root.applyBackend(value, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt)
 
                         background: Rectangle {
@@ -423,6 +454,15 @@ EOF
                 color: root.selectedControl === 1 ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.55) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
                 border.width: 0
                 border.color: "transparent"
+
+                MouseArea {
+                    anchors.fill: parent
+                    z: -1
+                    onClicked: {
+                        root.selectedControl = 1;
+                        root.forceActiveFocus();
+                    }
+                }
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -474,11 +514,18 @@ EOF
                         id: gammaSlider
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.s(20)
+                        focusPolicy: Qt.NoFocus
                         from: 50
                         to: 100
                         stepSize: 1
                         value: root.currentGamma
 
+                        onPressedChanged: {
+                            if (pressed) {
+                                root.selectedControl = 1;
+                                root.forceActiveFocus();
+                            }
+                        }
                         onMoved: root.applyBackend(root.currentTemp, value, root.currentSat, root.currentGrain, root.currentCrt)
 
                         background: Rectangle {
@@ -520,6 +567,15 @@ EOF
                 color: root.selectedControl === 2 ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.55) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
                 border.width: 0
                 border.color: "transparent"
+
+                MouseArea {
+                    anchors.fill: parent
+                    z: -1
+                    onClicked: {
+                        root.selectedControl = 2;
+                        root.forceActiveFocus();
+                    }
+                }
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -571,11 +627,18 @@ EOF
                         id: satSlider
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.s(20)
+                        focusPolicy: Qt.NoFocus
                         from: 0
                         to: 100
                         stepSize: 1
                         value: root.currentSat
 
+                        onPressedChanged: {
+                            if (pressed) {
+                                root.selectedControl = 2;
+                                root.forceActiveFocus();
+                            }
+                        }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, value, root.currentGrain, root.currentCrt)
 
                         background: Rectangle {
@@ -617,6 +680,15 @@ EOF
                 color: root.selectedControl === 3 ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.55) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
                 border.width: 0
                 border.color: "transparent"
+
+                MouseArea {
+                    anchors.fill: parent
+                    z: -1
+                    onClicked: {
+                        root.selectedControl = 3;
+                        root.forceActiveFocus();
+                    }
+                }
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -668,11 +740,18 @@ EOF
                         id: grainSlider
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.s(20)
+                        focusPolicy: Qt.NoFocus
                         from: 0
                         to: 100
                         stepSize: 1
                         value: root.currentGrain
 
+                        onPressedChanged: {
+                            if (pressed) {
+                                root.selectedControl = 3;
+                                root.forceActiveFocus();
+                            }
+                        }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, value, root.currentCrt)
 
                         background: Rectangle {
@@ -714,6 +793,15 @@ EOF
                 color: root.selectedControl === 4 ? Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.55) : Qt.rgba(root.surface0.r, root.surface0.g, root.surface0.b, 0.38)
                 border.width: 0
                 border.color: "transparent"
+
+                MouseArea {
+                    anchors.fill: parent
+                    z: -1
+                    onClicked: {
+                        root.selectedControl = 4;
+                        root.forceActiveFocus();
+                    }
+                }
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -765,11 +853,18 @@ EOF
                         id: crtSlider
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.s(20)
+                        focusPolicy: Qt.NoFocus
                         from: 0
                         to: 100
                         stepSize: 1
                         value: root.currentCrt
 
+                        onPressedChanged: {
+                            if (pressed) {
+                                root.selectedControl = 4;
+                                root.forceActiveFocus();
+                            }
+                        }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, value)
 
                         background: Rectangle {

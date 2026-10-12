@@ -262,9 +262,10 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** Every theme template placeholder must be substituted in EVERY mode (`--neutral` included). Raw `{{...}}` in live Qt/GTK configs produces unreadable apps.
 - **Decision:** Non-ASCII literals (nerd glyphs) are byte-patched (`python3` `\uf0f4`) and hexdump-verified — never retyped through the editor.
 
-### 35. Lockscreen Fail-Fast & Single-Flight Spawn
+### 35. Lockscreen Fail-Fast, Single-Flight Spawn & Single Idle Authority
 - **Decision:** A lock that isn't confirmed within 5s is a failed lock: `Lock.qml` quits loudly (`Qt.exit(1)`) instead of idling invisible with PAM waiting. Silent stuck locks poisoned `is_locked` and swallowed every future attempt.
-- **Decision:** `cmd_lock` is single-flight (non-blocking flock) — concurrent triggers must serialize, never double-spawn. Strays are defined strictly (Lock.qml alive + session unlocked + older than 45s) and reaped before spawning. Lock-state checks match real quickshell binaries only, never cmdline mentions.
+- **Decision:** `cmd_lock` is single-flight (non-blocking flock) — concurrent triggers must serialize, never double-spawn. The flock mutex and fd 9 are explicitly released before `exec hyprlock` so the lock guard is never leaked to children. Strays are defined strictly (Lock.qml alive + session unlocked + older than 45s) and reaped before spawning. Lock-state checks match real quickshell binaries only, never cmdline mentions.
+- **Decision:** Hyprland's `hypridle` daemon is the sole authoritative idle manager. Duplicate QuickShell `Idle.qml` / `Dim.qml` components are deleted to eliminate competing DPMS calls and unrecoverable black screens.
 
 ### 36. Multi-Monitor Responsive Bounds & Active Screen Tracking
 - **Decision:** All QuickShell popup geometries must be responsively clamped against active screen bounds in [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js) (`maxAllowedW = mw * 0.96`, `maxAllowedH = mh * 0.94`) and edge-clamped (`x = Math.max(8, Math.min(x, mw - fw - 8))`). Prevents off-screen clipping across diverse monitor resolutions (e.g., 1080p, 1440p, 4K) or scaling factors.

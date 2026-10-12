@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-10-12 — Lockscreen Stability & Sunset Widget Navigation Fixes
+
+- **Sole Idle Authority Enforcement & Dead Code Purge ([`Shell.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Shell.qml), [`idle/`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/idle/))**:
+  - Completely purged duplicate QuickShell `Idle.qml` and `Dim.qml` components that were colliding with `hypridle` and issuing broken `hyprctl dispatch dpms off` commands, which turned screens black and blocked wakeup events.
+  - Hyprland's native `hypridle` daemon is now the sole authoritative idle manager.
+- **Lock Guard Leak & Hyprlock Failsafe ([`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh))**:
+  - Fixed `LOCK_GUARD` mutex file descriptor leak where `cmd_lock()` executed `hyprlock` without releasing flock and closing fd 9, leaving `lock_guard.lock` permanently held and preventing clean lock recovery.
+- **Hyprsunset Widget Keyboard Control & Arrow Navigation ([`SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml))**:
+  - Enforced `focusPolicy: Qt.NoFocus` across all 5 Slider controls and added click handlers on every card to ensure keyboard navigation remains firmly on `root.Keys.onPressed`.
+  - Up/Down arrow keys correctly switch between all 5 controls (Temperature, Gamma, Saturation, Paper Grain, CRT Curvature). Left/Right arrow keys control the currently active slider.
+  - Implemented `showWidget()` and replaced one-shot `Process` with reactive `FileView` state synchronization for instantaneous 0ms popup state restoration.
+
+## 2026-10-12 — Volume Knob Scroll Bypasses Super-Wheel Zoom
+
+- Scoped the existing Super + mouse-wheel zoom binds to all pointer devices except ydotool's virtual pointer. The keyboard knob's injected wheel events now reach the focused app as scroll input, while physical mouse-wheel zoom remains unchanged.
+
 ## 2026-10-11 — Monochrome Wallpaper Terminal Color Sync
 
 - **Monochrome & Low-Saturation Wallpaper Terminal Color Sync ([`generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh))**:

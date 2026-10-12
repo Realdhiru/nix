@@ -100,6 +100,8 @@ cmd_lock() {
     fi
 
     if command -v hyprlock >/dev/null 2>&1; then
+        flock -u 9 2>/dev/null || true
+        exec 9>&- 2>/dev/null || true
         exec hyprlock
     fi
 

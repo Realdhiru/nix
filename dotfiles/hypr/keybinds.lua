@@ -290,9 +290,9 @@ hl.bind(mainMod .. " + mouse_up", function()
         next_target = math.min(50.0, target_zoom * 1.5)
     end
     smooth_zoom_to(next_target, 0.16)
-end)
+end, { device = { inclusive = false, list = { "ydotoold virtual device" } } })
 
 -- Revert Zoom: Balanced sweet-spot easing (0.15) for a natural, snappy yet smooth return
 hl.bind(mainMod .. " + mouse_down", function()
     smooth_zoom_to(1.0, 0.15)
-end)
+end, { device = { inclusive = false, list = { "ydotoold virtual device" } } })
