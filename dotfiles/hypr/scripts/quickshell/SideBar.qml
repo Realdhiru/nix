@@ -72,7 +72,9 @@ Variants {
             implicitWidth: barThickness
             implicitHeight: Screen.height
             margins { top: barWindow.barMargin; bottom: barWindow.barMargin; left: barWindow.barMargin; right: 0 }
-            exclusiveZone: barThickness + barWindow.barMargin
+            // Reserve the bar itself while leaving its visual edge margin
+            // available to the normal Hyprland outer gap.
+            exclusiveZone: barThickness
             color: "transparent"
             WlrLayershell.namespace: "quickshell"
             WlrLayershell.layer: WlrLayer.Top

@@ -293,7 +293,7 @@ local function zoom_in()
 end
 
 local function zoom_out()
-    smooth_zoom_to(1.0, 0.15)
+    smooth_zoom_to(1.0, 0.08)
 end
 
 -- Mouse wheel zoom remains unchanged; the virtual ydotool pointer is excluded
@@ -305,7 +305,34 @@ hl.bind(mainMod .. " + mouse_down", zoom_out, {
     device = { inclusive = false, list = { "ydotoold-virtual-device-1" } },
 })
 
--- Match the wheel zoom semantics exactly: spread = one zoom step; pinch in = reset.
--- These callbacks share current_zoom/target_zoom with the wheel binds above.
-hl.gesture({ fingers = 2, direction = "pinchout", mods = mainMod, action = zoom_in })
-hl.gesture({ fingers = 2, direction = "pinchin", mods = mainMod, action = zoom_out })
+local gesture_base_zoom = 1.0
+local gesture_reset_triggered = false
+
+-- Super + two-finger pinch: continuous zoom in on spread, instant smooth reset on pinch in
+hl.gesture({
+    fingers = 2,
+    direction = "pinch",
+    mods = mainMod,
+    action = {
+        start = function()
+            gesture_base_zoom = current_zoom
+            gesture_reset_triggered = false
+        end,
+        update = function(event)
+            local scale = (type(event) == "table" and event.scale) or tonumber(event) or 1.0
+            if scale < 0.97 then
+                if not gesture_reset_triggered then
+                    gesture_reset_triggered = true
+                    zoom_out()
+                end
+            elseif scale >= 1.0 then
+                gesture_reset_triggered = false
+                local target = math.max(1.0, math.min(50.0, gesture_base_zoom * scale))
+                smooth_zoom_to(target, 0.4)
+            end
+        end,
+        ["end"] = function()
+            gesture_reset_triggered = false
+        end,
+    },
+})

@@ -72,7 +72,9 @@ Variants {
             implicitHeight: barHeight
             implicitWidth: Screen.width
             margins { top: barWindow.barMargin; bottom: 0; left: barWindow.barMargin; right: barWindow.barMargin }
-            exclusiveZone: barHeight + barWindow.barMargin
+            // Reserve the bar itself while leaving its visual edge margin
+            // available to the normal Hyprland outer gap.
+            exclusiveZone: barHeight
             color: "transparent"
 
             Theme {

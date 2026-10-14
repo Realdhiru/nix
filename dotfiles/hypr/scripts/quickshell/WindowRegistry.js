@@ -64,16 +64,12 @@ function getLayout(name, mx, my, mw, mh, userScale, barPos, gapsOut) {
     let isLeftBar = (barPos === "left");
     let gap = (gapsOut !== undefined && gapsOut !== null && gapsOut >= 0) ? gapsOut : 12;
 
-    // Bar dimensions (TopBar height: 46px; SideBar thickness: 46px).
-    // In Floating Island mode (Option A), the bar itself has margin = gap.
-    // Therefore, windows and popups start at: barThickness + (2 * gap).
-    // Bar dimensions (46px) + margin cushion (5px) = 51px total bar footprint
-    const BAR_TOTAL = 51;
-
-    // Derived usable workspace boundaries matching Hyprland window tiling margins
-    let usableLeft = isLeftBar ? (BAR_TOTAL + gap) : gap;
+    // Reserve the bar's 46px content footprint; the edge margin is already
+    // supplied by Hyprland's outer gap and must not be counted twice.
+    const BAR_FOOTPRINT = 46;
+    let usableLeft = isLeftBar ? (BAR_FOOTPRINT + gap) : gap;
     let usableRight = mw - gap;
-    let usableTop = isLeftBar ? gap : (BAR_TOTAL + gap);
+    let usableTop = isLeftBar ? gap : (BAR_FOOTPRINT + gap);
     let usableBottom = mh - gap;
 
     let usableW = Math.max(0, usableRight - usableLeft);

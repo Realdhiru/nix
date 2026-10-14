@@ -258,7 +258,8 @@ Item {
     }
 
     readonly property string activeWallpaperFile: Quickshell.env("HOME") + "/.cache/current_wallpaper.txt"
-    property string activeWallpaperPath: (activeWallWatcher.text() || "").trim()
+    readonly property string lastWallpaperFile: Quickshell.env("HOME") + "/.cache/last_wallpaper.txt"
+    property string activeWallpaperPath: window.reloadActiveWallpaperPath()
     property string activeWallpaperName: {
         let p = window.activeWallpaperPath;
         if (!p) return "";
@@ -266,15 +267,38 @@ Item {
         return parts[parts.length - 1];
     }
 
+    function reloadActiveWallpaperPath() {
+        activeWallWatcher.reload();
+        let p = (activeWallWatcher.text() || "").trim();
+        if (!p) {
+            lastWallWatcher.reload();
+            p = (lastWallWatcher.text() || "").trim();
+        }
+        if (p) {
+            window.activeWallpaperPath = p;
+        }
+        return p;
+    }
+
     FileView {
         id: activeWallWatcher
         path: window.activeWallpaperFile
         watchChanges: true
         onFileChanged: {
-            activeWallWatcher.reload();
-            window.activeWallpaperPath = (activeWallWatcher.text() || "").trim();
+            window.reloadActiveWallpaperPath();
             let c = window.getCleanName(window.activeWallpaperName);
             if (c !== "") window.appliedWallCleanName = c;
+        }
+    }
+
+    FileView {
+        id: lastWallWatcher
+        path: window.lastWallpaperFile
+        watchChanges: true
+        onFileChanged: {
+            if ((activeWallWatcher.text() || "").trim() === "") {
+                window.reloadActiveWallpaperPath();
+            }
         }
     }
 
@@ -411,6 +435,13 @@ Item {
             Quickshell.execDetached(["bash", "-c", "mkdir -p '" + Caching.getRunDir("wallpaper_picker") + "'; touch '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
             window.isApplying = false;
             window.applyingWallCleanName = "";
+            window.centerRetryCount = 0;
+            let actPath = window.reloadActiveWallpaperPath();
+            if (actPath && !window.targetWallName) {
+                let parts = actPath.split("/");
+                let fn = parts[parts.length - 1];
+                if (fn) window.targetWallName = fn;
+            }
             let cur = window.getCleanName(window.activeWallpaperName);
             if (cur !== "") window.appliedWallCleanName = cur;
             window.isFilterAnimating = true;
@@ -610,10 +641,26 @@ Item {
         }
 
         if (changed) {
+            let focusTarget = window.targetWallName || window.activeWallpaperName || "";
+            let cleanTarget = window.getCleanName(focusTarget);
             window.isModelChanging = true;
             model.clear();
             model.append(arr);
             window.isModelChanging = false;
+
+            if (focusTarget !== "" && window.visible && view.width > 0 && model === window.activeModel) {
+                let newIdx = -1;
+                for (let k = 0; k < model.count; k++) {
+                    let fn = model.get(k).fileName || "";
+                    if (fn === focusTarget || window.getCleanName(fn) === cleanTarget) {
+                        newIdx = k;
+                        break;
+                    }
+                }
+                if (newIdx !== -1) {
+                    window.executeFocusRestore(newIdx, false, true);
+                }
+            }
         }
     }
 
@@ -766,6 +813,8 @@ Item {
         toastTimer.restart();
     }
 
+    property int centerRetryCount: 0
+
     Timer {
         id: centerOnActiveTimer
         interval: 35
@@ -780,12 +829,8 @@ Item {
             return;
         }
         window.currentFilter = "All";
-        activeWallWatcher.reload();
-        let p = (activeWallWatcher.text() || "").trim();
-        if (p !== "") {
-            window.activeWallpaperPath = p;
-        }
-        let activeWall = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
+        let p = window.reloadActiveWallpaperPath();
+        let activeWall = window.targetWallName !== "" ? window.targetWallName : window.activeWallpaperName;
         if (activeWall === "") return;
 
         let cleanActive = window.getCleanName(activeWall);
@@ -798,6 +843,7 @@ Item {
             }
         }
         if (foundIdx !== -1) {
+            window.centerRetryCount = 0;
             window.isModelChanging = true;
             window.targetWallName = localProxyModel.get(foundIdx).fileName || activeWall;
             view.currentIndex = foundIdx;
@@ -805,16 +851,18 @@ Item {
             view.positionViewAtIndex(foundIdx, ListView.Center);
             window.initialFocusSet = true;
             window.isModelChanging = false;
+        } else if (!window.initialFocusSet && window.centerRetryCount < 30) {
+            window.centerRetryCount++;
+            centerOnActiveTimer.restart();
         }
     }
 
     function showWidget() {
+        window.centerRetryCount = 0;
         window.processMarkers();
         window.currentFilter = "All";
-        activeWallWatcher.reload();
-        let p = (activeWallWatcher.text() || "").trim();
+        let p = window.reloadActiveWallpaperPath();
         if (p !== "") {
-            window.activeWallpaperPath = p;
             let parts = p.split("/");
             let fname = parts[parts.length - 1];
             if (fname !== "") {
@@ -880,8 +928,9 @@ Item {
                     }
                 }
             }
-            let finalIndex = foundIndex !== -1 ? foundIndex : 0;
-            window.executeFocusRestore(finalIndex, false, true);
+            if (foundIndex !== -1) {
+                window.executeFocusRestore(foundIndex, false, true);
+            }
         }
     }
     
@@ -1164,12 +1213,23 @@ Item {
             }
         }
 
-        let indexToFocus = 0;
-        if (targetIndex !== -1) indexToFocus = targetIndex;
-        else if (window.jumpToLastOnFilterChange && targetModel.count > 0) indexToFocus = targetModel.count - 1;
+        let indexToFocus = -1;
+        if (targetIndex !== -1) {
+            indexToFocus = targetIndex;
+        } else if (window.jumpToLastOnFilterChange && targetModel.count > 0) {
+            indexToFocus = targetModel.count - 1;
+        } else if (window.initialFocusSet && targetModel.count > 0) {
+            indexToFocus = Math.min(Math.max(0, view.currentIndex), targetModel.count - 1);
+        } else if (cleanTarget === "" && targetModel.count > 0) {
+            indexToFocus = 0;
+        }
 
         window.jumpToLastOnFilterChange = false;
-        window.executeFocusRestore(indexToFocus, false, forceSnap === true);
+        if (indexToFocus !== -1) {
+            window.executeFocusRestore(indexToFocus, false, forceSnap === true);
+        } else if (window.visible && !window.initialFocusSet) {
+            centerOnActiveTimer.restart();
+        }
         window.updateVisibleCount();
     }
 

@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## 2026-10-13 — Match Window Gaps to Bar Footprints
+
+- Set the TopBar and SideBar exclusive zones to their content dimensions, excluding the visual edge margin so Hyprland's configured `gaps_out` supplies that space once.
+- Updated popup usable-area calculations to match the bar footprint plus normal outer gap.
+
+## 2026-10-13 — Wi-Fi Auto-Failover Dispatcher & Softened Zoom-Out Easing
+
+- **Softened Zoom-Out Easing ([`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:
+  - Changed `zoom_out()` easing parameter from `0.15` down to `0.08`, eliminating the steep initial plunge and ensuring a smooth, cushioned deceleration back to $1.0\times$.
+- **Saved Wi-Fi Internet Auto-Failover ([`hosts/nixos/default.nix`](file:///home/realdhiru/nix/hosts/nixos/default.nix))**:
+  - Enabled NetworkManager declarative connectivity check endpoint (`settings.connectivity.uri`, 30s interval).
+  - Added native dispatcher script triggering on `connectivity-change` (`LIMITED` or `NONE`) that verifies saved profiles against currently visible broadcasting SSIDs and fails over to the highest signal saved network without delay or flapping (25s debounce cooldown).
+
+## 2026-10-13 — Super Pinch Zoom: Continuous Zoom In & Instant Smooth Reset
+
+- Updated [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua) Super + two-finger pinch gesture:
+  - Spreading fingers scales zoom continuously with smooth easing based on live finger distance.
+  - Pinching inward even slightly immediately triggers `zoom_out()`, smoothly resetting zoom back to $1.0\times$ with latching to prevent oscillation.
+
+## 2026-10-14 — QuickShell Wallpaper Picker Deterministic Active Centering Fix
+
+- **Eliminate Intermittent Index 0 Snapping ([`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**:
+  - Fixed race condition in `sortListModel()`: when items were reordered by color/hue gradient, `model.clear()` previously caused `ListView` to clamp `currentIndex` to 0. Added immediate target focus restoration (`executeFocusRestore()`) right after `model.append(arr)` to re-center the active wallpaper.
+  - Added fallback to `~/.cache/last_wallpaper.txt` via `reloadActiveWallpaperPath()` when `current_wallpaper.txt` is blank (e.g. killed/disabled wallpaper).
+  - Eliminated index 0 fallback in `tryFocus()` and `applyFilters()`, allowing `centerActiveWallpaper()` to safely poll and center the target wallpaper.
+
 ## 2026-10-13 — Restore KDE Connect Input Support on Hyprland
 
 - Restored the pinned `hypr-kdeconnect-portal` backend and routed Hyprland RemoteDesktop requests to it. KDE Connect uses this portal for remote pointer/keyboard input and presentation controls because the packaged Hyprland portal does not currently provide the required RemoteDesktop `ConnectToEIS` path.
