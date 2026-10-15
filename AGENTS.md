@@ -1,11 +1,15 @@
 # Antigravity Persistent Rules & System Memory
 
-## 1. Automatic Post-Fix Documentation & Git Sync Requirement
+## 1. Automated Post-Fix Documentation Invariant & Git Requirement
 
-After successfully resolving any issue, bug, or feature implementation:
-- **Automatically update `~/nix/CHANGELOG.md`** under the current date section with a concise summary of changes.
-- **Automatically update `~/nix/docs/decisions.md`** if an architectural or technical decision was made or superseded.
-- **Automatically update `~/.gemini/config/skills/nixos-hyprland/SKILL.md`** if new systemic rules or workflow constraints were established.
+Whenever an agent touches or modifies any feature, script, keybind, hardware quirk, driver, service, or configuration:
+- **Mandatory Multi-Doc Audit & Synchronous Update**: The agent MUST review and immediately update all affected documentation before declaring the task complete:
+  - **`~/nix/README.md`**: Update feature matrices, architecture summaries, and keybindings tables whenever user-facing capabilities or keybinds change.
+  - **`~/nix/CHANGELOG.md`**: Record every bugfix, feature, or optimization under the current date with concise technical bullets.
+  - **`~/nix/docs/decisions.md`**: Document every architectural or technical decision made, superseded, or stabilized.
+  - **`~/nix/docs/tacit_knowledge.md`**: Document non-obvious traps, hardware quirks, udev rules, or subsystem workarounds discovered.
+  - **`~/.gemini/config/skills/nixos-hyprland/SKILL.md` & `~/nix/.agents/skills/nixos-hyprland/SKILL.md`**: Keep rice, widget, and NixOS operational guidelines synchronized.
+- **Zero Documentation Drift**: Code changes and documentation updates must happen in the exact same turn.
 - **Keep all documentation updates concise, practical, and bloat-free.**
 - **Do NOT stage, commit, or push automatically.** The user will review, stage, commit, and push all changes themselves.
 

@@ -207,6 +207,43 @@ cmd_search() {
 }
 
 # -----------------------------------------------------------------------------
+# SUBCOMMAND: fav (toggle favorite status of current wallpaper)
+# -----------------------------------------------------------------------------
+cmd_fav() {
+    local fav_file="${XDG_DATA_HOME:-$HOME/.local/share}/wallpaper_favorites.txt"
+    mkdir -p "$(dirname "$fav_file")"
+    [ ! -f "$fav_file" ] && touch "$fav_file"
+
+    local target="${1:-}"
+    if [ -z "$target" ]; then
+        if [ -s "$CURRENT_TXT" ]; then
+            target="$(cat "$CURRENT_TXT" 2>/dev/null || true)"
+        elif [ -s "$LAST_TXT" ]; then
+            target="$(cat "$LAST_TXT" 2>/dev/null || true)"
+        fi
+    fi
+
+    if [ -z "$target" ] || [ ! -f "$target" ]; then
+        notify-send -a "Wallpaper" -u low "No Wallpaper Set"
+        return 1
+    fi
+
+    local real_target
+    real_target="$(readlink -f "$target" 2>/dev/null || echo "$target")"
+
+    if grep -Fxq "$real_target" "$fav_file" 2>/dev/null; then
+        local tmp_fav
+        tmp_fav="$(mktemp "${fav_file}.XXXXXX")"
+        grep -Fxv "$real_target" "$fav_file" > "$tmp_fav" || true
+        mv -f "$tmp_fav" "$fav_file"
+        notify-send -a "Wallpaper" -u low "Removed from Favorites"
+    else
+        echo "$real_target" >> "$fav_file"
+        notify-send -a "Wallpaper" -u low "Added to Favorites"
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Dispatcher
 # -----------------------------------------------------------------------------
 case "$CMD" in
@@ -218,8 +255,9 @@ case "$CMD" in
     watch)  cmd_watch "$@" ;;
     clean)  cmd_clean "$@" ;;
     search) cmd_search "$@" ;;
+    fav|toggle-fav) cmd_fav "$@" ;;
     *)
-        echo "Usage: $0 {set|boot|kill|ensure|thumb|watch|clean|search} [args...]" >&2
+        echo "Usage: $0 {set|boot|kill|ensure|thumb|watch|clean|search|fav} [args...]" >&2
         exit 1
         ;;
 esac

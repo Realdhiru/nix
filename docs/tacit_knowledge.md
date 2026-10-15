@@ -46,9 +46,9 @@
 - **Rofi $\rightarrow$ Fuzzel:**
   - *Why Rofi was rejected:* Bloated configuration, poor scaling across HiDPI changes, and sluggish startup.
   - *Why Fuzzel was chosen:* Wayland-native, lightweight, instant startup, pixel-perfect frosted glass transparency, and reliable exact-string matching.
-- **Flatpak $\rightarrow$ Rootless Podman + Distrobox (`deb-box`):**
-  - *Why Flatpak was rejected:* Persistent background daemons, systemd service sprawl, permission issues, and lingering idle memory consumption.
-  - *Why Distrobox was chosen:* Daemonless rootless Podman containers that run on demand, install standalone `.deb` packages via `distrobox-install-deb.sh`, export clean `.desktop` entries into Fuzzel, and shut down completely when closed (zero idle CPU/RAM overhead).
+- **Flatpak & Containers (Distrobox) $\rightarrow$ Standalone Flakes & Native Packaging:**
+  - *Why Flatpak and Distrobox were rejected/purged:* Flatpak introduced background daemons and service sprawl. Distrobox/Podman caused container resource exhaustion, filesystem corruption, and desktop entry collisions.
+  - *Why Flakes were chosen:* True declarative immutability, zero background runtime overhead, deterministic inputs, and atomic system generation rollbacks.
 - **Periodic Bash Polling Loops in QML $\rightarrow$ Native C++ IPC:**
   - *Rejected:* Running periodic `Process` or `Timer` bash scripts (`workspaces.sh`, `colors_wait.sh`, `settings_wait.sh`, `update_wait.sh`, `wpctl`) inside QML.
   - *Why:* Caused fork storms (thousands of subprocesses per hour), CPU wakeups, and high battery draw.
@@ -103,14 +103,13 @@
   - `dotfiles/hypr/scripts/quickshell/`: UI layer. Reads generated colors from `~/.cache/theme/colors.json` via native IPC and reloads on frame 0.
 - **System Tray Relocation:** The system tray was intentionally removed from `TopBar.qml` and placed inside `BatteryPopup.qml`. This preserves TopBar minimalism (reserving space for dynamic workspace pills, CAVA visualizer, and clock) and consolidates tray icons with system controls (Hotspot, DND, volume, brightness, power profiles).
 - **Single-Pass Popup Scaler:** Popup `Scaler` components must bind `currentWidth: Screen.width`. Passing device-pixel bounds (`Config.masterWidth`) causes double-scaling multiplication ($1.33 \times 1.33 = 1.77$), clipping content off-screen on HiDPI displays.
-- **Host MIME Isolation for Containerized Apps:** Desktop entries exported from Distrobox containers via `distrobox-install-deb.sh` are sanitized to strip generic protocol handlers (`http`, `https`, `text/html`, which remain permanently locked to `brave-browser.desktop` in `home.nix`). Containerized apps cannot hijack default system associations.
-- **Single-Radio Wi-Fi Hardware Constraint:** The ASUS Wi-Fi adapter has a single frequency synthesizer (`#channels <= 1`). It cannot maintain a simultaneous Wi-Fi station connection and Wi-Fi hotspot on 5 GHz DFS networks without connection drops. The hotspot setup is architected to share Ethernet/USB tethering over Wi-Fi.
-- **Sonix FHD Webcam Loopback Pass-Through:** The webcam controller experiences USB babble crashes when non-native resolutions or MJPEG compression are requested. Fixed via `v4l2loopback` `/dev/video10` fed by an on-demand FFmpeg native YUYV pass-through, while WirePlumber's conflicting `libcamera` monitor is disabled (`50-disable-libcamera.conf`).
+- **Declarative Browser & MIME Authority:** Web protocols (`http`, `https`, `text/html`) remain permanently locked to `brave-browser.desktop` in `home.nix`. Desktop entries cannot hijack default system associations.
+- **Single-Radio Wi-Fi Hardware Constraint:** The Wi-Fi adapter has a single frequency synthesizer (`#channels <= 1`). It cannot maintain a simultaneous Wi-Fi station connection and Wi-Fi hotspot on 5 GHz DFS networks without connection drops. The hotspot setup is architected to share Ethernet/USB tethering over Wi-Fi.
 
 ### Resolved & Completed Threads
 - **Wallpaper Picker Multi-Level Sorting:** Completed. Reorganized the wallpaper picker widget to display GIFs first (sorted by dominant aesthetic color), static images second (sorted by dominant aesthetic color), and video wallpapers last (`getFileTypeRank` + HSL score band map).
 - **Sunset / Night Light Widget Redesign:** Completed. UI layout overhauled to eliminate dead space, continuous slider controls, clamped gamma $\le 100\%$, and integrated daemon lifecycle control (`hyprsunset`).
-- **Video Wallpaper Lockscreen Flicker:** Fixed. Eliminated 1-second flicker when locking during `mpvpaper` playback by utilizing a poster frame underlay beneath the lockscreen surface.
+- **Instant GPU Lockscreen Migration:** Completed. Migrated lockscreen to `hyprlock` with dynamic screenshot blur (`path = screenshot`, `blur_passes = 2`) and sub-20ms PAM authentication. Replaced heavy cold-start `Lock.qml` and eliminated video lockscreen overhead entirely.
 - **Spotify Lyrics Floating Window Rule:** Applied in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) matching class `^(chromium-browser)$` and title `.*•.*` with `float = true`, `pin = true`, `size = {300, 95}`, and `opacity = "1.0 override 1.0 override"`, properly scoped from general chromium 0.85 opacity.
 
 ### In-Progress & Unresolved Threads
@@ -141,3 +140,10 @@
 - **Inode Invalidation Breaking Inotify File Watchers:**
   - *Symptom:* Background watchers (`colors_wait.sh`, QuickShell `FileWatcher`) stop responding to file changes after an update script runs.
   - *Mitigation:* Updating files via `mv -f tmp target` creates a new inode, breaking existing inotify watches. Writes must update existing inodes directly (e.g., `cat tmp > target`) or trigger explicit IPC signals (`quickshell ipc call main reloadTheme`).
+- **Intel Thunderbolt 4 / Type-C Controller D3cold Resume Drops:**
+  - *Symptom:* Type-C port disconnects, external drives/hubs fail to mount or drop after idle, and kernel dmesg emits `xhci_hcd: xHC error in resume, USBSTS 0x401`.
+  - *Mitigation:* Denylist the Thunderbolt 4 root controllers (`00:0d.0 00:0d.3`) in `services.tlp.settings.RUNTIME_PM_DENYLIST` to prevent power cycling into D3cold while on battery. Never install artificial UCSI udev rules that force `tlp bat` upon plugging in unpowered Type-C devices.
+- **Workspace Switch Lag & Highlight Coordinate Fighting:**
+  - *Symptom:* Switching workspaces causes noticeable UI stutter, jittery or jumping active highlights, and erratic viewport scrolling in bar workspace widgets.
+  - *Mitigation:* Rapid Hyprland events (`workspace`, `focusedmon`, `openwindow`, `workspaces.valuesChanged`) emit in tight bursts. Synchronous model recomputation on every event starves the Qt event loop. Debounce incoming events via a 16ms single-shot timer (`wsDebounceTimer`), while updating `activeIndex` immediately. Furthermore, never bind layout container offsets (`wsLayout.y`) to tweening `implicitHeight` bounds while delegates animate size (0 $\leftrightarrow$ 32px), as container motion fights the highlight animation. Explicitly offset Flickable auto-scroll targets (`wsLayout.y + activeItem.y`).
+

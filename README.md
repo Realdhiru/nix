@@ -42,7 +42,7 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
     <td width="50%" align="center">
       <b>Wallpaper Picker & Downloader</b><br/>
       <img src="docs/assets/wallpaper_carousel.webp" alt="Wallpaper Picker" width="100%" /><br/>
-      <sub>3D parallax carousel with wallpaper browsing, online search & download, and instant switching.</sub>
+      <sub>3D parallax carousel with wallpaper browsing, favorites tracking (`SUPER + SHIFT + \`), online search & download, and instant switching.</sub>
     </td>
     <td width="50%" align="center">
       <b>Network Manager</b><br/>
@@ -106,19 +106,19 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 | **Desktop Shell & UI** | [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) (Qt6 / QML) | Event-driven topbar, circular battery dial, MPRIS music & power popups |
 | **Application Launcher** | [Fuzzel](https://codeberg.org/dnkl/fuzzel) | Wayland dmenu/rofi alternative with custom frosted glass styling |
 | **Shell & Prompt** | [Zsh](https://www.zsh.org/) + [Starship](https://starship.rs/) | Fast, modular shell prompt with automated safety-gated `rebuild()` |
-| **Theming** | [Wallust](https://codeberg.org/explosion-mental/wallust) | High-speed Rust wallpaper-derived color extraction across GTK, Qt, WezTerm, QuickShell, and Cava |
+| **Theming** | [Wallust](https://codeberg.org/explosion-mental/wallust) | High-speed Rust wallpaper-derived color extraction across GTK, Qt, Foot, Alacritty, QuickShell, and Cava |
 | **Icon Theme** | Buuf-Nestort | Hand-drawn skeuomorphic icon theme |
 | **Typography** | JetBrains Mono Nerd Font | Monospace code font with comprehensive glyph and symbol support |
-| **Lockscreen & Idle** | [Hyprlock](https://github.com/hyprwm/hyprlock) + [Hypridle](https://github.com/hyprwm/hypridle) | Wayland lockscreen with live video background support (QtMultimedia) |
+| **Lockscreen & Idle** | [Hyprlock](https://github.com/hyprwm/hyprlock) + [Hypridle](https://github.com/hyprwm/hypridle) | Instant GPU-accelerated Wayland lockscreen with dynamic screenshot blur & PAM authentication |
 | **Wallpaper Daemons** | [awww](https://github.com/AvengeMedia/awww) + [mpvpaper](https://github.com/GhostNaN/mpvpaper) | High-performance static and live video wallpaper renderers |
 | **Media Player** | [MPV](https://mpv.io) (with `mpvScripts.mpris`) | Hardware-accelerated player broadcasting D-Bus media tracking |
 | **Music Streaming** | Spotify + [Spicetify](https://spicetify.app/) | Customized Spotify with Marketplace themes & extensions |
 | **Screen Recording** | [GPU Screen Recorder](https://git.dec05eba.com/gpu-screen-recorder-gtk/) | Low-overhead NVENC/VAAPI screen capture |
 | **Screenshots & Snips** | Grim + Slurp + Grimblast | Wayland screenshot suite with region selection & clipboard copy |
 | **Audio Server & FX** | [PipeWire](https://pipewire.org) + WirePlumber + [EasyEffects](https://github.com/wwmm/easyeffects) | Low-latency audio routing, DSP plugins & mic noise cancellation |
-| **Power Management** | [TLP](https://linrunner.de/tlp/) + [asusctl](https://asus-linux.org/) (`asusd`) | Hardware power profiles + 80% battery charge ceiling authority |
+| **Power Management** | [TLP](https://linrunner.de/tlp/) | Hardware power profiles, CPU scaling governor, EPP & battery charge thresholds (host-specific quirks isolated in `hosts/<host>/hardware/`) |
 | **File Management** | [PCManFM-Qt](https://github.com/lxqt/pcmanfm-qt) + Filelight | Lightweight Qt file manager & interactive disk usage map |
-| **Compatibility Layer** | [Distrobox](https://github.com/89luca89/distrobox) + [Podman](https://podman.io/) | On-demand rootless `.deb` execution with auto-export to app launcher & zero idle footprint |
+| **Application Packaging** | [Nix Flakes](https://wiki.nixos.org/wiki/Flakes) + [AppImage](https://appimage.org/) | Custom standalone flakes, declarative packaging & kernel `binfmt_misc` AppImage execution |
 
 ---
 
@@ -133,7 +133,7 @@ Built for **100% portability** — fork it, edit one file, and deploy the entire
 ## Design & Technical Highlights
 
 ### Power & Thermal Management
-- **Hardware-Level Power Authority**: TLP coordinates CPU energy-performance preferences (EPP), ASPM, and platform profiles, while enforcing an 80% battery charge ceiling (`charge_control_end_threshold = 80`) directly at the firmware level to preserve cell health.
+- **Hardware-Level Power Authority**: TLP coordinates CPU energy-performance preferences (EPP), ASPM, and platform profiles across AC and battery, while enforcing battery charge thresholds directly at the firmware level. Host-specific platform hooks and quirks are cleanly isolated under `hosts/<host>/hardware/` without polluting generic modules.
 - **Dynamic GPU Shader Bypass**: On battery-saver profiles or solid black wallpapers, compositor dual-kawase blur shaders and drop shadows are automatically bypassed with 100% opaque window rendering, eliminating multi-pass GPU alpha-blending.
 - **Event-Driven Telemetry (Zero Polling Loops)**: System telemetry reads directly from Linux kernel uevents and sysfs watchers rather than periodic shell polling timers. In-process `/proc` inspection in background daemons eliminates unnecessary subprocess forks, allowing CPU package states to settle into deep C-state sleep.
 - **Transient Spike Control**: Disables aggressive dynamic frequency boost on battery to eliminate thermal spikes from background Chromium and Electron processes.
@@ -147,8 +147,7 @@ Built for **100% portability** — fork it, edit one file, and deploy the entire
 
 ### Declarative System Infrastructure
 - **Safety-Gated Rebuild Workflow**: A custom rebuild pipeline validates builds before activation, runs a post-switch health gate with automated rollbacks, and retains a 14-day garbage collection safety window while tracking floating `nixos-unstable`.
-- **Integrated System Packaging**: Declarative custom derivations, native AppImage execution via Linux kernel `binfmt_misc`, and declarative Flathub integration.
-- **On-Demand `.deb` Compatibility**: Zero-daemon rootless Podman + Distrobox integration for Debian/Ubuntu `.deb` packages. Right-click installs directly from PCManFM-Qt, auto-exports desktop entries into Fuzzel, and shuts down containers on app exit for zero idle power drain.
+- **Integrated System Packaging**: Declarative custom derivations, custom standalone Flakes for third-party applications, native AppImage execution via Linux kernel `binfmt_misc`, and declarative Flathub integration without background container daemons.
 - **Clean Display Authentication**: Lightweight TTY display manager (`ly`) with PAM authentication, cleanly decoupling graphical login from session startup.
 
 ---
@@ -168,8 +167,7 @@ nix/
 │       ├── default.nix                # Host-level imports, disk UUIDs & swap configuration
 │       ├── hardware-configuration.nix # Kernel modules, filesystems, and hardware drivers
 │       └── hardware/                  # Machine-specific hardware quirks
-│           ├── asus.nix               # ASUS ROG/TUF asusd & brightness hotkey handling
-│           └── sonix-webcam.nix       # Sonix USB webcam V4L2 loopback pipeline
+│           └── asus.nix               # Host-specific ASUS ROG/Vivobook hardware quirks
 ├── modules/
 │   ├── system/                        # Portable declarative NixOS system services
 │   │   ├── boot.nix                   # systemd-boot EFI, kernel tuning & ZRAM
@@ -184,9 +182,9 @@ nix/
 │       ├── spicetify.nix              # Declarative Spotify theming
 │       └── theme.nix                  # GTK, icon, and cursor theming
 ├── dotfiles/                          # Symlinked user configuration tree
+│   ├── alacritty/                     # Hardware-accelerated GPU terminal
 │   ├── fastfetch.jsonc                # System info presenter
 │   ├── starship.toml                  # Minimal shell prompt
-│   ├── wezterm.lua                    # Hardware-accelerated GPU terminal
 │   ├── fuzzel/
 │   │   └── fuzzel.ini                 # 2x HiDPI centered application & file launcher
 │   ├── wallust/                       # Dynamic color extraction config & templates

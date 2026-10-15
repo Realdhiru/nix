@@ -3,11 +3,12 @@
 # power.sh -- Unified Power, Session, Lock & Lid CLI
 #
 # Commands:
-#   lock           Lock screen via QuickShell Lock.qml with safeguards
+#   lock           Fast GPU lockscreen via Hyprlock with single-flight safeguards
 #   suspend        Lock and suspend system
 #   resume         Post-wake handler (restores display/profile/lock state)
 #   lid close|open Laptop lid switch event handler
 #   inhibit        Toggle idle inhibition (Coffee mode)
+#   profile        Hardware power profile switcher (TLP + ACPI platform_profile)
 #
 
 set -uo pipefail
@@ -271,6 +272,48 @@ cmd_inhibit() {
     fi
 }
 
+cmd_profile() {
+    local prof="${1:-balanced}"
+    local tlp_cmd="balanced"
+    local acpi_prof="balanced"
+    local asus_prof="Balanced"
+
+    case "$prof" in
+        performance)
+            tlp_cmd="performance"
+            acpi_prof="performance"
+            asus_prof="Performance"
+            ;;
+        power-saver|quiet)
+            tlp_cmd="power-saver"
+            acpi_prof="low-power"
+            asus_prof="Quiet"
+            ;;
+        balanced|*)
+            prof="balanced"
+            tlp_cmd="balanced"
+            acpi_prof="balanced"
+            asus_prof="Balanced"
+            ;;
+    esac
+
+    # 1. Universal TLP hardware authority
+    if [ -x /run/current-system/sw/bin/tlp ]; then
+        sudo /run/current-system/sw/bin/tlp "$tlp_cmd" >/dev/null 2>&1 || true
+    fi
+
+    # 2. Universal Linux Kernel ACPI Platform Profile (/sys/firmware/acpi/platform_profile)
+    # Supported natively by ThinkPad, Dell, HP, Framework, ASUS, Lenovo, etc.
+    if [ -w /sys/firmware/acpi/platform_profile ]; then
+        echo "$acpi_prof" > /sys/firmware/acpi/platform_profile 2>/dev/null || true
+    fi
+
+    # 3. Dynamic vendor hardware CLI hook (dynamically probed; non-ASUS machines skip seamlessly)
+    if command -v asusctl >/dev/null 2>&1; then
+        asusctl profile set "$asus_prof" >/dev/null 2>&1 || true
+    fi
+}
+
 # -----------------------------------------------------------------------------
 # ROUTER
 # -----------------------------------------------------------------------------
@@ -280,8 +323,9 @@ case "$CMD" in
     resume)   cmd_resume "$@" ;;
     lid)      cmd_lid "$@" ;;
     inhibit)  cmd_inhibit "$@" ;;
+    profile)  cmd_profile "$@" ;;
     *)
-        echo "Usage: power.sh [lock|suspend|resume|lid close|lid open|inhibit]" >&2
+        echo "Usage: power.sh [lock|suspend|resume|lid close|lid open|inhibit|profile <performance|balanced|power-saver>]" >&2
         exit 1
         ;;
 esac

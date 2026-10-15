@@ -54,12 +54,11 @@ contents of its `DT_NEEDED` search path are. Two categories of fix exist:
 | `autoPatchelfHook` | rewrite `DT_NEEDED`/interpreter to store | single static-ish binaries, CLI tools | breaks if app hardcodes `/usr/lib` at runtime |
 | `nix-ld` | provides `/lib64/ld-linux…` + `LD_LIBRARY_PATH` bridge | quick one-off binaries, AppImages | system-wide interpreter shim; deps still manual |
 | `programs.appimage` | binfmt + FUSE run | true AppImages only | `.deb`/`.rpm` aren't AppImages |
-| Distrobox / Podman | run a full Ubuntu container | complex apps, many runtime deps | background daemon/overhead, weaker isolation integration |
-| `steam-run` / `buildFHSEnv` | reusable FHS | generic | not declaratively tied to your config |
+| Custom Flake / FHS | standalone flake + `buildFHSEnv` | complex apps, `.deb`/`.rpm` packages | none (fully native, zero runtime daemons) |
 
-**Rule of thumb:** for a *GUI Electron/Chromium/Qt app shipped as `.deb`*, use
-`buildFHSEnv`. You already enabled `programs.appimage` and Distrobox in this repo
-(`decisions.md` §7); the FHS wrapper is the lighter, daemonless sibling.
+**Rule of thumb:** for a *GUI Electron/Chromium/Qt app shipped as `.deb`*, create a
+custom Flake or use `buildFHSEnv` in `pkgs/`. Containers (Distrobox/Podman) were fully
+purged from this system in favor of native, zero-daemon Flake derivations (`decisions.md` §8).
 
 ---
 
@@ -331,8 +330,7 @@ Ships as .deb / .rpm / tarball     ── yes ─► ★ this guide: fetchurl + 
         (binary only, no source)               buildFHSEnv (+ symlinkJoin for share/)
         │
         ▼
-Only in a distro repo / upstream  ──► Distrobox (decisions.md §7) as last resort.
-vendor lock-in
+Only in a distro repo / upstream  ──► Standalone Flake / custom overlay.
 ```
 
 **Standalone flake template for any single app** (so you can also `nix run`,
@@ -459,7 +457,6 @@ shim, so changes are localized to one file.
 
 - [`pkgs/chatgpt.nix`](file:///home/realdhiru/Projects/codex-flake/pkgs/chatgpt.nix) — the wrapper.
 - [`flake.nix`](file:///home/realdhiru/nix/flake.nix) — overlay registration.
-- [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix) — `systemPackages`.
-- [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md) §7 (Distrobox) & §39 (this approach).
+- [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md) §8 (Application Packaging Authority).
 - [`docs/debugging.md`](file:///home/realdhiru/nix/docs/debugging.md) §6 — packaging & rebuild safety.
 - [`docs/flow.md`](file:///home/realdhiru/nix/docs/flow.md) §5–7 — rebuild → health gate → rollback.

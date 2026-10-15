@@ -7,10 +7,14 @@ description: High-density operational reference for maintaining the user's NixOS
 
 ## 1. Operating Rules & Engineering Discipline
 
-1. **Automatic Documentation Synchronization**:
-   - Concise summary in `~/nix/CHANGELOG.md` under the current date.
-   - Architectural/technical shifts in `~/nix/docs/decisions.md`.
-   - Update `SKILL.md` / `AGENTS.md` only for systemic non-negotiables.
+1. **Automated Multi-Doc Sync Invariant**:
+   - Every code, script, keybind, driver, hardware quirk, or service modification strictly requires a synchronous multi-document audit before task completion:
+     - `~/nix/README.md`: Feature matrices, architecture summaries, and keybindings.
+     - `~/nix/CHANGELOG.md`: Granular changes under the current date.
+     - `~/nix/docs/decisions.md`: Architectural decisions, technical invariants, and rationale.
+     - `~/nix/docs/tacit_knowledge.md`: Hardware traps, udev quirks, and non-obvious fixes.
+     - `SKILL.md` & `AGENTS.md`: Operational rice rules and non-negotiables.
+   - Zero documentation drift allowed.
 2. **Manual Git Authority**: Do **NOT** stage, commit, or push automatically. The user reviews, commits, and pushes all changes manually.
 3. **High-Density / Signal-First Communication**:
    - Zero conversational filler, zero pleasantries, pure technical signal.
@@ -60,11 +64,12 @@ description: High-density operational reference for maintaining the user's NixOS
 - **QuickShell IPC & Event-Driven Architecture**:
   - Native C++ event-driven bindings only (`Quickshell.Hyprland`, `Quickshell.Services.Pipewire`, `FileWatcher`, `FileView { watchChanges: true }`). Never fork bash polling loops or subprocess chains inside QML.
   - Sizing in popups must use `currentWidth: Screen.width` (single-pass reference). Never pass device-pixel bounds (`Config.masterWidth`) to popup `Scaler` instances to prevent double-scaling clipping.
+  - Workspace bar modules (`SideBar.qml`, `TopBar.qml`) must debounce multi-event IPC bursts via a 16ms single-flight timer (`wsDebounceTimer`) and decouple layout centering offsets from animating delegate sizes to prevent frame-to-frame coordinate fighting and highlight indicator stutter.
   - **Scene-Visibility Gating for Positioning**: All `ListView.positionViewAtIndex()` and carousel settle passes must be strictly gated on `window.visible && view.width > 0`. Offscreen preloading (`visible: false`) creates unmapped scene graph nodes where coordinate math resolves to 0, causing negative clamp glitches on frame 0.
 - **Out-of-Store Symlinks**: Home Manager `mkOutOfStoreSymlink` targets live `~/nix/dotfiles/` for instant zero-rebuild live updates.
 - **Hardware Quirks**:
+  - Machine-specific hardware quirks isolated in `hosts/<host>/hardware/` (e.g. `hosts/nixos/hardware/asus.nix`).
   - ASUS OLED brightness keys: rebound after hybrid-sleep in `hosts/nixos/hardware/asus.nix`.
-  - Virtual Webcam: `v4l2loopback` `/dev/video10` loopback (`hosts/nixos/hardware/sonix-webcam.nix`) for DroidCam / phone-as-webcam streaming.
   - WirePlumber: `50-disable-libcamera.conf` disables libcamera to avoid UVC stream collision.
 
 ## 3. Workflow & Verification Commands

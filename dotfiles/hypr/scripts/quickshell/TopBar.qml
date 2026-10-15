@@ -298,18 +298,41 @@ Variants {
                 }
             }
 
+            Timer {
+                id: wsDebounceTimer
+                interval: 16
+                repeat: false
+                onTriggered: barWindow.updateNativeWorkspaces()
+            }
+
+            function requestWsUpdate() {
+                if (!wsDebounceTimer.running) {
+                    wsDebounceTimer.start();
+                }
+            }
+
             Connections {
                 target: Hyprland
                 function onFocusedWorkspaceChanged() { barWindow.updateNativeWorkspaces(); }
-                function onActiveToplevelChanged() { Qt.callLater(barWindow.updateNativeWorkspaces); }
+                function onActiveToplevelChanged() { barWindow.requestWsUpdate(); }
                 function onRawEvent(name, data) {
                     if (name === "workspace" || name === "createworkspace" || name === "destroyworkspace"
                         || name === "focusedmon" || name === "moveworkspace" || name === "moveworkspacev2"
                         || name === "openwindow" || name === "closewindow" || name === "movewindow" || name === "movewindowv2"
                         || name === "renameworkspace") {
-                        Qt.callLater(barWindow.updateNativeWorkspaces);
+                        barWindow.requestWsUpdate();
                     }
                 }
+            }
+
+            Connections {
+                target: Hyprland.workspaces
+                function onValuesChanged() { barWindow.requestWsUpdate(); }
+            }
+
+            Connections {
+                target: Hyprland.toplevels
+                function onValuesChanged() { barWindow.requestWsUpdate(); }
             }
 
             Timer {
@@ -322,7 +345,7 @@ Variants {
 
             Component.onCompleted: {
                 barWindow.updateNativeWorkspaces();
-                Qt.callLater(barWindow.updateNativeWorkspaces);
+                barWindow.requestWsUpdate();
                 wsStartupSyncTimer.start();
                 barWindow.checkRecording();
             }

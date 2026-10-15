@@ -61,4 +61,11 @@
       '')
     ];
   };
+
+  # 3. Thunderbolt 4 / Type-C Power Stabilization
+  # Prevent Intel Raptor Lake Thunderbolt 4 xHCI controller from sleeping into D3cold,
+  # avoiding resume errors (USBSTS 0x401), root hub power resets, and Type-C disconnects.
+  services.tlp.settings = {
+    RUNTIME_PM_DENYLIST = "00:0d.0 00:0d.3";
+  };
 }

@@ -254,33 +254,46 @@ Variants {
                 }
             }
 
+            Timer {
+                id: wsDebounceTimer
+                interval: 16
+                repeat: false
+                onTriggered: barWindow.updateNativeWorkspaces()
+            }
+
+            function requestWsUpdate() {
+                if (!wsDebounceTimer.running) {
+                    wsDebounceTimer.start();
+                }
+            }
+
             Connections {
                 target: Hyprland
                 function onFocusedWorkspaceChanged() { barWindow.updateNativeWorkspaces(); }
-                function onActiveToplevelChanged() { Qt.callLater(barWindow.updateNativeWorkspaces); }
+                function onActiveToplevelChanged() { barWindow.requestWsUpdate(); }
                 function onRawEvent(name, data) {
                     if (name === "workspace" || name === "createworkspace" || name === "destroyworkspace"
                         || name === "focusedmon" || name === "moveworkspace" || name === "moveworkspacev2"
                         || name === "openwindow" || name === "closewindow" || name === "movewindow" || name === "movewindowv2"
                         || name === "renameworkspace") {
-                        Qt.callLater(barWindow.updateNativeWorkspaces);
+                        barWindow.requestWsUpdate();
                     }
                 }
             }
 
             Connections {
                 target: Hyprland.workspaces
-                function onValuesChanged() { barWindow.updateNativeWorkspaces(); }
+                function onValuesChanged() { barWindow.requestWsUpdate(); }
             }
 
             Connections {
                 target: Hyprland.toplevels
-                function onValuesChanged() { barWindow.updateNativeWorkspaces(); }
+                function onValuesChanged() { barWindow.requestWsUpdate(); }
             }
 
             Component.onCompleted: {
                 barWindow.updateNativeWorkspaces();
-                Qt.callLater(barWindow.updateNativeWorkspaces);
+                barWindow.requestWsUpdate();
                 barWindow.checkRecording();
                 weatherPoller.running = true;
                 MusicState.parseMusicFile();
@@ -628,7 +641,7 @@ Variants {
                                     }
                                     let activeItem = wsRepeater.itemAt(workspacesModel.activeIndex);
                                     if (!activeItem) return;
-                                    let targetY = activeItem.y;
+                                    let targetY = wsLayout.y + activeItem.y;
                                     let itemH = barWindow.s(32);
                                     if (targetY < wsFlickable.contentY) {
                                         wsFlickable.contentY = Math.max(0, targetY);
@@ -668,7 +681,7 @@ Variants {
                                 id: wsLayout
                                 width: parent.width
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                y: (wsFlickable.height > implicitHeight) ? ((wsFlickable.height - implicitHeight) / 2) : 0
+                                y: wsFlickable.contentHeight > wsFlickable.height ? 0 : Math.round((wsFlickable.height - wsLayout.height) / 2)
                                 spacing: barWindow.s(6)
 
                                 Repeater {

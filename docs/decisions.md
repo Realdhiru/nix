@@ -49,6 +49,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - **Scene Visibility Gating for Positioning Math**: Any `ListView.positionViewAtIndex()` or layout settle logic in popup components must be strictly gated on `window.visible && view.width > 0`. Offscreen preloading (`visible: false`) creates objects outside the active visual scene graph where coordinate math and view width are unmapped, causing bad clamps on frame 0.
   - **Dynamic HighlightRangeMode for Carousel Popups**: In full-width carousels (`WallpaperPicker`), `highlightRangeMode` must be dynamically gated (`initialFocusSet ? StrictlyEnforceRange : NoHighlightRange`). Static `StrictlyEnforceRange` forces negative `contentX` clamps (`-preferredHighlightBegin`) when mounting or unmounting in `StackView` before delegate items finish layout, causing viewport truncation and horizontal card displacement.
   - **Focus Preservation Across Model Re-Sorting**: In QuickShell ListModels where elements are sorted asynchronously by secondary telemetry (e.g. `sortListModel()` reordering by color/hue gradient upon `indexer.sh` completion), invoking `model.clear()` resets `ListView.currentIndex` to 0. Any sort mutation must preserve the target item identity and immediately restore focus via `executeFocusRestore(targetIdx, false, true)` after `model.append()` to prevent snapping to index 0.
+  - **Workspace IPC Debouncing & Layout Tween Decoupling**: In workspace bar modules (`SideBar.qml`, `TopBar.qml`), multi-event burst signals (`onActiveToplevelChanged`, `onRawEvent`, `workspaces.onValuesChanged`, `toplevels.onValuesChanged`) must be coalesced through a single-flight 16ms timer (`wsDebounceTimer`). Never bind layout container offsets (`wsLayout.y`) to tweening dimensions (`implicitHeight`) during delegate mount/unmount animations, as it creates inter-frame coordinate fighting and highlight indicator jitter. Auto-scroll math must account for layout container positioning (`targetY = wsLayout.y + activeItem.y`).
   - Music geometry derives from `timeText.implicitWidth` minimum bounds; long titles marquee scroll.
   - **Single Authority Geometry & Preload Isolation Rule**: All master popup container dimensions (`animW`, `animH`, `animX`, `animY`) are strictly owned and computed by [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml) via `getLayout()`. Individual popup components must NEVER mutate master container properties through internal property change signals (`onTargetMasterWidthChanged`, etc.). When background preloader timers instantiate offscreen widgets, child geometry assignments overwrite the shared container, causing unrelated widgets to shift horizontally and clip borders. All geometry queries must remain read-only and gated on active display mapping.
   - **TopBar Toggle & Isolation**: TopBar visibility is decoupled from QuickShell daemon lifecycle via `Config.topBarVisible` and LayerShell surface unmapping. Toggling TopBar unmaps `barWindow` and releases the exclusive zone (`reserved: 0 0 0 0`) while keeping QuickShell daemon, popups, floating widgets, and polkit agent fully operational.
@@ -69,7 +70,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
     - **Unscaled Bar Clearance for Popup Positioning**: Margin offsets from static bars (48px) must never be multiplied by `scale` when `scale < 1.0`. Using `s(52, scale)` under-scales to 41px on 1440×810, placing the popup under the bar's input mask. Fixed offsets (`rx = 52`) are used instead.
     - **Popup-Aware Auto-Hide**: `Config.isPopupOpen` (synced from `masterWindow.isWindowActive`) is included in `SideBar.qml`'s `isRevealed` condition so the sidebar stays visible while interacting with popups in auto-hide mode.
     - Toggled instantaneously via `SUPER + ALT + Up` (top) and `SUPER + ALT + Down` (left) without process restarts or widget layout contamination. Auto-hide toggled via `CTRL + MOD + ALT`.
-  - Lockscreen live wallpaper draws inside `Lock.qml` via `WlSessionLock`. Lockscreen telemetry and media controls must remain 100% zero-polling, bound exclusively via kernel/tmpfs inotify `FileView` watchers (`/sys/class/power_supply/BAT0/`, `music_info.json`).
+  - **Primary Lockscreen Architecture**: Session locking is powered by native GPU-accelerated `hyprlock` (`ext-session-lock-v1`) with dynamic dual-pass screenshot blur (`path = screenshot`, `blur_passes = 2`) and instant PAM authentication (<20ms), triggered via `power.sh lock` and `hypridle`. The legacy `Lock.qml` (and QtMultimedia video lockscreen) is superseded to eliminate frame capture overhead and PAM session desyncs.
 
 ### 4. Canonical Persistent State Architecture (`~/.cache/quickshell/state.json`)
 - **Decision**: Single canonical JSON file (`~/.cache/quickshell/state.json`) owns all live user toggle states across the system (`sunset`, `modes`, `power`, `ui`).
@@ -80,61 +81,58 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - **Display & Shader Architecture Split**: `hyprsunset` daemon owns Temperature + Gamma (hardware CTM/gamma LUT). Hyprland's single `decoration:screen_shader` slot owns Saturation + Paper Grain + CRT Curvature together in one unified GLSL file, since Hyprland only supports one active `screen_shader` at a time. These two systems are fully independent.
 
 
-### 4. Hardware Quirks Modularization (`hosts/nixos/hardware/`)
+### 5. Hardware Quirks Modularization (`hosts/nixos/hardware/`)
+- **Isolation Boundary**: Machine-specific drivers, vendor daemons (`asusd`), and hardware quirks must reside strictly in host-level hardware modules (`hosts/<host>/hardware/`), never inside portable system modules (`modules/system/`).
 - **ASUS Vivobook OLED (`asus.nix`):**
-  - Brightness Fn keys drop ACPI events after hybrid-sleep. Fixed via `systemd-hybrid-sleep` post-hook unbinding and rebinding `acpi.video_bus.0`.
-- **Webcam & Virtual Loopback (`sonix-webcam.nix`):**
-  - Internal Sonix USB controller (`3277:0022`) has persistent hardware power-cycling faults causing unrecoverable disconnects after ~2.7s under active streaming.
-  - Retired the fragile FFmpeg loopback feeder script and crash-looping service. Retained clean declarative `v4l2loopback` `/dev/video10` labeled as `"Webcam"` with `exclusive_caps=1` for native phone-as-webcam streaming via DroidCam / OBS / scrcpy with zero daemon overhead.
+  - Thunderbolt 4 / Type-C Power Stabilization: Intel Raptor Lake Thunderbolt controller (`00:0d.0`, `00:0d.3`) is denylisted from aggressive runtime PM sleep (`RUNTIME_PM_DENYLIST`) to prevent `USBSTS 0x401` resume crashes and Type-C peripheral disconnects. Flawed custom UCSI udev rules were permanently removed in favor of TLP's native multi-source AC evaluation (`tlp auto`).
 
-### 5. Rebuild Safety Pipeline (`modules/home/shell.nix`, `scripts/health-check.sh`)
+### 6. Rebuild Safety Pipeline (`modules/home/shell.nix`, `scripts/health-check.sh`)
 - **Decision:** All system switches must route through `rebuild()`.
 - **Rationale:** Pre-records previous generation, stages/commits, performs health-gated validation (Hyprland alive + isolated alacritty GPU-hang probe), and executes automated rollback if critical checks fail. Bad generations are kept bootable in bootloader.
 - **Default Terminal Architecture:** Alacritty serves as the default system terminal across keybinds (`Super + T`), application launcher (`fuzzel.ini`), file manager actions (`pcmanfm-qt`), and health validation probes. Foot remains installed and configured as an auxiliary terminal accessible from application launchers with normalized font size and Wallust glass-blur transparency.
 
-### 6. Declarative Symlinks & Theming
+### 7. Declarative Symlinks & Theming
 - **Decision:** Out-of-store symlinks (`mkOutOfStoreSymlink`) for `dotfiles/` to enable instant live reloading without rebuilds.
-- **Decision:** Decoupled **Wallust** theme engine (`dotfiles/wallust/`) using Lch colorspace and 16 ANSI color extraction. Completely replaces Matugen. Emits all dynamic palette outputs to `~/.cache/theme/` (QuickShell, WezTerm 16-color ANSI, Cava, GTK, Qt).
+- **Decision:** Decoupled **Wallust** theme engine (`dotfiles/wallust/`) using Lch colorspace and 16 ANSI color extraction. Completely replaces Matugen. Emits all dynamic palette outputs to `~/.cache/theme/` (QuickShell, Foot, Alacritty, Cava, GTK, Qt).
 - **Rule:** Wallust engine must remain strictly self-contained and portable; wallpaper handlers and QuickShell widgets communicate only via clean file contracts (`generate.sh <image>` and `~/.cache/theme/colors.json`).
 - **Dark Mode Lock Rule:** Global theme defaults permanently to dark mode (`saliencedark16`). Wallpaper switches never trigger automatic light mode. Light mode is strictly manual via `settings.json` (`"themeMode": "light"`).
-- **Single Theme Output Root:** `~/.cache/theme/` is the *only* runtime theme output. The legacy `~/.cache/matugen` compat tree has been removed — it had zero live consumers once GTK/Qt, WezTerm, and QuickShell all pointed at `~/.cache/theme`. New theme consumers must read `~/.cache/theme/` directly and must never reintroduce a second compat root.
+- **Single Theme Output Root:** `~/.cache/theme/` is the *only* runtime theme output. The legacy `~/.cache/matugen` compat tree has been removed — it had zero live consumers once GTK/Qt, terminal, and QuickShell all pointed at `~/.cache/theme`. New theme consumers must read `~/.cache/theme/` directly and must never reintroduce a second compat root.
 
-### 7. Containerized .deb Support (Distrobox + Rootless Podman)
-- **Decision:** Rootless Podman daemonless runtime (`virtualisation.podman.enable = true`, `dockerCompat = false`) combined with Distrobox (`deb-box`).
-- **Rationale:** Zero background daemons, zero battery/CPU idle drain, and no root escalation vectors. Applications install once and export native `.desktop` files into Fuzzel. When closed, processes exit completely.
-- **Rules:** GUI and Electron packages inside Distrobox must enforce native Wayland (`ELECTRON_OZONE_PLATFORM_HINT=auto`, `--ozone-platform-hint=auto`) and include container-side portal fallbacks (`zenity`, `xdg-utils`, Mesa DRI drivers) to avoid Xwayland Glamor shader crashes during file picker navigation.
+### 8. Application Packaging Authority: Standalone Flakes & Native Packaging (Distrobox Decommissioned)
+- **Decision:** Purged Distrobox and Podman entirely. Standalone software and third-party packages must be packaged declaratively via custom Flakes, native Nix derivations (`pkgs/`), or Linux kernel `binfmt_misc` AppImage execution (`programs.appimage.enable = true`).
+- **Rationale:** Containerized execution (`deb-box` via Distrobox/Podman) introduced filesystem corruption risks, resource exhaustion, and MIME association conflicts with the host. Standalone Flakes provide true Nix immutability, zero container runtime overhead, and atomic rollback integration.
 
-### 8. Architectural Modularity & Subsystem Decoupling
+### 9. Architectural Modularity & Subsystem Decoupling
 - **Decision:** Strict modular boundaries across system features. No mixed files or tight cross-dependencies.
 - **Subsystem Contracts:**
   - **Theming (`dotfiles/wallust/`)**: Portable standalone color engine. Contains extraction, PIL/Magick luminance math, template generation, neutral fallback mode (`./generate.sh --neutral`), and client reloads. Zero wallpaper or UI dependencies.
   - **Wallpaper (`dotfiles/wallpaper/`)**: Portable desktop background manager (`wallpaper.sh`). Encapsulates daemon lifecycles (`awww`, `mpvpaper`), fast thumbnail generation, directory inotify watching, and online DuckDuckGo search. Hands off to theme engine via clean one-line async execution (`$THEME_ENGINE "$WALLPAPER" &`).
   - **QuickShell Widgets**: QuickShell components (e.g. `wallpaper/`, `network/`, `music/`, `calendar/`) must remain self-contained with localized `Scaler.qml` and `Theme` adapters, eliminating `import "../"` parent breakages when copied to other QuickShell environments.
 
-### 9. System Tray Architecture & Frameless Liquid Glass Design
+### 10. System Tray Architecture & Frameless Liquid Glass Design
 - **Decision:** System Tray moved from TopBar into Battery Popup. Frameless (zero-border) visual standard across QuickShell.
 - **Rationale:**
   - Status bar declutter: TopBar remains minimal, preserving space for dynamic workspace pills, CAVA audio visualizer with top-to-bottom vertical gradient, and clock/date.
   - Tray access consolidated: Quick access tray icons live directly alongside system controls (DND, volume, brightness, power profiles) in BatteryPopup header.
   - Zero-border design: Explicitly removed artificial hairline borders, rotating shape masks, and outer stroke containers across all widget popups (`MusicPopup`, `BatteryPopup`, `CalendarPopup`, `PopupCard`, `MonitorPopup`, `FocusTimePopup`, `NetworkPopup`, `ClipboardManager`). Default `borderWidth = 0` and `borderOpacity = 0.0` in `settings.json`.
 
-### 10. Terminal Dynamic ANSI Extraction & OLED Surface Authority
+### 11. Terminal Dynamic ANSI Extraction & OLED Surface Authority
 - **Dynamic Wallpaper-Extracted ANSI Palette (`ansidark16` + `lchansi`):**
   - Configured Wallust with `--colorspace lchansi --palette ansidark16 --check-contrast` in [`dotfiles/wallust/wallust.toml`](file:///home/realdhiru/nix/dotfiles/wallust/wallust.toml) and [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh).
-  - All terminal ANSI slots (`color0`-`color15`), foreground, background, and cursor in [`wezterm-colors.lua`](file:///home/realdhiru/nix/dotfiles/wallust/templates/wezterm-colors.lua) are dynamically derived from the wallpaper while preserving standard ANSI hue roles (red, green, blue, etc.), preventing muddy cluster collisions.
+  - All terminal ANSI slots (`color0`-`color15`), foreground, background, and cursor in terminal templates ([`foot.ini`](file:///home/realdhiru/nix/dotfiles/wallust/templates/foot.ini), [`alacritty.toml`](file:///home/realdhiru/nix/dotfiles/wallust/templates/alacritty.toml)) are dynamically derived from the wallpaper while preserving standard ANSI hue roles (red, green, blue, etc.), preventing muddy cluster collisions.
 - **Physical OLED Pitch-Black Root Compositor Background:**
   - In [`dotfiles/hypr/misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua), `background_color = 0x000000` and `force_default_wallpaper = 0`.
   - When wallpaper daemons are terminated (`wallpaper.sh kill`), Hyprland renders pure `#000000`, turning off OLED pixels completely (0.000 nits, 0 mA draw) instead of illuminating the screen with Hyprland's default `0x111111` gray.
 - **Deterministic Neutral Theme Bypass:**
   - In [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), `--neutral` bypasses Wallust salience clustering and ImageMagick histogram extraction, deterministically generating an OLED pitch-black palette without risk of false olive-green color spikes.
 
-### 11. Bootloader Generation Retention & EFI Partition Protection
+### 12. Bootloader Generation Retention & EFI Partition Protection
 - **Decision:** Strict `boot.loader.systemd-boot.configurationLimit = 10` in [`modules/system/boot.nix`](file:///home/realdhiru/nix/modules/system/boot.nix).
 - **Rationale:** The physical EFI system partition is 511MB. Without an explicit retention limit, systemd-boot generates kernel/initrd pairs in `/boot/EFI/nixos/` indefinitely. Setting a hard limit of 10 keeps rollback entries safe while guaranteeing `/boot` disk usage remains below 200MB (~40% capacity).
 
-### 12. Host MIME Isolation & Container Application Sanitization
-- **Decision:** Permanent declarative browser authority in `home.nix` (`http`, `https`, `text/html` locked to `brave-browser.desktop`) and mandatory sanitization in [`distrobox-install-deb.sh`](file:///home/realdhiru/nix/dotfiles/scripts/distrobox-install-deb.sh).
-- **Rationale:** Containerized packages (`.deb` files exported via Distrobox) must never inject or alter system-wide web protocols or office document associations. Exported desktop files are strictly filtered to custom schemas (e.g. `x-scheme-handler/codex`) and desktop databases are resynced immediately.
+### 13. Declarative Default Browser & MIME Authority
+- **Decision:** Permanent declarative browser authority in `home.nix` (`http`, `https`, `text/html` locked to `brave-browser.desktop`).
+- **Rationale:** Desktop applications and `.desktop` files must never inject or alter system-wide web protocols or default associations. Custom application schemes (e.g. `x-scheme-handler/codex`) are isolated declaratively.
 
 ### 14. Nix Context Delivery (AGENTS.md as Router)
 - **Decision:** [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md) is an always-loaded **router**, not an archive. It carries only architecture facts an agent needs to navigate plus a pointer table from intent to file.
@@ -330,3 +328,9 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** Keep the official Linux `.deb` packaging in the separate public `Realdhiru/claude-desktop-nix` flake, with a pinned version/hash, FHS runtime, native Wayland launcher, and build-verified automated update PRs.
 - **System use:** Claude Desktop was removed from this system's inputs and packages at the user's request; the standalone repository remains published and maintained.
 - **Cowork:** The repo keeps QEMU, OVMF, and `virtiofsd` in an optional package variant to avoid that dependency closure for the default package.
+
+### Wallpaper Favorites Subsystem & Persistent Storage
+- **Decision:** Favorite wallpapers are tracked in `$HOME/.local/share/wallpaper_favorites.txt` as canonical filepaths, toggled via `wallpaper.sh fav` (`SUPER + SHIFT + \`), and displayed under a dedicated "Favorites" tab in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml).
+- **Rationale:** Storing favorites in `$XDG_DATA_HOME` (`~/.local/share/`) prevents data loss during cache purges (`~/.cache/` cleans).
+- **IPC & Synchronization:** QuickShell integrates a native `FileView` watching the file via inotify (`watchChanges: true`), immediately updating `favoritesProxyModel` in real time with zero polling loops or subprocess forks.
+

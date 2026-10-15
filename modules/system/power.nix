@@ -85,24 +85,4 @@
       '';
     })
   ];
-  # When battery is capped at 80%, ASUS firmware reports power source as
-  # "Battery" even though charger is physically connected.
-  # These rules force TLP into AC/performance mode natively.
-  #
-  # This udev rule is the SOLE authority for tlp ac/bat switching in the
-  # entire system. The Quickshell BatteryPopup.qml power-profile picker
-  # intentionally does NOT call `tlp ac`/`tlp bat` itself — it only manages
-  # per-core EPP (via set_epp.sh) and CPU turbo/boost, both of which are
-  # orthogonal to AC/BAT mode. (power-profiles-daemon is force-disabled
-  # above, so `powerprofilesctl` is never used anywhere in this config.)
-  # Do not re-add a `tlp ac`/`tlp bat` call anywhere else; it would
-  # silently race against this rule.
-services.udev.extraRules = ''
-    SUBSYSTEM=="power_supply", KERNEL=="ucsi-source-psy-USBC000:001", ATTR{online}=="1", \
-      RUN+="${pkgs.tlp}/bin/tlp ac"
-
-    SUBSYSTEM=="power_supply", KERNEL=="ucsi-source-psy-USBC000:001", ATTR{online}=="0", \
-      RUN+="${pkgs.tlp}/bin/tlp bat"
-  '';
-  
 }

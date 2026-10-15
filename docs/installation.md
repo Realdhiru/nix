@@ -66,9 +66,10 @@ wallpaper.sh clean           # Purge orphaned cache entries and broken symlinks
 ```
 
 ### Power & Session System (`dotfiles/hypr/scripts/power.sh`)
-Unified CLI for session locking, sleep, lid switch, and idle inhibition:
+Unified CLI for session locking, sleep, lid switch, idle inhibition, and power profiles:
 ```bash
-power.sh lock                # Safe QuickShell Lock.qml launcher (ext-session-lock-v1)
+power.sh lock                # Fast GPU lockscreen via Hyprlock (ext-session-lock-v1) with single-flight mutex
+power.sh profile <profile>   # Switch hardware profile: performance, balanced, or power-saver
 power.sh suspend             # Suspend system with automated pre-lock
 power.sh resume              # Post-hardware-wake state restoration
 power.sh lid close|open      # Laptop lid switch event handler
@@ -121,4 +122,4 @@ You can customize the desktop shell without modifying QML code by editing [`dotf
 ```
 
 - **`PopupCard.qml`**: Standardized base container for all QuickShell popups, enforcing uniform borders, opacity, corner radii, and frosted specular highlights.
-- **Wallust**: Colors automatically derive from the active wallpaper and propagate to QuickShell, WezTerm, GTK 3/4, and Qt apps in real time.
+- **Wallust**: Colors automatically derive from the active wallpaper and propagate to QuickShell, Foot, Alacritty, GTK 3/4, and Qt apps in real time.

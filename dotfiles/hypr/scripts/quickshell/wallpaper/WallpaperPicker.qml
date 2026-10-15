@@ -104,6 +104,7 @@ Item {
 
     readonly property var filterData: [
         { name: "All", label: "All" },
+        { name: "Favorites", label: "Fav" },
         { name: "Gruvbox", label: "Gruvbox" },
         { name: "Sakura", label: "Sakura" },
         { name: "Nord", label: "Nord" },
@@ -199,9 +200,10 @@ Item {
                     window.updateCategoryCounts();
                     if (localProxyModel.count > 0) {
                         window.sortListModel(localProxyModel);
+                        window.sortListModel(favoritesProxyModel);
                         window.sortListModel(gifsProxyModel);
                         window.sortListModel(videosProxyModel);
-                        if (window.currentFilter !== "All" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "Search") {
+                        if (window.currentFilter !== "All" && window.currentFilter !== "Favorites" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "Search") {
                             window.updateCategoryProxyModel();
                         }
 
@@ -460,7 +462,7 @@ Item {
     }
 
     onCurrentFilterChanged: {
-        if (window.currentFilter !== "Search" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "All") {
+        if (window.currentFilter !== "Search" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "All" && window.currentFilter !== "Favorites" && window.currentFilter !== "Fav") {
             window.updateCategoryProxyModel();
         }
         window.isFilterAnimating = true;
@@ -511,6 +513,7 @@ Item {
         }
         if (isLoading) return "Parsing wallpapers...";
         if (window.visibleItemCount === 0) return "No wallpapers found";
+        if (window.currentFilter === "Favorites" || window.currentFilter === "Fav") return "Favorites";
         if (window.currentFilter === "All") return "";
         if (window.currentFilter === "Videos" || window.currentFilter === "Video") return "Videos";
         if (window.currentFilter === "GIFs" || window.currentFilter === "GIF") return "GIFs";
@@ -777,6 +780,25 @@ Item {
             }
         }
         if (targetModel === localProxyModel) {
+            for (let i = 0; i < favoritesProxyModel.count; i++) {
+                if (favoritesProxyModel.get(i).fileName === fileName) {
+                    favoritesProxyModel.remove(i);
+                    break;
+                }
+            }
+            for (let i = 0; i < gifsProxyModel.count; i++) {
+                if (gifsProxyModel.get(i).fileName === fileName) {
+                    gifsProxyModel.remove(i);
+                    break;
+                }
+            }
+            for (let i = 0; i < videosProxyModel.count; i++) {
+                if (videosProxyModel.get(i).fileName === fileName) {
+                    videosProxyModel.remove(i);
+                    break;
+                }
+            }
+        } else if (targetModel === favoritesProxyModel) {
             for (let i = 0; i < gifsProxyModel.count; i++) {
                 if (gifsProxyModel.get(i).fileName === fileName) {
                     gifsProxyModel.remove(i);
@@ -859,6 +881,8 @@ Item {
 
     function showWidget() {
         window.centerRetryCount = 0;
+        favFileView.reload();
+        window.syncFavoritesModel();
         window.processMarkers();
         window.currentFilter = "All";
         let p = window.reloadActiveWallpaperPath();
@@ -1017,6 +1041,7 @@ Item {
     function getCategoryCount(catName) {
         let cat = String(catName).toLowerCase();
         if (cat === "all") return localProxyModel.count;
+        if (cat === "favorites" || cat === "fav") return favoritesProxyModel.count;
         if (cat === "gifs" || cat === "gif") return gifsProxyModel.count;
         if (cat === "videos" || cat === "video") return videosProxyModel.count;
         if (cat === "search") return 1;
@@ -1025,13 +1050,13 @@ Item {
 
     function isFilterVisible(fName) {
         if (fName === "Search") return false;
-        if (fName === "All" || fName === "GIFs" || fName === "Videos" || fName === "Video") return true;
+        if (fName === "All" || fName === "Favorites" || fName === "Fav" || fName === "GIFs" || fName === "Videos" || fName === "Video") return true;
         return window.getCategoryCount(fName) > 0;
     }
 
     function updateCategoryProxyModel() {
         let cat = String(window.currentFilter).toLowerCase();
-        if (cat === "all" || cat === "gifs" || cat === "videos" || cat === "search") return;
+        if (cat === "all" || cat === "favorites" || cat === "fav" || cat === "gifs" || cat === "videos" || cat === "search") return;
         
         categoryProxyModel.clear();
         let batch = [];
@@ -1052,6 +1077,7 @@ Item {
 
     function getModelForFilter(filter) {
         if (filter === "Search") return searchProxyModel;
+        if (filter === "Favorites" || filter === "Fav") return favoritesProxyModel;
         if (filter === "GIFs" || filter === "GIF") return gifsProxyModel;
         if (filter === "Videos" || filter === "Video") return videosProxyModel;
         if (filter === "All") return localProxyModel;
@@ -1140,6 +1166,7 @@ Item {
     function checkItemMatchesFilter(fileName, isVid, cv, filter) {
         if (filter === "Search") return true;
         if (filter === "All") return true;
+        if (filter === "Favorites" || filter === "Fav") return true;
         let fStr = String(fileName);
         if (filter === "Videos" || filter === "Video") {
             return isVid || window.isVideoFile(fStr);
@@ -1186,7 +1213,7 @@ Item {
         if (!window.isFilterVisible(window.currentFilter) && window.currentFilter !== "Search") {
             window.currentFilter = "All";
         }
-        if (window.currentFilter !== "Search" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "All") {
+        if (window.currentFilter !== "Search" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "All" && window.currentFilter !== "Favorites" && window.currentFilter !== "Fav") {
             window.updateCategoryProxyModel();
         }
         let targetModel = window.getModelForFilter(window.currentFilter);
@@ -1264,11 +1291,57 @@ Item {
     Shortcut { sequence: "Backtab"; onActivated: window.cycleFilter(-1) }
 
     ListModel { id: localProxyModel }
+    ListModel { id: favoritesProxyModel }
     ListModel { id: categoryProxyModel }
     ListModel { id: gifsProxyModel }
     ListModel { id: videosProxyModel }
     ListModel { id: searchProxyModel }
     readonly property var activeModel: window.getModelForFilter(window.currentFilter)
+
+    readonly property string favoritesFile: Quickshell.env("HOME") + "/.local/share/wallpaper_favorites.txt"
+
+    FileView {
+        id: favFileView
+        path: window.favoritesFile
+        watchChanges: true
+        onLoadedChanged: window.syncFavoritesModel()
+        onTextChanged: window.syncFavoritesModel()
+        onFileChanged: {
+            favFileView.reload();
+            window.syncFavoritesModel();
+        }
+    }
+
+    function syncFavoritesModel() {
+        let raw = (favFileView.text() || "").trim();
+        let lines = raw.split("\n").map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith("#"));
+        let favSet = {};
+        for (let l of lines) {
+            let base = l.split("/").pop();
+            favSet[base] = true;
+            let clean = window.getCleanName(base);
+            if (clean) favSet[clean] = true;
+        }
+
+        favoritesProxyModel.clear();
+        let batch = [];
+        for (let i = 0; i < localProxyModel.count; i++) {
+            let item = localProxyModel.get(i);
+            if (!item || !item.fileName) continue;
+            let fn = item.fileName;
+            let cleanFn = window.getCleanName(fn);
+            if (favSet[fn] || favSet[cleanFn]) {
+                batch.push({ "fileName": fn, "fileUrl": item.fileUrl });
+            }
+        }
+        if (batch.length > 0) {
+            favoritesProxyModel.append(batch);
+        }
+        window.sortListModel(favoritesProxyModel);
+        if (window.currentFilter === "Favorites" || window.currentFilter === "Fav") {
+            window.updateVisibleCount();
+        }
+    }
 
     FolderListModel {
         id: localFolderModel
@@ -1306,6 +1379,7 @@ Item {
             window.allowAddAnimation = false;
             window.isModelChanging = true;
             localProxyModel.clear();
+            favoritesProxyModel.clear();
             gifsProxyModel.clear();
             videosProxyModel.clear();
             window._localSyncedCount = 0;
@@ -1338,12 +1412,14 @@ Item {
             if (batchVids.length > 0) videosProxyModel.append(batchVids);
             window._localSyncedCount = folderCount;
             window.updateCategoryCounts();
+            window.syncFavoritesModel();
         }
 
         let isReady = localFolderModel.status === FolderListModel.Ready;
         if (isReady && window._localSyncedCount > 0 && (!window.initialFocusSet || !window.visible)) {
             window.isModelChanging = true;
             window.sortListModel(localProxyModel);
+            window.sortListModel(favoritesProxyModel);
             window.sortListModel(gifsProxyModel);
             window.sortListModel(videosProxyModel);
             window.isModelChanging = false;
@@ -1881,7 +1957,7 @@ Item {
                     height: !visible ? 0 : window.s(36)
                     anchors.verticalCenter: parent.verticalCenter
                     
-                    readonly property bool isCategory: modelData.name !== "All" && modelData.name !== "GIFs" && modelData.name !== "Videos" && modelData.name !== "Video" && modelData.name !== "Search"
+                    readonly property bool isCategory: modelData.name !== "All" && modelData.name !== "Favorites" && modelData.name !== "Fav" && modelData.name !== "GIFs" && modelData.name !== "Videos" && modelData.name !== "Video" && modelData.name !== "Search"
                     
                     Rectangle {
                         id: swatchCard
@@ -1965,6 +2041,39 @@ Item {
                                 ctx.fillRect(s(8), 0, s(6), s(6));
                                 ctx.fillRect(0, s(8), s(6), s(6));
                                 ctx.fillRect(s(8), s(8), s(6), s(6));
+                            }
+                        }
+
+                        Canvas {
+                            visible: modelData.name === "Favorites" || modelData.name === "Fav"
+                            width: window.s(16); height: window.s(16)
+                            anchors.centerIn: parent
+                            property string activeColor: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7)
+                            onActiveColorChanged: requestPaint()
+
+                            onPaint: {
+                                var ctx = getContext("2d");
+                                var s = window.s;
+                                ctx.reset();
+                                ctx.fillStyle = activeColor;
+                                var cx = s(8), cy = s(8), spikes = 5, outerRadius = s(6.5), innerRadius = s(3.0);
+                                var rot = Math.PI / 2 * 3;
+                                var step = Math.PI / spikes;
+                                ctx.beginPath();
+                                ctx.moveTo(cx, cy - outerRadius);
+                                for (var i = 0; i < spikes; i++) {
+                                    var x = cx + Math.cos(rot) * outerRadius;
+                                    var y = cy + Math.sin(rot) * outerRadius;
+                                    ctx.lineTo(x, y);
+                                    rot += step;
+                                    x = cx + Math.cos(rot) * innerRadius;
+                                    y = cy + Math.sin(rot) * innerRadius;
+                                    ctx.lineTo(x, y);
+                                    rot += step;
+                                }
+                                ctx.lineTo(cx, cy - outerRadius);
+                                ctx.closePath();
+                                ctx.fill();
                             }
                         }
                     }

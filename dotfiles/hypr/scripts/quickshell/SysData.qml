@@ -529,8 +529,7 @@ Item {
             Quickshell.execDetached(["sh", "-c", "echo '" + cached + "' > /tmp/qs_requested_profile; echo '" + cached + "' > /tmp/qs_power_profile; echo '" + cached + "' > $HOME/.cache/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile '" + cached + "'"]);
             root._applyVisualOverrides(cached);
             let tlpCmd = (cached === "performance") ? "performance" : (cached === "power-saver") ? "power-saver" : "balanced";
-            let asusProf = (cached === "performance") ? "Performance" : (cached === "power-saver") ? "Quiet" : "Balanced";
-            Quickshell.execDetached(["bash", "-c", "sudo /run/current-system/sw/bin/tlp " + tlpCmd + " && (command -v asusctl >/dev/null 2>&1 && asusctl profile set " + asusProf + " 2>/dev/null || true)"]);
+            Quickshell.execDetached(["bash", "-c", "$HOME/.config/hypr/scripts/power.sh profile " + tlpCmd]);
             return;
         }
 
@@ -540,14 +539,14 @@ Item {
             root.powerProfile = "performance";
             Quickshell.execDetached(["sh", "-c", "echo 'performance' > $HOME/.cache/qs_power_profile; echo 'performance' > /tmp/qs_requested_profile; echo 'performance' > /tmp/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile 'performance'"]);
             root._applyVisualOverrides("performance");
-            Quickshell.execDetached(["bash", "-c", "sudo /run/current-system/sw/bin/tlp performance && (command -v asusctl >/dev/null 2>&1 && asusctl profile set Performance 2>/dev/null || true)"]);
+            Quickshell.execDetached(["bash", "-c", "$HOME/.config/hypr/scripts/power.sh profile performance"]);
         } else {
             root._manualOverride = false;
             root.requestedProfile = "balanced";
             root.powerProfile = "balanced";
             Quickshell.execDetached(["sh", "-c", "echo 'balanced' > $HOME/.cache/qs_power_profile; echo 'balanced' > /tmp/qs_requested_profile; echo 'balanced' > /tmp/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile 'balanced'"]);
             root._applyVisualOverrides("balanced");
-            Quickshell.execDetached(["bash", "-c", "sudo /run/current-system/sw/bin/tlp balanced && (command -v asusctl >/dev/null 2>&1 && asusctl profile set Balanced 2>/dev/null || true)"]);
+            Quickshell.execDetached(["bash", "-c", "$HOME/.config/hypr/scripts/power.sh profile balanced"]);
         }
     }
 
@@ -598,8 +597,7 @@ Item {
         root._syncSysfsBattery();
 
         let tlpCmd = (name === "performance") ? "performance" : (name === "power-saver") ? "power-saver" : "balanced";
-        let asusProf = (name === "performance") ? "Performance" : (name === "power-saver") ? "Quiet" : "Balanced";
-        Quickshell.execDetached(["bash", "-c", "sudo /run/current-system/sw/bin/tlp " + tlpCmd + " && (command -v asusctl >/dev/null 2>&1 && asusctl profile set " + asusProf + " 2>/dev/null || true)"]);
+        Quickshell.execDetached(["bash", "-c", "$HOME/.config/hypr/scripts/power.sh profile " + tlpCmd]);
         profileRefreshTimer.restart();
 
         let targetRR = (name === "performance") ? "120" : "60";

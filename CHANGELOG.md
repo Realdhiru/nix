@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-10-16 — Bar Workspace Widget Animation & Performance Optimization
+
+- **Debounced Workspace IPC Event Stream ([`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml), [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml))**:
+  - Replaced redundant synchronous model rebuild cascades across `onFocusedWorkspaceChanged`, `onActiveToplevelChanged`, `onRawEvent`, `workspaces.onValuesChanged`, and `toplevels.onValuesChanged` with a single-flight 16ms debounce timer (`wsDebounceTimer`), coalescing multi-event bursts per workspace transition into a single frame-synchronized pass.
+  - Retained instantaneous active index updates on `onFocusedWorkspaceChanged` while debouncing downstream metadata scanning.
+- **Layout Tween Stability & Highlight Jitter Elimination ([`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml))**:
+  - Decoupled `wsLayout.y` from animating `implicitHeight` changes during delegate mount/unmount transitions (`wsFlickable.contentHeight > wsFlickable.height ? 0 : Math.round((wsFlickable.height - wsLayout.height) / 2)`), preventing coordinate fighting between layout re-centering and the active pill indicator.
+  - Corrected Flickable auto-scroll coordinate space mapping by accounting for `wsLayout.y` offset (`targetY = wsLayout.y + activeItem.y`), eliminating rubber-banding and scroll snapping on multi-workspace switches.
+
+## 2026-10-15 — Wallpaper Favorites Feature & Automated Multi-Doc Sync Invariant
+
+- **Wallpaper Favorites Feature & Persistent Storage ([`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh), [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**:
+  - Added `fav` / `toggle-fav` subcommand to [`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh): reads current or last active wallpaper, resolves canonical path, and atomically adds/removes the target from `$HOME/.local/share/wallpaper_favorites.txt` with minimal notifications (`"Added to Favorites"` / `"Removed from Favorites"`).
+  - Bound `SUPER + SHIFT + \` in [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua) to trigger `wallpaper.sh fav`.
+  - Added persistent "Favorites" tab in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml) directly at index 1 between "All" and "Gruvbox", complete with a vector 5-pointed Star icon (`★`).
+  - Added native `FileView` watching `wallpaper_favorites.txt` to dynamically populate and update `favoritesProxyModel` in real time with zero subprocess or polling overhead.
+- **Automated Multi-Doc Sync Invariant ([`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md))**:
+  - Hardened Rule 1 in [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md) into an Absolute Mandatory Multi-Doc Sync Invariant, strictly enforcing synchronous cross-updating of `README.md`, `CHANGELOG.md`, `docs/decisions.md`, `docs/tacit_knowledge.md`, and skill references on every configuration, keybind, or code change.
+
 ## 2026-10-13 — Match Window Gaps to Bar Footprints
 
 - Set the TopBar and SideBar exclusive zones to their content dimensions, excluding the visual edge margin so Hyprland's configured `gaps_out` supplies that space once.
@@ -18,6 +37,20 @@
 - Updated [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua) Super + two-finger pinch gesture:
   - Spreading fingers scales zoom continuously with smooth easing based on live finger distance.
   - Pinching inward even slightly immediately triggers `zoom_out()`, smoothly resetting zoom back to $1.0\times$ with latching to prevent oscillation.
+
+## 2026-10-14 — Hardware Decoupling, Podman Purge & Documentation Audit
+
+- **Complete Hardware Decoupling, Type-C Port Stabilization & Vendor CLI Isolation ([`power.nix`](file:///home/realdhiru/nix/modules/system/power.nix), [`asus.nix`](file:///home/realdhiru/nix/hosts/nixos/hardware/asus.nix), [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh), [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml))**:
+  - Permanently removed the flawed custom UCSI Type-C udev rule (`ucsi-source-psy-USBC000:001`), which was falsely triggering `tlp bat` whenever non-charging Type-C peripherals (hubs, flash drives, SSDs, phones) were plugged in. Restored TLP's native multi-source AC/battery evaluation (`tlp auto`).
+  - Added `RUNTIME_PM_DENYLIST = "00:0d.0 00:0d.3"` to TLP settings in [`hosts/nixos/hardware/asus.nix`](file:///home/realdhiru/nix/hosts/nixos/hardware/asus.nix) to protect the Intel Raptor Lake Thunderbolt 4 controller from D3cold runtime sleep states, eliminating kernel resume resets (`xhci_hcd: xHC error in resume, USBSTS 0x401`) and stabilizing the physical Type-C port.
+  - Added `profile` subcommand to [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh): orchestrates universal TLP power modes, updates the standard Linux kernel ACPI interface (`/sys/firmware/acpi/platform_profile`), and dynamically probes for vendor tooling (`command -v asusctl`).
+  - Refactored [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml) to route power profile changes through `power.sh profile <name>`, completely eliminating hardcoded `asusctl` calls from desktop shell QML.
+- **Podman Daemon Removal & Flake Packaging SSOT ([`services.nix`](file:///home/realdhiru/nix/modules/system/services.nix), [`README.md`](file:///home/realdhiru/nix/README.md), [`decisions.md`](file:///home/realdhiru/nix/docs/decisions.md), [`tacit_knowledge.md`](file:///home/realdhiru/nix/docs/tacit_knowledge.md))**:
+  - Removed lingering `virtualisation.podman` service block from [`modules/system/services.nix`](file:///home/realdhiru/nix/modules/system/services.nix).
+  - Aligned all documentation with the modern system architecture: third-party and custom applications are packaged via standalone Nix Flakes, native derivations in `pkgs/`, or kernel `binfmt_misc` AppImage execution, with zero container runtime overhead.
+- **Lockscreen & Terminal Documentation Correction ([`README.md`](file:///home/realdhiru/nix/README.md), [`decisions.md`](file:///home/realdhiru/nix/docs/decisions.md), [`installation.md`](file:///home/realdhiru/nix/docs/installation.md))**:
+  - Corrected `README.md` and `docs/decisions.md` to document the real lockscreen architecture: instant GPU-accelerated screenshot blur via `hyprlock` (`path = screenshot`, `blur_passes = 2`, sub-20ms PAM authentication), removing stale claims of QtMultimedia live video lockscreen.
+  - Purged phantom references to deleted files (`hosts/nixos/hardware/sonix-webcam.nix`, `dotfiles/wezterm.lua`) from architecture trees, skills, and installation guides.
 
 ## 2026-10-14 — QuickShell Wallpaper Picker Deterministic Active Centering Fix
 
