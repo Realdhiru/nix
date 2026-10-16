@@ -522,8 +522,14 @@ Item {
     function _reconcileStartupProfile(isOnline, explicitCached) {
         let raw = explicitCached || (typeof profileCacheFile.text === "function" ? profileCacheFile.text() : profileCacheFile.text);
         let cached = raw ? raw.trim() : "";
+
+        // If on battery, never boot/restore into performance profile
+        if (!isOnline && cached === "performance") {
+            cached = "balanced";
+        }
+
         if (cached === "power-saver" || cached === "performance" || cached === "balanced") {
-            root._manualOverride = true;
+            root._manualOverride = (cached === "power-saver");
             root.requestedProfile = cached;
             root.powerProfile = cached;
             Quickshell.execDetached(["sh", "-c", "echo '" + cached + "' > /tmp/qs_requested_profile; echo '" + cached + "' > /tmp/qs_power_profile; echo '" + cached + "' > $HOME/.cache/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile '" + cached + "'"]);
@@ -553,6 +559,11 @@ Item {
     function _handleAcTransition(wasOnline, isOnline) {
         if (!root._acInitialized) {
             root._acInitialized = true;
+            // On startup initialization, ensure hardware profile matches power source
+            if (!isOnline && (root.powerProfile === "performance" || root.requestedProfile === "performance")) {
+                root._manualOverride = false;
+                root.setPowerProfile("balanced", false);
+            }
             return;
         }
         if (wasOnline === isOnline) return;
@@ -566,9 +577,9 @@ Item {
             root._manualOverride = false;
             root.setPowerProfile("performance", false);
         } else {
-            if (!root._manualOverride) {
-                root.setPowerProfile("balanced", false);
-            }
+            // Disconnecting AC always resets override and switches to balanced
+            root._manualOverride = false;
+            root.setPowerProfile("balanced", false);
         }
     }
 

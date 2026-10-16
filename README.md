@@ -133,7 +133,7 @@ Built for **100% portability** — fork it, edit one file, and deploy the entire
 ## Design & Technical Highlights
 
 ### Power & Thermal Management
-- **Hardware-Level Power Authority**: TLP coordinates CPU energy-performance preferences (EPP), ASPM, and platform profiles across AC and battery, while enforcing battery charge thresholds directly at the firmware level. Host-specific platform hooks and quirks are cleanly isolated under `hosts/<host>/hardware/` without polluting generic modules.
+- **Hardware-Level Power Authority**: TLP coordinates CPU energy-performance preferences (EPP), ASPM, and platform profiles across AC and battery, while enforcing battery charge thresholds directly at the firmware level. QuickShell event-driven automation automatically switches between AC performance and battery balanced profiles on plug/unplug events. Host-specific platform hooks and quirks are cleanly isolated under `hosts/<host>/hardware/` without polluting generic modules.
 - **Dynamic GPU Shader Bypass**: On battery-saver profiles or solid black wallpapers, compositor dual-kawase blur shaders and drop shadows are automatically bypassed with 100% opaque window rendering, eliminating multi-pass GPU alpha-blending.
 - **Event-Driven Telemetry (Zero Polling Loops)**: System telemetry reads directly from Linux kernel uevents and sysfs watchers rather than periodic shell polling timers. In-process `/proc` inspection in background daemons eliminates unnecessary subprocess forks, allowing CPU package states to settle into deep C-state sleep.
 - **Transient Spike Control**: Disables aggressive dynamic frequency boost on battery to eliminate thermal spikes from background Chromium and Electron processes.

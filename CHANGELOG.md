@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-10-16 — Automated AC/Battery Power Profile Synchronization & Latch Fix
+
+- **Automated AC Disconnect Hardware Profile Switch ([`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml))**:
+  - Eliminated manual override latching bug where reading cached `"performance"` profile on shell startup erroneously locked `_manualOverride = true`, preventing `_handleAcTransition()` from switching hardware to `balanced` on AC unplug.
+  - Hardened battery mode enforcement: disconnecting AC now unconditionally resets `_manualOverride = false` and invokes `setPowerProfile("balanced", false)`, guaranteeing hardware drops to ~10–12W balanced battery operation instead of staying pegged at 15–20W performance mode.
+  - Fixed startup reconciliation and first AC transition suppression: on cold boot or shell reload on battery, cached `"performance"` profiles are rewritten to `"balanced"`, and `_acInitialized` verifies the active power profile immediately reflects battery status.
+
 ## 2026-10-16 — Bar Workspace Widget Animation & Performance Optimization
 
 - **Debounced Workspace IPC Event Stream ([`SideBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SideBar.qml), [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml))**:

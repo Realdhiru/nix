@@ -16,6 +16,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - `apply_profile.sh` never calls `tlp ac/bat`; ASUS udev rule is sole AC/BAT authority.
   - EPP writes require governor to be set first (`set_epp.sh`).
   - Balanced battery profile (`balance_performance`, Turbo `1`, Platform Profile `balanced`, ASPM `powersupersave`) is empirically locked.
+  - **Automated AC/Battery Profile Switching**: Disconnecting AC power must unconditionally reset `_manualOverride` in [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml) and switch hardware power profile to `balanced` (invoking `power.sh profile balanced` -> TLP, ACPI `/sys/firmware/acpi/platform_profile`, and `asusctl`). Cold boots or shell reloads while on battery must never restore a cached `performance` profile.
 
 ### 3. QuickShell Architecture & IPC
 - **Decision:** Native C++ event-driven bindings only (`Quickshell.Hyprland`, `Quickshell.Services.Pipewire`, `FileView { watchChanges: true }`, `FileWatcher`).

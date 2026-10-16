@@ -146,4 +146,7 @@
 - **Workspace Switch Lag & Highlight Coordinate Fighting:**
   - *Symptom:* Switching workspaces causes noticeable UI stutter, jittery or jumping active highlights, and erratic viewport scrolling in bar workspace widgets.
   - *Mitigation:* Rapid Hyprland events (`workspace`, `focusedmon`, `openwindow`, `workspaces.valuesChanged`) emit in tight bursts. Synchronous model recomputation on every event starves the Qt event loop. Debounce incoming events via a 16ms single-shot timer (`wsDebounceTimer`), while updating `activeIndex` immediately. Furthermore, never bind layout container offsets (`wsLayout.y`) to tweening `implicitHeight` bounds while delegates animate size (0 $\leftrightarrow$ 32px), as container motion fights the highlight animation. Explicitly offset Flickable auto-scroll targets (`wsLayout.y + activeItem.y`).
+- **Power Profile Manual Override Latch & AC Disconnect Desync:**
+  - *Symptom:* Unplugging laptop charger leaves hardware pinned in `performance` mode (drawing 15–20W instead of 10–12W), while QuickShell battery widget or user expectation assumes `balanced` mode on battery.
+  - *Mitigation:* In [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml), never set `_manualOverride = true` during startup cache recovery unless explicitly requested. Disconnecting AC must unconditionally reset `_manualOverride = false` and force `setPowerProfile("balanced", false)`. Startup reconciliation must force `"balanced"` if booted on battery, and `_acInitialized` must verify live profile matches the power source.
 

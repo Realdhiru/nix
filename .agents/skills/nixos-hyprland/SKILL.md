@@ -56,6 +56,7 @@ description: High-density operational reference for maintaining the user's NixOS
 - **Power Authority**: TLP 1.9.1 is the sole hardware authority (`power.nix`). `asusd` only enforces the 80% charge ceiling (`charge_control_end_threshold = 80`). `asusd.ron` must keep `bat_profile = Balanced` and `change_platform_profile_on_battery = false` to prevent hardware throttling on battery.
 - **Lid Policy**: `HandleLidSwitch = "ignore"`. Laptop lid closure never triggers unannounced suspend. Suspend is manual (`Shift + Esc`) or automated via 30-minute idle sleep.
 - **Balanced Battery Profile**: `balance_performance`, Turbo `1`, Platform Profile `balanced`, ASPM `powersupersave` is empirically locked.
+- **Automated AC/Battery Profile Switching**: Unplugging AC power must unconditionally switch hardware power profile to `balanced` (invoking `power.sh profile balanced` -> TLP, ACPI `/sys/firmware/acpi/platform_profile`, and `asusctl`) and clear `_manualOverride = false` in `SysData.qml`. Startup reconciliation must never restore a cached `performance` profile while running on battery.
 - **Coffee Mode & Persistent Idle Inhibition**:
   - `SUPER + CTRL + U` invokes `power.sh inhibit` to acquire `systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity`.
   - State is canonically persisted in `~/.cache/quickshell/state.json` under `modes.coffee`.
