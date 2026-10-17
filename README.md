@@ -118,6 +118,7 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 | **Audio Server & FX** | [PipeWire](https://pipewire.org) + WirePlumber (`filter-chain`) | Low-latency audio routing, native 10-band C DSP equalizer & mic processing |
 | **Power Management** | [TLP](https://linrunner.de/tlp/) | Hardware power profiles, CPU scaling governor, EPP & battery charge thresholds (host-specific quirks isolated in `hosts/<host>/hardware/`) |
 | **File Management** | [PCManFM-Qt](https://github.com/lxqt/pcmanfm-qt) + Filelight | Lightweight Qt file manager & interactive disk usage map |
+| **Knowledge Base** | [Obsidian](https://obsidian.md) | Native Wayland markdown second-brain vault with interactive graph view |
 | **Application Packaging** | [Nix Flakes](https://wiki.nixos.org/wiki/Flakes) + [AppImage](https://appimage.org/) | Custom standalone flakes, declarative packaging & kernel `binfmt_misc` AppImage execution |
 
 ---

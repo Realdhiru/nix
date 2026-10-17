@@ -1714,14 +1714,20 @@ Item {
 
                             property real targetSingleBaseAngle: (index / Math.max(1, orbitRepeater.count)) * Math.PI * 2
                             property real singleBaseAngle: targetSingleBaseAngle
-                            Behavior on singleBaseAngle { NumberAnimation { duration: 700; easing.type: Easing.OutCubic } }
+                            Behavior on singleBaseAngle {
+                                enabled: floatCardDelegateContainer.visible
+                                NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
+                            }
 
                             property real singleLiveAngle: (window.globalOrbitAngle * 1.5) + singleBaseAngle
 
                             property real arcSpread: Math.PI * 0.8
                             property real targetNodeOffset: (siblingsCount > 1) ? ((localIndex / (siblingsCount - 1)) - 0.5) * arcSpread : 0
                             property real nodeOffset: targetNodeOffset
-                            Behavior on nodeOffset { NumberAnimation { duration: 700; easing.type: Easing.OutCubic } }
+                            Behavior on nodeOffset {
+                                enabled: floatCardDelegateContainer.visible
+                                NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
+                            }
 
                             property real parentCoreAngle: (window.globalOrbitAngle * 1.5) + parentBaseAngle
                             property real multiLiveAngle: myParentIdx === -1 ? singleLiveAngle : (parentCoreAngle + nodeOffset)
@@ -1729,7 +1735,10 @@ Item {
                             property int ringIndex: isInfoNode ? 0 : index % 2
                             property real targetRingOffset: ringIndex * window.s(40)
                             property real ringOffset: targetRingOffset
-                            Behavior on ringOffset { NumberAnimation { duration: 700; easing.type: Easing.OutCubic } }
+                            Behavior on ringOffset {
+                                enabled: floatCardDelegateContainer.visible
+                                NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
+                            }
 
                             property real singleRadX: isInfoNode ? window.s(280) : window.s(320) + ringOffset
                             property real singleRadY: isInfoNode ? window.s(180) : window.s(200) + ringOffset
@@ -1742,10 +1751,10 @@ Item {
                             property real currentAngle: (singleLiveAngle * (1 - unifiedRatio)) + (multiLiveAngle * unifiedRatio)
 
                             property real pwrDrift: window.currentPower ? 0 : window.s(40)
-                            Behavior on pwrDrift { NumberAnimation { duration: 600; easing.type: Easing.OutQuint } }
+                            Behavior on pwrDrift { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
 
-                            property real animRadX: (currentRadX + pwrDrift) * (0.25 + 0.75 * entryAnim)
-                            property real animRadY: (currentRadY + pwrDrift) * (0.25 + 0.75 * entryAnim)
+                            property real animRadX: currentRadX + pwrDrift
+                            property real animRadY: currentRadY + pwrDrift
 
                             property real targetX: myParentIdx === -1
                                 ? (orbitContainer.width / 2) - (width / 2) + Math.cos(currentAngle) * animRadX
@@ -1762,8 +1771,8 @@ Item {
                             x: targetX
                             y: targetY + liveBob
 
-                            scale: (!isLoaded ? 0.0 : (floatMa.pressed ? dynamicScale * 0.95 : (floatCard.locksList ? dynamicScale * 1.08 : dynamicScale))) * floatCard.bumpScale
-                            Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                            scale: (!isLoaded ? 0.92 : (floatMa.pressed ? dynamicScale * 0.95 : (floatCard.locksList ? dynamicScale * 1.08 : dynamicScale))) * floatCard.bumpScale
+                            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
                             z: floatCard.locksList ? 10 : 1
 
                             MultiEffect {

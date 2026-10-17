@@ -171,4 +171,15 @@
 - **Fontconfig Regional Indicator Fallback Precedence in Fuzzel:**
   - *Symptom:* Country flags (`🇦🇪`, `🇦🇬`, `🇧🇦`, etc.) render as monochrome two-letter boxed indicators (`[A|E]`, `[A|G]`) instead of colored flag symbols.
   - *Mitigation:* Unicode flags consist of pairs of Regional Indicator symbols (`0x1F1E6`–`0x1F1FF`). If `--font` specifies only monospace or Nerd Fonts (`JetBrainsMono Nerd Font`), Fontconfig's fallback order hits `Unifont Upper` before `Noto Color Emoji`. Prepend `Noto Color Emoji` to the font configuration list (`--font="Noto Color Emoji,JetBrainsMono Nerd Font:size=11"`) to guarantee colored flag emoji ligatures render correctly.
+- **Electron Upstream Wayland Automation via NIXOS_OZONE_WL:**
+  - *Symptom:* Confusion over whether to write custom wrappers or add `--ozone-platform=wayland` CLI flags for individual Electron packages like Obsidian.
+  - *Mitigation:* Official Nixpkgs wrappers for Electron/Chromium packages automatically check for `NIXOS_OZONE_WL` and `WAYLAND_DISPLAY` environment variables and append `--ozone-platform=wayland --enable-wayland-ime=true --wayland-text-input-version=3`. Because `hosts/nixos/default.nix` globally exports `NIXOS_OZONE_WL = "1"`, no redundant wrapper or custom launcher scripts should be introduced.
+- **Input Grab Lockout from Concurrent Layer-Shell Surfaces (Slurp Background Overlay Banned):**
+  - *Symptom:* Spawning `slurp` concurrently behind `fuzzel` to catch outside mouse clicks completely grabs all seat input (pointer and keyboard events), locking out the user from interacting with their session or typing.
+  - *Mitigation:* `slurp` requests exclusive pointer grab at the Wayland compositor protocol level. Never spawn `slurp` in the background to emulate click-outside detection. Fuzzel's native layer-shell lifecycle (`--keyboard-focus=exclusive`) must be respected directly without pseudo-grab hacks.
+- **QuickShell Orbital Card Delegate Origin Scatter on Open:**
+  - *Symptom:* Network or system widgets with orbital / card layouts scatter outward from `(0, 0)` in a burst when the popup opens.
+  - *Mitigation:* Do not animate radial collapse multipliers from 0 during entry. More importantly, gate QML `Behavior on singleBaseAngle` and offsets with `enabled: container.visible`. During initial component instantiation, `Repeater.count` temporarily evaluates to 0, which collapses angles to $0 \times 2\pi = 0$. Un-gated behaviors animate from this transient 0 to target angles on frame 1. Gating behaviors on `visible` forces immediate coordinate evaluation at mount time without an origin explosion.
+
+
 

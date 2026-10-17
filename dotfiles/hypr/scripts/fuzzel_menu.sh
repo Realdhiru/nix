@@ -234,8 +234,8 @@ case "$MODE" in
             SELECTION=$(fuzzel "${FUZZEL_ARGS[@]}" < "$DB_PATH" 2>/dev/null) || EXIT_CODE=$?
 
             if [ "$EXIT_CODE" -eq 10 ]; then
-                # Tab pressed: toggle mode and preserve current selection/typed prefix
-                QUERY="$SELECTION"
+                # Tab pressed: toggle mode with a clean, empty search box
+                QUERY=""
                 if [ "$SUBMODE" = "emoji" ]; then
                     SUBMODE="glyph"
                 else

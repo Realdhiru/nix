@@ -2,13 +2,19 @@
 
 ## 2026-10-17 — Native PipeWire 10-Band Equalizer Refactor, Flake Stabilization & Storage Hygiene
 
+- **Obsidian Declarative Integration & Nix Dotfiles Knowledge Graph Vault ([`packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix), [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), `~/Projects/Brain`)**:
+  - Integrated official `obsidian` package declaratively into `environment.systemPackages` in [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix), inheriting system-wide `NIXOS_OZONE_WL = "1"` from [`hosts/nixos/default.nix`](file:///home/realdhiru/nix/hosts/nixos/default.nix) for native Wayland execution and touch gestures with zero custom wrapper bloat.
+  - Added glass opacity window rule `0.65` in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) matching desktop visual hierarchy and transparent theming.
+  - Architected and generated comprehensive second-brain knowledge graph vault in `~/Projects/Brain` covering 6 core subsystems (Maps of Content, Architecture, Compositor & Widgets, Hardware & Power, Tacit Knowledge & Traps, Audio & Media) with bidirectional wikilinks, tags, and pre-configured `.obsidian/graph.json` color clustering.
+  - Configured `~/.config/obsidian/obsidian.json` to automatically register and open the `Brain` vault on initial launch.
+
 - **Emoji & Nerd Font Glyph Fuzzel Picker & DB Modernization ([`emoji.db`](file:///home/realdhiru/nix/dotfiles/hypr/assets/emoji.db), [`glyph.db`](file:///home/realdhiru/nix/dotfiles/hypr/assets/glyph.db), [`fuzzel_menu.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/fuzzel_menu.sh), [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:
   - Cleaned and refactored `~/Projects/emoji.db` and modernized with complete Unicode 15.1 specification (expanded from 1,898 to 3,773 fully-qualified emojis with rich descriptive tags).
   - Deduplicated and sanitized `~/Projects/glyph.db` (10,386 unique Nerd Font v3 icons), merging duplicate character codepoints (`seti`, `custom`, `cod`, `oct`) into unified multi-tag search strings.
   - Mirrored canonical database assets directly to `dotfiles/hypr/assets/` (`~/.config/hypr/assets/`) for reproducible system deployment.
   - Implemented unified, interactive `emoji` and `glyph` subcommands in [`fuzzel_menu.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/fuzzel_menu.sh) using POSIX `awk` and `fuzzel --dmenu --match-mode=fzf` with full `solid_bg` fallback, instant `wl-copy` clipboard integration, and notification feedback.
   - Built seamless in-menu mode toggling: pressing `Tab` inside the picker intercepts via `custom-1` (exit code 10) and toggles immediately between Emoji and Nerd Font Glyph databases without dismissing the window.
-  - Prepended `Noto Color Emoji` to `--font` list in emoji mode (`"Noto Color Emoji,JetBrainsMono Nerd Font:size=11"`), resolving regional indicator pairs into authentic full-color country flags rather than `Unifont Upper` monochrome letter-boxes.
+  - Resolved Network widget circular device explosion glitch in [`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml): removed uninitialized 0-angle tween and radial collapse scaling (`(0.25 + 0.75 * entryAnim)`), anchoring delegate items directly on their pre-calculated orbit paths on mount with clean in-place fade and 250ms scale settling.
   - Unified Hyprland global shortcuts: bound `Super + .` (`SUPER + PERIOD`) in [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua) for the unified picker, retiring the separate `Super + Alt + .` keybind.
 - **Native PipeWire 10-Band Equalizer & EasyEffects Decommission ([`home.nix`](file:///home/realdhiru/nix/home.nix), [`equalizer.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/equalizer.sh), [`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml))**:
   - Permanently purged `services.easyeffects` daemon, recovering ~150MB RAM, 46MB swap, and 19 background worker threads.

@@ -90,6 +90,7 @@ in
     kdePackages.okular
     kdePackages.breeze
     onlyoffice-desktopeditors
+    obsidian
     blender
     kdePackages.kdenlive
     parabolic
