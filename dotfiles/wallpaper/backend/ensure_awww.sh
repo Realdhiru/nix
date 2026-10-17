@@ -29,6 +29,11 @@ case "${1:-}" in
   --stop)    STOP=1 ;;
 esac
 
+# If wallpaper is killed, do not spawn or restore awww-daemon unless explicitly stopping
+if [ "$STOP" -eq 0 ] && [ -f "$HOME/.cache/wallpaper_killed" ]; then
+  exit 0
+fi
+
 # The daemon is a Nix-wrapped binary. Its `comm` is truncated to
 # `.awww-daemon-wr` (not `awww-daemon`), so `pgrep -x` never matches, and
 # `pgrep -f` self-matches any shell whose command line merely mentions

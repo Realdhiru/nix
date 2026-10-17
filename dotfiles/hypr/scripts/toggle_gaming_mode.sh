@@ -24,6 +24,7 @@ if [ -f "$STATE_FILE" ] || [ "$IS_GAMING" = "true" ]; then
         hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true }, active_opacity = 1.0, inactive_opacity = 1.0 }, animations = { enabled = true } })" >/dev/null 2>&1 || true
         hyprctl reload >/dev/null 2>&1 || true
     fi
+    bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
 
     notify-send -a "Game Mode" -u low "OFF"
 else
@@ -35,6 +36,7 @@ else
     # 2. Disable animations for instant frame response
     hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0 }, animations = { enabled = false } })" >/dev/null 2>&1 || true
     hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" >/dev/null 2>&1 || true
+    bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
 
     # 3. Wallpapers stay ENABLED
     # 4. Zero-latency compositor flags: Direct Scanout (bypasses composition latency), VRR (adaptive sync), tearing

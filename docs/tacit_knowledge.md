@@ -149,4 +149,26 @@
 - **Power Profile Manual Override Latch & AC Disconnect Desync:**
   - *Symptom:* Unplugging laptop charger leaves hardware pinned in `performance` mode (drawing 15–20W instead of 10–12W), while QuickShell battery widget or user expectation assumes `balanced` mode on battery.
   - *Mitigation:* In [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml), never set `_manualOverride = true` during startup cache recovery unless explicitly requested. Disconnecting AC must unconditionally reset `_manualOverride = false` and force `setPowerProfile("balanced", false)`. Startup reconciliation must force `"balanced"` if booted on battery, and `_acInitialized` must verify live profile matches the power source.
+- **EasyEffects Background Bloat vs Native PipeWire Filter-Chains:**
+  - *Symptom:* High memory usage (~150MB RSS), 46MB swap, 19 background worker threads, and slow/fragile preset loading loops (`sleep 5; apply_eq; sleep 4; apply_eq`) with Python JSON generator in hot paths.
+  - *Mitigation:* Eliminate EasyEffects entirely. Use PipeWire's native `libpipewire-module-filter-chain` with built-in biquad filters (`bq_peaking`, $Q = 1.414$). Control gain parameters dynamically via `pw-cli s <id> Props '{ "params": [ "eq_band_<idx>:Gain", <val> ] }'` in 2–4ms. Keep capture sink priority at 2100 with a passive playback node so WirePlumber automatically routes to whichever physical output device is active.
+- **Proton Compatibility Directories Without Steam Installed:**
+  - *Symptom:* User finds `~/.local/share/Steam/compatibilitytools.d/` on disk even though Steam is not installed, assuming it is leftover trash.
+  - *Mitigation:* ProtonUp-Qt and Lutris install GE-Proton runners into `~/.local/share/Steam/compatibilitytools.d/` by default. Lutris game launch configs (`~/.local/share/lutris/games/*.yml`) directly reference specific GE-Proton versions in this path. Never delete this entire directory without inspecting Lutris YAML files; prune only unused/duplicate versions while preserving the active version (e.g. `GE-Proton10-34`).
+- **Fixed-Output Derivation Hash Mismatches on Binary Flakes:**
+  - *Symptom:* Upstream binary tarballs (Zen Browser, ChatGPT/Codex) change remote hashes without version number increments, causing `error: hash mismatch in fixed-output derivation` and blocking entire NixOS rebuilds.
+  - *Mitigation:* Fork the upstream flake into a personal GitHub repo (`Realdhiru/zen-browser-flake`), update `sources.json` to the new upstream hash, push to GitHub, and point `flake.nix` to the personal fork. Never use dirty one-off hash overrides when a clean flake fork provides deterministic traceability.
+- **Intel Integrated GPU Ring-Buffer Hang on Rapid Fullscreen Surface Switches:**
+  - *Symptom:* Rapidly toggling wallpaper kill/restore or glass translucency causes an instant GPU freeze (`i915: GPU HANG: ecode 12:1:84dffffb in QSGRenderThread; rcs0 reset request timed out`). Aquamarine DRM backend receives broken page-flip, Hyprland trips assertion `CHyprOpenGLImpl::begin` $\rightarrow$ `abort()` $\rightarrow$ desktop crashes into Safe Mode.
+  - *Mitigation:* Rapid destruction and re-allocation of 2.8K framebuffers with Kawase blur masks exhausts the Intel ring buffer. All mode transitions and testing loops must be debounced with minimum 1.5s separation. Guard `watcher.sh`, `ensure_awww.sh`, and `wallpaper.sh boot` against self-triggering ghost loops.
+- **Fuzzel Dmenu Multi-Column Filtering & Delimiter Traps:**
+  - *Symptom:* `fuzzel --dmenu` with `--with-nth` or `--accept-nth` matches or returns entire raw lines or fails to match search queries cleanly.
+  - *Mitigation:* In `fuzzel --dmenu`, always explicitly specify `--nth-delimiter=$'\t'` when formatting tabular entries. To display a clean label (`<icon>  <name>`), search against rich keywords/tags, and return ONLY the target symbol/path on Enter:
+    - Set `--with-nth=1` (render column 1 in UI).
+    - Set `--accept-nth=2` (output column 2 on selection).
+    - Set `--match-nth=3` (fuzzy filter against column 3 keywords).
+    Format the pipeline via single-pass POSIX `awk -F'\t' '{ printf "%s  %s\t%s\t%s %s\n", $1, $2, $1, $1, $2 }'`. This prevents subshell forks and processes 10,000+ items instantaneously.
+- **Fontconfig Regional Indicator Fallback Precedence in Fuzzel:**
+  - *Symptom:* Country flags (`🇦🇪`, `🇦🇬`, `🇧🇦`, etc.) render as monochrome two-letter boxed indicators (`[A|E]`, `[A|G]`) instead of colored flag symbols.
+  - *Mitigation:* Unicode flags consist of pairs of Regional Indicator symbols (`0x1F1E6`–`0x1F1FF`). If `--font` specifies only monospace or Nerd Fonts (`JetBrainsMono Nerd Font`), Fontconfig's fallback order hits `Unifont Upper` before `Noto Color Emoji`. Prepend `Noto Color Emoji` to the font configuration list (`--font="Noto Color Emoji,JetBrainsMono Nerd Font:size=11"`) to guarantee colored flag emoji ligatures render correctly.
 

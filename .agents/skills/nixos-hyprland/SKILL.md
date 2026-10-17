@@ -15,7 +15,7 @@ description: High-density operational reference for maintaining the user's NixOS
      - `~/nix/docs/tacit_knowledge.md`: Hardware traps, udev quirks, and non-obvious fixes.
      - `SKILL.md` & `AGENTS.md`: Operational rice rules and non-negotiables.
    - Zero documentation drift allowed.
-2. **Manual Git Authority**: Do **NOT** stage, commit, or push automatically. The user reviews, commits, and pushes all changes manually.
+2. **Git Commit & Push Policy**: Only stage, commit, or push when the user explicitly instructs you to do so. NEVER stage, commit, or push automatically or autonomously without explicit user direction.
 3. **High-Density / Signal-First Communication**:
    - Zero conversational filler, zero pleasantries, pure technical signal.
    - Exact clickable markdown links (`file:///...`), verified line ranges, and zero speculative hallucination.
@@ -41,7 +41,7 @@ description: High-density operational reference for maintaining the user's NixOS
     - `Main.qml` sets cached `targetObj.visible = true` once and never resets it: `onVisibleChanged` fires exactly once per process. Per-open refresh/state-reset belongs in `showWidget()` (invoked on every open). `Shortcut{enabled: window.visible}` and `running: window.visible` animations otherwise stay armed forever.
     - Clipboard paste must declare MIME (`wl-copy --type image/png` / `--type text/plain;charset=utf-8`); bare `wl-copy` offers text only. Serialize copy→close (one `Process` + `onExited`), never racing `execDetached` pairs. `wl-paste --watch cliphist store` pairs live in supervised systemd user units (`Restart=always`), never unsupervised `exec_cmd` one-shots.
     - Battery runtime comes only from `Quickshell.Services.UPower` (`UPower.displayDevice`: `energy`, `energyCapacity`, `changeRate`, `timeToFull`). Never `FileView`/timer-poll sysfs (zero inotify). `isLaptopBattery` matches both `DisplayDevice` and `BAT0` — source from `displayDevice` directly.
-    - SNI tray: clients register once at startup and never re-announce (a watcher restart empties the tray until clients restart). `kdeconnectd` exports no `StatusNotifierItem` — the icon requires `kdeconnect-indicator`. EasyEffects `--service-mode` and `blueman-applet` (GtkStatusIcon) cannot provide SNI icons. Never denylist `kdeconnect` while the indicator is autostarted.
+    - SNI tray: clients register once at startup and never re-announce (a watcher restart empties the tray until clients restart). `kdeconnectd` exports no `StatusNotifierItem` — the icon requires `kdeconnect-indicator`. `blueman-applet` (GtkStatusIcon) cannot provide SNI icons. Never denylist `kdeconnect` while the indicator is autostarted. EasyEffects is decommissioned in favor of native PipeWire `filter-chain`.
     - Media telemetry lives only in root `MusicState.qml` (pragma Singleton); `TopBar.qml`/`SideBar.qml` alias it and must never own `playerctl --follow`, `music_info.sh`, json `FileView`, `cava`, or media timers. UI files are never merged for backend sharing.
     - Marker-file `FileView`s (`wallpaper_killed`, `gaming_mode`) require `onFileChanged: { reload(); updateSolidMode(); }` — directory-watch signals create/delete but the buffer stays stale otherwise. Never SIGHUP a terminal to reload config; `touch` the config files (wezterm hot-reloads on mtime).
     - Coffee state lives only in `SysData.coffeeActive` (+ `setCoffee()`); volume writes go only through `wpctl` (Pipewire is read-only for display). Every persistent QML `Process` stops itself in `Component.onDestruction` — engine reloads orphan children otherwise.
@@ -72,6 +72,7 @@ description: High-density operational reference for maintaining the user's NixOS
   - Machine-specific hardware quirks isolated in `hosts/<host>/hardware/` (e.g. `hosts/nixos/hardware/asus.nix`).
   - ASUS OLED brightness keys: rebound after hybrid-sleep in `hosts/nixos/hardware/asus.nix`.
   - WirePlumber: `50-disable-libcamera.conf` disables libcamera to avoid UVC stream collision.
+  - Native PipeWire Equalizer: System audio uses `libpipewire-module-filter-chain` (10-band biquad peaking filters with $Q = 1.414$, virtual sink priority 2100) and native `pw-cli` gain control instead of external daemon apps.
 
 ## 3. Workflow & Verification Commands
 
@@ -97,4 +98,9 @@ sudo nixos-rebuild dry-run --flake ~/nix#nixos
 # Coffee mode query / toggle
 ~/.config/hypr/scripts/power.sh inhibit status
 ~/.config/hypr/scripts/power.sh inhibit toggle
+
+# Fuzzel picker testing (app, file, emoji, glyph)
+~/.config/hypr/scripts/fuzzel_menu.sh emoji
+~/.config/hypr/scripts/fuzzel_menu.sh glyph
 ```
+

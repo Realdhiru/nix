@@ -54,7 +54,7 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
     <td width="50%" align="center">
       <b>Media Player & Equalizer</b><br/>
       <img src="docs/assets/media_equalizer.webp" alt="Media Player & Equalizer" width="100%" /><br/>
-      <sub>Vinyl playback animation, MPRIS controls, and 10-band EasyEffects equalizer.</sub>
+      <sub>Vinyl playback animation, MPRIS controls, and native 10-band PipeWire DSP equalizer.</sub>
     </td>
     <td width="50%" align="center">
       <b>Monitor Control</b><br/>
@@ -115,7 +115,7 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 | **Music Streaming** | Spotify + [Spicetify](https://spicetify.app/) | Customized Spotify with Marketplace themes & extensions |
 | **Screen Recording** | [GPU Screen Recorder](https://git.dec05eba.com/gpu-screen-recorder-gtk/) | Low-overhead NVENC/VAAPI screen capture |
 | **Screenshots & Snips** | Grim + Slurp + Grimblast | Wayland screenshot suite with region selection & clipboard copy |
-| **Audio Server & FX** | [PipeWire](https://pipewire.org) + WirePlumber + [EasyEffects](https://github.com/wwmm/easyeffects) | Low-latency audio routing, DSP plugins & mic noise cancellation |
+| **Audio Server & FX** | [PipeWire](https://pipewire.org) + WirePlumber (`filter-chain`) | Low-latency audio routing, native 10-band C DSP equalizer & mic processing |
 | **Power Management** | [TLP](https://linrunner.de/tlp/) | Hardware power profiles, CPU scaling governor, EPP & battery charge thresholds (host-specific quirks isolated in `hosts/<host>/hardware/`) |
 | **File Management** | [PCManFM-Qt](https://github.com/lxqt/pcmanfm-qt) + Filelight | Lightweight Qt file manager & interactive disk usage map |
 | **Application Packaging** | [Nix Flakes](https://wiki.nixos.org/wiki/Flakes) + [AppImage](https://appimage.org/) | Custom standalone flakes, declarative packaging & kernel `binfmt_misc` AppImage execution |
@@ -144,6 +144,7 @@ Built for **100% portability** — fork it, edit one file, and deploy the entire
 - **Low-Latency Compositing Mode**: A dedicated keybind (`SUPER + SHIFT + G`) toggles Direct Scanout (`render:direct_scanout = 2`), Adaptive Sync (VRR), and asynchronous tearing for latency-sensitive full-screen workloads.
 - **Pure Wayland Pipeline**: All Chromium and Electron apps run with native Wayland flags (`NIXOS_OZONE_WL = "1"`), providing kinetic touchpad gestures and subpixel scrolling.
 - **Fuzzy File Navigation & Theming**: Centered interactive file search (`SUPER + SPACE`) with instant parent directory navigation in `pcmanfm-qt`, paired with in-place Wallust palette syncing across widgets, terminal, and launcher.
+- **Emoji & Nerd Font Glyph Picker**: Unified fuzzy picker for emojis (3,773 Unicode 15.1 symbols) and Nerd Font v3 icons (10,386 glyphs) bound to `SUPER + .` via `fuzzel_menu.sh`, with instant `Tab` toggling between emoji and glyph databases, copying selected characters to clipboard with Wayland sub-millisecond selection ownership.
 
 ### Declarative System Infrastructure
 - **Safety-Gated Rebuild Workflow**: A custom rebuild pipeline validates builds before activation, runs a post-switch health gate with automated rollbacks, and retains a 14-day garbage collection safety window while tracking floating `nixos-unstable`.

@@ -15,7 +15,7 @@
     };
 
     zen-browser = {
-      url = "github:youwen5/zen-browser-flake";
+      url = "github:Realdhiru/zen-browser-flake";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -29,9 +29,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Local (publishable) flake: official ChatGPT/Codex Linux app via FHS wrapper.
-    # Standalone repo: ~/Projects/codex-flake. After publishing, swap the URL to
-    # "github:Realdhiru/codex-flake".
+    # Standalone repo: ~/Projects/flakes/codex-flake.
     chatgpt = {
       url = "github:Realdhiru/codex-flake";
       inputs.nixpkgs.follows = "nixpkgs";

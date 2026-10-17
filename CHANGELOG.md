@@ -1,5 +1,43 @@
 # CHANGELOG
 
+## 2026-10-17 — Native PipeWire 10-Band Equalizer Refactor, Flake Stabilization & Storage Hygiene
+
+- **Emoji & Nerd Font Glyph Fuzzel Picker & DB Modernization ([`emoji.db`](file:///home/realdhiru/nix/dotfiles/hypr/assets/emoji.db), [`glyph.db`](file:///home/realdhiru/nix/dotfiles/hypr/assets/glyph.db), [`fuzzel_menu.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/fuzzel_menu.sh), [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:
+  - Cleaned and refactored `~/Projects/emoji.db` and modernized with complete Unicode 15.1 specification (expanded from 1,898 to 3,773 fully-qualified emojis with rich descriptive tags).
+  - Deduplicated and sanitized `~/Projects/glyph.db` (10,386 unique Nerd Font v3 icons), merging duplicate character codepoints (`seti`, `custom`, `cod`, `oct`) into unified multi-tag search strings.
+  - Mirrored canonical database assets directly to `dotfiles/hypr/assets/` (`~/.config/hypr/assets/`) for reproducible system deployment.
+  - Implemented unified, interactive `emoji` and `glyph` subcommands in [`fuzzel_menu.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/fuzzel_menu.sh) using POSIX `awk` and `fuzzel --dmenu --match-mode=fzf` with full `solid_bg` fallback, instant `wl-copy` clipboard integration, and notification feedback.
+  - Built seamless in-menu mode toggling: pressing `Tab` inside the picker intercepts via `custom-1` (exit code 10) and toggles immediately between Emoji and Nerd Font Glyph databases without dismissing the window.
+  - Prepended `Noto Color Emoji` to `--font` list in emoji mode (`"Noto Color Emoji,JetBrainsMono Nerd Font:size=11"`), resolving regional indicator pairs into authentic full-color country flags rather than `Unifont Upper` monochrome letter-boxes.
+  - Unified Hyprland global shortcuts: bound `Super + .` (`SUPER + PERIOD`) in [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua) for the unified picker, retiring the separate `Super + Alt + .` keybind.
+- **Native PipeWire 10-Band Equalizer & EasyEffects Decommission ([`home.nix`](file:///home/realdhiru/nix/home.nix), [`equalizer.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/equalizer.sh), [`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml))**:
+  - Permanently purged `services.easyeffects` daemon, recovering ~150MB RAM, 46MB swap, and 19 background worker threads.
+  - Deployed native `libpipewire-module-filter-chain` sink configuration in [`home.nix`](file:///home/realdhiru/nix/home.nix) (`~/.config/pipewire/pipewire.conf.d/99-equalizer-sink.conf`), running 10 ISO standard peaking biquad filters (31Hz–16kHz) with $Q = 1.414$ directly inside PipeWire's C audio engine with 0% extra CPU/memory overhead.
+  - Assigned virtual capture sink `effect_input.eq10` priority 2100 (`priority.driver = 2100`, `priority.session = 2100`) with passive playback node `effect_output.eq10`, automatically routing all system audio through the filter while WirePlumber dynamically forwards playback to the active physical sink (Bluetooth / USB DAC / Speaker).
+  - Purged runtime Python interpreter from hot path in [`equalizer.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/equalizer.sh): dynamic gain manipulation now executes in 2–4ms via native `pw-cli s <id> Props '{ "params": [ "eq_band_<idx>:Gain", <val> ] }'`.
+  - Re-tuned 8 equalizer presets (Flat, Bass, Treble, Vocal, Pop, Rock, Jazz, Classic) in `equalizer.sh` and `MusicPopup.qml` with balanced acoustic DSP curves (sub-bass punch, 250Hz boxiness suppression, 1k–2k vocal presence) eliminating digital clipping and harmonic distortion.
+  - Updated [`music_info.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/music_info.sh) to resolve physical devices via `node.driver-id` when default sink is the filter-chain, and updated [`cycle_audio_sink.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/cycle_audio_sink.sh) to toggle physical outputs via `pw-link`. Cleaned decommissioned EasyEffects references from [`fix_audio.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/fix_audio.sh) and [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua).
+- **Zen Browser Flake Fork & Upstream Hash Stabilization ([`flake.nix`](file:///home/realdhiru/nix/flake.nix), [`flake.lock`](file:///home/realdhiru/nix/flake.lock))**:
+  - Resolved NixOS system build failure caused by upstream Zen Browser tarball hash changes on version 1.23.3b.
+  - Forked and published dedicated flake [`Realdhiru/zen-browser-flake`](https://github.com/Realdhiru/zen-browser-flake) with verified tarball hash `sha256-uyBF0+IWVNQP6EElAJLurf0sH8gx7vtQkiJ3PIvcoUk=`, and updated [`flake.nix`](file:///home/realdhiru/nix/flake.nix) input URL.
+  - Synchronized `pkgs/chatgpt.nix` in `codex-flake` to version `26.1013.40934` (`1mx1ydfvw3ia47xihx7z4s0apdc46xl81mlszgibjhb6k9zrx99w`) and verified clean system build: `nix build .#nixosConfigurations.nixos.config.system.build.toplevel --no-link`.
+- **Targeted Storage Hygiene & Proton Version Audit**:
+  - Audited `~/.local/share/Steam/compatibilitytools.d/` and preserved `GE-Proton10-34` actively required by Lutris Forza Horizon 4 configuration, while safely purging obsolete duplicate versions (`GE-Proton11-3`, `GE-Proton11-5`, `GE-Proton11-6`, `GE-Proton11-7`), reclaiming disk space without wiping browser or thumbnail caches.
+- **Network Widget Cold-Start Default & Tab Switch Mute ([`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml))**:
+  - Changed initial `activeMode` property from `"bt"` to `"wifi"` so opening the QuickShell network widget defaults immediately to Wi-Fi scan and access point list.
+  - Muted loud `switch.wav` navigation clicks in `playSfx()` while keeping critical connect/disconnect/power sound cues intact.
+- **Sunset Widget Slider Smoothening & Responsive Controls ([`SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml))**:
+  - Replaced chunky 250K temperature and 5% effect increments with fine-grained steps (50K temperature, 2% gamma/saturation/grain/crt) for keyboard arrow control.
+  - Added smooth 100ms `Behavior on value` animations across all 5 sliders (`tempSlider`, `gammaSlider`, `satSlider`, `grainSlider`, `crtSlider`), eliminating glitchy handle snaps.
+  - Optimized backend debouncing to 120ms (`applyTimer.interval = 120`), coalescing subshell execution and CTM/shader generation during continuous arrow key navigation.
+- **Terminal Solid Opacity Synchronization ([`terminal-opacity.sh`](file:///home/realdhiru/nix/dotfiles/wallust/terminal-opacity.sh), [`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh), [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml))**:
+  - Extended [`terminal-opacity.sh`](file:///home/realdhiru/nix/dotfiles/wallust/terminal-opacity.sh) with full Solid Mode detection (`wallpaper_killed`, `gaming_mode`, `power-saver`), dynamically switching Alacritty's internal canvas opacity between `1.0` (fully solid) and `0.30`/`0.60` (translucent).
+  - Wired live IPC reload (`alacritty msg config "window.opacity = ..."`) directly into wallpaper kill toggles, gaming mode toggles, and power-saver transitions.
+- **Wallpaper Kill State & Inotify Guard ([`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh), [`watcher.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/watcher.sh), [`ensure_awww.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/ensure_awww.sh))**:
+  - Eliminated inversion bug in `cmd_boot()` which called toggle `cmd_kill` when `~/.cache/wallpaper_killed` existed, inadvertently reviving the wallpaper on reloads and boot checks.
+  - Guarded inotify `watcher.sh` and `ensure_awww.sh` lifecycle hooks against spawning daemons or executing fallback boots while wallpaper kill mode is active.
+  - Enforced a 600ms nanosecond throttle lock in `cmd_kill()` to protect the Intel integrated GPU execution ring (`rcs0`) from texture thrashing and hardware hang resets under rapid toggle spam.
+
 ## 2026-10-16 — Automated AC/Battery Power Profile Synchronization & Latch Fix
 
 - **Automated AC Disconnect Hardware Profile Switch ([`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml))**:

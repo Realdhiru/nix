@@ -474,6 +474,7 @@ Item {
                     # Full solid opacity + zero blur/shadow/animations + direct scanout 2 + VRR 1
                     hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = false }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '' }, animations = { enabled = false } })" 2>/dev/null
                     hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null && touch /tmp/qs_saver_visuals_ok
+                    bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
                 `;
                 Quickshell.execDetached(["bash", "-c", cmd]);
                 root.saverVisualState = "saver-applied";
@@ -511,6 +512,7 @@ Item {
                         hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, general = { allow_tearing = false }, decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
                         hyprctl reload >/dev/null 2>&1 || true
                     fi
+                    bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
                     touch /tmp/qs_normal_visuals_ok
                 `;
                 Quickshell.execDetached(["bash", "-c", cmd]);

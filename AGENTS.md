@@ -11,7 +11,7 @@ Whenever an agent touches or modifies any feature, script, keybind, hardware qui
   - **`~/.gemini/config/skills/nixos-hyprland/SKILL.md` & `~/nix/.agents/skills/nixos-hyprland/SKILL.md`**: Keep rice, widget, and NixOS operational guidelines synchronized.
 - **Zero Documentation Drift**: Code changes and documentation updates must happen in the exact same turn.
 - **Keep all documentation updates concise, practical, and bloat-free.**
-- **Do NOT stage, commit, or push automatically.** The user will review, stage, commit, and push all changes themselves.
+- **Git Commit & Push Policy**: Only stage, commit, or push when the user explicitly instructs you to do so. NEVER stage, commit, or push automatically or autonomously without explicit user direction.
 
 ---
 
@@ -59,6 +59,7 @@ Whenever an agent touches or modifies any feature, script, keybind, hardware qui
   - Verify anti-bleed layering so high-contrast wallpaper sketches/lines do not show through translucent glass panels.
   - Empirically test the **FIRST open** immediately after a fresh cold `forceReload` to ensure no shape snap, shrink, or uninitialized geometry glitch occurs.
 - **Zero Duplicate Process Policy**: NEVER execute raw `quickshell -p ...` or `hyprctl eval "hl.exec_cmd('quickshell ...')"` when QuickShell is running. ALWAYS reload via `quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload` or `~/nix/dotfiles/hypr/scripts/qs_manager.sh reload`.
+- **Zero Rapid Texture/Buffer Thrashing**: NEVER execute rapid back-to-back visual transitions (wallpaper kill/restore toggles, shader compile loops, multiple reload bursts) within milliseconds. The Intel integrated GPU ring buffer (`rcs0`) hangs under tight allocation bursts, causing an unrecoverable Aquamarine DRM page-flip crash (`CHyprOpenGLImpl::begin` assertion failure $\rightarrow$ `SIGABRT` $\rightarrow$ Safe Mode). All visual mode tests must settle with minimum 1.5s separation.
 - **Lightweight Verification Only (No Wasteful Screenshot Loops)**: DO NOT run lengthy, compute-heavy test loops or repeatedly capture/scan screenshots using vision tools. Verify syntax and service states swiftly via minimal commands, then ask the user directly in output how the change looks and functions.
 
 ---

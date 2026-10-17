@@ -172,6 +172,7 @@ Item {
     }
 
     function playSfx(filename) {
+        if (filename === "switch.wav") return;
         try {
             let rawUrl = Qt.resolvedUrl("sounds/" + filename).toString();
             let cleanPath = rawUrl;
@@ -207,7 +208,7 @@ Item {
     readonly property color sharedAccent: Qt.lighter(window.primary, 1.15)
     readonly property color btAccent: window.mauve
 
-    property string activeMode: "bt"
+    property string activeMode: "wifi"
     readonly property color activeColor: activeMode === "bt" ? window.btAccent : window.sharedAccent
     readonly property color activeGradientSecondary: Qt.darker(window.activeColor, 1.25)
 

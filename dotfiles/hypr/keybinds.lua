@@ -80,6 +80,7 @@ hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd("alacritty -o font.size=7 -e zs
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("env QT_QPA_PLATFORMTHEME=qt6ct pcmanfm-qt"))
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_menu.sh app"))
 hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_menu.sh file"))
+hl.bind(mainMod .. " + PERIOD", hl.dsp.exec_cmd("~/.config/hypr/scripts/fuzzel_menu.sh emoji"))
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("gram"))
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("brave"))
 

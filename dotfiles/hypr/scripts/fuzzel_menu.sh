@@ -168,8 +168,93 @@ case "$MODE" in
         fi
         ;;
 
+    emoji|emojis|glyph|glyphs)
+        SUBMODE="emoji"
+        [ "$MODE" = "glyph" ] || [ "$MODE" = "glyphs" ] && SUBMODE="glyph"
+
+        EMOJI_DB="$HOME/.config/hypr/assets/emoji.db"
+        [ -f "$EMOJI_DB" ] || EMOJI_DB="$HOME/nix/dotfiles/hypr/assets/emoji.db"
+        [ -f "$EMOJI_DB" ] || EMOJI_DB="$HOME/Projects/emoji.db"
+
+        GLYPH_DB="$HOME/.config/hypr/assets/glyph.db"
+        [ -f "$GLYPH_DB" ] || GLYPH_DB="$HOME/nix/dotfiles/hypr/assets/glyph.db"
+        [ -f "$GLYPH_DB" ] || GLYPH_DB="$HOME/Projects/glyph.db"
+
+        QUERY=""
+        while true; do
+            if [ "$SUBMODE" = "emoji" ]; then
+                DB_PATH="$EMOJI_DB"
+                FONT="Noto Color Emoji,JetBrainsMono Nerd Font:size=11"
+                PROMPT="󰞅 "
+                PLACEHOLDER="Search emojis...  [Tab: Glyphs]"
+            else
+                DB_PATH="$GLYPH_DB"
+                FONT="JetBrainsMono Nerd Font,Noto Color Emoji:size=11"
+                PROMPT="󰄛 "
+                PLACEHOLDER="Search nerd glyphs...  [Tab: Emojis]"
+            fi
+
+            if [ ! -f "$DB_PATH" ]; then
+                notify-send "DB missing"
+                exit 1
+            fi
+
+            FUZZEL_ARGS=(
+                --dmenu
+                --match-mode=fzf
+                --anchor=center
+                --width=46
+                --lines=8
+                --line-height=26
+                --font="$FONT"
+                --horizontal-pad=16
+                --vertical-pad=10
+                --inner-pad=6
+                --border-radius=12
+                --layer=overlay
+                --keyboard-focus=exclusive
+                --with-nth=1
+                --match-nth=3
+                --accept-nth=2
+                --nth-delimiter=$'\t'
+                --prompt="$PROMPT"
+                --placeholder="$PLACEHOLDER"
+                --override="key-bindings.execute-or-next=none"
+                --override="key-bindings.custom-1=Tab"
+            )
+
+            [ -n "$QUERY" ] && FUZZEL_ARGS+=(--search="$QUERY")
+
+            if [ "$SOLID_BG" = true ]; then
+                FUZZEL_ARGS+=(--background-color=111111ff)
+            fi
+
+            SELECTION=""
+            EXIT_CODE=0
+            SELECTION=$(fuzzel "${FUZZEL_ARGS[@]}" < "$DB_PATH" 2>/dev/null) || EXIT_CODE=$?
+
+            if [ "$EXIT_CODE" -eq 10 ]; then
+                # Tab pressed: toggle mode and preserve current selection/typed prefix
+                QUERY="$SELECTION"
+                if [ "$SUBMODE" = "emoji" ]; then
+                    SUBMODE="glyph"
+                else
+                    SUBMODE="emoji"
+                fi
+                continue
+            elif [ "$EXIT_CODE" -eq 0 ] && [ -n "$SELECTION" ]; then
+                printf "%s" "$SELECTION" | wl-copy --type text/plain\;charset=utf-8
+                notify-send "Copied $SELECTION"
+                break
+            else
+                # User pressed Escape or cancelled
+                break
+            fi
+        done
+        ;;
+
     *)
-        echo "Usage: $0 {app|file}"
+        echo "Usage: $0 {app|file|emoji|glyph}"
         exit 1
         ;;
 esac

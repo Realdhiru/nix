@@ -166,8 +166,19 @@ except Exception as e:
     player_nice="${player_raw^}"
 
     dev_icon="󰓃"; dev_name="Speaker"
-    node_name=$(timeout 0.5 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk -F'"' '/node\.name/ {print $2}')
-    node_desc=$(timeout 0.5 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk -F'"' '/node\.description/ {print $2}')
+    target_sink="@DEFAULT_AUDIO_SINK@"
+    inspect_out=$(timeout 0.5 wpctl inspect "$target_sink" 2>/dev/null)
+    node_name=$(echo "$inspect_out" | awk -F'"' '/node\.name/ {print $2}')
+    node_desc=$(echo "$inspect_out" | awk -F'"' '/node\.description/ {print $2}')
+
+    if [[ "$node_name" == *"effect_input"* ]]; then
+        driver_id=$(echo "$inspect_out" | awk -F'"' '/node\.driver-id/ {print $2}')
+        if [ -n "$driver_id" ]; then
+            driver_inspect=$(timeout 0.5 wpctl inspect "$driver_id" 2>/dev/null)
+            node_name=$(echo "$driver_inspect" | awk -F'"' '/node\.name/ {print $2}')
+            node_desc=$(echo "$driver_inspect" | awk -F'"' '/device\.profile\.description|node\.nick|node\.description/ {print $2; exit}')
+        fi
+    fi
 
     if [[ "$node_name" == *"bluez"* ]]; then
         dev_icon="󰂯"
@@ -175,7 +186,7 @@ except Exception as e:
     elif [[ "$node_name" == *"usb"* ]]; then
         dev_icon="󰓃"; dev_name="USB Audio"
     elif [[ "$node_name" == *"pci"* ]]; then
-        dev_icon="󰓃"; dev_name="System"
+        dev_icon="󰓃"; dev_name="${node_desc:-Speaker}"
     elif [ -n "$node_desc" ]; then
         dev_name="$node_desc"
     fi

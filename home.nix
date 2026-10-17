@@ -184,10 +184,54 @@
     '';
   };
 
-  # Single service-managed EasyEffects instance.
-  services.easyeffects = {
-    enable = true;
-  };
+  # Native 10-band Equalizer filter-chain for PipeWire (replaces EasyEffects with zero background daemon overhead)
+  xdg.configFile."pipewire/pipewire.conf.d/99-equalizer-sink.conf".text = ''
+    context.modules = [
+      { name = libpipewire-module-filter-chain
+        args = {
+          node.description = "PipeWire Equalizer"
+          media.name       = "PipeWire Equalizer"
+          filter.graph = {
+            nodes = [
+              { type = builtin name = eq_band_1  label = bq_peaking control = { "Freq" = 31.0   "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_2  label = bq_peaking control = { "Freq" = 63.0   "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_3  label = bq_peaking control = { "Freq" = 125.0  "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_4  label = bq_peaking control = { "Freq" = 250.0  "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_5  label = bq_peaking control = { "Freq" = 500.0  "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_6  label = bq_peaking control = { "Freq" = 1000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_7  label = bq_peaking control = { "Freq" = 2000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_8  label = bq_peaking control = { "Freq" = 4000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_9  label = bq_peaking control = { "Freq" = 8000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_10 label = bq_peaking control = { "Freq" = 16000.0 "Q" = 1.414 "Gain" = 0.0 } }
+            ]
+            links = [
+              { output = "eq_band_1:Out" input = "eq_band_2:In" }
+              { output = "eq_band_2:Out" input = "eq_band_3:In" }
+              { output = "eq_band_3:Out" input = "eq_band_4:In" }
+              { output = "eq_band_4:Out" input = "eq_band_5:In" }
+              { output = "eq_band_5:Out" input = "eq_band_6:In" }
+              { output = "eq_band_6:Out" input = "eq_band_7:In" }
+              { output = "eq_band_7:Out" input = "eq_band_8:In" }
+              { output = "eq_band_8:Out" input = "eq_band_9:In" }
+              { output = "eq_band_9:Out" input = "eq_band_10:In" }
+            ]
+          }
+          audio.channels = 2
+          audio.position = [ FL FR ]
+          capture.props = {
+            node.name        = "effect_input.eq10"
+            media.class      = "Audio/Sink"
+            priority.driver  = 2100
+            priority.session = 2100
+          }
+          playback.props = {
+            node.name    = "effect_output.eq10"
+            node.passive = true
+          }
+        }
+      }
+    ]
+  '';
   services.playerctld.enable = true;
 
   # Focus time tracking daemon — single authoritative lifecycle owner.

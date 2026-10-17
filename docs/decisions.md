@@ -335,3 +335,23 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Rationale:** Storing favorites in `$XDG_DATA_HOME` (`~/.local/share/`) prevents data loss during cache purges (`~/.cache/` cleans).
 - **IPC & Synchronization:** QuickShell integrates a native `FileView` watching the file via inotify (`watchChanges: true`), immediately updating `favoritesProxyModel` in real time with zero polling loops or subprocess forks.
 
+### Native PipeWire 10-Band Equalizer & EasyEffects Purge
+- **Decision:** Replace EasyEffects user-service daemon entirely with PipeWire's built-in `libpipewire-module-filter-chain` declared in [`home.nix`](file:///home/realdhiru/nix/home.nix) (`~/.config/pipewire/pipewire.conf.d/99-equalizer-sink.conf`).
+- **Rationale:** EasyEffects consumed ~150MB RSS, 46MB swap, 19 background threads, and frequent CPU wakeups just to apply static biquad audio filters. PipeWire's filter-chain runs directly inside the C audio server data-loop with 0MB additional memory and zero subshell forks.
+- **Routing & Device Handover:** The filter chain exposes a virtual sink `effect_input.eq10` with session/driver priority 2100 and a passive playback node `effect_output.eq10`. Applications route to the equalizer by default, while WirePlumber automatically forwards the passive playback stream to the highest-priority physical output (Bluetooth DAC, USB Headphones, or internal Speaker) based on `51-device-autoswitch.conf`.
+- **Runtime Control & Zero-Python Hot Path:** Dynamic equalizer slider changes in QuickShell execute via instant POSIX commands (`pw-cli s <id> Props '{ "params": [ "eq_band_<idx>:Gain", <val> ] }'`). Python was permanently purged from the equalizer hot path.
+
+### Flake Self-Hosting for Upstream Fast-Moving Packages
+- **Decision:** Fast-moving binary applications (such as Zen Browser and ChatGPT / Codex) must be sourced from user-maintained flake repositories (`Realdhiru/zen-browser-flake`, `Realdhiru/codex-flake`) rather than third-party unpinned community flakes.
+- **Rationale:** Upstream binary releases frequently re-release tarballs with identical version tags, changing the fixed-output derivation hash and immediately breaking NixOS system rebuilds. Self-hosted flakes isolate system rebuilds from upstream hash thrashing and allow deterministic lockfile synchronization.
+
+### Intel GPU Ring Protection & Compositor Framebuffer Thrashing Safeguard
+- **Decision:** All wallpaper mode toggles, desktop glass/solid transitions, and daemon lifecycle scripts (`wallpaper.sh`, `ensure_awww.sh`, `watcher.sh`) must enforce serialization and minimum debounce pacing (>1.5s).
+- **Rationale:** Rapid destruction and re-allocation of 2.8K framebuffers with Kawase blur passes overwhelms the Intel `rcs0` execution ring. When the GuC reset times out, the Aquamarine DRM page-flip handler fails an assertion in `CHyprOpenGLImpl::begin` (`assertImpl -> abort -> SIGABRT`), causing Hyprland to crash and log out into safe mode. Visual operations must be paced to protect GPU ring-buffer stability.
+
+### Emoji & Nerd Font Glyph Fuzzy Picker & Tab Toggling
+- **Decision:** Implement a unified desktop fuzzy picker for emojis and Nerd Font glyphs using `fuzzel --dmenu` integrated into [`fuzzel_menu.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/fuzzel_menu.sh), triggered via a single Hyprland keybind (`SUPER + .`).
+- **Rationale:** Zero-overhead, compiled C Wayland client (`fuzzel`) eliminates heavy Electron or Python-based character maps. Database lookups run via single-pass POSIX `awk`, filtering 3,773 Unicode 15.1 emojis and 10,386 Nerd Font v3 symbols in <3ms.
+- **In-Menu Tab Mode Switching:** Fuzzel configures `--override="key-bindings.execute-or-next=none"` and `--override="key-bindings.custom-1=Tab"`. Pressing `Tab` exits with code 10, allowing the caller shell loop in `fuzzel_menu.sh` to seamlessly hot-toggle between Emoji and Glyph modes without window dismissal or flickering.
+- **Data Architecture:** Canonical database files reside under `dotfiles/hypr/assets/` (`emoji.db` and `glyph.db`) and are mirrored in `~/Projects/` and `~/.config/hypr/assets/`. Selected characters are immediately copied to Wayland clipboard using `wl-copy --type text/plain;charset=utf-8` followed by concise notification cues.
+

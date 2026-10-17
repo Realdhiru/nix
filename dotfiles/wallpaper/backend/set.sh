@@ -124,6 +124,8 @@ if [ "$WAS_KILLED" -eq 1 ]; then
             hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
             hyprctl reload >/dev/null 2>&1 || true
         fi
+        # Restore terminal translucency
+        bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
     fi
 fi
 

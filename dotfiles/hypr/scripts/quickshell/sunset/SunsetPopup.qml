@@ -58,37 +58,37 @@ Item {
             event.accepted = true;
         } else if (event.key === Qt.Key_Left) {
             if (root.selectedControl === 0) {
-                let nextTemp = Math.min(6500, root.currentTemp + 250);
+                let nextTemp = Math.min(6500, root.currentTemp + 50);
                 root.applyBackend(nextTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
             } else if (root.selectedControl === 1) {
-                let nextGamma = Math.max(50, root.currentGamma - 5);
+                let nextGamma = Math.max(50, root.currentGamma - 2);
                 root.applyBackend(root.currentTemp, nextGamma, root.currentSat, root.currentGrain, root.currentCrt);
             } else if (root.selectedControl === 2) {
-                let nextSat = Math.max(0, root.currentSat - 5);
+                let nextSat = Math.max(0, root.currentSat - 2);
                 root.applyBackend(root.currentTemp, root.currentGamma, nextSat, root.currentGrain, root.currentCrt);
             } else if (root.selectedControl === 3) {
-                let nextGrain = Math.max(0, root.currentGrain - 5);
+                let nextGrain = Math.max(0, root.currentGrain - 2);
                 root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, nextGrain, root.currentCrt);
             } else if (root.selectedControl === 4) {
-                let nextCrt = Math.max(0, root.currentCrt - 5);
+                let nextCrt = Math.max(0, root.currentCrt - 2);
                 root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, nextCrt);
             }
             event.accepted = true;
         } else if (event.key === Qt.Key_Right) {
             if (root.selectedControl === 0) {
-                let nextTemp = Math.max(1000, root.currentTemp - 250);
+                let nextTemp = Math.max(1000, root.currentTemp - 50);
                 root.applyBackend(nextTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
             } else if (root.selectedControl === 1) {
-                let nextGamma = Math.min(100, root.currentGamma + 5);
+                let nextGamma = Math.min(100, root.currentGamma + 2);
                 root.applyBackend(root.currentTemp, nextGamma, root.currentSat, root.currentGrain, root.currentCrt);
             } else if (root.selectedControl === 2) {
-                let nextSat = Math.min(100, root.currentSat + 5);
+                let nextSat = Math.min(100, root.currentSat + 2);
                 root.applyBackend(root.currentTemp, root.currentGamma, nextSat, root.currentGrain, root.currentCrt);
             } else if (root.selectedControl === 3) {
-                let nextGrain = Math.min(100, root.currentGrain + 5);
+                let nextGrain = Math.min(100, root.currentGrain + 2);
                 root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, nextGrain, root.currentCrt);
             } else if (root.selectedControl === 4) {
-                let nextCrt = Math.min(100, root.currentCrt + 5);
+                let nextCrt = Math.min(100, root.currentCrt + 2);
                 root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, nextCrt);
             }
             event.accepted = true;
@@ -135,7 +135,7 @@ Item {
 
     Timer {
         id: applyTimer
-        interval: 50
+        interval: 120
         repeat: false
         onTriggered: root.doApplyBackend()
     }
@@ -407,6 +407,11 @@ EOF
                         stepSize: 50
                         value: root.currentTemp
 
+                        Behavior on value {
+                            enabled: !tempSlider.pressed
+                            NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                        }
+
                         onPressedChanged: {
                             if (pressed) {
                                 root.selectedControl = 0;
@@ -519,6 +524,11 @@ EOF
                         to: 100
                         stepSize: 1
                         value: root.currentGamma
+
+                        Behavior on value {
+                            enabled: !gammaSlider.pressed
+                            NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                        }
 
                         onPressedChanged: {
                             if (pressed) {
@@ -633,6 +643,11 @@ EOF
                         stepSize: 1
                         value: root.currentSat
 
+                        Behavior on value {
+                            enabled: !satSlider.pressed
+                            NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                        }
+
                         onPressedChanged: {
                             if (pressed) {
                                 root.selectedControl = 2;
@@ -746,6 +761,11 @@ EOF
                         stepSize: 1
                         value: root.currentGrain
 
+                        Behavior on value {
+                            enabled: !grainSlider.pressed
+                            NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                        }
+
                         onPressedChanged: {
                             if (pressed) {
                                 root.selectedControl = 3;
@@ -858,6 +878,11 @@ EOF
                         to: 100
                         stepSize: 1
                         value: root.currentCrt
+
+                        Behavior on value {
+                            enabled: !crtSlider.pressed
+                            NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                        }
 
                         onPressedChanged: {
                             if (pressed) {

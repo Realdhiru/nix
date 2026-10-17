@@ -94,11 +94,6 @@ hl.window_rule({ match = { class = "^(com\\.saivert\\.pwvucontrol)$" }, float = 
 
 hl.window_rule({ match = { class = "^(pcmanfm-qt)$", title = "^(Search Files)$" }, float = true, center = true })
 
--- ======================================================
--- Easy Effects
--- ======================================================
-
-hl.window_rule({ match = { class = "^(com\\.github\\.wwmm\\.easyeffects)$" }, float = true, center = true })
 
 -- ======================================================
 -- Picture-in-Picture

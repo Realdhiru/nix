@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 echo "Stopping user-space audio infrastructure..."
-systemctl --user stop easyeffects pipewire pipewire-pulse wireplumber
+systemctl --user stop pipewire pipewire-pulse wireplumber
 
 echo "Forcefully killing lingering sound processes..."
 fuser -k /dev/snd/* >/dev/null 2>&1
@@ -15,8 +15,7 @@ echo "Reinitializing sound daemons..."
 systemctl --user start pipewire pipewire-pulse wireplumber
 sleep 2
 
-echo "Syncing EasyEffects equalizer pipeline..."
-systemctl --user start easyeffects
+echo "Syncing native PipeWire equalizer pipeline..."
 ~/nix/dotfiles/hypr/scripts/quickshell/music/equalizer.sh --init
 
 echo "Audio stack successfully recovered!"
