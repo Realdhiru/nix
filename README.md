@@ -163,6 +163,9 @@ nix/
 ├── home.nix                           # Home Manager root configuration
 ├── pkgs/                              # Custom Nix package derivations & patches
 │   ├── buuf-nestort.nix
+│   ├── gameclean/                     # Wine/Proton leftover janitor (Python source)
+│   ├── gameclean.nix                  # gameclean derivation
+│   ├── hypr-kdeconnect-portal.nix
 │   └── pcmanfm-qt-appid.patch
 ├── hosts/
 │   └── nixos/
@@ -283,6 +286,13 @@ Safely purges unpinned Nix store paths older than 14 days (`--delete-older-than 
 clean
 ```
 
+#### `gameclean [ -y -q ]`
+Wine/Proton/Lutris storage janitor (see [`docs/gameclean.md`](docs/gameclean.md)). Wine games scatter files across five locations (game dir, Wine prefixes, umu/Proton prefix, `~/.cache` caches, Lutris entries), so uninstalling the game folder alone leaves tens of GB of orphaned junk. `gameclean` scans Lutris entries + prefixes + caches in one pass:
+```bash
+gameclean        # preview what would be deleted (default, safe)
+gameclean -y     # actually delete the flagged leftovers
+```
+
 #### `ff` & `af`
 - **`ff`**: Quick alias for `fastfetch`.
 - **`af`**: Interactive animated terminal fetcher that cycles through GIFs/MP4s in `~/Pictures/fastfetch` using `anifetch`, dynamically calculating terminal cell aspect ratios (`ffprobe`) to prevent image distortion.
@@ -298,3 +308,4 @@ Deep-dive architecture and deployment guides are documented in [`docs/`](docs/):
 * **[Debugging & Troubleshooting](docs/debugging.md)** — Complete historical catalog of solved hardware and desktop quirks.
 * **[Execution Flows](docs/flow.md)** — Boot pipeline, startup sequencing, and emergency recovery paths.
 * **[QuickShell Settings](docs/quickshell-settings.md)** — Runtime settings keys, choices, and current defaults.
+* **[Game Storage Janitor](docs/gameclean.md)** — Wine/Proton/Lutris leftover scanner & cleaner usage, coverage & safety model.

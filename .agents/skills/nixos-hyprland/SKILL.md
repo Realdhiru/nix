@@ -16,8 +16,9 @@ description: High-density operational reference for maintaining the user's NixOS
      - `SKILL.md` & `AGENTS.md`: Operational rice rules and non-negotiables.
    - Zero documentation drift allowed.
 2. **Git Commit & Push Policy**: Only stage, commit, or push when the user explicitly instructs you to do so. NEVER stage, commit, or push automatically or autonomously without explicit user direction.
-3. **High-Density / Signal-First Communication**:
+3. **High-Density / Signal-First Communication & Hardware Grounding**:
    - Zero conversational filler, zero pleasantries, pure technical signal.
+   - Physical machine model authority: **ASUS Vivobook S 15 OLED (K5504VA / S5504VA)** (Intel Core i5-13500H, 2.8K 120Hz OLED). Never misidentify as Zenbook or any other lineup.
    - Exact clickable markdown links (`file:///...`), verified line ranges, and zero speculative hallucination.
    - Final turn summaries must be compact, structured bullet points designed for instant parsing.
 4. **Verification Discipline & Anti-Patterns**:
@@ -104,3 +105,5 @@ sudo nixos-rebuild dry-run --flake ~/nix#nixos
 ~/.config/hypr/scripts/fuzzel_menu.sh glyph
 ```
 
+## Wine/Proton storage janitor (gameclean)
+gameclean — packaged in pkgs/gameclean.nix (docs/gameclean.md). Wine games scatter files across 5 locations (game dir, Wine prefixes, umu prefix caches, ~/.cache, Lutris ymls); run `gameclean` (preview) after any game uninstall or failed install, `gameclean -y` only after reading the preview. Working Lutris-referenced titles are never flagged.

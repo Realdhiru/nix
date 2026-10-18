@@ -58,6 +58,8 @@
                 prev.callPackage ./pkgs/buuf-nestort.nix { };
               hypr-kdeconnect-portal =
                 prev.callPackage ./pkgs/hypr-kdeconnect-portal.nix { };
+              gameclean =
+                prev.callPackage ./pkgs/gameclean.nix { };
               pcmanfm-qt = prev.pcmanfm-qt.overrideAttrs (old: {
                 patches = (old.patches or [ ]) ++ [ ./pkgs/pcmanfm-qt-appid.patch ];
               });

@@ -55,6 +55,7 @@
     bottles
     protonup-qt      # GUI for installing GE-Proton/Wine-GE builds into Steam/Lutris
     bubblewrap
+    gameclean        # Wine/Proton/Lutris leftover scanner & janitor (see docs/gameclean.md)
 
     # Iris Xe-specific: internal-resolution render + FSR upscale, and a
     # standalone sharpening/upscale Vulkan layer for games gamescope

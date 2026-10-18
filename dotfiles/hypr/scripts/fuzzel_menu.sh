@@ -184,7 +184,7 @@ case "$MODE" in
         while true; do
             if [ "$SUBMODE" = "emoji" ]; then
                 DB_PATH="$EMOJI_DB"
-                FONT="Noto Color Emoji,JetBrainsMono Nerd Font:size=11"
+                FONT="JetBrainsMono Nerd Font,Noto Color Emoji:size=11"
                 PROMPT="󰞅 "
                 PLACEHOLDER="Search emojis...  [Tab: Glyphs]"
             else

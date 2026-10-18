@@ -356,8 +356,14 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Data Architecture:** Canonical database files reside under `dotfiles/hypr/assets/` (`emoji.db` and `glyph.db`) and are mirrored in `~/Projects/` and `~/.config/hypr/assets/`. Selected characters are immediately copied to Wayland clipboard using `wl-copy --type text/plain;charset=utf-8` followed by concise notification cues.
 
 ### Obsidian Native Integration & Dotfiles Knowledge Brain Vault
-- **Decision:** Install Obsidian declaratively via `pkgs.obsidian` in `modules/system/packages.nix` without custom wrapper layers or redundant CLI flags. Maintain the system's central second-brain knowledge graph vault in `~/Projects/Brain`.
+- **Decision:** Install Obsidian declaratively via `pkgs.obsidian` in `modules/system/packages.nix` without custom wrapper layers or redundant CLI flags. Maintain the system's central second-brain knowledge graph vault in `~/Projects/nix-brain`.
 - **Rationale:** Upstream Nixpkgs packages Obsidian with an Electron wrapper that automatically checks for `NIXOS_OZONE_WL` and `WAYLAND_DISPLAY`, appending `--ozone-platform=wayland --enable-wayland-ime=true --wayland-text-input-version=3`. Because `hosts/nixos/default.nix` sets `NIXOS_OZONE_WL = "1"`, Obsidian natively binds to Wayland with kinetic scrolling and IME support with zero wrapper maintenance.
 - **Glass Theming:** Scoped with opacity `0.65` in `dotfiles/hypr/rules.lua` matching the system-wide glass token hierarchy.
+
+### Declarative Wine Leftover Janitor (`gameclean`)
+- **Decision:** Wine/Proton/Lutris junk cleanup ships as a Nix-distributed binary (`pkgs/gameclean/gameclean.py` + `pkgs/gameclean.nix` derivation, registered via the flake overlay and exposed on system `PATH` by `modules/system/gaming.nix`) with its operational doc in `docs/gameclean.md` — not as an ad-hoc `~/.local/bin` script.
+- **Rationale:** Wine games scatter files across five locations (game dir, `~/Games/prefixes`, shared umu/Proton prefix, `~/.cache` caches, `~/.local/share/lutris/games/*.yml`), so manual uninstall cleanup is error-prone and drifts. Packaging in-repo makes the janitor reproducible, versioned, and available on every machine the flake deploys to.
+- **Safety Model:** Preview-only by default; `gameclean -y` deletes. Working titles are protected by building the referenced `prefix:`/`exe:` set from every Lutris `.yml` first — only true orphans (unreferenced prefixes, broken entries, umu `Temp`/shadercache, `~/.cache` game caches) are flagged.
+- **Zero-Python Hot-Path Scope:** `gameclean` is an interactive, manually invoked janitor — not a desktop hot path — so the Python ban (see above) does not apply; no polling daemons or keybind handlers invoke it.
 
 

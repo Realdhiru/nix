@@ -15,7 +15,7 @@
 ### Color Philosophy & Theming
 - **Dynamic Wallpaper Derivation:** Hardcoded color values (hex or static color names) are strictly forbidden across UI widgets, terminals, and scripts. All colors must be dynamically extracted from the active wallpaper via Wallust.
 - **Purge of Residual Defaults:** Leftover palette fallbacks (e.g., hardcoded Catppuccin sapphire, blue, peach, or maroon accents in `MusicPopup`, `NetworkPopup`, `BatteryPopup`, `CalendarPopup`, `FocusTimePopup`) are considered defects. Every accent, highlight, and surface must bind to dynamic tokens.
-- **OLED Pitch-Black Authority:** The physical display is an ASUS 2.8K 120Hz OLED. True black means physical `#000000` (0.000 nits, 0 mA draw). Hyprland’s compositor root background is locked to `0x000000` (disabling Hyprland's default `0x111111` gray). When wallpaper processes are killed, the screen must drop to pure `#000000`.
+- **OLED Pitch-Black Authority:** The physical display is an ASUS Vivobook S 15 OLED (K5504VA / S5504VA) 2.8K 120Hz panel. True black means physical `#000000` (0.000 nits, 0 mA draw). Hyprland’s compositor root background is locked to `0x000000` (disabling Hyprland's default `0x111111` gray). When wallpaper processes are killed, the screen must drop to pure `#000000`.
 - **Permanent Dark Mode Rule:** The global theme is permanently locked to dark mode (`saliencedark16`). Wallpaper switches must never trigger automatic light mode. Light mode is strictly manual via `settings.json` (`"themeMode": "light"`).
 - **Deterministic Neutral Mode (`--neutral`):** On pitch-black or minimalist wallpapers, extraction algorithms generate false olive-green or muddy hue spikes from compression noise. The theme engine must execute a deterministic neutral bypass (`--neutral`) to generate an OLED black-and-ivory palette without color noise.
 - **Terminal Legibility via Lch Extraction:** Terminal background must remain transparent while ANSI slots (`color0`–`color15`) are derived dynamically via `ansidark16` and `lchansi`. Standard ANSI semantic roles (red for errors, green for success) must remain distinct and readable against transparent backgrounds.
@@ -180,6 +180,12 @@
 - **QuickShell Orbital Card Delegate Origin Scatter on Open:**
   - *Symptom:* Network or system widgets with orbital / card layouts scatter outward from `(0, 0)` in a burst when the popup opens.
   - *Mitigation:* Do not animate radial collapse multipliers from 0 during entry. More importantly, gate QML `Behavior on singleBaseAngle` and offsets with `enabled: container.visible`. During initial component instantiation, `Repeater.count` temporarily evaluates to 0, which collapses angles to $0 \times 2\pi = 0$. Un-gated behaviors animate from this transient 0 to target angles on frame 1. Gating behaviors on `visible` forces immediate coordinate evaluation at mount time without an origin explosion.
+- **Wine Game Uninstall Scatters Files Across Five Locations:**
+  - *Symptom:* Deleting a game folder (e.g. `~/Games/<title>`) leaves tens of GB of orphaned junk: a Wine prefix under `~/Games/prefixes`, `Temp`/shader caches inside the shared `~/Games/umu/umu-default` prefix, multi-GB `~/.cache/{lutris,winetricks,umu,dxvk,rpcs3,steam}` dirs, and a dangling `~/.local/share/lutris/games/*.yml` entry. Failed install attempts can also leave stray `drive_c` prefixes inside product folders.
+  - *Mitigation:* Run `gameclean` (preview) after every game uninstall or failed launch attempt, then `gameclean -y` after reading the preview. It builds the prefix/exe reference set from all Lutris entries first, so working titles (FL Studio, Silksong, GTA:SA, NFS:MW) and the shared umu prefix itself are never flagged — only true orphans are. See `docs/gameclean.md`.
+- **Flake Evaluation Requires Git-Tracked Files:**
+  - *Symptom:* `nixos-rebuild build --flake .#nixos` fails with `error: Path '…' in the repository … is not tracked by Git` immediately after adding new source files to `~/nix`.
+  - *Mitigation:* Flakes evaluate from the git index, not the working tree. `git add` every new file referenced by any module or derivation (staging only — no commit needed) before rebuilding.
 
 
 

@@ -175,6 +175,9 @@
   xdg.configFile."pcmanfm-qt/default/settings.conf" = {
     force = true;
     text = ''
+      [Places]
+      HiddenPlaces=/home/${user.username}/Desktop, menu:///applications/
+
       [System]
       Terminal=alacritty
       Archiver=lxqt-archiver
