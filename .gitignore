@@ -34,6 +34,6 @@ repomix.json
 *~
 *.swp
 *.swo
-docs/*
-!docs/assets/
-!docs/*.md
+docs/.obsidian/workspace*
+docs/.obsidian/cache*
+

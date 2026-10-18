@@ -49,6 +49,7 @@ hl.bind(mainMod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd(scripts .. "qs_manager
 hl.bind(mainMod .. " + SHIFT + X",
     hl.dsp.exec_cmd("quickshell ipc -p " .. scripts .. "quickshell/Shell.qml call idle toggleDim"))
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(scripts .. "quickshell/toggle_theme_mode.sh"))
+hl.bind(mainMod .. " + CTRL + SHIFT + Q", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle quickshell"))
 
 -- Reload Compositor, Quickshell, and System
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(scripts .. "reload.sh"))

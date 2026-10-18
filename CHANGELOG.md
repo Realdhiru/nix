@@ -1,7 +1,14 @@
 # CHANGELOG
 
-## 2026-10-18 — Declarative `gameclean` Wine/Proton Storage Janitor
+## 2026-10-18 — Declarative `gameclean` Janitor, QuickShell Kill Switch & Neo Browser Dual-Version Setup
 
+- **Neo Browser Dual-Version Coexistence & Isolated Runner (`~/.local/bin/neo-browser`, `~/Applications/`)**:
+  - Downloaded official upstream `v2.0.10` AppImage (`Neo-Browser-2.0.10.AppImage`, 113.8MB) while keeping the known-good working version (`Neo-Browser.AppImage` / `Neo-Browser-old.AppImage`) intact.
+  - Enhanced [`~/.local/bin/neo-browser`](file:///home/realdhiru/.local/bin/neo-browser) to support version flags: runs default `Neo-Browser.AppImage`, `--new` to test `v2.0.10`, or `--old` for guaranteed exam fallback under the masqueraded `systemd` Bubblewrap + Xephyr `:7` container.
+- **Repository `.gitignore` Fix for Obsidian Knowledge Vault ([`.gitignore`](file:///home/realdhiru/nix/.gitignore))**:
+  - Removed legacy blanket `docs/*` wildcard that masked all nested Obsidian vault category directories (`00 - ...` through `10 - ...`) from git tracking. Unmasked all knowledge base domains for git tracking while ignoring ephemeral `.obsidian/workspace*` cache.
+- **QuickShell Hard Kill / Toggle Switch Keybind ([`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:
+  - Bound `Super + Ctrl + Shift + Q` to `qs_manager.sh toggle quickshell`. Enables an immediate one-key hard kill switch (`pkill -9 -f quickshell`, `.quickshell-wra`, orphan reaping, and notification) without reloading or respawning, and restarts cleanly when triggered again.
 - **`gameclean` packaged as a Nix derivation ([`pkgs/gameclean/gameclean.py`](file:///home/realdhiru/nix/pkgs/gameclean/gameclean.py), [`pkgs/gameclean.nix`](file:///home/realdhiru/nix/pkgs/gameclean.nix), [`flake.nix`](file:///home/realdhiru/nix/flake.nix), [`modules/system/gaming.nix`](file:///home/realdhiru/nix/modules/system/gaming.nix))**:
   - Converted the ad-hoc `~/.local/bin/gameclean` script into a declaratively packaged binary. Wine games scatter files across five locations (game dir, Wine prefixes, shared umu/Proton prefix, `~/.cache` game caches, Lutris `.yml` entries), so uninstalling a game folder alone leaves tens of GB of orphaned junk; `gameclean` scans all five in one pass.
   - Source: single stdlib-only Python script (`pkgs/gameclean/gameclean.py`) with zero external dependencies — minimal regex-based Lutris `.yml` parser (UTF-8 + UTF-16 aware, indentation-nested `game:`/`system:` keys, escaped-space paths like `gta\\ san`).
