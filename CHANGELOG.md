@@ -2,6 +2,9 @@
 
 ## 2026-10-18 — Declarative `gameclean` Janitor, QuickShell Kill Switch & Neo Browser Dual-Version Setup
 
+- **README Modernization & Documentation Hub Overhaul ([`README.md`](file:///home/realdhiru/nix/README.md))**:
+  - Purged broken video embed and removed redundant 150-line walls of duplicated architecture/directory text that are now thoroughly documented inside the Obsidian vault in `docs/`.
+  - Condensed software stack into a clean 8-row spec matrix, added an immediate common keybindings table (including the new `SUPER + CTRL + SHIFT + Q` kill switch), streamlined custom CLI commands into an instant lookup table, and added direct links to all 11 second-brain vault domains.
 - **Neo Browser Dual-Version Coexistence & Isolated Runner (`~/.local/bin/neo-browser`, `~/Applications/`)**:
   - Downloaded official upstream `v2.0.10` AppImage (`Neo-Browser-2.0.10.AppImage`, 113.8MB) while keeping the known-good working version (`Neo-Browser.AppImage` / `Neo-Browser-old.AppImage`) intact.
   - Enhanced [`~/.local/bin/neo-browser`](file:///home/realdhiru/.local/bin/neo-browser) to support version flags: runs default `Neo-Browser.AppImage`, `--new` to test `v2.0.10`, or `--old` for guaranteed exam fallback under the masqueraded `systemd` Bubblewrap + Xephyr `:7` container.
