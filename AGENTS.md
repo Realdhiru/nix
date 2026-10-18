@@ -8,6 +8,7 @@ Whenever an agent touches or modifies any feature, script, keybind, hardware qui
   - **`~/nix/CHANGELOG.md`**: Record every bugfix, feature, or optimization under the current date with concise technical bullets.
   - **`~/nix/docs/decisions.md`**: Document every architectural or technical decision made, superseded, or stabilized.
   - **`~/nix/docs/tacit_knowledge.md`**: Document non-obvious traps, hardware quirks, udev rules, or subsystem workarounds discovered.
+  - **`~/nix/docs/advisor.md`**: Update system context, active hardware parameters, or architectural pillars if modified.
   - **`~/.gemini/config/skills/nixos-hyprland/SKILL.md` & `~/nix/.agents/skills/nixos-hyprland/SKILL.md`**: Keep rice, widget, and NixOS operational guidelines synchronized.
 - **Zero Documentation Drift**: Code changes and documentation updates must happen in the exact same turn.
 - **Keep all documentation updates concise, practical, and bloat-free.**
@@ -94,7 +95,7 @@ Every new feature, refactor, script, service, or configuration must adhere to th
 ## 5. Second-Brain & Obsidian Vault Architecture Standards
 
 Whenever an agent is instructed to create, expand, or document knowledge in Obsidian vaults:
-- **Location Invariant**: All second-brain vaults MUST live directly under `~/Projects/Vault/<subject>-brain/` (e.g. `~/Projects/Vault/nix-brain`). Never scatter vault folders across `~` or `~/Projects/`.
+- **Location Invariant**: All second-brain vaults MUST live directly under `~/Projects/Vault/<subject>-brain/` (e.g. `~/nix/docs`). Never scatter vault folders across `~` or `~/Projects/`.
 - **Zero Meta-Bloat Invariant**: NEVER create "hub" meta-directories, template folders, "how to use" manuals, or standalone helper scripts inside vaults. Jump straight into authoritative domain documentation.
 - **Strict Aesthetic Standard (Zero Emojis)**: NEVER use cosmetic/decorative emojis in file names, note headers, or bullet points. All notes must look like human-crafted, professional systems engineering whitepapers.
 - **The 3-Tier Layered Architecture**:

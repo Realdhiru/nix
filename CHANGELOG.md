@@ -15,10 +15,10 @@
 
 ## 2026-10-17 — Native PipeWire 10-Band Equalizer Refactor, Flake Stabilization & Storage Hygiene
 
-- **Obsidian Declarative Integration & Nix Dotfiles Knowledge Graph Vault ([`packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix), [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), `~/Projects/Vault/nix-brain`)**:
+- **Obsidian Declarative Integration & Nix Dotfiles Knowledge Graph Vault ([`packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix), [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), `~/nix/docs`)**:
   - Integrated official `obsidian` package declaratively into `environment.systemPackages` in [`modules/system/packages.nix`](file:///home/realdhiru/nix/modules/system/packages.nix), inheriting system-wide `NIXOS_OZONE_WL = "1"` from [`hosts/nixos/default.nix`](file:///home/realdhiru/nix/hosts/nixos/default.nix) for native Wayland execution and touch gestures with zero custom wrapper bloat.
   - Added glass opacity window rule `0.65` in [`dotfiles/hypr/rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua) matching desktop visual hierarchy and transparent theming.
-  - Architected and generated an exhaustive, human-crafted second-brain knowledge graph vault in `~/Projects/Vault/nix-brain` containing 41 interconnected markdown notes across 11 structured domains (Maps of Content, The Why & Nix Philosophy, Flake Architecture, Hyprland Compositor, QuickShell QML, Wallust Theming, Power Authority, Audio Pipeline, Operational Flow, Battle-Tested Tacit Knowledge, and a 5-Minute Showcase Playbook).
+  - Architected and generated an exhaustive, human-crafted second-brain knowledge graph vault in `~/nix/docs` containing 41 interconnected markdown notes across 11 structured domains (Maps of Content, The Why & Nix Philosophy, Flake Architecture, Hyprland Compositor, QuickShell QML, Wallust Theming, Power Authority, Audio Pipeline, Operational Flow, Battle-Tested Tacit Knowledge, and a 5-Minute Showcase Playbook).
   - Pre-configured `.obsidian/graph.json` color groupings and node physics for instant presentation and graph visualization.
 
 - **Emoji & Nerd Font Glyph Fuzzel Picker & DB Modernization ([`emoji.db`](file:///home/realdhiru/nix/dotfiles/hypr/assets/emoji.db), [`glyph.db`](file:///home/realdhiru/nix/dotfiles/hypr/assets/glyph.db), [`fuzzel_menu.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/fuzzel_menu.sh), [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:

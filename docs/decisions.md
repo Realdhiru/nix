@@ -356,7 +356,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Data Architecture:** Canonical database files reside under `dotfiles/hypr/assets/` (`emoji.db` and `glyph.db`) and are mirrored in `~/Projects/` and `~/.config/hypr/assets/`. Selected characters are immediately copied to Wayland clipboard using `wl-copy --type text/plain;charset=utf-8` followed by concise notification cues.
 
 ### Obsidian Native Integration & Dotfiles Knowledge Brain Vault
-- **Decision:** Install Obsidian declaratively via `pkgs.obsidian` in `modules/system/packages.nix` without custom wrapper layers or redundant CLI flags. Maintain the system's central second-brain knowledge graph vault in `~/Projects/Vault/nix-brain`.
+- **Decision:** Install Obsidian declaratively via `pkgs.obsidian` in `modules/system/packages.nix` without custom wrapper layers or redundant CLI flags. Maintain the system's central second-brain knowledge graph vault in `~/nix/docs`.
 - **Rationale:** Upstream Nixpkgs packages Obsidian with an Electron wrapper that automatically checks for `NIXOS_OZONE_WL` and `WAYLAND_DISPLAY`, appending `--ozone-platform=wayland --enable-wayland-ime=true --wayland-text-input-version=3`. Because `hosts/nixos/default.nix` sets `NIXOS_OZONE_WL = "1"`, Obsidian natively binds to Wayland with kinetic scrolling and IME support with zero wrapper maintenance.
 - **Glass Theming:** Scoped with opacity `0.65` in `dotfiles/hypr/rules.lua` matching the system-wide glass token hierarchy.
 

@@ -13,6 +13,7 @@ description: High-density operational reference for maintaining the user's NixOS
      - `~/nix/CHANGELOG.md`: Granular changes under the current date.
      - `~/nix/docs/decisions.md`: Architectural decisions, technical invariants, and rationale.
      - `~/nix/docs/tacit_knowledge.md`: Hardware traps, udev quirks, and non-obvious fixes.
+     - `~/nix/docs/advisor.md`: External AI system context prompt.
      - `SKILL.md` & `AGENTS.md`: Operational rice rules and non-negotiables.
    - Zero documentation drift allowed.
 2. **Git Commit & Push Policy**: Only stage, commit, or push when the user explicitly instructs you to do so. NEVER stage, commit, or push automatically or autonomously without explicit user direction.
@@ -112,7 +113,7 @@ sudo nixos-rebuild dry-run --flake ~/nix#nixos
 
 ## 4. Second-Brain & Obsidian Vault Architecture Standards
 
-- **Single Vault Root**: All vaults live strictly under `~/Projects/Vault/<subject>-brain/` (e.g. `~/Projects/Vault/nix-brain`).
+- **Single Vault Root**: All vaults live strictly under `~/Projects/Vault/<subject>-brain/` (e.g. `~/nix/docs`).
 - **Zero Meta-Bloat**: No "hub" folders, templates directories, or helper scripts. Only actual domain documentation.
 - **Zero Emojis**: No decorative emojis in file names, headers, or bullet points.
 - **3-Tier Architecture**: Layer 3 (`00 - Maps of Content`), Layer 2 (`Concepts & Synthesis Notes`), Layer 1 (`Specifications & Runbooks`).
