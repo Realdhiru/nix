@@ -13,8 +13,8 @@ mkdir -p "$STATE_DIR"
 # geometry (masterWindow.screen → Quickshell.screens), and the monitor popup polls
 # Hyprland directly. Nothing reads monitors.json anymore.
 
-# Initialize default state JSON if missing
-if [ ! -f "$STATE_FILE" ]; then
+# Initialize default state JSON if missing or empty
+if [ ! -s "$STATE_FILE" ]; then
     cat <<'EOF' > "$STATE_FILE"
 {
   "version": 1,

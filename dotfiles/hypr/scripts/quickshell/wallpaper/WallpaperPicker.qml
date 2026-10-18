@@ -318,6 +318,8 @@ Item {
         // If clicking the EXACT same wallpaper that is already active on desktop and idle, ignore redundant click
         if (cleanTarget !== "" && cleanTarget === window.appliedWallCleanName && !window.isApplying) {
             console.log("[WALLPAPER_PICKER] Wallpaper is already active, ignoring redundant click:", safeFileName);
+            window.statusToast = "Already active";
+            toastTimer.restart();
             return;
         }
         
@@ -623,7 +625,7 @@ Item {
             // Band 1: Chromatic (sorted by hue angle 0° to 360°)
             // Band 0: Achromatic / Monochrome (sorted by lightness 0 to 100)
             if (aScore.band !== bScore.band) return bScore.band - aScore.band;
-            if (Math.abs(aScore.key - bScore.key) > 0.5) return aScore.key - bScore.key;
+            if (aScore.key !== bScore.key) return aScore.key - bScore.key;
 
             let aName = aClean.toLowerCase();
             let bName = bClean.toLowerCase();

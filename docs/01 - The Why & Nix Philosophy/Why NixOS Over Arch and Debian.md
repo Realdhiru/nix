@@ -7,7 +7,7 @@ tags: [philosophy, nixos, arch, debian, comparisons, system-architecture]
 
 When engineers build and showcase customized Linux environments, the overwhelming majority choose Arch Linux, with a minority on Fedora or Debian. We deliberately chose NixOS. 
 
-This document outlines the concrete architectural reasons for this decision, the failure modes of traditional package managers, and the trade-offs encountered in practice.
+This page records why this particular machine uses NixOS and the practical tradeoffs observed in this configuration. It is not a general distribution comparison guide.
 
 ---
 
@@ -33,10 +33,10 @@ NixOS replaces imperative mutations with a **declarative, pure-functional model*
 $$\text{System} = f(\text{Configuration}, \text{Lockfile})$$
 
 ### How NixOS Eliminates the Failure Modes
-- **Isolated Storage**: Packages are never dumped into `/usr/bin` or `/usr/lib`. Every single package, library, and configuration snippet lives under its own isolated cryptographic hash directory in `/nix/store/` (e.g. `/nix/store/7x9p...-hyprland-0.45.0`).
-- **Atomic Generation Switching**: Rebuilding creates a new system generation by updating symlinks in `/nix/var/nix/profiles/system`. The switch from the old system to the new system is atomic.
-- **Instant Bootloader Rollbacks**: If a newly built kernel or display driver fails to boot, you simply select the previous generation in `systemd-boot`. The prior system boots immediately because its entire dependency tree remains intact in the Nix Store.
-- **Zero-Dependency Clones**: Cloning this repository onto an entirely new laptop and running `nixos-rebuild switch --flake .#nixos` produces the identical operating system, down to font rendering, udev rules, and audio equalizer curves.
+- **Store-Based Packages**: Nix package outputs and their dependencies live at versioned paths in `/nix/store/`; the system exposes selected programs through profiles and generated system paths. Not every configuration file is an independent store object.
+- **Generation-Based System Changes**: Rebuilding creates a new system generation and updates system/profile references. A prior generation can remain bootable while retained, but service side effects and mutable user/system data are not transactionally rolled back.
+- **Generation Rollback**: A retained previous generation can be selected from the boot menu or activated from a working system. It restores the declared system closure, while mutable user data and service side effects remain outside that rollback.
+- **Reconstructable Configuration**: This repository describes the intended software and desktop configuration. Rebuilding it on compatible hardware with the declared inputs can reconstruct that environment; host hardware, architecture, external state, and mutable user data still differ.
 
 ---
 
@@ -45,7 +45,7 @@ $$\text{System} = f(\text{Configuration}, \text{Lockfile})$$
 | Dimension | Arch Linux | Debian Stable | Our NixOS Setup |
 | :--- | :--- | :--- | :--- |
 | **State Paradigm** | Imperative, mutable | Imperative, mutable | **Declarative, immutable** |
-| **Package Upgrades** | Rolling, uncoordinated | Infrequent, outdated software | **Rolling (nixpkgs-unstable) with atomic generation locks** |
+| **Package Upgrades** | Rolling, uncoordinated | Infrequent, outdated software | **Pinned nixpkgs inputs with generation-based activation** |
 | **System Rollback** | Requires snapshots (Btrfs) or manual package cache reverts | Complex manual downgrades | **Native generation rollback via bootloader or CLI** |
 | **Multi-Version Coexistence**| Difficult; library collisions break packages | Difficult | **Trivial; multiple versions of libraries coexist peacefully** |
 | **Configuration Centralization** | Fragmented across `/etc`, `~/.config`, and `/usr/share` | Fragmented | **Unified inside a single version-controlled git tree** |
@@ -58,10 +58,15 @@ $$\text{System} = f(\text{Configuration}, \text{Lockfile})$$
 ### The Downside: The Packaging Friction
 - In traditional Linux, you can download a standalone binary (or build from source with `make install`) and it runs immediately.
 - In NixOS, standard ELF binaries expect dynamic linkers at `/lib64/ld-linux-x86-64.so.2`, which does not exist in standard NixOS paths. Binaries must either be packaged via Nix derivations, run through `buildFHSUserEnv`, patched via `autoPatchelfHook`, or executed using `appimage-run`.
+- **Learning cost:** Nix replaces familiar imperative steps with a language, module system, evaluation, and derivations. It rewards explicit, reproducible configuration, but takes time to learn and can make quick one-off changes less obvious.
 
 ### The Upside: The Confidence to Refactor
 - In Arch or Debian, you hesitate to refactor your audio subsystem or display manager because you might break your daily work environment.
-- In NixOS, we completely tore out `services.easyeffects` and replaced it with native PipeWire filter chains in a single commit, knowing with 100% mathematical certainty that if it failed, a single command would restore the previous working state.
+- NixOS generations make system changes easier to test and recover from, but do not make every change risk-free: mutable user data and out-of-store configuration are outside generation rollback.
+- In this system, the audio stack was refactored from `services.easyeffects` to native PipeWire filter chains; a prior generation remained available as a recovery path.
+
+### Scope of reproducibility
+- This system uses a lockfile to pin declared inputs. Reproducibility applies to the declared software environment under matching platform assumptions; it does not make different hardware or mutable state identical.
 
 ## Related Nodes
 - [[Why Flakes Over Legacy Nix Channels]]

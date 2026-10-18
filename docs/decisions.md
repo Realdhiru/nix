@@ -8,6 +8,33 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Decision:** [`user.nix`](file:///home/realdhiru/nix/user.nix) is the single source of truth for `username`, `name`, and `hostname`.
 - **Rationale:** Banished hardcoded `/home/username` across Nix modules, Lua scripts, and Wallust configs for portability. All modules consume `user.username`.
 
+### 1a. Understandable, Declarative System Ownership
+- **Decision:** Prefer small, inspectable components and configuration in this repository over opaque frameworks or imperative machine-only setup. Declare packages and services in Nix; use the existing live-linked dotfile workflow where fast iteration is intentional.
+- **Rationale:** Reproducibility matters, but the system must also remain understandable and debuggable by its owner. Nix is not a guarantee of bit-identical results across hardware; keep host-specific state explicit and verify changes against the actual machine.
+
+### 1b. Documentation Scope
+- **Decision:** Keep this repository's docs focused on this machine's configuration, architecture choices, measured behavior, and operational runbooks. General Linux, Wayland, Nix, and NixOS learning material belongs in the separate Obsidian vault at `~/Projects/Vault/nix-brain/`.
+- **Rationale:** Separate system-of-record details from reusable teaching material to avoid maintaining duplicated explanations. Keep only the rationale needed to understand a local decision here.
+- **Application:** General flake, standalone packaging, and store-versus-live-link tutorials have been reduced to local input workflow, package ownership, and desktop iteration choices. Preserve the real local topology and observed behavior here.
+
+### 1c. Second-Brain Knowledge Base & Personal Biodata Standards
+- **Decision:** Personal biodata and profile history in `~/Projects/Vault/personal/` must follow strict machine-readable tabular schemas (`| Tag | Fact | First Seen | Last Seen | Confidence | Frequency | Sources |`) with explicit provenance, zero duplicates, zero contradictory entries, and zero negative-knowledge boilerplate.
+- **Rules:**
+  - Degree program is authoritative as **B.Tech in Information Technology (IT)** at KIET Group of Institutions, Ghaziabad. Informal mentions of CS/CSIT in chat exports are superseded.
+  - Academic standing is tracked via bounded time-invariant dates (**2024–2028 Batch**, expected graduation August 2028) rather than relative, expiring year numbers.
+  - Current residence is **Ghaziabad, Delhi NCR (Uttar Pradesh)**; hometown / origin is **Bareilly, Uttar Pradesh, India**.
+  - Internal OLED display resolution is empirically anchored to **2880×1620 @ 120Hz (16:9, Samsung Display Corp. 0x4180)**. Speculative 2880×1800 (16:10) labels are removed.
+  - Negative placeholder rows ("no named people identified", "no friends on record") from automated AI memory exports are purged to maintain high signal-to-noise ratio.
+
+### 1d. Multi-Vault Ecosystem Authority
+- **Decision:** All knowledge bases outside `~/nix/docs` live directly under `~/Projects/Vault/`, each serving an orthogonal domain under the high-density systems whitepaper standard:
+  - **`nix-brain`**: Universal Linux kernel primitives, IPC, graphics/audio pipelines, and Nix functional language calculus.
+  - **`game-brain`**: Wine/Proton graphics layers, DXVK/VKD3D, prefix sandboxing, and Iris Xe gaming configurations.
+  - **`neobrowser-brain`**: Bubblewrap sandbox containment, Xephyr `:7` X11 server displays, and anti-tamper runtime mechanics.
+  - **`personal`**: Machine-readable personal biodata ledger, relationship dossiers, psychological deep thoughts, and hardware specifications.
+  - **`put off till another day`**: Curated research and learning database for deep learning architectures, distributed computing, and emerging software paradigms to study and unpack.
+
+
 ### 2. Power Management & Hardware Authority
 - **Decision:** TLP 1.9.1 is the sole hardware authority for platform profiles, EPP, and ASPM.
 - **Rules:**
@@ -42,6 +69,11 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - QuickShell widgets must remain in separate modular files. Lazy QML compilation ensures inactive widgets consume zero CPU cycles, RAM, or timers.
   - Layer blur rules in `rules.lua` must match all QuickShell namespaces (`namespace = "^(quickshell|qs-.*)$"`) with `ignore_alpha = 0.05` to guarantee hardware Kawase blur behind every surface.
   - Frosted glass cards and floating control bars must use `root.base` at `Config.effectivePopupOpacity` backed by a subtle anti-bleed base layer (`crust` at 0.16–0.18). Never stack high-opacity (>0.80) solid crust fills that drown out compositor blur, and do not add top specular 1px hairlines.
+  - **Child Module Opacity Inheritance**: Modular views loaded inside `Floating.qml` or layer containers (`Timer.qml`, `DrawAction.qml`) must never paint solid opaque backplates (`cMantle`, `solidBgColor`). The outer container owns the blurred translucent background; child views must remain transparent or use subtle alpha cards (`cSurface0` at 0.40) to preserve system glassmorphism.
+  - **Native PipeWire Audio Alerts & Alarm Loop Invariant**: Desktop timers and Pomodoro notifications provide acoustic feedback using native `/run/current-system/sw/bin/pw-play` routed to standard Freedesktop stereo cues (`alarm-clock-elapsed.oga`, `complete.oga`), paired with minimal Rule 2.D notification titles. For Timer completions, audio loops (`isAlarmBuzzing`) at 6.2s intervals until dismissed, accompanied by programmatic Floating panel reveal (`floating setIndex 2`, `floating showEdge left`) and a 3-minute failsafe auto-silence timeout. Dismissal is bound to the center action button, `Enter`, or `Return`.
+  - **Wallpaper Search Concurrency & Fast Break**: Online wallpaper ingest pipelines (`ddg_search.sh`) must never perform serial blocking HEAD requests against full remote images prior to fetching thumbnails. The pipeline must break immediately on zero-result API responses and stream downloads across a bounded 4-worker concurrency pool, keeping search latency under 2 seconds.
+  - **Single Source of Truth for Wallpaper Ingest**: Online search scripts must exist exclusively in `dotfiles/wallpaper/backend/ddg_search.sh`. Never duplicate parallel helper scripts under `quickshell/wallpaper/`; QML callers must invoke canonical backend tools directly to prevent divergence.
+  - **Universal Solid Mode Invariant**: When Solid Mode (`Config.isSolidMode`) is active (via `wallpaper.sh kill`, gaming mode, or power-saver), ALL container backgrounds and child element alphas (`Timer.qml`, `DrawAction.qml`, `ClipboardManager.qml`, `WallpaperPicker.qml`) must automatically collapse translucent alpha multipliers to 100% solid theme colors. State controllers (`state_ctl.sh`, `restore_state.sh`) must use non-zero file checks (`[ ! -s "$STATE_FILE" ]`) to guarantee automatic self-healing against empty cache files.
   - **Global Consistency & Mandatory Confirmation Rule**:
     - **Scope**: Applies to ANY visual/theme change across the entire system (QuickShell widgets, Fuzzel, hyprlock, topbar, window borders, `rules.lua` layer rules, etc.).
     - **No Local Overrides**: Visual properties (opacity, blur, tokens, borders, radius, spacing) must be applied across every widget/app sharing that visual category in a single pass using shared tokens.
@@ -374,5 +406,18 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - Messaging & Communications (WhatsApp Web): kept solid (`1.0`) without translucency.
   - Text & Productivity PWAs (Notion, Claude, ChatGPT, To-Do, Monkeytype): styled with unified glass translucency (`0.57`).
 
+### QuickShell Timer Wake-Up Alarm Architecture
+- **Decision:** The QuickShell timer alarm uses a high-decibel, high-penetration synthesized acoustic asset ([`alarm_beep.wav`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/sounds/alarm_beep.wav), 950Hz/1400Hz alternating tone at 2.5x gain) cycling every 1.0s via `pw-play` until explicitly dismissed.
+- **Dismissal Mechanism:** Dismissal is anchored strictly to clicking the prominent center button on the auto-revealed popup or allowing the 3-minute hard failsafe auto-silence timeout (`alarmSafetyTimeout`) to expire. Wayland layer-shell keyboard grabbing hooks and shortcut overrides were purged to prevent unwanted input stealing and compositor state bloat.
+
+### Input-Addressed Store Architecture with Flake Lock Pinning over CA-Derivations
+- **Decision:** Retain the default Input-Addressed (IA / extensional) Nix store model backed by strictly pinned Flake inputs (`flake.lock`), rejecting experimental Content-Addressed (CA / intensional) derivations (`ca-derivations`).
+- **Rationale:** Academic and empirical literature (Dolstra 2005, Zwinger 2025, Lix RFD 815) proves that while CA prevents multi-tenant store poisoning, it introduces the severe "Two Glibcs Problem" (Equivalence Class Collisions) where binary outputs built against subtle variations in dependencies conflict and crash. Resolving this requires secondary binary hash rewriting, which mathematically relies on the axioms $P_{\text{suff}} \land P_{\text{enum}} \land P_{\text{len}}$. Because $P_{\text{enum}}$ fails on compressed binaries or embedded bytecode tables, hash rewriting risks corrupting outputs. On a single-tenant workstation, Flake lockfile pinning provides absolute build environment determinism without any risk of binary corruption.
+- **Related Theoretical Documentation:** Formally specified in [`Content-Addressing, Trust, and Equivalence Classes`](file:///home/realdhiru/Projects/Vault/nix-brain/03%20-%20Nix%20Fundamentals/Content-Addressing,%20Trust,%20and%20Equivalence%20Classes.md) and [`Formal Reference Tracking, Closure Invariants, and Store Path Calculus`](file:///home/realdhiru/Projects/Vault/nix-brain/03%20-%20Nix%20Fundamentals/Formal%20Reference%20Tracking%20and%20Closure%20Invariants.md).
+
+### Cross-Platform Systems & Alternative Operating System Boundaries
+- **Decision:** Treat NixOS on bare-metal Linux as the primary reference tier; enforce structured cross-platform deployment models for non-NixOS Linux (Standalone Multi-User Daemon), macOS (`nix-darwin` with synthetic firmlinks), and Windows (WSL2 Hyper-V microVM via `nixos-wsl`). Native Win32 Nix is rejected.
+- **Rationale:** Native Win32 lacks core POSIX primitives essential to Nix calculus: NTFS default case-insensitivity, lack of unprivileged namespaces, backslash/drive path syntax breaking the 32-character invariant, and PE/COFF dynamic library search fallback ("DLL Hell"). WSL2 provides 100% native Linux kernel and ext4 semantics. On macOS, APFS sealed system volume requires `/etc/synthetic.conf` firmlinks, while binary linking transitions to Mach-O (`install_name_tool`, `@rpath`, Apple Silicon ad-hoc `codesign`).
+- **Related Theoretical Documentation:** Documented in [`Nix on Other Linux Distributions (Standalone Nix)`](file:///home/realdhiru/Projects/Vault/nix-brain/07%20-%20Cross-Platform%20&%20Alternative%20OS/Nix%20on%20Other%20Linux%20Distributions%20%28Standalone%20Nix%29.md), [`Nix on macOS and the nix-darwin Subsystem`](file:///home/realdhiru/Projects/Vault/nix-brain/07%20-%20Cross-Platform%20&%20Alternative%20OS/Nix%20on%20macOS%20and%20the%20nix-darwin%20Subsystem.md), and [`Nix on Windows and WSL Architecture`](file:///home/realdhiru/Projects/Vault/nix-brain/07%20-%20Cross-Platform%20&%20Alternative%20OS/Nix%20on%20Windows%20and%20WSL%20Architecture.md).
 
 

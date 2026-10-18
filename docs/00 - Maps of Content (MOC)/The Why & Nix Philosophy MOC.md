@@ -14,17 +14,13 @@ This domain documents the foundational choices that define our system architectu
 
 1. [[Why NixOS Over Arch and Debian]]
    - The failure modes of imperative package managers (state drift, broken upgrades, non-reproducibility).
-   - The functional model: system state as an immutable mathematical function.
-   - Comparison matrix and practical engineering trade-offs.
+   - The tradeoffs and reproducibility limits relevant to this system.
 
 2. [[Why Flakes Over Legacy Nix Channels]]
-   - Why legacy channels undermine reproducibility via ambient, unversioned state.
-   - The lockfile contract (`flake.lock`), pure evaluation, and dependency coordination (`follows`).
+   - Why this system keeps its Nix inputs in `flake.nix` and `flake.lock`.
 
 3. [[Declarative Configuration - In-Store Derivations vs Out-of-Store Symlinks]]
-   - Deep dive into the two fundamental ways to declare configs in Nix.
-   - Detailed analysis of In-Store Derivations (read-only, pure, slow iteration) vs Out-of-Store Symlinks (`mkOutOfStoreSymlink`, instant live reload).
-   - Our hybrid architecture: keeping hardware/packages in-store and user UI live.
+   - Which local configuration areas use Home Manager generations or live links.
 
 4. [[Home Manager vs System Configuration]]
    - Privilege separation: root hardware governance vs unprivileged user workflow.

@@ -69,4 +69,4 @@ The flake exposes one primary system derivation:
 ## Related Nodes
 - [[Flake Self-Hosting Architecture]]
 - [[Host Configuration Anatomy]]
-- [[Declarative Configuration - In-Store Derivations vs Out-of-Store Symlinks]]
+- [[Configuration File Ownership in This System]]

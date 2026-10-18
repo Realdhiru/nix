@@ -104,9 +104,10 @@ Variants {
                 }
 
                 function showEdge(edge: string) {
+                    floatingWidget.isPinned = false;
                     floatingWidget.currentPos = floatingWidget.height / 2;
-                    floatingWidget.isPinned = true;
                     floatingWidget.showSidebar(edge, floatingWidget.currentPos);
+                    floatingWidget.isPinned = true;
                     floatingWidget.isExpanded = true;
                 }
 

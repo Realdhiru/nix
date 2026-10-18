@@ -783,7 +783,9 @@ Item {
             property real startW: clipList.cellWidth - window.s(10)
             property real startH: clipList.cellHeight - window.s(10)
             
-            color: window.crust
+            color: Config.isSolidMode
+                ? window.base
+                : Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity > 0 ? Math.min(0.92, Config.effectivePopupOpacity + 0.50) : 0.85)
             border.color: window.mauve
             border.width: window.previewMode ? window.s(2) : 0
             Behavior on border.width { NumberAnimation { duration: 150 } }

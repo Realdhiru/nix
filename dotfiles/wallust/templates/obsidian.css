@@ -1,0 +1,62 @@
+/* Dynamic Wallust Palette for Obsidian */
+.theme-dark, .theme-light {
+    --background-primary: {{base}};
+    --background-primary-alt: {{surface0}};
+    --background-secondary: {{mantle}};
+    --background-secondary-alt: {{surface1}};
+    --background-modifier-border: {{surface2}};
+    --background-modifier-border-hover: {{overlay0}};
+    --background-modifier-border-focus: {{accent}};
+    --background-modifier-form-field: {{surface0}};
+    
+    --text-normal: {{text}};
+    --text-muted: {{subtext0}};
+    --text-faint: {{subtext1}};
+    --text-accent: {{accent}};
+    --text-accent-hover: {{subtext0}};
+    
+    --interactive-normal: {{surface0}};
+    --interactive-hover: {{surface1}};
+    --interactive-accent: {{accent}};
+    --interactive-accent-hover: {{subtext0}};
+    
+    --text-selection: {{selection_bg}}55;
+    
+    /* Headings & Links */
+    --link-color: {{accent}};
+    --link-color-hover: {{subtext0}};
+    --h1-color: {{accent}};
+    --h2-color: {{teal}};
+    --h3-color: {{blue}};
+    --h4-color: {{peach}};
+    --h5-color: {{mauve}};
+    --h6-color: {{subtext0}};
+
+    /* Graph View Elements */
+    --graph-node: {{accent}};
+    --graph-node-focused: {{text}};
+    --graph-line: {{surface2}};
+}
+
+.theme-dark {
+    --color-base-00: {{crust}};
+    --color-base-10: {{base}};
+    --color-base-20: {{mantle}};
+    --color-base-25: {{surface0}};
+    --color-base-30: {{surface1}};
+    --color-base-35: {{surface2}};
+    --color-base-40: {{overlay0}};
+    --color-base-50: {{overlay1}};
+    --color-base-60: {{overlay2}};
+    --color-base-70: {{subtext1}};
+    --color-base-100: {{text}};
+    
+    --color-red: {{red}};
+    --color-orange: {{peach}};
+    --color-yellow: {{yellow}};
+    --color-green: {{green}};
+    --color-cyan: {{teal}};
+    --color-blue: {{blue}};
+    --color-purple: {{mauve}};
+    --color-pink: {{pink}};
+}

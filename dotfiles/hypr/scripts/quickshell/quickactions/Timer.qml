@@ -48,8 +48,10 @@ Item {
     property color cText: _theme.text
     property color cSubtext0: _theme.subtext0
     property color cMauve: _theme.mauve
-
-    function alpha(color, a) { return Qt.rgba(color.r, color.g, color.b, a); }
+    function alpha(color, a) {
+        if (Config.isSolidMode) return color;
+        return Qt.rgba(color.r, color.g, color.b, a);
+    }
 
     // =========================================================
     // --- SAFE STATE CACHE
@@ -83,15 +85,71 @@ Item {
     property var swLapData: []
 
     // =========================================================
-    // --- NOTIFICATIONS
+    // --- NOTIFICATIONS & SOUND ALERTS
     // =========================================================
+    property bool isAlarmBuzzing: false
+
     Process {
         id: notifyProc
     }
 
-    function notify(title, message, icon) {
+    Process {
+        id: soundProc
+    }
+
+    readonly property string alarmSoundPath: "/home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/sounds/alarm_beep.wav"
+
+    Timer {
+        id: alarmLoopTimer
+        interval: 1000
+        repeat: true
+        running: root.isAlarmBuzzing
+        onTriggered: {
+            if (root.isAlarmBuzzing) {
+                root.playSound(root.alarmSoundPath);
+            }
+        }
+    }
+
+    // Failsafe auto-silence after 3 minutes so unmanaged alarms do not ring indefinitely
+    Timer {
+        id: alarmSafetyTimeout
+        interval: 180000
+        repeat: false
+        running: root.isAlarmBuzzing
+        onTriggered: root.stopAlarm()
+    }
+
+    function playSound(soundPath) {
+        soundProc.running = false;
+        soundProc.command = ["pw-play", soundPath];
+        soundProc.running = true;
+    }
+
+    function stopAlarm() {
+        if (!root.isAlarmBuzzing) return;
+        root.isAlarmBuzzing = false;
+        soundProc.running = false;
+        stateCache.timerTargetEpoch = 0;
+        stateCache.timerRemainingMs = stateCache.timerPresetMs;
+    }
+
+    function triggerAlarm() {
+        root.isAlarmBuzzing = true;
+        root.playSound(root.alarmSoundPath);
+        root.notify("Timer Finished", "preferences-system-time");
+
+        // Slide the sidepopup widget open and switch to Timer tab (tab 2)
+        Quickshell.execDetached([
+            "bash", "-c",
+            "quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call floating setIndex 2; " +
+            "quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call floating showEdge left"
+        ]);
+    }
+
+    function notify(title, icon) {
         notifyProc.running = false; // Reset to allow sequential calls
-        notifyProc.command = ["notify-send", "-a", "Quickshell Timer", "-i", icon, title, message];
+        notifyProc.command = ["notify-send", "-a", "Quickshell Timer", "-i", icon, title];
         notifyProc.running = true;
     }
 
@@ -100,6 +158,10 @@ Item {
     // =========================================================
     function toggleActiveTabState() {
         if (!root.isActiveTab) return;
+        if (root.isAlarmBuzzing) {
+            root.stopAlarm();
+            return;
+        }
         let now = Date.now();
 
         if (stateCache.activeMode === 0) { // Timer
@@ -123,13 +185,13 @@ Item {
     }
 
     property bool isTimerRunning: stateCache.timerTargetEpoch > 0
-    property bool isTimerIdle: !isTimerRunning && stateCache.timerRemainingMs === stateCache.timerPresetMs
+    property bool isTimerIdle: !isTimerRunning && !isAlarmBuzzing && stateCache.timerRemainingMs === stateCache.timerPresetMs
 
     // Visibility gate — `parent` is the Loader from Floating.qml whose `visible`
     // is bound to `index === activeIndex && expandProgress > 0.01`. Falling back
     // to true keeps the module functional if loaded outside that Loader.
     property bool widgetVisible: parent !== null && parent.visible !== undefined ? parent.visible : true
-    property bool anyTimerActive: stateCache.timerTargetEpoch > 0 || stateCache.swStartEpoch > 0 || stateCache.pomoTargetEpoch > 0
+    property bool anyTimerActive: root.isAlarmBuzzing || stateCache.timerTargetEpoch > 0 || stateCache.swStartEpoch > 0 || stateCache.pomoTargetEpoch > 0
 
     property var interceptedShortcuts: {
         let arr = ["Return", "Enter"];
@@ -174,13 +236,6 @@ Item {
         rotation: root.counterRotation
         clip: true
 
-        Rectangle {
-            anchors.fill: parent
-            color: root.cMantle
-            radius: root.s(10)
-            z: -1
-        }
-
         // --- GLOBAL TICKER ---
         Timer {
             id: globalTicker
@@ -197,7 +252,7 @@ Item {
                     if (rem <= 0) {
                         stateCache.timerRemainingMs = 0;
                         stateCache.timerTargetEpoch = 0;
-                        root.notify("Timer Finished", "Your timer for " + root.formatTime(stateCache.timerPresetMs, false) + " has completed.", "preferences-system-time");
+                        root.triggerAlarm();
                     } else {
                         stateCache.timerRemainingMs = rem;
                     }
@@ -218,10 +273,11 @@ Item {
                         stateCache.pomoRemainingMs = 0;
 
                         let phase = stateCache.pomoState; // Capture phase before it resets
+                        root.playSound("/run/current-system/sw/share/sounds/freedesktop/stereo/complete.oga");
                         if (phase === 0) {
-                            root.notify("Focus Complete", "Great job! Time to take a well-deserved break.", "face-smile");
+                            root.notify("Focus Complete", "face-smile");
                         } else {
-                            root.notify("Break Over", "Break time is up. Let's get back to focus!", "task-due");
+                            root.notify("Break Over", "task-due");
                         }
 
                         pomodoroView.handleSessionComplete();
@@ -243,9 +299,9 @@ Item {
             width: root.s(280)
             height: root.s(36)
             radius: root.s(10)
-            color: root.cSurface0
+            color: root.alpha(root.cSurface0, 0.40)
             border.width: 1
-            border.color: root.cSurface1
+            border.color: root.alpha(root.cSurface1, 0.60)
             z: 10
 
             Rectangle {
@@ -459,7 +515,8 @@ Item {
                         font.family: "JetBrains Mono"
                         font.weight: Font.Black
                         font.pixelSize: root.s(68)
-                        color: stateCache.timerRemainingMs === 0 && !root.isTimerRunning ? root.cMauve : root.cText
+                        color: root.isAlarmBuzzing ? _theme.red : (stateCache.timerRemainingMs === 0 && !root.isTimerRunning ? root.cMauve : root.cText)
+                        Behavior on color { ColorAnimation { duration: 150 } }
                         visible: !root.isTimerIdle
                     }
 
@@ -518,7 +575,7 @@ Item {
 
                     Rectangle {
                         width: root.s(50); height: root.s(50); radius: root.s(10)
-                        color: root.cSurface0; border.width: 1; border.color: root.cSurface1
+                        color: root.alpha(root.cSurface0, 0.40); border.width: 1; border.color: root.alpha(root.cSurface1, 0.60)
                         Text { anchors.centerIn: parent; text: "\uF0E2"; font.family: root.iconFont; font.pixelSize: root.s(16); color: root.cText }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -538,16 +595,20 @@ Item {
 
                     Rectangle {
                         width: root.s(64); height: root.s(64); radius: root.s(10)
-                        color: root.cMauve
+                        color: root.isAlarmBuzzing ? _theme.red : root.cMauve
+                        Behavior on color { ColorAnimation { duration: 200 } }
                         Text {
                             anchors.centerIn: parent
-                            text: root.isTimerRunning ? "\uF04C" : "\uF04B"
+                            text: root.isAlarmBuzzing ? "\uF04D" : (root.isTimerRunning ? "\uF04C" : "\uF04B")
                             font.family: root.iconFont; font.pixelSize: root.s(24); color: root.cMantle
-                            anchors.horizontalCenterOffset: root.isTimerRunning ? 0 : root.s(2)
+                            anchors.horizontalCenterOffset: (root.isTimerRunning || root.isAlarmBuzzing) ? 0 : root.s(2)
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: (mouse) => root.toggleActiveTabState()
+                            onClicked: (mouse) => {
+                                if (root.isAlarmBuzzing) root.stopAlarm();
+                                else root.toggleActiveTabState();
+                            }
                         }
                     }
                 }
@@ -608,9 +669,9 @@ Item {
                                     width: lapList.width
                                     height: root.s(32)
                                     radius: root.s(10)
-                                    color: root.cSurface0
+                                    color: root.alpha(root.cSurface0, 0.40)
                                     border.width: 1
-                                    border.color: root.cSurface1
+                                    border.color: root.alpha(root.cSurface1, 0.60)
 
                                     property int trueIdx: root.swLapData.length - 1 - index
                                     property var lapItem: root.swLapData[trueIdx]
@@ -637,7 +698,7 @@ Item {
 
                     Rectangle {
                         width: root.s(50); height: root.s(50); radius: root.s(10)
-                        color: root.cSurface0; border.width: 1; border.color: root.cSurface1
+                        color: root.alpha(root.cSurface0, 0.40); border.width: 1; border.color: root.alpha(root.cSurface1, 0.60)
                         Text {
                             anchors.centerIn: parent
                             text: stopwatchView.isRunning ? "\uF024" : "\uF0E2"
@@ -755,9 +816,9 @@ Item {
                         width: root.s(280)
                         height: root.s(160)
                         radius: root.s(10)
-                        color: root.cSurface0
+                        color: root.alpha(root.cSurface0, 0.60)
                         border.width: 1
-                        border.color: root.cSurface1
+                        border.color: root.alpha(root.cSurface1, 0.60)
                         visible: pomodoroView.showSettings
 
                         Column {
@@ -775,13 +836,13 @@ Item {
                                     width: root.s(240)
                                     Text { text: modelData.label; color: root.cSubtext0; font.family: "JetBrains Mono"; font.pixelSize: root.s(12); Layout.fillWidth: true }
                                     Rectangle {
-                                        width: root.s(24); height: root.s(24); radius: root.s(6); color: root.cSurface1
+                                        width: root.s(24); height: root.s(24); radius: root.s(6); color: root.alpha(root.cSurface1, 0.60)
                                         Text { anchors.centerIn: parent; text: "-"; color: root.cText; font.family: "JetBrains Mono"; font.pixelSize: root.s(14) }
                                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: (mouse) => stateCache[modelData.target] = Math.max(modelData.min, stateCache[modelData.target] - modelData.step) }
                                     }
                                     Text { text: stateCache[modelData.target]; color: root.cText; font.family: "JetBrains Mono"; font.bold: true; font.pixelSize: root.s(14); Layout.minimumWidth: root.s(24); horizontalAlignment: Text.AlignHCenter }
                                     Rectangle {
-                                        width: root.s(24); height: root.s(24); radius: root.s(6); color: root.cSurface1
+                                        width: root.s(24); height: root.s(24); radius: root.s(6); color: root.alpha(root.cSurface1, 0.60)
                                         Text { anchors.centerIn: parent; text: "+"; color: root.cText; font.family: "JetBrains Mono"; font.pixelSize: root.s(14) }
                                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: (mouse) => stateCache[modelData.target] = Math.min(modelData.max, stateCache[modelData.target] + modelData.step) }
                                     }
@@ -800,7 +861,7 @@ Item {
 
                     Rectangle {
                         width: root.s(50); height: root.s(50); radius: root.s(10)
-                        color: root.cSurface0; border.width: 1; border.color: root.cSurface1
+                        color: root.alpha(root.cSurface0, 0.40); border.width: 1; border.color: root.alpha(root.cSurface1, 0.60)
                         Text { anchors.centerIn: parent; text: "\uF013"; font.family: root.iconFont; font.pixelSize: root.s(16); color: pomodoroView.showSettings ? root.cMauve : root.cText }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -828,18 +889,13 @@ Item {
 
                     Rectangle {
                         width: root.s(50); height: root.s(50); radius: root.s(10)
-                        color: root.cSurface0; border.width: 1; border.color: root.cSurface1
+                        color: root.alpha(root.cSurface0, 0.40); border.width: 1; border.color: root.alpha(root.cSurface1, 0.60)
                         Text { anchors.centerIn: parent; text: "\uF051"; font.family: root.iconFont; font.pixelSize: root.s(16); color: root.cText } // Skip
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                             onClicked: (mouse) => {
                                 stateCache.pomoTargetEpoch = 0;
-                                let phase = stateCache.pomoState;
-                                if (phase === 0) {
-                                    root.notify("Pomodoro Skipped", "Focus session skipped. Moving to break.", "media-skip-forward");
-                                } else {
-                                    root.notify("Pomodoro Skipped", "Break skipped. Moving back to focus.", "media-skip-forward");
-                                }
+                                root.notify("Session Skipped", "media-skip-forward");
                                 pomodoroView.handleSessionComplete();
                             }
                         }

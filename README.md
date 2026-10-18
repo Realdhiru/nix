@@ -155,13 +155,13 @@ Custom shell workflows defined in [`modules/home/shell.nix`](modules/home/shell.
 
 ---
 
-## 🧠 Second-Brain Knowledge Graph Vault (`docs/`)
+## System Documentation (`docs/`)
 
-The repository includes a complete, human-crafted systems engineering knowledge base in [`docs/`](docs/) configured for [Obsidian](https://obsidian.md) with an interactive graph view:
+[`docs/`](docs/) records this machine's configuration, architecture decisions, hardware behavior, and recovery procedures. General Linux, Wayland, Nix, and NixOS learning notes live in the separate Obsidian vault at `~/Projects/Vault/nix-brain/`.
 
 * **[MOC: System Architecture](docs/00%20-%20Maps%20of%20Content%20(MOC)/System%20Architecture%20MOC.md)** — Router hub linking all subsystems.
-* **[01 - The Why & Nix Philosophy](docs/01%20-%20The%20Why%20&%20Nix%20Philosophy/)** — Out-of-store symlinks, flakes vs channels, NixOS vs Arch/Debian.
-* **[02 - Flake & System Architecture](docs/02%20-%20Flake%20&%20System%20Architecture/)** — Root flake topology, standalone flakes, packaging methods.
+* **[01 - The Why & Nix Philosophy](docs/01%20-%20The%20Why%20&%20Nix%20Philosophy/)** — Local system rationale and configuration ownership.
+* **[02 - Flake & System Architecture](docs/02%20-%20Flake%20&%20System%20Architecture/)** — This host's flake topology, modules, and package integrations.
 * **[03 - Compositor & Hyprland Engine](docs/03%20-%20Compositor%20&%20Hyprland%20Engine/)** — Lua configuration, Frame-0 opacity evaluation, Wayland display protocols.
 * **[04 - QuickShell Desktop](docs/04%20-%20QuickShell%20QML%20Desktop/)** — Event-driven IPC, dynamic Kanji workspaces, widget breakdown.
 * **[05 - Theming & Wallust Engine](docs/05%20-%20Theming%20&%20Wallust%20Engine/)** — Palette extraction algorithm and semantic UI tokens.

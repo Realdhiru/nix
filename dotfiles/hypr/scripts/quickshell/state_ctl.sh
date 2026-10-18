@@ -7,7 +7,7 @@ STATE_FILE="$STATE_DIR/state.json"
 
 mkdir -p "$STATE_DIR"
 
-if [ ! -f "$STATE_FILE" ]; then
+if [ ! -s "$STATE_FILE" ]; then
     cat <<'EOF' > "$STATE_FILE"
 {
   "version": 1,

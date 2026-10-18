@@ -94,7 +94,9 @@ Item {
     property color themeBaseColor: _theme.base
 
     // Universal Panel Styling
-    property color panelBgColor: Qt.rgba(themeBaseColor.r, themeBaseColor.g, themeBaseColor.b, 0.85)
+    property color panelBgColor: Config.isSolidMode
+        ? solidBgColor
+        : Qt.rgba(themeBaseColor.r, themeBaseColor.g, themeBaseColor.b, Config.effectivePopupOpacity > 0 ? Math.min(0.85, Config.effectivePopupOpacity + 0.25) : 0.45)
     property color panelBorderColor: Qt.rgba(baseTextColor.r, baseTextColor.g, baseTextColor.b, 0.15)
 
 
@@ -159,13 +161,6 @@ Item {
         height: (root.counterRotation % 180 !== 0) ? parent.width : parent.height
         rotation: root.counterRotation
         clip: true // Fixes layout bound bleeds
-
-        // ADDED: Solid Background to replace transparency
-        Rectangle {
-            anchors.fill: parent
-            color: root.solidBgColor
-            z: -1
-        }
 
         // =========================================================
         // --- CAMERA RIG (Handles viewport size, rotation, gestures)
@@ -583,7 +578,7 @@ Item {
             width: s(260)
             height: s(64)
             radius: s(14)
-            color: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.base) ? Qt.rgba(mochaColors.base.r, mochaColors.base.g, mochaColors.base.b, 0.98) : root.solidBgColor
+            color: root.panelBgColor
             border.width: 1
             border.color: root.panelBorderColor
 
@@ -691,7 +686,7 @@ Item {
             width: s(320)
             height: s(340)
             radius: s(14)
-            color: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.base) ? Qt.rgba(mochaColors.base.r, mochaColors.base.g, mochaColors.base.b, 0.98) : root.solidBgColor
+            color: root.panelBgColor
             border.width: 1
             border.color: root.panelBorderColor
 
