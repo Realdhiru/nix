@@ -16,14 +16,21 @@
     '';
   };
 
-  # Hardware Acceleration Flags for Brave — sole source of these flags now
-  # (the package-level override in packages.nix was removed so this
-  # setting only exists in one place).
-  home.file.".config/brave-flags.conf".text = ''
-    --ozone-platform-hint=wayland
-    --use-gl=angle
-    --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder
-  '';
+  # Universal Hardware Acceleration Wrapper for Brave & Web Apps:
+  # Injects VA-API zero-copy and ANGLE GL flags into the PATH wrapper, ensuring
+  # hardware decoding on Intel/AMD/Nvidia without relying on unparsed flags.conf.
+  home.file.".local/bin/brave" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      exec /run/current-system/sw/bin/brave \
+        --use-gl=angle \
+        --use-angle=gl \
+        --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder,WaylandWindowDecorations \
+        --enable-zero-copy \
+        "$@"
+    '';
+  };
 
   xdg.configFile."hypr" = {
     source = config.lib.file.mkOutOfStoreSymlink

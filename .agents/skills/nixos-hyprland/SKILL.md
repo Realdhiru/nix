@@ -21,7 +21,11 @@ description: High-density operational reference for maintaining the user's NixOS
    - Physical machine model authority: **ASUS Vivobook S 15 OLED (K5504VA / S5504VA)** (Intel Core i5-13500H, 2.8K 120Hz OLED). Never misidentify as Zenbook or any other lineup.
    - Exact clickable markdown links (`file:///...`), verified line ranges, and zero speculative hallucination.
    - Final turn summaries must be compact, structured bullet points designed for instant parsing.
-4. **Verification Discipline & Anti-Patterns**:
+4. **Three Core Architecture Invariants (Mandatory on All Refactors & Implementations)**:
+   - **Pillar 1: Maximum Performance (Zero Lag, Race-to-Sleep)**: Interactive hot paths must run in sub-millisecond to sub-5ms times. No slow runtime-interpreted Python/Node scripts in hot paths (native C/Rust, Qt/QML, POSIX `jq`/`awk` only). Zero-copy pipelines (`--enable-zero-copy`) and direct Wayland/Ozone protocols everywhere.
+   - **Pillar 2: Maximum Battery Life (Deep C-States, Fixed-Function Hardware Offload)**: Maximize package $C8/C10$ sleep states by eliminating periodic polling loops (`Timer`, shell loops) in favor of event-driven D-Bus/IPC/inotify. Offload video/audio compute to hardware ASICs (Intel QuickSync VA-API). Inhibit glass blur/shaders behind 60/120fps video and on battery.
+   - **Pillar 3: Maximum Cross-Hardware Reproducibility**: Pure declarative Nix derivations and Home Manager `home.file` definitions over manual imperative file mutations. Dynamic token/scaler resolution (`Theme.colors.*`, screen scale) instead of hardcoded hex or pixel values. Zero machine-specific hardcoded paths outside `hosts/` and `user.nix`.
+5. **Verification Discipline & Anti-Patterns**:
    - **Screenshot Verification Ban (Token & Latency Discipline)**: Never capture screenshots (`grim`, image artifacts) to verify internal logic, widget toggles, or theme states. Capturing visual buffers consumes tens of thousands of tokens, induces multi-second latency, and provides zero semantic insight into internal state machines. Verify exclusively via deterministic log assertions (`console.log`), direct file inspection (`FileView`, `jq`), and native D-Bus/IPC queries. Screenshot captures are strictly reserved for explicit user-requested UI evaluations.
    - **Authoritative Process Recovery vs Stale Artifact Reverse-Engineering**: When QuickShell or helper daemons experience lifecycle shifts, dead PID files and abandoned IPC sockets (`/run/user/1000/quickshell/by-id/`) must not be polled or reverse-engineered. Always inspect the live daemon dynamically (`pgrep -fa quickshell`) or execute an authoritative clean reload via `reload.sh`.
    - **Measure the Mechanism Before Writing the Fix**: Capture actual runtime values, object identities, and event sources before editing code. Disprove or confirm theories with minimal probes rather than layering speculative fallbacks.
@@ -74,6 +78,7 @@ description: High-density operational reference for maintaining the user's NixOS
   - ASUS OLED brightness keys: rebound after hybrid-sleep in `hosts/nixos/hardware/asus.nix`.
   - WirePlumber: `50-disable-libcamera.conf` disables libcamera to avoid UVC stream collision.
   - Native PipeWire Equalizer: System audio uses `libpipewire-module-filter-chain` (10-band biquad peaking filters with $Q = 1.414$, virtual sink priority 2100) and native `pw-cli` gain control instead of external daemon apps.
+  - Web Apps Hardware Video Acceleration: All Brave web apps and browser windows must receive native VA-API zero-copy hardware acceleration via `~/.local/bin/brave` (`--use-gl=angle --use-angle=gl --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder,WaylandWindowDecorations --enable-zero-copy`). Video apps (YouTube) must remain 100% solid opacity (`1.0`) with `idle_inhibit = "focus"`. WhatsApp must never have translucent glass opacity.
 
 ## 3. Workflow & Verification Commands
 
@@ -104,6 +109,16 @@ sudo nixos-rebuild dry-run --flake ~/nix#nixos
 ~/.config/hypr/scripts/fuzzel_menu.sh emoji
 ~/.config/hypr/scripts/fuzzel_menu.sh glyph
 ```
+
+## 4. Second-Brain & Obsidian Vault Architecture Standards
+
+- **Single Vault Root**: All vaults live strictly under `~/Projects/Vault/<subject>-brain/` (e.g. `~/Projects/Vault/nix-brain`).
+- **Zero Meta-Bloat**: No "hub" folders, templates directories, or helper scripts. Only actual domain documentation.
+- **Zero Emojis**: No decorative emojis in file names, headers, or bullet points.
+- **3-Tier Architecture**: Layer 3 (`00 - Maps of Content`), Layer 2 (`Concepts & Synthesis Notes`), Layer 1 (`Specifications & Runbooks`).
+- **Contextual Trade-Offs**: Every architectural choice must answer *"Why this and not X?"* with a concrete table.
+- **Battle-Tested Traps**: Non-obvious failure modes, race conditions, and bug post-mortems must be preserved as first-class notes.
+
 
 ## Wine/Proton storage janitor (gameclean)
 gameclean — packaged in pkgs/gameclean.nix (docs/gameclean.md). Wine games scatter files across 5 locations (game dir, Wine prefixes, umu prefix caches, ~/.cache, Lutris ymls); run `gameclean` (preview) after any game uninstall or failed install, `gameclean -y` only after reading the preview. Working Lutris-referenced titles are never flagged.

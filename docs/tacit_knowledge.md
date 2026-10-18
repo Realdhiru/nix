@@ -186,6 +186,10 @@
 - **Flake Evaluation Requires Git-Tracked Files:**
   - *Symptom:* `nixos-rebuild build --flake .#nixos` fails with `error: Path '…' in the repository … is not tracked by Git` immediately after adding new source files to `~/nix`.
   - *Mitigation:* Flakes evaluate from the git index, not the working tree. `git add` every new file referenced by any module or derivation (staging only — no commit needed) before rebuilding.
+- **Nixpkgs Chromium / Brave Shell Wrapper Flags Omission:**
+  - *Symptom:* Configuring `~/.config/brave-flags.conf` or `~/.config/chrome-flags.conf` has zero effect on browser runtime arguments. 4K 60/120fps video playback stutters, drops frames, or exhibits micro-jitter because hardware video decoding (`VaapiVideoDecodeLinuxGL`, zero-copy buffers) is not loaded.
+  - *Mitigation:* Nixpkgs packages Brave with `makeShellWrapper` which does not parse user config flag files. Provide a global user wrapper at `~/.local/bin/brave` (or pass arguments directly in `keybinds.lua`) injecting `--use-gl=angle --use-angle=gl --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder,WaylandWindowDecorations --enable-zero-copy "$@"` so all web apps, PWAs, and browser windows automatically receive hardware acceleration.
+
 
 
 

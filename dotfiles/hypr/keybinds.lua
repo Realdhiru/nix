@@ -111,7 +111,7 @@ hl.bind(mainMod .. " + ALT + N",
         'brave  --profile-directory="Default" --class=notion --app=https://www.notion.so/02917993852a4825ab25a38c938de4f8'))
 
 hl.bind(mainMod .. " + ALT + Y",
-    hl.dsp.exec_cmd('brave  --profile-directory="youtube" --class=youtube --app=https://youtube.com'))
+    hl.dsp.exec_cmd('brave --profile-directory="youtube" --class=youtube --app=https://youtube.com --use-gl=angle --use-angle=gl --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder --enable-zero-copy'))
 
 hl.bind(mainMod .. " + ALT + D",
     hl.dsp.exec_cmd(

@@ -46,8 +46,8 @@ if not is_opaque then
     hl.window_rule({ match = { class = "^brave-gemini\\.google\\.com__app-Default$" }, opacity = "0.57" })                          -- Gemini
     hl.window_rule({ match = { class = "^brave-claude\\.ai__new-Default$" }, opacity = "0.57" })                                    -- Claude
     hl.window_rule({ match = { class = "^brave-monkeytype\\.com__-Default$" }, opacity = "0.57" })                                  -- Monkeytype
-    hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab25a38c938de4f8-Default$" }, opacity =
-    "0.57" })                                                                                                                       -- Notion
+    hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab25a38c938de4f8-Default$" }, opacity = "0.57" }) -- Notion
+    hl.window_rule({ match = { class = "^(brave-to-do\\.live\\.com__tasks-Default|todo)$" }, opacity = "0.57" })                     -- To-Do
 
     -- Spotify Lyrics (Chromium)
     hl.window_rule({ match = { class = "^(chromium-browser)$" }, opacity = "0.85" })
@@ -128,10 +128,11 @@ hl.window_rule({ match = { class = "^(steam)$", title = "^(Friends List|Special 
 hl.window_rule({ match = { class = "^(steam)$", title = "^(Steam Settings)$" }, float = true, center = true, size = { 900, 700 } })
 
 -- ======================================================
--- Idle Inhibit (Fullscreen Video / Games)
+-- Idle Inhibit & Video Rules (Fullscreen Video / Games / YouTube)
 -- ======================================================
 
 hl.window_rule({ match = { class = "^(mpv)$" }, idle_inhibit = "focus" })
+hl.window_rule({ match = { class = "^(brave-youtube\\.com__-youtube|youtube)$" }, idle_inhibit = "focus", opacity = "1.0 override 1.0 override" })
 
 -- ======================================================
 -- Quickshell

@@ -17,7 +17,23 @@ Whenever an agent touches or modifies any feature, script, keybind, hardware qui
 
 ## 2. Absolute Architectural & System Non-Negotiables
 
-### A. Power & Performance Policy
+### A. Three Core Architecture Invariants (Mandatory on All Refactors & Implementations)
+Every new feature, refactor, script, service, or configuration must adhere to these three pillars:
+1. **Pillar 1: Maximum Performance (Zero Lag, Race-to-Sleep)**
+   - Desktop and interactive hot paths must execute in sub-millisecond to sub-5ms times.
+   - Python, Node, Ruby, and slow runtime-interpreted scripts are strictly forbidden in hot paths (keybinds, polling, event watchers, IPC handlers, theme generation, popups). Use compiled native C/Rust binaries, native C++ Qt/QML bindings, or instant POSIX C utilities (`jq`, `awk`, coreutils).
+   - Zero-copy pipelines (`--enable-zero-copy`, VA-API GL direct surface sharing) and native Wayland/Ozone protocols everywhere. Never introduce artificial CPU/GPU frequency caps or sluggish polling loops.
+2. **Pillar 2: Maximum Battery Life (Deep C-States, Fixed-Function Hardware Offload)**
+   - Maximize hardware sleep states ($C8/C10$ package sleep) by eliminating periodic polling loops (`Timer`, shell loops). All desktop daemons must be event-driven (D-Bus, udev, inotify, socket IPC).
+   - Offload compute-heavy media workloads to fixed-function hardware ASICs (Intel QuickSync VA-API) instead of CPU software decoding.
+   - Solid fallback (`SOLID_BG`) and shader-inhibition on power-sensitive apps/modes (disable compositor glass blur behind running 60/120fps video).
+   - Respect TLP 1.9.1 hardware authority and the empirically locked Balanced profile (`balance_performance`, balanced platform profile, ASPM `powersupersave`).
+3. **Pillar 3: Maximum Cross-Hardware Reproducibility**
+   - Pure declarative Nix derivations and Home Manager `home.file` definitions over ad-hoc imperative scripts in `~/.local/bin/` or manual configs.
+   - Portable dynamic theme and token resolution (dynamic `Theme.colors.*` over hardcoded hex, dynamic font discovery, relative geometry scaler calculations).
+   - Standardized Wayland protocols (XDG desktop portal, Ozone Wayland hint, pipewire-pulse) that work deterministically across Intel, AMD, and Nvidia platforms without proprietary lock-ins or hardcoded machine paths outside `hosts/` and `user.nix`.
+
+### B. Power & Performance Policy
 - **Hardware Model Authority**: The physical machine is an **ASUS Vivobook S 15 OLED (K5504VA / S5504VA)** (Intel Core i5-13500H, 2.8K 120Hz OLED). Never misidentify this system as Zenbook, ROG, or Zephyrus.
 - **Responsiveness is Non-Negotiable**: Never introduce artificial CPU/GPU frequency caps, delayed polling, or sluggish profile settings that make desktop interactions, browser/IDE tasks, or compositing laggy.
 - **TLP Hardware Authority**: TLP 1.9.1 is the sole authority for hardware power profiles (`PLATFORM_PROFILE_ON_*`, EPP, ASPM). In `asusd.ron`, `change_platform_profile_on_battery/on_ac` must remain `false`. `asusd.service` is enabled strictly to enforce the 80% battery charge ceiling (`charge_control_end_threshold = 80`). `asusd.ron` must keep `bat_profile = Balanced` to prevent hardware firmware throttling on battery.
@@ -42,6 +58,7 @@ Whenever an agent touches or modifies any feature, script, keybind, hardware qui
 ### C. Media & Application Integrations
 - **MPV MPRIS Integration**: `mpv` requires `(mpv.override { scripts = [ mpvScripts.mpris ]; })` in `modules/system/packages.nix` and `mpris.so` in `~/.config/mpv/scripts/` to broadcast D-Bus `org.mpris.MediaPlayer2` signals for local media tracking.
 - **Native Wayland Environment**: Electron and Chromium apps must use native Wayland (`NIXOS_OZONE_WL = "1"`, `--ozone-platform-hint=wayland`) for native touchpad gestures.
+- **Web Apps Hardware Video Acceleration Authority**: All Brave web apps and browser windows must receive native VA-API zero-copy hardware acceleration via `~/.local/bin/brave` (`--use-gl=angle --use-angle=gl --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder,WaylandWindowDecorations --enable-zero-copy`). High-framerate video applications (YouTube) must remain 100% solid opacity (`1.0`) with `idle_inhibit = "focus"`. WhatsApp must never have translucent glass opacity.
 
 ### D. Notification Length & Formatting Policy
 - **Minimum Length Only (Zero Sentences)**: System notifications (`notify-send`) must NEVER emit conversational sentences, explanatory bodies, or descriptive prose. Notification text must be ultra-minimal: 1–3 words max (e.g., `"Coffee mode ON"`, `"Game Mode OFF"`, `"Hotspot ON"`), with NO secondary body text unless delivering strictly essential dynamic telemetry (e.g. connection SSID or IP). TopBar ticker (`NotifTicker.qml`) and minimal notification cards are constrained visual elements designed for concise state signals only.
@@ -71,3 +88,23 @@ Whenever an agent touches or modifies any feature, script, keybind, hardware qui
 - **High Semantic Density**: Minimal tokens during reasoning and responses; pure technical signal.
 - **Technical Rigor Preserved**: Code blocks, exact file paths, clickable markdown links, and diffs must remain 100% accurate.
 - **Brief Final Summaries**: Final turn response must be ultra-compact bullet points designed for instant parsing.
+
+---
+
+## 5. Second-Brain & Obsidian Vault Architecture Standards
+
+Whenever an agent is instructed to create, expand, or document knowledge in Obsidian vaults:
+- **Location Invariant**: All second-brain vaults MUST live directly under `~/Projects/Vault/<subject>-brain/` (e.g. `~/Projects/Vault/nix-brain`). Never scatter vault folders across `~` or `~/Projects/`.
+- **Zero Meta-Bloat Invariant**: NEVER create "hub" meta-directories, template folders, "how to use" manuals, or standalone helper scripts inside vaults. Jump straight into authoritative domain documentation.
+- **Strict Aesthetic Standard (Zero Emojis)**: NEVER use cosmetic/decorative emojis in file names, note headers, or bullet points. All notes must look like human-crafted, professional systems engineering whitepapers.
+- **The 3-Tier Layered Architecture**:
+  - `00 - Maps of Content (MOC)`: 1–3 top-level router notes that cluster the graph view cleanly around core hubs.
+  - `Concepts & Synthesis Notes`: In-depth trade-off analyses answering *"Why this and not the alternative?"* with side-by-side comparison tables.
+  - `Specifications & Runbooks`: Concrete primitives, kernel/hardware registers, CLI commands, and post-mortems for non-obvious traps and bugs.
+- **Mandatory Depth**: Notes must never be shallow 3-bullet summaries. Every note must document:
+  1. Context and failure modes of naive approaches.
+  2. Concrete implementation code and exact parameters.
+  3. Structured Trade-Off Matrix.
+  4. Non-obvious edge cases, race conditions, and traps discovered in production.
+  5. Bidirectional wikilinks (`[[...]]`) connecting up to its parent MOC and related sibling concepts.
+
