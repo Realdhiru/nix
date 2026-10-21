@@ -77,7 +77,7 @@ description: High-density operational reference for maintaining the user's NixOS
 - **Hardware Quirks**:
   - Machine-specific hardware quirks isolated in `hosts/<host>/hardware/` (e.g. `hosts/nixos/hardware/asus.nix`).
   - ASUS OLED brightness keys: rebound after hybrid-sleep in `hosts/nixos/hardware/asus.nix`.
-  - WirePlumber: `50-disable-libcamera.conf` disables libcamera to avoid UVC stream collision.
+  - WirePlumber: `50-disable-libcamera.conf` disables libcamera to avoid UVC stream collision. `51-device-autoswitch.conf` disables `bluetooth.autoswitch-to-headset-profile` (preventing AVDTP live-renegotiation crashes on TWS earbuds) and gives Bluetooth outputs priority 2150 (out-prioritizing the 2100 EQ virtual sink).
   - Native PipeWire Equalizer: System audio uses `libpipewire-module-filter-chain` (10-band biquad peaking filters with $Q = 1.414$, virtual sink priority 2100) and native `pw-cli` gain control instead of external daemon apps.
   - Web Apps Hardware Video Acceleration: All Brave web apps and browser windows must receive native VA-API zero-copy hardware acceleration via `~/.local/bin/brave` (`--use-gl=angle --use-angle=gl --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder,WaylandWindowDecorations --enable-zero-copy`). Video apps (YouTube) must remain 100% solid opacity (`1.0`) with `idle_inhibit = "focus"`. WhatsApp must never have translucent glass opacity.
 

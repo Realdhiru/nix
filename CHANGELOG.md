@@ -1,5 +1,46 @@
 # CHANGELOG
 
+## 2026-10-21 — WirePlumber Bluetooth Audio Pipeline & AVDTP Stabilization
+
+- **WirePlumber Bluetooth Headset Autoswitch & Priority Handover Fix ([`home.nix`](file:///home/realdhiru/nix/home.nix))**:
+  - Diagnosed root-cause failure where connected Bluetooth earbuds (OnePlus Nord Buds 3) emitted zero audio due to WirePlumber 0.5's default `bluetooth.autoswitch-to-headset-profile = true`. This setting created a virtual loopback recording source (`bluez_input.*`), prompting WirePlumber to initiate live AVDTP codec renegotiations from A2DP (AAC) to HSP/HFP (mono mSBC/CVSD) when audio clients connected, causing BlueZ `EBUSY` / timeout (110) collisions, audio transport failures, and card profile shutdown to `"off"`.
+  - Added `"bluetooth.autoswitch-to-headset-profile" = false` to `wireplumber.settings` in `51-device-autoswitch.conf` (`home.nix`), keeping earbuds locked in high-fidelity A2DP AAC stereo while relying on the laptop's internal microphone array for clean voice input.
+  - Elevated all external audio sink output priorities (`~bluez_output.*`, `~alsa_output.*usb.*`, `~alsa_output.*Headphones.*`, `~alsa_output.*headset.*`) to `priority.session = 2150` and `priority.driver = 2150`, cleanly out-ranking the PipeWire equalizer filter chain (`effect_input.eq10`, 2100) and internal speaker (1000) for deterministic, native automatic handover whenever ANY external device is connected.
+  - Cleared stale failure profile state from `~/.local/state/wireplumber/default-profile` and restored active playback routing.
+
+## 2026-10-20 — Second-Brain Template Analysis & Selective Architecture Integration
+
+- **Selective Second-Brain Multi-Vault Architecture Integration**:
+  - Analyzed four cloned repositories (`SecondBrain-Template`, `obsidian-ai-second-brain`, `obsidian-second-brain` by eugeniughelbur, and `obsidian-wiki` by Ar9av) in `~/Projects/others/` against the multi-brain ecosystem in `~/Projects/Vault/`.
+  - Created centralized static markdown router at [`~/Projects/Vault/INDEX.md`](file:///home/realdhiru/Projects/Vault/INDEX.md) connecting all 6 domain brains (`nix-brain`, `network-brain`, `game-brain`, `neobrowser-brain`, `personal`, `put off till another day`) and formalizing the `@<brain>` multi-vault targeting protocol for sub-millisecond agent traversal.
+  - Implemented zero-plugin native Obsidian 1.8+ database views: [`Whitepapers.base`](file:///home/realdhiru/Projects/Vault/Whitepapers.base), [`Runbooks.base`](file:///home/realdhiru/Projects/Vault/Runbooks.base), and [`Personal.base`](file:///home/realdhiru/Projects/Vault/Personal.base) eliminating the need for 3rd-party community plugins (Dataview).
+  - Adopted the **AI-First Note Spec** across templates: standardized `ai-first: true`, typed relationships (`relations.depends_on`, `relations.supersedes`), confidence levels, and the greppable `## For future agent` preamble in [`Project Architecture.md`](file:///home/realdhiru/Projects/Vault/templates/Project%20Architecture.md), [`Project Decisions.md`](file:///home/realdhiru/Projects/Vault/templates/Project%20Decisions.md), [`Project Technical Debt.md`](file:///home/realdhiru/Projects/Vault/templates/Project%20Technical%20Debt.md), [`Technique Runbook.md`](file:///home/realdhiru/Projects/Vault/templates/Technique%20Runbook.md), and [`AI-First Concept Whitepaper.md`](file:///home/realdhiru/Projects/Vault/templates/AI-First%20Concept%20Whitepaper.md).
+  - Deployed lightweight coreutils POSIX diagnostic auditor [`~/Projects/Vault/scripts/audit_vault.sh`](file:///home/realdhiru/Projects/Vault/scripts/audit_vault.sh) (validating zero-emoji compliance, broken wikilinks, orphaned notes, and AI-first template compliance in sub-50ms with zero npm/cargo dependencies).
+  - Authored and synchronized the **`vault-architect`** Agent Skill across [`~/nix/.agents/skills/vault-architect/SKILL.md`](file:///home/realdhiru/nix/.agents/skills/vault-architect/SKILL.md) and [`~/.gemini/config/skills/vault-architect/SKILL.md`](file:///home/realdhiru/.gemini/config/skills/vault-architect/SKILL.md) incorporating Codebase-to-Vault Distillation, Session Breakthrough Capture, and Prompt Injection Defense.
+
+## 2026-10-19 — Desktop Entries & Search Polish
+
+- **TouchDesigner Desktop Entry Polish ([`net.lutris.touchdesigner-2025-15.desktop`](file:///home/realdhiru/.local/share/applications/net.lutris.touchdesigner-2025-15.desktop))**:
+  - Normalized application display name from `TouchDesigner 2025.33230` to `TouchDesigner` in `~/.local/share/applications/net.lutris.touchdesigner-2025-15.desktop`.
+  - Cleared stale Fuzzel launcher cache (`~/.cache/fuzzel`) to immediately reflect the streamlined application label.
+
+## 2026-10-19 — Comprehensive Networking & Cybersecurity Knowledge Base Vault Synthesis
+
+- **Complete Systems Engineering Network Knowledge Base in `network-brain`**:
+  - Authored complete 28-document second-brain vault under `~/Projects/Vault/network-brain/` across 10 architectural tiers following the strict 5-section systems-engineering whitepaper standard and zero-emoji invariant.
+  - **Tier 0 (Roadmaps & Indexing)**: Established master [[Networking and Cybersecurity MOC]] curriculum and [[Glossary and Reference Directory]] featuring RFC-indexed taxonomies, port registries, IP address allocations, CLI cheat sheets, and diagnostic decision trees.
+  - **Tier 1 (Network Architecture & Foundations)**: Built protocol encapsulation and OSI/TCP-IP stacks, Ethernet/MAC switching and ARP cache dynamics, and physical hardware primitives (modems, switches, collision/broadcast domains, 802.1Q VLANs).
+  - **Tier 2 (IP Addressing & Subnetting)**: Synthesized IPv4/IPv6 addressing architectures (dual-stack, link-local, SLAAC, NDP) and subnetting mathematics (powers of 2, bitwise masking, CIDR, VLSM algorithms).
+  - **Tier 3 (Routing & Internet Topology)**: Documented packet routing pipelines, default gateways, routing tables, Path MTU Discovery, and NAT/PAT/CGNAT traversal mechanisms (STUN, TURN, ICE, UPnP).
+  - **Tier 4 (Transport Layer Protocols & Sockets)**: Deepened TCP connection state machines, 3-way handshakes, sequence/ACK tracking, flow/congestion control, UDP datagram mechanics, socket programming primitives, and interface binding (`0.0.0.0` vs `127.0.0.1`).
+  - **Tier 5 (Domain Name System)**: Formalized DNS hierarchy, recursive resolution, zone delegations, record types (A, AAAA, CNAME, MX, TXT, NS, PTR, SRV, CAA), DNS caching, TTL, and security extensions (DNSSEC, DoH, DoT).
+  - **Tier 6 (Firewalls & Network Exposure)**: Authored stateful inspection engines, Netfilter hook pipelines, exposure threat modeling, port forwarding, edge reverse proxy architectures, and tunneling mechanisms (Cloudflare Tunnels, SSH reverse tunnels).
+  - **Tier 7 (Threat Modeling & Network Attacks)**: Documented STRIDE/DREAD threat modeling, active reconnaissance (`nmap`, `masscan`), attack vectors (ARP spoofing, DNS cache poisoning, DHCP starvation, rogue APs, SYN floods), IP privacy realities, and multi-tier DDoS mitigation.
+  - **Tier 8 (Cryptography & Secure Remote Access)**: Covered hybrid cryptosystems, AEAD ciphers, PKI trust chains, TLS 1.3 handshake mechanics, hardened OpenSSH architectures, Ed25519 key management, fail2ban integration, Android Termux to NixOS setups, and modern VPN topologies (WireGuard cryptokey routing, Tailscale DERP/NAT traversal).
+  - **Tier 9 (Linux & NixOS Network Administration)**: Modernized Linux network toolkits (`iproute2`, `ss` socket telemetry, `nftables` bytecode sets), container bridge/host/overlay networking (Calico, Cilium eBPF), and declarative NixOS networking with remote lockout auto-rollback safeguards (`nixos-rebuild test`).
+  - **Tier 10 (Troubleshooting, Runbooks & Practical Projects)**: Authored systematic Layer 1–7 Divide-and-Conquer diagnostic runbooks, 8 hands-on executable laboratory projects, and technical protocol debunking of 13 prevalent networking misconceptions.
+  - Registered `network-brain` in [`~/nix/docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md) under Section 1d (`Multi-Vault Ecosystem Authority`).
+
 ## 2026-10-18 — Wallpaper Sorting Precision & Active Feedback Polish
 
 - **Wallpaper Order Synchronization & Click Toast Feedback ([`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**:

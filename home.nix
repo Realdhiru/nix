@@ -108,8 +108,8 @@
           ]
           actions = {
             update-props = {
-              priority.session = 2000
-              priority.driver = 2000
+              priority.session = 2150
+              priority.driver = 2150
             }
           }
         }
@@ -137,8 +137,8 @@
           ]
           actions = {
             update-props = {
-              priority.session = 2000
-              priority.driver = 2000
+              priority.session = 2150
+              priority.driver = 2150
             }
           }
         }
@@ -150,8 +150,8 @@
           ]
           actions = {
             update-props = {
-              priority.session = 2000
-              priority.driver = 2000
+              priority.session = 2150
+              priority.driver = 2150
             }
           }
         }
@@ -163,8 +163,8 @@
           ]
           actions = {
             update-props = {
-              priority.session = 2000
-              priority.driver = 2000
+              priority.session = 2150
+              priority.driver = 2150
             }
           }
         }
@@ -173,6 +173,7 @@
       wireplumber.settings = {
         "linking.allow-moving-streams" = true
         "linking.follow-default-target" = true
+        "bluetooth.autoswitch-to-headset-profile" = false
       }
     '';
   };
