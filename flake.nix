@@ -63,7 +63,27 @@
               pcmanfm-qt = prev.pcmanfm-qt.overrideAttrs (old: {
                 patches = (old.patches or [ ]) ++ [ ./pkgs/pcmanfm-qt-appid.patch ];
               });
-            })
+            } // (
+              let
+                patchFHS = orig:
+                  let
+                    wrapped = args:
+                      orig (
+                        if builtins.isFunction args then
+                          (finalAttrs: (args finalAttrs) // { dieWithParent = false; })
+                        else
+                          args // { dieWithParent = false; }
+                      );
+                  in
+                    prev.lib.makeOverridable wrapped;
+              in {
+                # Global fix: eliminate bubblewrap --die-with-parent across all FHS applications
+                # (onlyoffice, lutris, bottles, chatgpt, appimage-run) so apps opened from file
+                # managers, terminals, or scripts do not get killed when the parent window exits.
+                buildFHSEnv = patchFHS prev.buildFHSEnv;
+                buildFHSEnvChroot = patchFHS prev.buildFHSEnvChroot;
+              }
+            ))
             # chatgpt from the standalone ~/Projects/codex-flake flake.
             inputs.chatgpt.overlays.default
           ];

@@ -39,6 +39,7 @@ Item {
     // -------------------------------------------------------------------------
     Shortcut { 
         sequence: "Left"
+        enabled: window.visible
         onActivated: {
             if (calHover.hovered) {
                 window.setMonthOffset(window.targetMonthOffset - 1);
@@ -50,6 +51,7 @@ Item {
 
     Shortcut { 
         sequence: "Right"
+        enabled: window.visible
         onActivated: {
             if (calHover.hovered) {
                 window.setMonthOffset(window.targetMonthOffset + 1);

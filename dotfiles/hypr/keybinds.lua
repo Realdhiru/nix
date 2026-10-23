@@ -15,16 +15,16 @@ hl.define_submap("locked", function()
     end)
 end)
 
-hl.bind("SHIFT + escape", hl.dsp.exec_cmd("bash " .. scripts .. "suspend.sh suspend"))
+hl.bind("SHIFT + escape", hl.dsp.exec_cmd(scripts .. "power.sh suspend"))
 hl.bind("CTRL + escape", hl.dsp.exec_cmd(scripts .. "rotate_display.sh"))
 hl.bind("SHIFT + F1", hl.dsp.window.fullscreen({ action = "toggle", mode = "fullscreen" })) -- 1 for semi fullscreen
-hl.bind("SHIFT + F2", hl.dsp.exec_cmd(scripts .. "lock.sh"))
-hl.bind(mainMod .. " + CTRL + U", hl.dsp.exec_cmd(scripts .. "idle_inhibit.sh"))
+hl.bind("SHIFT + F2", hl.dsp.exec_cmd(scripts .. "power.sh lock"))
+hl.bind(mainMod .. " + CTRL + U", hl.dsp.exec_cmd(scripts .. "power.sh inhibit"))
 
 -- Fault-isolated Lid Switch Events
 pcall(function()
-    hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd(scripts .. "lid-monitor.sh close"), { locked = true })
-    hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd(scripts .. "lid-monitor.sh open"), { locked = true })
+    hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd(scripts .. "power.sh lid close"), { locked = true })
+    hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd(scripts .. "power.sh lid open"), { locked = true })
 end)
 
 -- ======================================================
@@ -32,7 +32,6 @@ end)
 -- ======================================================
 
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle network"))
-hl.bind(mainMod .. " + CTRL + V", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle battery"))
 hl.bind(mainMod .. " + ALT + F", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle focustime"))
 
 hl.bind(mainMod .. " + CTRL + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle monitors"))
@@ -44,6 +43,7 @@ hl.bind(mainMod .. " + V", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle clip
 hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle music"))
 hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle calendar"))
 
+hl.bind(mainMod .. " + CTRL + V", hl.dsp.exec_cmd(scripts .. "toggle_multi_sink.sh"))
 hl.bind(mainMod .. " + CTRL + SHIFT + V", hl.dsp.exec_cmd(scripts .. "fix_audio.sh"))
 hl.bind(mainMod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle sunset"))
 hl.bind(mainMod .. " + SHIFT + X",

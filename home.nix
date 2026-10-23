@@ -232,12 +232,36 @@
           capture.props = {
             node.name        = "effect_input.eq10"
             media.class      = "Audio/Sink"
-            priority.driver  = 2100
-            priority.session = 2100
+            priority.driver  = 2200
+            priority.session = 2200
           }
           playback.props = {
             node.name    = "effect_output.eq10"
             node.passive = true
+          }
+        }
+      }
+    ]
+  '';
+
+  # WebRTC Echo-Cancellation, Noise Suppression & AGC module for internal stereo mic
+  xdg.configFile."pipewire/pipewire.conf.d/60-echo-cancel.conf".text = ''
+    context.modules = [
+      {
+        name = libpipewire-module-echo-cancel
+        args = {
+          monitor.mode = true
+          capture.props = {
+            node.name = "echo_cancel_capture"
+            node.passive = true
+            target.object = "alsa_input.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__Mic2__source"
+          }
+          source.props = {
+            node.name = "echo_cancel_source"
+            node.description = "Clean Microphone (WebRTC Echo-Cancelled & Denoised)"
+            media.class = "Audio/Source"
+            priority.driver = 2100
+            priority.session = 2100
           }
         }
       }

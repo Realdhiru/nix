@@ -29,8 +29,9 @@ Every new feature, refactor, script, service, or configuration must adhere to th
    - Offload compute-heavy media workloads to fixed-function hardware ASICs (Intel QuickSync VA-API) instead of CPU software decoding.
    - Solid fallback (`SOLID_BG`) and shader-inhibition on power-sensitive apps/modes (disable compositor glass blur behind running 60/120fps video).
    - Respect TLP 1.9.1 hardware authority and the empirically locked Balanced profile (`balance_performance`, balanced platform profile, ASPM `powersupersave`).
-3. **Pillar 3: Maximum Cross-Hardware Reproducibility**
+3. **Pillar 3: Maximum Cross-Hardware Reproducibility & Zero Global Bloat**
    - Pure declarative Nix derivations and Home Manager `home.file` definitions over ad-hoc imperative scripts in `~/.local/bin/` or manual configs.
+   - **Zero Global Dependency Bloat**: NEVER install packages, libraries, or runtimes globally (`pip install --user`, `npm -g`, `cargo install` into system paths, or imperative package installs outside Nix). All project dependencies, development tools, and language runtimes MUST be strictly isolated within their respective project directory (`flake.nix`, `shell.nix`, `.venv`, local `node_modules`).
    - Portable dynamic theme and token resolution (dynamic `Theme.colors.*` over hardcoded hex, dynamic font discovery, relative geometry scaler calculations).
    - Standardized Wayland protocols (XDG desktop portal, Ozone Wayland hint, pipewire-pulse) that work deterministically across Intel, AMD, and Nvidia platforms without proprietary lock-ins or hardcoded machine paths outside `hosts/` and `user.nix`.
 
@@ -89,23 +90,4 @@ Every new feature, refactor, script, service, or configuration must adhere to th
 - **High Semantic Density**: Minimal tokens during reasoning and responses; pure technical signal.
 - **Technical Rigor Preserved**: Code blocks, exact file paths, clickable markdown links, and diffs must remain 100% accurate.
 - **Brief Final Summaries**: Final turn response must be ultra-compact bullet points designed for instant parsing.
-
----
-
-## 5. Second-Brain & Obsidian Vault Architecture Standards
-
-Whenever an agent is instructed to create, expand, or document knowledge in Obsidian vaults:
-- **Location Invariant**: All second-brain vaults MUST live directly under `~/Projects/Vault/<subject>-brain/` (e.g. `~/nix/docs`). Never scatter vault folders across `~` or `~/Projects/`.
-- **Zero Meta-Bloat Invariant**: NEVER create "hub" meta-directories, template folders, "how to use" manuals, or standalone helper scripts inside vaults. Jump straight into authoritative domain documentation.
-- **Strict Aesthetic Standard (Zero Emojis)**: NEVER use cosmetic/decorative emojis in file names, note headers, or bullet points. All notes must look like human-crafted, professional systems engineering whitepapers.
-- **The 3-Tier Layered Architecture**:
-  - `00 - Maps of Content (MOC)`: 1–3 top-level router notes that cluster the graph view cleanly around core hubs.
-  - `Concepts & Synthesis Notes`: In-depth trade-off analyses answering *"Why this and not the alternative?"* with side-by-side comparison tables.
-  - `Specifications & Runbooks`: Concrete primitives, kernel/hardware registers, CLI commands, and post-mortems for non-obvious traps and bugs.
-- **Mandatory Depth**: Notes must never be shallow 3-bullet summaries. Every note must document:
-  1. Context and failure modes of naive approaches.
-  2. Concrete implementation code and exact parameters.
-  3. Structured Trade-Off Matrix.
-  4. Non-obvious edge cases, race conditions, and traps discovered in production.
-  5. Bidirectional wikilinks (`[[...]]`) connecting up to its parent MOC and related sibling concepts.
 

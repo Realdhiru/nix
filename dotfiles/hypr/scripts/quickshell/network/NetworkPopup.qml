@@ -46,6 +46,7 @@ Item {
 
     Shortcut {
         sequence: "Tab"
+        enabled: window.visible && window.isPopupActive
         onActivated: {
             if (window.pendingWifiId !== "") {
                 window.pendingWifiId = ""; window.pendingWifiSsid = "";
@@ -408,8 +409,7 @@ Item {
         window._syncBtScan();
 
         window.infoList = [];
-        orbitListModel.clear();
-        window.refreshOrbitModel();
+        window.refreshOrbitModel(true);
         window.busyTasks = ({});
         window.disconnectingDevices = ({});
         window.currentCores = [null, null, null, null, null];

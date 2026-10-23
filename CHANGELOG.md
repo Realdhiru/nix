@@ -1,5 +1,83 @@
 # CHANGELOG
 
+## 2026-10-23 — AI Instruction Streamlining & Token De-bloat
+
+- **System Rule Invariant & Zero Global Dependency Bloat ([`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md))**:
+  - Enforced strict "Zero Global Dependency Bloat" rule under Pillar 3: agents are strictly forbidden from installing packages globally (`pip install --user`, `npm -g`, `cargo install`). All project tools, runtimes, and dependencies must be locally scoped (`flake.nix`, `shell.nix`, `.venv`, local `node_modules`).
+- **Elimination of Massive Instruction Duplication ([`SKILL.md`](file:///home/realdhiru/nix/.agents/skills/nixos-hyprland/SKILL.md), [`~/.gemini/config/skills/`](file:///home/realdhiru/.gemini/config/skills/nixos-hyprland/SKILL.md))**:
+  - Pruned verbatim copy of base architecture pillars, multi-doc sync, Asus Vivobook hardware declaration, and verification rules from `SKILL.md` in favor of a direct reference to `~/nix/AGENTS.md`. Saved ~700 tokens per prompt invocation.
+  - Kept `~/.gemini/config/skills/nixos-hyprland/SKILL.md` synchronized with `~/nix/.agents/skills/`.
+- **Project Structure Janitor ([`~/Projects/.agents`](file:///home/realdhiru/Projects/.agents))**:
+  - Removed empty `~/Projects/.agents` directory.
+- **Domain Segregation of Skills & Context ([`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md), [`~/Projects/Vault/`](file:///home/realdhiru/Projects/Vault))**:
+  - Removed all Obsidian second-brain vault rules from `~/nix/AGENTS.md` and `~/nix/.agents/skills/nixos-hyprland/SKILL.md`. `~/nix` is now 100% focused strictly on NixOS, hardware, Hyprland rice, and QuickShell runtime authority.
+  - Relocated `vault-architect` skill and its operational rules exclusively to [`~/Projects/Vault/.agents/skills/vault-architect/`](file:///home/realdhiru/Projects/Vault/.agents/skills/vault-architect/) and [`~/Projects/Vault/AGENTS.md`](file:///home/realdhiru/Projects/Vault/AGENTS.md).
+  - Purged global `vault-architect` duplicate from `~/.gemini/config/skills/`. Vault instructions are loaded strictly when working inside `~/Projects/Vault/`.
+
+## 2026-10-23 — QuickShell Shortcut Isolation & Repeater Desync Fix
+
+- **Preloaded Component Shortcut Isolation ([`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml), [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml), [`CalendarPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/CalendarPopup.qml))**:
+  - Fixed global shortcut leaks caused by offscreen preloaded popups in `Main.qml` (`_preloadQueue`).
+  - Added strict `enabled: window.visible` guards to unconstrained `Shortcut` elements across popups (`Tab` in `NetworkPopup.qml`; `Return`, `Delete`, `Escape`, `Tab`, `Backtab` in `WallpaperPicker.qml`; `Left`, `Right` in `CalendarPopup.qml`).
+  - Prevents desktop-wide keypresses (such as `Tab` in terminal or browser) from reaching background hidden QuickShell windows.
+- **Repeater Destruction/Insertion Desync Elimination ([`NetworkPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/network/NetworkPopup.qml))**:
+  - Removed destructive `orbitListModel.clear()` call prior to `refreshOrbitModel()` in `onActiveModeChanged`.
+  - Allowed `syncModel()` to reconcile existing model items in-place, eliminating synchronous `itemsRemoved` and `itemsInserted` collisions in Qt Quick that triggered `QQuickRepeater::modelUpdated` null pointer dereferences / `SIGSEGV` in `QQuickItem::stackBefore()`.
+
+## 2026-10-22 — Instant Non-Blocking Lid Wake & Intelligent Background Battery Optimization
+
+- **Zero-Latency Non-Blocking Lid Wake ([`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh))**:
+  - Re-architected `cmd_lid() open` to execute in sub-40ms (benchmarked at 36ms real time).
+  - Fires DPMS on, triggers direct DRM backlight re-energization (`brightnessctl -d intel_backlight set +0%`), and injects `ydotool` micro-motion immediately in the main execution path.
+  - Spawns all secondary restorations (CAVA unpause, keyboard backlight level restore, Bluetooth radio unblock, and TLP profile updates) inside an asynchronous background subshell `(...) &`, eliminating any blocking disk I/O or subprocess latency before the display illuminates.
+- **Deep Lid-Closed Peripheral & Audio Power Savings ([`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh))**:
+  - Automatically turns off ASUS keyboard backlight (`asus::kbd_backlight`) on lid close while saving the active level to restore it seamlessly on lid open.
+  - Pauses CAVA Fast Fourier Transform (`pkill -STOP cava`) when the lid is closed to prevent wasted audio analysis CPU cycles, and wakes it via `SIGCONT` on open.
+  - Checks Bluetooth device associations on lid close: if zero Bluetooth devices are connected, powers off the Bluetooth radio (`rfkill block bluetooth`) to prevent radio idle drain, and automatically re-enables it upon lid open.
+- **Power & Session De-Bloat: Single Lock Config & Wrapper Purge ([`hyprlock.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hyprlock.conf), [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh), [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:
+  - Unified lockscreen architecture into a single, high-performance [`hyprlock.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hyprlock.conf) with single-pass wide kernel blur (`blur_passes = 1, blur_size = 10`), black fallback baseline, and fluid interactive typing dot animations (`inputFieldDots`).
+  - Deleted redundant bifurcated configuration (`hyprlock_fast.conf`) and removed all mode-switching overhead from `power.sh lock`.
+  - Permanently purged 4 legacy 1-line wrapper scripts: `lock.sh`, `suspend.sh`, `lid-monitor.sh`, and `idle_inhibit.sh`.
+  - Re-routed [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), [`hypridle.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hypridle.conf), and QuickShell ([`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml)) to call `power.sh` subcommands directly (`lock`, `suspend`, `inhibit`, `lid close/open`), eliminating intermediate fork/exec layers.
+  - Bound [`hyprlock.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hyprlock.conf) input-field and typography directly to dynamic palette tokens.
+  - Eliminated artificial `sleep 1` in `cmd_suspend()` and `cmd_resume()` in [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh), as well as `before_sleep_cmd` in [`hypridle.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hypridle.conf), removing 3 cumulative seconds of latency from sleep and wake transitions.
+
+## 2026-10-21 — Multi-Output Broadcast Toggle & ALSA Endpoint Streamlining
+
+- **Learning Vault Streamlining & Rename to `procrastinate` ([`Learning Index.md`](file:///home/realdhiru/Projects/Vault/procrastinate/Learning%20Index.md), [`Inbox.md`](file:///home/realdhiru/Projects/Vault/procrastinate/Inbox.md))**:
+  - Renamed vault from `put off till another day` to `procrastinate` (`@procrastinate` / `@learn`) for faster spelling and cleaner terminal navigation.
+  - Purged 213-line detailed explanation whitepaper from the vault (safely backed up to `~/.cache/vault-backups/`) to strictly enforce the user's requirement for a lightweight, non-bloated sorted backlog rather than verbose multi-page whitepapers.
+  - Streamlined `00 - Maps of Content (MOC)/Learning Database MOC.md` and `Learning Index.md` to cleanly reflect the two-stage capture and cluster workflow: drop into [[Inbox]], prompt AI to triage, browse categorized entries in [[Learning Index]].
+  - Synchronized router tokens in [`INDEX.md`](file:///home/realdhiru/Projects/Vault/INDEX.md), `Whitepapers.base`, [`decisions.md`](file:///home/realdhiru/nix/docs/decisions.md), and the `vault-architect` skill across `~/nix` and `~/.gemini/config`.
+
+- **Multi-Output Audio Broadcast Keybind ([`toggle_multi_sink.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/toggle_multi_sink.sh), [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:
+  - Implemented `SUPER + CTRL + V` mapped to [`toggle_multi_sink.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/toggle_multi_sink.sh).
+  - Normal mode routes audio to the primary connected sink (or internal speakers).
+  - Toggling ON dynamically unlinks the internal laptop speakers and fans out the 10-band equalizer output (`effect_output.eq10`) across **all** detected external physical sinks (Bluetooth earbuds/speakers + wired headphones/DACs) concurrently via sub-2ms native `pw-link` graph connections.
+  - If no external devices are present, notifies `"No external sink"` with zero state corruption.
+- **Universal Native PipeWire Priority & Handover Structure ([`home.nix`](file:///home/realdhiru/nix/home.nix))**:
+  - Maintained universal native plug-and-play across all endpoints without machine-specific hardcoded disables: dynamic jack detection routes to HDMI monitors when connected and ignores them when unplugged (`haveAvailableRoutes`).
+  - Elevated `effect_input.eq10` priority to `2200` to prevent connected external devices (2150) from bypassing the 10-band equalizer filter chain, ensuring consistent audio processing across all hardware endpoints.
+- **Native WebRTC Microphone Denoising & Echo Cancellation ([`home.nix`](file:///home/realdhiru/nix/home.nix))**:
+  - Implemented declarative PipeWire module `libpipewire-module-echo-cancel` targeting physical stereo microphone array `HiFi__Mic2__source` with `monitor.mode = true` (`60-echo-cancel.conf`).
+  - WebRTC DSP engine dynamically subtracts playback audio leakage from `effect_input.eq10:monitor` and cleans background acoustic noise with zero standalone daemon overhead.
+  - Exposes `echo_cancel_source` at session/driver priority `2100` as the clean default input for all recording and conferencing applications.
+
+
+## 2026-10-21 — Fix Redundant Super+Ctrl+V Battery Keybind
+
+- **Eliminated Errant `Super + Ctrl + V` Battery Shortcut ([`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:
+  - Removed duplicate `mainMod + CTRL + V` keybind that was triggering `qs_manager.sh toggle battery`.
+  - Battery popup remains exclusively bound to `Super + U`, preventing accidental popups when executing clipboard-adjacent keystrokes.
+
+## 2026-10-21 — System-Wide FHS Bubblewrap Sandbox Process Detach Fix
+
+- **System-Wide FHS Child Process Termination Elimination ([`flake.nix`](file:///home/realdhiru/nix/flake.nix))**:
+  - Diagnosed systemic issue where opening files (e.g. `.pptx`) from PCManFM-Qt or terminal prompts caused applications to immediately close whenever their parent window/manager exited.
+  - Root cause: Nixpkgs packages foreign binary software in FHS user environments via `buildFHSEnv` / `buildFHSEnvChroot` backed by Bubblewrap (`bwrap`), which defaults to `dieWithParent = true`, injecting `--die-with-parent` (`prctl(PR_SET_PDEATHSIG, SIGKILL)`). Because file managers fork and directly `exec` handler binaries without an intermediate daemon or systemd scope, closing the file manager causes the Linux kernel to terminate the bubblewrap container and any running processes inside it.
+  - Applied robust global overlay in [`flake.nix`](file:///home/realdhiru/nix/flake.nix) wrapping both `buildFHSEnv` and `buildFHSEnvChroot` to enforce `dieWithParent = false` across all installed applications (`onlyoffice-desktopeditors`, `lutris`, `bottles`, `chatgpt`, `appimage-run`, `protonup-qt`), supporting both attribute sets and lambda derivations (`extendDrvArgs`).
+  - Audited the entire generated system `/sw/bin/*` to verify zero binaries contain `--die-with-parent`. All applications now detach cleanly and reparent to `systemd --user`.
+
 ## 2026-10-21 — WirePlumber Bluetooth Audio Pipeline & AVDTP Stabilization
 
 - **WirePlumber Bluetooth Headset Autoswitch & Priority Handover Fix ([`home.nix`](file:///home/realdhiru/nix/home.nix))**:

@@ -1274,7 +1274,7 @@ Item {
     }
     Shortcut { 
         sequence: "Return"
-        enabled: !searchInput.activeFocus
+        enabled: window.visible && !searchInput.activeFocus
         onActivated: { 
             let targetModel = window.getModelForFilter(window.currentFilter);
             if (view.currentIndex >= 0 && view.currentIndex < targetModel.count) {
@@ -1285,12 +1285,12 @@ Item {
     }
     Shortcut { 
         sequence: "Delete"
-        enabled: !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
+        enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
         onActivated: window.deleteCurrentWallpaper()
     }
-    Shortcut { sequence: "Escape"; enabled: !window.isApplying && window.currentFilter === "Search"; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
-    Shortcut { sequence: "Tab"; onActivated: window.cycleFilter(1) }
-    Shortcut { sequence: "Backtab"; onActivated: window.cycleFilter(-1) }
+    Shortcut { sequence: "Escape"; enabled: window.visible && !window.isApplying && window.currentFilter === "Search"; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
+    Shortcut { sequence: "Tab"; enabled: window.visible; onActivated: window.cycleFilter(1) }
+    Shortcut { sequence: "Backtab"; enabled: window.visible; onActivated: window.cycleFilter(-1) }
 
     ListModel { id: localProxyModel }
     ListModel { id: favoritesProxyModel }

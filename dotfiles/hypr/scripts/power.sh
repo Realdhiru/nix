@@ -166,12 +166,10 @@ cmd_suspend() {
     if ! is_locked; then
         cmd_lock >/dev/null 2>&1 &
     fi
-    sleep 1
     systemctl suspend
 }
 
 cmd_resume() {
-    sleep 1
     if ! is_locked; then
         cmd_lock >/dev/null 2>&1 &
     fi
@@ -193,14 +191,60 @@ cmd_lid() {
             if ! is_locked; then
                 cmd_lock >/dev/null 2>&1 &
             fi
-            sudo /run/current-system/sw/bin/tlp power-saver 2>/dev/null || true
-            sleep 1
-            hyprctl eval "hl.dispatch(hl.dsp.dpms({action='off'}))"
+            # 1. Turn off OLED display immediately
+            hyprctl eval "hl.dispatch(hl.dsp.dpms({action='off'}))" >/dev/null 2>&1 || true
+
+            # 2. Save and turn off keyboard backlight
+            local kbd_val
+            kbd_val=$(brightnessctl --device='asus::kbd_backlight' get 2>/dev/null || echo "0")
+            echo "$kbd_val" > /run/user/${UID:-1000}/saved_kbd_backlight 2>/dev/null || true
+            brightnessctl --device='asus::kbd_backlight' set 0 >/dev/null 2>&1 || true
+
+            # 3. Pause CAVA audio FFT processing to eliminate wasted audio analysis cycles
+            pkill -STOP -f "cava.*cava_topbar.conf" 2>/dev/null || true
+
+            # 4. Turn off Bluetooth radio IF no device is actively connected
+            if ! bluetoothctl devices Connected 2>/dev/null | grep -q "Device"; then
+                if rfkill list bluetooth 2>/dev/null | grep -q "Soft blocked: no"; then
+                    touch /run/user/${UID:-1000}/lid_bt_turned_off 2>/dev/null || true
+                    rfkill block bluetooth 2>/dev/null || true
+                fi
+            fi
+
+            # 5. Apply TLP power-saver (caps package power <10W while keeping balanced fan profile)
+            sudo /run/current-system/sw/bin/tlp power-saver >/dev/null 2>&1 &
             ;;
         open)
-            sudo /run/current-system/sw/bin/tlp start 2>/dev/null || true
-            sleep 0.2
-            hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))"
+            # 1. Immediate DPMS wake + DRM backlight pulse
+            hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))" >/dev/null 2>&1 || true
+            brightnessctl -d intel_backlight set +0% >/dev/null 2>&1 || true
+            ydotool mousemove -x 1 -y 0 2>/dev/null || true
+            ydotool mousemove -x -1 -y 0 2>/dev/null || true
+
+            # 2. Restore peripherals and profiles asynchronously in background (zero display delay)
+            (
+                # Resume CAVA audio visualizer
+                pkill -CONT -f "cava.*cava_topbar.conf" 2>/dev/null || true
+
+                # Restore keyboard backlight if previously active
+                if [ -f "/run/user/${UID:-1000}/saved_kbd_backlight" ]; then
+                    local prev_kbd
+                    prev_kbd=$(cat "/run/user/${UID:-1000}/saved_kbd_backlight" 2>/dev/null || echo "0")
+                    if [ -n "$prev_kbd" ] && [ "$prev_kbd" -gt 0 ] 2>/dev/null; then
+                        brightnessctl --device='asus::kbd_backlight' set "$prev_kbd" >/dev/null 2>&1 || true
+                    fi
+                    rm -f "/run/user/${UID:-1000}/saved_kbd_backlight" 2>/dev/null || true
+                fi
+
+                # Restore Bluetooth if it was turned off by lid close
+                if [ -f "/run/user/${UID:-1000}/lid_bt_turned_off" ]; then
+                    rfkill unblock bluetooth 2>/dev/null || true
+                    rm -f "/run/user/${UID:-1000}/lid_bt_turned_off" 2>/dev/null || true
+                fi
+
+                # Restore TLP profile
+                sudo /run/current-system/sw/bin/tlp start >/dev/null 2>&1 || true
+            ) >/dev/null 2>&1 &
             ;;
         *)
             echo "Usage: power.sh lid {close|open}" >&2

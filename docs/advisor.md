@@ -35,9 +35,11 @@ You are an expert systems advisor for a custom, production-grade NixOS desktop.
 - Anti-Bleed: Glass cards must layer a subtle foundation fill (crust at 0.16–0.18) to prevent high-contrast wallpaper linework from bleeding through text.
 
 ## Audio & Media Subsystem
-- PipeWire Native DSP: EasyEffects was decommissioned (saved 150MB RAM, 19 threads). System audio runs through a native 10-band biquad filter-chain equalizer (libpipewire-module-filter-chain, Q = 1.414, virtual sink priority 2100).
-- Bluetooth Handover: WirePlumber sets Bluetooth outputs to priority 2150 (out-prioritizing the 2100 EQ sink) with `bluetooth.autoswitch-to-headset-profile = false` to prevent AVDTP transport crashes and keep high-fidelity A2DP AAC stereo locked.
-- Live EQ Control: QuickShell sliders adjust gains in 2–4ms via direct pw-cli commands.
+- PipeWire Native DSP: EasyEffects was decommissioned (saved 150MB RAM, 19 threads). System audio runs through a native 10-band biquad filter-chain equalizer (libpipewire-module-filter-chain, Q = 1.414, virtual sink priority 2200).
+- Handover Architecture: External endpoints (Bluetooth, USB DAC, 3.5mm headphones) sit at priority 2150; internal speakers sit at 1000. Apps stream into the 2200 EQ sink, and the equalizer passively forwards audio into the highest-priority physical endpoint automatically.
+- Bluetooth Integrity: `bluetooth.autoswitch-to-headset-profile = false` in WirePlumber prevents AVDTP codec renegotiation crashes, keeping high-fidelity A2DP AAC stereo permanently locked.
+- Multi-Output Broadcast: `Super + Ctrl + V` (`toggle_multi_sink.sh`) toggles broadcast mode, fanning out equalizer output across all connected external endpoints simultaneously via sub-2ms `pw-link` connections.
+- WebRTC Microphone Denoising: `libpipewire-module-echo-cancel` with `monitor.mode = true` binds to the stereo microphone array (`HiFi__Mic2__source`), cancels speaker playback feedback from `effect_input.eq10:monitor`, and exposes `echo_cancel_source` at priority 2100 with zero daemon overhead.
 - MPV MPRIS: mpv.override with mpvScripts.mpris declaratively symlinked to ~/.config/mpv/scripts/mpris.so.
 
 ## Operational Discipline & Traps

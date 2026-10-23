@@ -5,44 +5,11 @@ description: High-density operational reference for maintaining the user's NixOS
 
 # NixOS / Hyprland Rice & Configuration
 
-## 1. Operating Rules & Engineering Discipline
+## 1. Operating Rules & Core Reference
 
-1. **Automated Multi-Doc Sync Invariant**:
-   - Every code, script, keybind, driver, hardware quirk, or service modification strictly requires a synchronous multi-document audit before task completion:
-     - `~/nix/README.md`: Feature matrices, architecture summaries, and keybindings.
-     - `~/nix/CHANGELOG.md`: Granular changes under the current date.
-     - `~/nix/docs/decisions.md`: Architectural decisions, technical invariants, and rationale.
-     - `~/nix/docs/tacit_knowledge.md`: Hardware traps, udev quirks, and non-obvious fixes.
-     - `~/nix/docs/advisor.md`: External AI system context prompt.
-     - `SKILL.md` & `AGENTS.md`: Operational rice rules and non-negotiables.
-   - Zero documentation drift allowed.
-2. **Git Commit & Push Policy**: Only stage, commit, or push when the user explicitly instructs you to do so. NEVER stage, commit, or push automatically or autonomously without explicit user direction.
-3. **High-Density / Signal-First Communication & Hardware Grounding**:
-   - Zero conversational filler, zero pleasantries, pure technical signal.
-   - Physical machine model authority: **ASUS Vivobook S 15 OLED (K5504VA / S5504VA)** (Intel Core i5-13500H, 2.8K 120Hz OLED). Never misidentify as Zenbook or any other lineup.
-   - Exact clickable markdown links (`file:///...`), verified line ranges, and zero speculative hallucination.
-   - Final turn summaries must be compact, structured bullet points designed for instant parsing.
-4. **Three Core Architecture Invariants (Mandatory on All Refactors & Implementations)**:
-   - **Pillar 1: Maximum Performance (Zero Lag, Race-to-Sleep)**: Interactive hot paths must run in sub-millisecond to sub-5ms times. No slow runtime-interpreted Python/Node scripts in hot paths (native C/Rust, Qt/QML, POSIX `jq`/`awk` only). Zero-copy pipelines (`--enable-zero-copy`) and direct Wayland/Ozone protocols everywhere.
-   - **Pillar 2: Maximum Battery Life (Deep C-States, Fixed-Function Hardware Offload)**: Maximize package $C8/C10$ sleep states by eliminating periodic polling loops (`Timer`, shell loops) in favor of event-driven D-Bus/IPC/inotify. Offload video/audio compute to hardware ASICs (Intel QuickSync VA-API). Inhibit glass blur/shaders behind 60/120fps video and on battery.
-   - **Pillar 3: Maximum Cross-Hardware Reproducibility**: Pure declarative Nix derivations and Home Manager `home.file` definitions over manual imperative file mutations. Dynamic token/scaler resolution (`Theme.colors.*`, screen scale) instead of hardcoded hex or pixel values. Zero machine-specific hardcoded paths outside `hosts/` and `user.nix`.
-5. **Verification Discipline & Anti-Patterns**:
-   - **Screenshot Verification Ban (Token & Latency Discipline)**: Never capture screenshots (`grim`, image artifacts) to verify internal logic, widget toggles, or theme states. Capturing visual buffers consumes tens of thousands of tokens, induces multi-second latency, and provides zero semantic insight into internal state machines. Verify exclusively via deterministic log assertions (`console.log`), direct file inspection (`FileView`, `jq`), and native D-Bus/IPC queries. Screenshot captures are strictly reserved for explicit user-requested UI evaluations.
-   - **Authoritative Process Recovery vs Stale Artifact Reverse-Engineering**: When QuickShell or helper daemons experience lifecycle shifts, dead PID files and abandoned IPC sockets (`/run/user/1000/quickshell/by-id/`) must not be polled or reverse-engineered. Always inspect the live daemon dynamically (`pgrep -fa quickshell`) or execute an authoritative clean reload via `reload.sh`.
-   - **Measure the Mechanism Before Writing the Fix**: Capture actual runtime values, object identities, and event sources before editing code. Disprove or confirm theories with minimal probes rather than layering speculative fallbacks.
-5. **Responsiveness is Non-Negotiable**:
-   - Never throttle CPU frequency governors (`powersave` / EPP `power` / `quiet`) to artificially stretch battery life. Crushing CPU clocks cripples application startup (IDE, browser, compilers) and induces desktop compositing stutter.
-   - Mobile power efficiency on modern silicon relies on rapid race-to-sleep (`balance_performance`, balanced platform profile, hardware ASPM `powersupersave`) paired with automated idle sleep (hypridle DPMS 120s, suspend 1800s).
-6. **Global Consistency & Mandatory Confirmation Rule**:
-   - **System-Wide Scope**: Applies to ANY visual/theme change across the entire desktop (QuickShell widgets, Fuzzel, hyprlock, topbar, window borders, `rules.lua`, etc.).
-   - **Zero One-Off Overrides**: Every visual styling change (opacity, blur, color tokens, border, radius, spacing) must be applied across all matching components using shared tokens in a single pass.
-   - **Mandatory Pre-Change Check-In**: Stop and ask the user for explicit confirmation before editing any UI/visual/theming files, detailing the exact proposed diffs, line numbers, and scope. Pure functional bug fixes with zero visual change are exempt.
-7. **Ultra-Minimal Notification Format (Zero Sentences)**:
-   - System notifications (`notify-send`) must NEVER include full sentences, paragraphs, or conversational explanations.
-   - Notification content must remain strictly minimal: 1–3 words max (e.g. `"Coffee mode ON"`, `"Game Mode OFF"`, `"Hotspot ON"`), with NO secondary body text unless delivering strictly necessary dynamic data (such as SSID or IP). TopBar ticker (`NotifTicker.qml`) and desktop popups are designed for compact telemetry signals, not sentences.
-8. **Zero Duplicate Process Policy for QuickShell**:
-    - NEVER execute raw `quickshell -p ...` or `hyprctl eval "hl.exec_cmd('quickshell ...')"` when QuickShell is already running. Spawning duplicate `quickshell` processes creates overlapping topbars and layer-shell collisions.
-    - ALWAYS perform clean reloads using `quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload` or `~/nix/dotfiles/hypr/scripts/qs_manager.sh reload` (which issues `pkill -9 quickshell` before spawning a fresh instance).
+All global architecture pillars, hardware authority (ASUS Vivobook S 15 OLED K5504VA), multi-doc sync invariants (`README`, `CHANGELOG`, `decisions.md`, `tacit_knowledge.md`), notification brevity rules, and verification discipline are canonically defined in [~/nix/AGENTS.md](file:///home/realdhiru/nix/AGENTS.md) and apply unconditionally.
+
+### Technical Rice & Subsystem Invariants:
 9. **Cached-Widget Lifecycle, Clipboard, Tray & Battery Invariants**:
     - `Main.qml` sets cached `targetObj.visible = true` once and never resets it: `onVisibleChanged` fires exactly once per process. Per-open refresh/state-reset belongs in `showWidget()` (invoked on every open). `Shortcut{enabled: window.visible}` and `running: window.visible` animations otherwise stay armed forever.
     - Clipboard paste must declare MIME (`wl-copy --type image/png` / `--type text/plain;charset=utf-8`); bare `wl-copy` offers text only. Serialize copy→close (one `Process` + `onExited`), never racing `execDetached` pairs. `wl-paste --watch cliphist store` pairs live in supervised systemd user units (`Restart=always`), never unsupervised `exec_cmd` one-shots.
@@ -77,8 +44,10 @@ description: High-density operational reference for maintaining the user's NixOS
 - **Hardware Quirks**:
   - Machine-specific hardware quirks isolated in `hosts/<host>/hardware/` (e.g. `hosts/nixos/hardware/asus.nix`).
   - ASUS OLED brightness keys: rebound after hybrid-sleep in `hosts/nixos/hardware/asus.nix`.
-  - WirePlumber: `50-disable-libcamera.conf` disables libcamera to avoid UVC stream collision. `51-device-autoswitch.conf` disables `bluetooth.autoswitch-to-headset-profile` (preventing AVDTP live-renegotiation crashes on TWS earbuds) and gives Bluetooth outputs priority 2150 (out-prioritizing the 2100 EQ virtual sink).
-  - Native PipeWire Equalizer: System audio uses `libpipewire-module-filter-chain` (10-band biquad peaking filters with $Q = 1.414$, virtual sink priority 2100) and native `pw-cli` gain control instead of external daemon apps.
+  - WirePlumber & Audio Priorities: `50-disable-libcamera.conf` disables libcamera to avoid UVC stream collision. `51-device-autoswitch.conf` disables `bluetooth.autoswitch-to-headset-profile` (preventing AVDTP live-renegotiation crashes on TWS earbuds) and gives external physical outputs priority 2150.
+  - Native PipeWire Equalizer & Handover: Virtual 10-band equalizer filter chain (`effect_input.eq10`) sits at priority 2200, guaranteeing audio apps process through the EQ while its passive output routes deterministically to external sinks (2150) or internal speakers (1000).
+  - Multi-Output Audio Broadcast: `Super + Ctrl + V` (`toggle_multi_sink.sh`) dynamically broadcasts the equalizer output across all connected external endpoints simultaneously via sub-2ms `pw-link` graph links.
+  - WebRTC Microphone Cleaning: `60-echo-cancel.conf` binds `libpipewire-module-echo-cancel` to internal stereo array `HiFi__Mic2__source`, cancels speaker acoustic bleed against `effect_input.eq10:monitor`, and publishes `echo_cancel_source` at priority 2100 with zero daemon overhead.
   - Web Apps Hardware Video Acceleration: All Brave web apps and browser windows must receive native VA-API zero-copy hardware acceleration via `~/.local/bin/brave` (`--use-gl=angle --use-angle=gl --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder,WaylandWindowDecorations --enable-zero-copy`). Video apps (YouTube) must remain 100% solid opacity (`1.0`) with `idle_inhibit = "focus"`. WhatsApp must never have translucent glass opacity.
 
 ## 3. Workflow & Verification Commands
@@ -110,16 +79,6 @@ sudo nixos-rebuild dry-run --flake ~/nix#nixos
 ~/.config/hypr/scripts/fuzzel_menu.sh emoji
 ~/.config/hypr/scripts/fuzzel_menu.sh glyph
 ```
-
-## 4. Second-Brain & Obsidian Vault Architecture Standards
-
-- **Single Vault Root**: All vaults live strictly under `~/Projects/Vault/<subject>-brain/` (e.g. `~/nix/docs`).
-- **Zero Meta-Bloat**: No "hub" folders, templates directories, or helper scripts. Only actual domain documentation.
-- **Zero Emojis**: No decorative emojis in file names, headers, or bullet points.
-- **3-Tier Architecture**: Layer 3 (`00 - Maps of Content`), Layer 2 (`Concepts & Synthesis Notes`), Layer 1 (`Specifications & Runbooks`).
-- **Contextual Trade-Offs**: Every architectural choice must answer *"Why this and not X?"* with a concrete table.
-- **Battle-Tested Traps**: Non-obvious failure modes, race conditions, and bug post-mortems must be preserved as first-class notes.
-
 
 ## Wine/Proton storage janitor (gameclean)
 gameclean — packaged in pkgs/gameclean.nix (docs/gameclean.md). Wine games scatter files across 5 locations (game dir, Wine prefixes, umu prefix caches, ~/.cache, Lutris ymls); run `gameclean` (preview) after any game uninstall or failed install, `gameclean -y` only after reading the preview. Working Lutris-referenced titles are never flagged.
