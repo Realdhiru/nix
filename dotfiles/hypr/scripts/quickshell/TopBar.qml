@@ -7,7 +7,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 
 Variants {
-    model: Quickshell.screens
+    model: (Config.topBarPosition !== "left" && Config.topBarVisible) ? Quickshell.screens : []
 
     delegate: Component {
         PanelWindow {
@@ -74,7 +74,8 @@ Variants {
             margins { top: barWindow.barMargin; bottom: 0; left: barWindow.barMargin; right: barWindow.barMargin }
             // Reserve the bar itself while leaving its visual edge margin
             // available to the normal Hyprland outer gap.
-            exclusiveZone: barHeight
+            exclusiveZone: (Config.topBarPosition !== "left" && Config.topBarVisible) ? barHeight : 0
+            exclusionMode: (Config.topBarPosition !== "left" && Config.topBarVisible) ? ExclusionMode.Normal : ExclusionMode.Ignore
             color: "transparent"
 
             Theme {
@@ -135,9 +136,6 @@ Variants {
 
             readonly property bool isDesktop: !SysData.hasBattery
 
-            property bool isStartupReady: false
-            Timer { interval: 10; running: true; onTriggered: barWindow.isStartupReady = true }
-
             property bool startupCascadeFinished: false
             Timer { interval: 300; running: true; onTriggered: barWindow.startupCascadeFinished = true }
 
@@ -146,8 +144,7 @@ Variants {
 
             property string timeStr: ""
             property string fullDateStr: ""
-            property int typeInIndex: 0
-            property string dateStr: fullDateStr.substring(0, typeInIndex)
+            property string dateStr: fullDateStr
 
             readonly property string batPercent: SysData.batCapacity + "%"
             // Battery/AC: single authoritative source = SysData singleton's
@@ -377,20 +374,9 @@ Variants {
                     let d = new Date();
                     barWindow.timeStr = Qt.formatDateTime(d, "HH:mm");
                     barWindow.fullDateStr = Qt.formatDateTime(d, "dddd, MMMM dd");
-                    if (barWindow.typeInIndex >= barWindow.fullDateStr.length) {
-                        barWindow.typeInIndex = barWindow.fullDateStr.length;
-                    }
                     interval = 60000 - (d.getSeconds() * 1000 + d.getMilliseconds()) + 50;
                     restart();
                 }
-            }
-
-            Timer {
-                id: typewriterTimer
-                interval: 40
-                running: barWindow.isStartupReady && barWindow.typeInIndex < barWindow.fullDateStr.length
-                repeat: true
-                onTriggered: barWindow.typeInIndex += 1
             }
 
             Item {
@@ -408,8 +394,8 @@ Variants {
                         radius: barWindow.s(14)
                         border.width: Config.borderWidth
                         border.color: Config.borderWidth > 0 ? barWindow.pillBorder : Qt.rgba(255, 255, 255, Config.glassSpecular)
-                        Behavior on color { ColorAnimation { duration: 250 } }
-                        Behavior on border.color { ColorAnimation { duration: 250 } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         height: barWindow.barHeight
                         clip: true
 
@@ -451,7 +437,7 @@ Variants {
 
                         visible: width > 0 || opacity > 0
                         opacity: workspacesModel.count > 0 ? 1 : 0
-                        Behavior on opacity { NumberAnimation { duration: 300 } }
+                        Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                         Rectangle {
                             id: activeHighlight
@@ -471,8 +457,8 @@ Variants {
                             property real actualLeft: targetLeft
                             property real actualWidth: targetWidth
 
-                            Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutExpo } }
-                            Behavior on actualWidth { NumberAnimation { id: widthAnim; duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutExpo } }
+                            Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                            Behavior on actualWidth { NumberAnimation { id: widthAnim; duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
                             x: actualLeft
                             width: actualWidth
@@ -501,7 +487,7 @@ Variants {
 
                                     property real targetWidth: isItemVisible ? barWindow.s(32) : 0
                                     width: targetWidth
-                                    Behavior on targetWidth { NumberAnimation { duration: 160; easing.type: Easing.OutQuad } }
+                                    Behavior on targetWidth { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
                                     height: isItemVisible ? barWindow.s(32) : 0
                                     radius: barWindow.s(10)
@@ -509,12 +495,12 @@ Variants {
                                     color: isHovered ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.1) : (stateLabel === "occupied" ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.15) : "transparent")
 
                                     scale: isHovered && stateLabel !== "active" ? 1.08 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                                    Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                     opacity: isItemVisible ? 1 : 0
 
-                                    Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-                                    Behavior on color { ColorAnimation { duration: 180 } }
+                                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                     Text {
                                         anchors.centerIn: parent
@@ -527,7 +513,7 @@ Variants {
 
                                         color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
 
-                                        Behavior on color { ColorAnimation { duration: 250 } }
+                                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                     }
 
                                     MouseArea {
@@ -551,8 +537,8 @@ Variants {
                         radius: barWindow.s(14)
                         border.width: Config.borderWidth
                         border.color: Config.borderWidth > 0 ? barWindow.pillBorder : Qt.rgba(255, 255, 255, Config.glassSpecular)
-                        Behavior on color { ColorAnimation { duration: 250 } }
-                        Behavior on border.color { ColorAnimation { duration: 250 } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         height: barWindow.barHeight
                         clip: true
 
@@ -567,11 +553,11 @@ Variants {
 
                         readonly property bool activeNow: barWindow.musicData.status === "Playing" && barWindow.hasVisibleMedia
                         width: activeNow ? infoLayout.implicitWidth + barWindow.s(24) : 0
-                        Behavior on width { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+                        Behavior on width { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
                         visible: width > 0
                         opacity: activeNow ? 1.0 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+                        Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                         MouseArea {
                             id: mediaInfoMouse
@@ -611,7 +597,7 @@ Variants {
                                     spacing: barWindow.s(10)
 
                                     scale: mediaInfoMouse.containsMouse ? 1.02 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
+                                    Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                     Item {
                                          id: cavaVisualizer
@@ -631,8 +617,8 @@ Variants {
                                          height: maxBarH
                                          visible: width > 0
                                          opacity: activeNow ? 1.0 : 0.0
-                                         Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                                         Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                                         Behavior on width { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                                         Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                          Repeater {
                                              model: cavaVisualizer.barCount
@@ -732,12 +718,12 @@ Variants {
                                                     loops: Animation.Infinite
                                                     running: titleClipRect.isOver
 
-                                                    PauseAnimation { duration: 2500 }
+                                                    PauseAnimation { duration: Motion.marqueePauseMs }
 
                                                     NumberAnimation {
                                                         from: 0
                                                         to: -(titleText.implicitWidth + titleClipRect.marqueeSpacing)
-                                                        duration: (titleText.implicitWidth + titleClipRect.marqueeSpacing) * 30
+                                                        duration: (titleText.implicitWidth + titleClipRect.marqueeSpacing) * Motion.marqueeMsPerPx
                                                     }
 
                                                     PropertyAction { target: marqueeContainer; property: "x"; value: 0 }
@@ -771,8 +757,8 @@ Variants {
                             radius: barWindow.s(14)
                             border.width: Config.borderWidth
                             border.color: Config.borderWidth > 0 ? (isHovered ? barWindow.pillBorderHover : barWindow.pillBorder) : Qt.rgba(255, 255, 255, Config.glassSpecular)
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                             // Anti-bleed base layer
                             Rectangle {
@@ -783,15 +769,15 @@ Variants {
                             }
 
                         height: barWindow.barHeight
-                        Behavior on height { NumberAnimation { duration: barWindow.isStartupReady ? 260 : 0; easing.type: Easing.OutExpo } }
+                        Behavior on height { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
                         width: (centerBox.notifActive ? notifLayout.implicitWidth : centerLayout.implicitWidth) + barWindow.s(36)
-                        Behavior on width { NumberAnimation { duration: barWindow.isStartupReady ? 260 : 0; easing.type: Easing.OutExpo } }
+                        Behavior on width { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
                         clip: true
                         opacity: 1
 
                         scale: isHovered ? 1.03 : 1.0
-                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
-                        Behavior on color { ColorAnimation { duration: 250 } }
+                        Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                         MouseArea {
                             id: centerMouse
@@ -818,7 +804,7 @@ Variants {
                             anchors.centerIn: parent
                             spacing: barWindow.s(12)
                             opacity: !centerBox.notifActive ? 1.0 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                            Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                             RowLayout {
                                 spacing: 0
@@ -885,11 +871,11 @@ Variants {
                             anchors.centerIn: parent
                             spacing: barWindow.s(10)
                             opacity: centerBox.notifActive ? 1.0 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                            Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                             transform: Translate {
                                 x: centerBox.notifActive ? 0 : barWindow.s(-24)
-                                Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                                Behavior on x { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
                             }
 
                             property var n: NotifTicker.tickerNotif
@@ -958,7 +944,7 @@ Variants {
                                             radius: barWindow.s(7)
                                             property bool isPrimary: index === 0
                                             color: isPrimary ? (actMa.containsMouse ? mocha.blue : Qt.darker(mocha.blue, 1.2)) : (actMa.containsMouse ? mocha.surface2 : mocha.surface1)
-                                            Behavior on color { ColorAnimation { duration: 150 } }
+                                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                             Text {
                                                 id: actLabel
@@ -987,7 +973,7 @@ Variants {
                                     width: barWindow.s(22)
                                     radius: barWindow.s(11)
                                     color: closeMa.containsMouse ? mocha.surface2 : "transparent"
-                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                     Text {
                                         anchors.centerIn: parent
@@ -995,7 +981,7 @@ Variants {
                                         font.family: "Iosevka Nerd Font"
                                         font.pixelSize: barWindow.s(11)
                                         color: closeMa.containsMouse ? mocha.red : mocha.overlay1
-                                        Behavior on color { ColorAnimation { duration: 150 } }
+                                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                     }
 
                                     MouseArea {
@@ -1070,7 +1056,7 @@ Variants {
                                             anchors.fill: parent
                                             
                                             property real fillW: sliderContainer.pct > 0 ? Math.max(parent.height, sliderContainer.pct * parent.width) : 0
-                                            Behavior on fillW { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
+                                            Behavior on fillW { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
                                             
                                             Rectangle {
                                                 width: parent.fillW
@@ -1132,8 +1118,8 @@ Variants {
                             border.color: Config.borderWidth > 0 ? barWindow.pillBorder : Qt.rgba(255, 255, 255, Config.glassSpecular)
                             color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
                             clip: true
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                             // Anti-bleed base layer
                             Rectangle {
@@ -1168,19 +1154,19 @@ Variants {
 
                                     property real targetWidth: barWindow.isDesktop ? barWindow.s(34) : batLayoutRow.implicitWidth + barWindow.s(24)
                                     width: targetWidth
-                                    Behavior on width { NumberAnimation { duration: barWindow.isStartupReady ? 500 : 0; easing.type: Easing.OutQuint } }
+                                    Behavior on width { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
                                     scale: isHovered ? 1.05 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
-                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                     opacity: 1
 
                                     Row {
                                         id: batLayoutRow
                                         anchors.centerIn: parent
                                         spacing: barWindow.s(8)
-                                        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: mocha.crust; Behavior on color { ColorAnimation { duration: 300 } } }
-                                        Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.crust; Behavior on color { ColorAnimation { duration: 300 } } }
+                                        Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: mocha.crust; Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } } }
+                                        Text { anchors.verticalCenter: parent.verticalCenter; visible: !barWindow.isDesktop; text: barWindow.batPercent; font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; color: mocha.crust; Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } } }
                                     }
                                     MouseArea {
                                         id: batMouse; hoverEnabled: true; anchors.fill: parent;
@@ -1200,8 +1186,8 @@ Variants {
                             radius: barWindow.s(14)
                             border.width: Config.borderWidth
                             border.color: Config.borderWidth > 0 ? (isHovered ? barWindow.pillBorderHover : barWindow.pillBorder) : Qt.rgba(255, 255, 255, Config.glassSpecular)
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                             // Anti-bleed base layer
                             Rectangle {
@@ -1219,12 +1205,12 @@ Variants {
                             opacity: barWindow.isRecording ? 1.0 : 0.0
                             clip: true
 
-                            Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
-                            Behavior on opacity { NumberAnimation { duration: 300 } }
+                            Behavior on width { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                            Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                             scale: isHovered ? 1.05 : 1.0
-                            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
-                            Behavior on color { ColorAnimation { duration: 200 } }
+                            Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                             Text {
                                 id: recIcon
@@ -1237,14 +1223,8 @@ Variants {
                                 SequentialAnimation on opacity {
                                     running: barWindow.isRecording && !recButton.isHovered
                                     loops: Animation.Infinite
-                                    NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
-                                    NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
-                                }
-                                SequentialAnimation on scale {
-                                    running: barWindow.isRecording && !recButton.isHovered
-                                    loops: Animation.Infinite
-                                    NumberAnimation { to: 1.15; duration: 600; easing.type: Easing.InOutSine }
-                                    NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 0.5; duration: Motion.enterMs; easing.type: Motion.fadeEasing }
+                                    NumberAnimation { to: 1.0; duration: Motion.exitMs; easing.type: Motion.fadeEasing }
                                 }
                             }
 

@@ -4,6 +4,18 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 
 ---
 
+### 0aaa. Standalone Display DPMS Power Control vs System Sleep State
+- **Decision:** Expose standalone DPMS control (`power.sh display [off|on|toggle]`, `SUPER + SHIFT + ESCAPE`, `SHIFT + F6` with `{ locked = true }`) routing directly to Hyprland's native Lua DPMS dispatcher (`hl.dsp.dpms({action=...})`).
+- **Rationale:** Coffee mode (`SUPER + CTRL + U`) holds a systemd `idle:sleep` inhibitor so background AI agents and long batch compilations do not trigger automated `systemctl suspend` after 30 minutes of inactivity. However, inhibiting `idle` also halts hypridle's automated DPMS timeout (120s), leaving OLED displays glowing at full power ($>15\text{W}$) in bedrooms overnight. Providing independent DPMS control allows turning off OLED panel drive ($0\text{W}$) while keeping the processor, memory, and networking awake. Native Hyprland DPMS wakes instantly on any mouse movement or keyboard event.
+
+---
+
+### 0aa. Dynamic Island Notification Toast & Contrast Floor Token
+- **Decision:** When TopBar is in Sidebar mode, notifications display via a top-centered Dynamic Island morphing pill (`NotifToast.qml`) governed by a derived `Config.toastOpacity` token (`Math.max(0.70, config.effectivePopupOpacity)`). The Wayland LayerShell surface uses `exclusionMode: ExclusionMode.Ignore` and explicit `mask: Region { item: toastCard }`.
+- **Rationale:** Popups standard opacity (`0.14`) fails WCAG AA readability (measured contrast 1.05:1–1.36:1) against bright wallpapers. The `toastOpacity: 0.70` floor ensures $\ge 5.37:1$ contrast for body text without breaking dark mode theming or adding hardcoded colors. `ExclusionMode.Ignore` prevents Hyprland exclusive monitor margin offsets from displacing the toast down the screen.
+
+---
+
 ### 0a. Dynamic Multi-Monitor Layout Intent & Wallpaper Lifecycle Architecture
 - **Decision:** Layout state is managed via atomic single-intent persistence (`"extend"` or `"mirror"`) in `$XDG_STATE_HOME/hypr/layout.lua` evaluated dynamically by Hyprland's native Lua runtime (`hyprland.lua`). Wallpaper daemons are declared as systemd user services (`awww-daemon.service`, `mpvpaper@<out>.service`), with active video endpoints tracked via `%h/.local/state/mpvpaper/%i.env`.
 - **Rationale:** Hardcoded display configurations (e.g. `hypr_power_monitor.conf`, text-scraping jq scripts) broke across multi-monitor setups, docking changes, and hotplugging. Decoupling intent from monitor identifiers allows any dynamic set of outputs to mirror or extend deterministically. Home Manager systemd units prevent orphaned processes and allow clean transition handoffs between static images and video wallpapers.
@@ -456,3 +468,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - *Repeater Destruction/Insertion Collision:* Calling `listModel.clear()` emits row removal signals, queuing asynchronous delegate destruction via `destroyObjectLater`. If `listModel.append()` or `syncModel()` immediately repopulates items within the exact same event loop cycle, Qt Quick's `QQuickRepeater::modelUpdated` and `initItem` attempt sibling stacking (`item->stackBefore(after)`). Looking up sibling positions in `parentPrivate->childItems` dereferences invalidated pointers, triggering a fatal `SIGSEGV` in Qt 6. In-place reconciliation via `syncModel()` (modifying existing items and appending only true additions) maintains model item stability with zero desync crashes.
 
 
+
+### QuickShell Central Motion Token Discipline (Music / Focus Time Popups)
+- **Decision:** All QuickShell popup motion MUST resolve through the `Motion.qml` singleton (`enterMs`/`exitMs`, `moveMs`, `fadeMs`, `holdMs` + easing pairs, `marqueeMsPerPx`/`marqueePauseMs`). Popup open = exactly ONE card fade+scale enter (0.96→1, `Motion.enterMs`) on the root card, close = the symmetric exit; the long-form scrolling marquee is the only permitted infinite loop. Per-element staggered intro cascades, decorative pulses (play pulse, EQ lightning canvas, heat sweeps), rotating-vinyl/`globalOrbitAngle` loops and press OverBack/OutElastic curves are banned.
+- **Rationale:** Staggered cascades (760–1300 ms, OutBack waves, per-element pauses up to 550 ms) multiplexed with `Main.qml`'s StackView `replaceEnter/replaceExit` (0.98→1 @ `Motion.enterMs`) caused double-fade jitter and unusable first-open feel; 8–120 s infinite orbit/flow loops kept OLED pixels continuously repainting with zero information gain, and the EQ lightning `Canvas` + 16 ms `requestPaint` Timer ran a per-frame 2D path pipeline for a 1.5 s decorative sweep. Tokens centralize curve/duration authority for cross-widget parity, keep frame budgets at enter/exit-time only (race-to-sleep), and make every future widget port mechanically greppable (`grep -E "duration: [0-9]|Easing\."`) — zero untemplated durations tolerated in refactored popups.

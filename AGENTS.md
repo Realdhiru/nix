@@ -9,6 +9,7 @@ Whenever an agent touches or modifies any feature, script, keybind, hardware qui
   - **`~/nix/docs/decisions.md`**: Document every architectural or technical decision made, superseded, or stabilized.
   - **`~/nix/docs/tacit_knowledge.md`**: Document non-obvious traps, hardware quirks, udev rules, or subsystem workarounds discovered.
   - **`~/nix/docs/advisor.md`**: Update system context, active hardware parameters, or architectural pillars if modified.
+  - **`~/nix/docs/monitors_troubleshooting.md`**: Authoritative runbook and diagnostic procedures whenever working on external displays, docks, mirroring, or per-output wallpaper bugs.
   - **`~/.gemini/config/skills/nixos-hyprland/SKILL.md` & `~/nix/.agents/skills/nixos-hyprland/SKILL.md`**: Keep rice, widget, and NixOS operational guidelines synchronized.
 - **Zero Documentation Drift**: Code changes and documentation updates must happen in the exact same turn.
 - **Keep all documentation updates concise, practical, and bloat-free.**

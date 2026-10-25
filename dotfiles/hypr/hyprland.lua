@@ -5,6 +5,7 @@ require("keybinds")
 require("rules")
 require("input")
 require("appearance")
+require("motion")
 require("misc")
 
 -- 1. Universal catch-all rule: any unknown monitor works with zero config

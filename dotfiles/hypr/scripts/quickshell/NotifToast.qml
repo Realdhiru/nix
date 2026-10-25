@@ -46,6 +46,7 @@ Variants {
             }
 
             exclusiveZone: 0
+            exclusionMode: ExclusionMode.Ignore
             color: "transparent"
             WlrLayershell.namespace: "qs-notif-toast"
             WlrLayershell.layer: WlrLayer.Overlay
@@ -85,8 +86,8 @@ Variants {
 
             Rectangle {
                 id: toastCard
-                anchors.top: parent.top
-                anchors.horizontalCenter: parent.horizontalCenter
+                x: Math.round((parent.width - width) / 2)
+                y: 0
                 height: toastWindow.s(40)
                 width: Math.max(toastWindow.s(180), contentRow.implicitWidth + toastWindow.s(28))
                 radius: toastWindow.s(14)
@@ -95,23 +96,21 @@ Variants {
                 border.color: Config.borderWidth > 0 ? (cardMa.containsMouse ? toastWindow.pillBorderHover : toastWindow.pillBorder) : Qt.rgba(1, 1, 1, Config.glassSpecular)
                 clip: true
 
-                Behavior on color { ColorAnimation { duration: 150 } }
-                Behavior on border.color { ColorAnimation { duration: 150 } }
+                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                 Behavior on width {
                     NumberAnimation {
-                        duration: 240
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: [0.16, 1.0, 0.3, 1.0, 1.0, 1.0]
+                        duration: toastWindow.isIslandActive ? Motion.enterMs : Motion.exitMs
+                        easing.type: toastWindow.isIslandActive ? Motion.enterEasing : Motion.exitEasing
                     }
                 }
 
                 opacity: toastWindow.isIslandActive ? 1.0 : 0.0
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: toastWindow.isIslandActive ? 240 : 160
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: toastWindow.isIslandActive ? [0.16, 1.0, 0.3, 1.0, 1.0, 1.0] : [0.4, 0.0, 1.0, 1.0, 1.0, 1.0]
+                        duration: toastWindow.isIslandActive ? Motion.enterMs : Motion.exitMs
+                        easing.type: toastWindow.isIslandActive ? Motion.enterEasing : Motion.exitEasing
                     }
                 }
 
@@ -123,16 +122,14 @@ Variants {
                         yScale: toastWindow.isIslandActive ? 1.0 : 0.94
                         Behavior on xScale {
                             NumberAnimation {
-                                duration: toastWindow.isIslandActive ? 240 : 160
-                                easing.type: Easing.BezierSpline
-                                easing.bezierCurve: toastWindow.isIslandActive ? [0.16, 1.0, 0.3, 1.0, 1.0, 1.0] : [0.4, 0.0, 1.0, 1.0, 1.0, 1.0]
+                                duration: toastWindow.isIslandActive ? Motion.enterMs : Motion.exitMs
+                                easing.type: toastWindow.isIslandActive ? Motion.enterEasing : Motion.exitEasing
                             }
                         }
                         Behavior on yScale {
                             NumberAnimation {
-                                duration: toastWindow.isIslandActive ? 240 : 160
-                                easing.type: Easing.BezierSpline
-                                easing.bezierCurve: toastWindow.isIslandActive ? [0.16, 1.0, 0.3, 1.0, 1.0, 1.0] : [0.4, 0.0, 1.0, 1.0, 1.0, 1.0]
+                                duration: toastWindow.isIslandActive ? Motion.enterMs : Motion.exitMs
+                                easing.type: toastWindow.isIslandActive ? Motion.enterEasing : Motion.exitEasing
                             }
                         }
                     },
@@ -140,9 +137,8 @@ Variants {
                         y: toastWindow.isIslandActive ? 0 : toastWindow.s(-6)
                         Behavior on y {
                             NumberAnimation {
-                                duration: toastWindow.isIslandActive ? 240 : 160
-                                easing.type: Easing.BezierSpline
-                                easing.bezierCurve: toastWindow.isIslandActive ? [0.16, 1.0, 0.3, 1.0, 1.0, 1.0] : [0.4, 0.0, 1.0, 1.0, 1.0, 1.0]
+                                duration: toastWindow.isIslandActive ? Motion.enterMs : Motion.exitMs
+                                easing.type: toastWindow.isIslandActive ? Motion.enterEasing : Motion.exitEasing
                             }
                         }
                     }
@@ -232,7 +228,7 @@ Variants {
                                 radius: toastWindow.s(7)
                                 property bool isPrimary: index === 0
                                 color: isPrimary ? (actMa.containsMouse ? mocha.blue : Qt.darker(mocha.blue, 1.2)) : (actMa.containsMouse ? mocha.surface2 : mocha.surface1)
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                 Text {
                                     id: actLabel
@@ -262,7 +258,7 @@ Variants {
                         width: toastWindow.s(22)
                         radius: toastWindow.s(11)
                         color: closeMa.containsMouse ? mocha.surface2 : "transparent"
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                         Text {
                             anchors.centerIn: parent
@@ -270,7 +266,7 @@ Variants {
                             font.family: "Iosevka Nerd Font"
                             font.pixelSize: toastWindow.s(11)
                             color: closeMa.containsMouse ? mocha.red : mocha.overlay1
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         }
 
                         MouseArea {

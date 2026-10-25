@@ -569,8 +569,8 @@ ShellRoot {
                             border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(255, 255, 255, Config.borderOpacity) : "transparent"
 
                             scale: mediaMouse.pressed ? 0.94 : (mediaMouse.containsMouse ? 1.05 : 1.0)
-                            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                             // Anti-bleed base
                             Rectangle {
@@ -586,7 +586,7 @@ ShellRoot {
                                 font.family: "Iosevka Nerd Font"
                                 font.pixelSize: Math.round(16 * screenRoot.sc)
                                 color: (screenRoot.mediaStatus === "Playing" || mediaMouse.containsMouse) ? root.primary : Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.85)
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                             }
 
                             MouseArea {
@@ -621,8 +621,8 @@ ShellRoot {
                             border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0) ? Qt.rgba(255, 255, 255, Config.borderOpacity) : "transparent"
 
                             scale: pinMouse.containsMouse ? 1.02 : (lockUI.authenticating ? 0.98 : 1.0)
-                            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-                            Behavior on color { ColorAnimation { duration: 120 } }
+                            Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                             // Anti-bleed base
                             Rectangle {
@@ -632,21 +632,14 @@ ShellRoot {
                                 z: -1
                             }
 
-                            transform: Translate { id: shakeTranslate; x: 0 }
+                            transform: Translate { x: shaker.offset }
 
-                            SequentialAnimation {
-                                id: shakeAnim
-                                NumberAnimation { target: shakeTranslate; property: "x"; from: 0; to: -8 * screenRoot.sc; duration: 40; easing.type: Easing.InOutQuad }
-                                NumberAnimation { target: shakeTranslate; property: "x"; from: -8 * screenRoot.sc; to: 8 * screenRoot.sc; duration: 40; easing.type: Easing.InOutQuad }
-                                NumberAnimation { target: shakeTranslate; property: "x"; from: 8 * screenRoot.sc; to: -4 * screenRoot.sc; duration: 35; easing.type: Easing.InOutQuad }
-                                NumberAnimation { target: shakeTranslate; property: "x"; from: -4 * screenRoot.sc; to: 4 * screenRoot.sc; duration: 35; easing.type: Easing.InOutQuad }
-                                NumberAnimation { target: shakeTranslate; property: "x"; from: 4 * screenRoot.sc; to: 0; duration: 30; easing.type: Easing.InOutQuad }
-                            }
+                            Shake { id: shaker; amplitude: screenRoot.sc * 8 }
 
                             Connections {
                                 target: lockUI
                                 function onFailedChanged() {
-                                    if (lockUI.failed) shakeAnim.restart();
+                                    if (lockUI.failed) shaker.trigger();
                                 }
                             }
 
@@ -662,7 +655,7 @@ ShellRoot {
                                 font.weight: Font.Medium
                                 font.pixelSize: Math.round(12 * screenRoot.sc)
                                 color: Qt.rgba(root.lockText.r, root.lockText.g, root.lockText.b, 0.50)
-                                Behavior on opacity { NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
+                                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                             }
 
                             // Status when authenticating
@@ -679,8 +672,8 @@ ShellRoot {
                                 SequentialAnimation on opacity {
                                     running: lockUI.authenticating
                                     loops: Animation.Infinite
-                                    NumberAnimation { from: 1.0; to: 0.5; duration: 250; easing.type: Easing.InOutSine }
-                                    NumberAnimation { from: 0.5; to: 1.0; duration: 250; easing.type: Easing.InOutSine }
+                                    NumberAnimation { from: 1.0; to: 0.5; duration: Motion.enterMs; easing.type: Motion.fadeEasing }
+                                    NumberAnimation { from: 0.5; to: 1.0; duration: Motion.exitMs; easing.type: Motion.fadeEasing }
                                 }
                             }
 
@@ -710,7 +703,7 @@ ShellRoot {
                                 visible: passModel.count > 0 && !lockUI.authenticating
 
                                 Behavior on width {
-                                    NumberAnimation { duration: 60; easing.type: Easing.OutQuad }
+                                    NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing }
                                 }
 
                                 ListView {
@@ -737,19 +730,19 @@ ShellRoot {
 
                                     add: Transition {
                                         ParallelAnimation {
-                                            NumberAnimation { property: "scale"; from: 0.1; to: 1.0; duration: 60; easing.type: Easing.OutCubic }
-                                            NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 50; easing.type: Easing.OutQuad }
+                                            NumberAnimation { property: "scale"; from: 0.1; to: 1.0; duration: Motion.enterMs; easing.type: Motion.enterEasing }
+                                            NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: Motion.enterMs; easing.type: Motion.enterEasing }
                                         }
                                     }
 
                                     displaced: Transition {
-                                        NumberAnimation { property: "x"; duration: 60; easing.type: Easing.OutQuad }
+                                        NumberAnimation { property: "x"; duration: Motion.fadeMs; easing.type: Motion.fadeEasing }
                                     }
 
                                     remove: Transition {
                                         ParallelAnimation {
-                                            NumberAnimation { property: "scale"; to: 0.0; duration: 50; easing.type: Easing.InQuad }
-                                            NumberAnimation { property: "opacity"; to: 0.0; duration: 40 }
+                                            NumberAnimation { property: "scale"; to: 0.0; duration: Motion.fadeMs; easing.type: Motion.fadeEasing }
+                                            NumberAnimation { property: "opacity"; to: 0.0; duration: Motion.fadeMs; easing.type: Motion.fadeEasing }
                                         }
                                     }
                                 }
@@ -890,7 +883,7 @@ ShellRoot {
 
                 SequentialAnimation {
                     id: introSequence
-                    NumberAnimation { target: screenRoot; property: "introState"; from: 0.0; to: 1.0; duration: 60; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: screenRoot; property: "introState"; from: 0.0; to: 1.0; duration: Motion.enterMs; easing.type: Motion.enterEasing }
                     PropertyAction { target: screenRoot; property: "isPlayingIntro"; value: false }
                     ScriptAction { script: { inputField.text = ""; inputField.forceActiveFocus(); } }
                 }

@@ -193,7 +193,7 @@ Item {
                 y: (cameraRig.height - height) / 2
 
                 transformOrigin: Item.Center
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+                Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                 DragHandler {
                     target: zoomContainer
@@ -588,7 +588,12 @@ Item {
 
             visible: root.showSizeConfig
             opacity: visible ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutExpo } }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: visible ? Motion.enterMs : Motion.exitMs
+                    easing.type: visible ? Motion.enterEasing : Motion.exitEasing
+                }
+            }
 
             RowLayout {
                 anchors.fill: parent
@@ -696,7 +701,12 @@ Item {
 
             visible: root.showColorPicker
             opacity: visible ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutExpo } }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: visible ? Motion.enterMs : Motion.exitMs
+                    easing.type: visible ? Motion.enterEasing : Motion.exitEasing
+                }
+            }
 
             Column {
                 anchors.centerIn: parent
@@ -905,7 +915,7 @@ Item {
                         anchors.fill: parent
                         radius: s(14)
                         color: undoMouse.containsMouse && root.historyStep >= 0 ? ((typeof mochaColors !== "undefined" && mochaColors && mochaColors.surface0) ? mochaColors.surface0 : Qt.rgba(root.baseTextColor.r, root.baseTextColor.g, root.baseTextColor.b, 0.1)) : "transparent"
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         z: -1
                     }
 
@@ -937,7 +947,7 @@ Item {
                         anchors.fill: parent
                         radius: s(14)
                         color: redoMouse.containsMouse && root.historyStep < root.actionHistory.length - 1 ? ((typeof mochaColors !== "undefined" && mochaColors && mochaColors.surface0) ? mochaColors.surface0 : Qt.rgba(root.baseTextColor.r, root.baseTextColor.g, root.baseTextColor.b, 0.1)) : "transparent"
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         z: -1
                     }
 
@@ -981,27 +991,20 @@ Item {
                         color: (typeof mochaColors !== "undefined" && mochaColors && mochaColors.surface1) ? mochaColors.surface1 : Qt.rgba(root.baseTextColor.r, root.baseTextColor.g, root.baseTextColor.b, 0.15)
                         z: 0
 
-                        property int prevIdx: 0
                         property int curIdx: root.currentToolIndex
-
-                        onCurIdxChanged: {
-                            if (curIdx > prevIdx) { rightAnim.duration = 200; leftAnim.duration = 350; }
-                            else if (curIdx < prevIdx) { leftAnim.duration = 200; rightAnim.duration = 350; }
-                            prevIdx = curIdx;
-                        }
 
                         property real stepSize: s(32) + s(8)
                         property real targetLeft: toolsListLayout.x + (curIdx * stepSize)
                         property real targetRight: targetLeft + s(32)
 
-                        property real actualLeft: targetLeft
-                        property real actualRight: targetRight
+                        Highlight {
+                            id: toolHl
+                            targetCoord: toolsActiveHighlight.targetLeft
+                            targetSpan: toolsActiveHighlight.targetRight - toolsActiveHighlight.targetLeft
+                        }
 
-                        Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: 250; easing.type: Easing.OutExpo } }
-                        Behavior on actualRight { NumberAnimation { id: rightAnim; duration: 250; easing.type: Easing.OutExpo } }
-
-                        x: actualLeft
-                        width: actualRight - actualLeft
+                        x: toolHl.coord
+                        width: toolHl.span
                     }
 
                     Row {
@@ -1028,7 +1031,7 @@ Item {
                                     anchors.fill: parent
                                     radius: s(14)
                                     color: toolMouseArea.containsMouse && root.currentTool !== modelData.id ? ((typeof mochaColors !== "undefined" && mochaColors && mochaColors.surface0) ? mochaColors.surface0 : Qt.rgba(root.baseTextColor.r, root.baseTextColor.g, root.baseTextColor.b, 0.08)) : "transparent"
-                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                     z: -1
                                 }
 
@@ -1044,7 +1047,7 @@ Item {
                                     font.pixelSize: s(14)
                                     color: root.currentTool === modelData.id ? _theme.mauve : root.baseTextColor
                                     opacity: root.currentTool === modelData.id ? 1.0 : (toolMouseArea.containsMouse ? 0.8 : 0.5)
-                                    Behavior on color { ColorAnimation { duration: 250 } }
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                 }
 
                                 MouseArea {
@@ -1088,7 +1091,7 @@ Item {
                         anchors.fill: parent
                         radius: s(14)
                         color: colorIndicatorMouse.containsMouse ? ((typeof mochaColors !== "undefined" && mochaColors && mochaColors.surface0) ? mochaColors.surface0 : Qt.rgba(root.baseTextColor.r, root.baseTextColor.g, root.baseTextColor.b, 0.1)) : "transparent"
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         z: -1
                     }
 
@@ -1135,7 +1138,7 @@ Item {
                         anchors.fill: parent
                         radius: s(14)
                         color: clearMouse.containsMouse ? ((typeof mochaColors !== "undefined" && mochaColors && mochaColors.surface0) ? mochaColors.surface0 : Qt.rgba(root.baseTextColor.r, root.baseTextColor.g, root.baseTextColor.b, 0.1)) : "transparent"
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         z: -1
                     }
 

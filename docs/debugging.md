@@ -6,6 +6,10 @@ A chronological, categorized index of all system and rice issues resolved in thi
 
 ## 1. Display, Monitors & Compositor
 
+> [!TIP]
+> For active diagnosis and runbooks covering external displays, docks, mirroring, and per-output wallpapers, consult [`docs/monitors_troubleshooting.md`](file:///home/realdhiru/nix/docs/monitors_troubleshooting.md).
+
+
 ### ASUS OLED Brightness Fn Keys Unresponsive Post-Hibernate
 - **Symptom:** After critical-battery hybrid-sleep or resume, Fn brightness keys stop delivering ACPI events to Hyprland.
 - **Root Cause:** Kernel auxiliary video bus driver (`acpi.video_bus.0`) stalls ACPI notifications across low-power transitions.

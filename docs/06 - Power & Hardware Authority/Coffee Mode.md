@@ -28,6 +28,17 @@ We implemented **Coffee Mode** (`SUPER + CTRL + U`) to provide persistent idle i
 4. **Visual Indicator**:
    When active, an amber coffee cup glyph is embedded directly within the TopBar battery status pill.
 
+## 2. Overnight Background & AI Agent Workloads (Display Off)
+
+Coffee mode inhibits both `idle` (preventing automated hypridle screen timeouts and locking) and `sleep` (preventing automated suspend after 30 minutes).
+
+When running long-running batch jobs or AI coding agents overnight while sleeping:
+- Keep Coffee Mode active (`SUPER + CTRL + U`) so the laptop never suspends.
+- Turn off the OLED display immediately using:
+  - Keybind: `SUPER + SHIFT + ESCAPE` or `SHIFT + F6`
+  - CLI: `~/.config/hypr/scripts/power.sh display off`
+- The system remains fully active in the background, drawing minimal power with the display turned off (0W OLED draw). Moving the trackpad or pressing any key immediately restores the display.
+
 ## Related Nodes
 - [[TLP Exclusive Authority]]
 - [[TopBar & Dynamic Workspaces]]

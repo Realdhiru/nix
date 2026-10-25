@@ -55,6 +55,16 @@ WAS_KILLED=0
 [ -f "$CACHE_DIR/wallpaper_killed" ] && WAS_KILLED=1
 rm -f "$CACHE_DIR/wallpaper_killed"
 
+# Update persistent cache files
+if [ -s "$CACHE_DIR/current_wallpaper.txt" ]; then
+    prev_wall="$(cat "$CACHE_DIR/current_wallpaper.txt" 2>/dev/null || true)"
+    if [ -n "$prev_wall" ] && [ "$prev_wall" != "$WALL" ]; then
+        echo "$prev_wall" > "$CACHE_DIR/last_wallpaper.txt"
+    fi
+fi
+echo "$WALL" > "$CACHE_DIR/current_wallpaper.txt"
+[ ! -s "$CACHE_DIR/last_wallpaper.txt" ] && echo "$WALL" > "$CACHE_DIR/last_wallpaper.txt"
+
 # 1. Video Wallpapers (Handled via systemd user template unit mpvpaper@<out>)
 if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then
     # Resolve target outputs

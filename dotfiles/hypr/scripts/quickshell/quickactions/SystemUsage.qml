@@ -69,11 +69,6 @@ Item {
 
     property bool widgetVisible: parent !== null && parent.visible !== undefined ? parent.visible : true
 
-    property real globalWavePhase: 0.0
-    NumberAnimation on globalWavePhase {
-        from: 0; to: Math.PI * 2; duration: 1800; loops: Animation.Infinite; running: root.widgetVisible
-    }
-
     // Telemetry subscription follows ACTUAL visibility, not component
     // lifecycle: this widget lives in Main.qml's widgetCache after its first
     // open, so Component.onDestruction never fires while cached — the old
@@ -86,23 +81,23 @@ Item {
     }
     Component.onCompleted: if (visible) SysData.subscribe()
 
-    // --- ANIMATED DATA STATE BINDINGS ---
-    // Smooths out raw SysData to drive both the visual wave and the dynamic text counters in constant 800ms time
+    // --- SMOOTHED DATA STATE BINDINGS ---
+    // Smooths out raw SysData to drive the visual fill and the dynamic text counters with one token
     property real rawCpu: isNaN(SysData.cpu) ? 0.0 : SysData.cpu / 100.0
     property real cpuUsage: rawCpu
-    Behavior on cpuUsage { NumberAnimation { duration: 800; easing.type: Easing.OutQuint } }
+    Behavior on cpuUsage { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
     property real rawTemp: isNaN(SysData.temp) ? 0.0 : SysData.temp
     property real tempC: rawTemp
-    Behavior on tempC { NumberAnimation { duration: 800; easing.type: Easing.OutQuint } }
+    Behavior on tempC { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
     property real rawRam: isNaN(SysData.ramPercent) ? 0.0 : SysData.ramPercent / 100.0
     property real ramUsage: rawRam
-    Behavior on ramUsage { NumberAnimation { duration: 800; easing.type: Easing.OutQuint } }
+    Behavior on ramUsage { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
     property real rawRamGb: isNaN(SysData.ramGb) ? 0.0 : SysData.ramGb
     property real ramUsedGb: rawRamGb
-    Behavior on ramUsedGb { NumberAnimation { duration: 800; easing.type: Easing.OutQuint } }
+    Behavior on ramUsedGb { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
     // Network values snap instantly (no Behavior) because large byte jumps look erratic when interpolated
     property real netRx: isNaN(SysData.netRx) ? 0 : SysData.netRx
@@ -112,7 +107,7 @@ Item {
     property string txSpeedStr: root.formatBytes(netTx)
 
     property real diskUsagePercent: 0.0
-    Behavior on diskUsagePercent { NumberAnimation { duration: 800; easing.type: Easing.OutQuint } }
+    Behavior on diskUsagePercent { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
     property string diskUsageText: "..."
     property var diskFolders: []
@@ -194,8 +189,6 @@ Item {
 
         property real fillRatio: Math.max(0.0, Math.min(1.0, ls.value))
         property real fillY: height * (1.0 - ls.fillRatio)
-        property real waveAmp: (ls.fillRatio < 0.99 && ls.fillRatio > 0.01) ? root.s(6) * Math.sin(ls.fillRatio * Math.PI) : 0
-        property real waveCenterOffset: 0.375 * ls.waveAmp * (Math.sin(root.globalWavePhase) - Math.cos(root.globalWavePhase))
 
         Rectangle {
             anchors.fill: parent
@@ -231,17 +224,9 @@ Item {
 
                 ctx.beginPath();
                 ctx.moveTo(0, ls.fillY);
-                if (ls.waveAmp > 0) {
-                    var cp1y = ls.fillY + Math.sin(root.globalWavePhase) * ls.waveAmp;
-                    var cp2y = ls.fillY + Math.cos(root.globalWavePhase + Math.PI) * ls.waveAmp;
-                    ctx.bezierCurveTo(width * 0.33, cp2y, width * 0.66, cp1y, width, ls.fillY);
-                    ctx.lineTo(width, height);
-                    ctx.lineTo(0, height);
-                } else {
-                    ctx.lineTo(width, ls.fillY);
-                    ctx.lineTo(width, height);
-                    ctx.lineTo(0, height);
-                }
+                ctx.lineTo(width, ls.fillY);
+                ctx.lineTo(width, height);
+                ctx.lineTo(0, height);
                 ctx.closePath();
 
                 var grad = ctx.createLinearGradient(0, 0, 0, height);
@@ -254,9 +239,9 @@ Item {
             }
 
             Connections {
-                target: root
+                target: ls
                 enabled: root.widgetVisible && ls.value > 0
-                function onGlobalWavePhaseChanged() { fluidCanvas.requestPaint(); }
+                function onFillYChanged() { fluidCanvas.requestPaint(); }
             }
         }
 
@@ -299,7 +284,7 @@ Item {
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.right: parent.right
-            height: Math.min(parent.height, Math.max(0, (parent.height * ls.fillRatio) - ls.waveCenterOffset))
+            height: Math.min(parent.height, Math.max(0, parent.height * ls.fillRatio))
             clip: true
             visible: ls.value > 0
 

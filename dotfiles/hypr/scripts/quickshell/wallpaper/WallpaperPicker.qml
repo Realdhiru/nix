@@ -1616,31 +1616,31 @@ Item {
         
         add: Transition {
             enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
-            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+            NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing }
         }
         addDisplaced: Transition {
             enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
-            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+            NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing }
         }
         move: Transition {
             enabled: !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
-            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+            NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing }
         }
         moveDisplaced: Transition {
             enabled: !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
-            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+            NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing }
         }
         remove: Transition {
             enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
-            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+            NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing }
         }
         removeDisplaced: Transition {
             enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
-            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+            NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing }
         }
         displaced: Transition {
             enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
-            NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutCubic }
+            NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing }
         }
 
         header: Item { width: Math.max(0, (view.width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset) }
@@ -1726,10 +1726,9 @@ Item {
             anchors.verticalCenterOffset: window.s(15)
             z: isVisuallyEnlarged ? 10 : 1
             
-            Behavior on scale { enabled: window.initialFocusSet && !window.isModelChanging && !window.isFilterAnimating; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
-            Behavior on width { enabled: window.initialFocusSet && !window.isModelChanging && !window.isFilterAnimating; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
-            Behavior on height { enabled: window.initialFocusSet && !window.isModelChanging && !window.isFilterAnimating; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
-            Behavior on opacity { enabled: window.initialFocusSet && !window.isModelChanging && !window.isFilterAnimating; NumberAnimation { duration: 300; easing.type: Easing.OutQuad } }
+            Behavior on width { enabled: window.initialFocusSet && !window.isModelChanging && !window.isFilterAnimating; NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+            Behavior on height { enabled: window.initialFocusSet && !window.isModelChanging && !window.isFilterAnimating; NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+            Behavior on opacity { enabled: window.initialFocusSet && !window.isModelChanging && !window.isFilterAnimating; NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
             Item {
                 anchors.centerIn: parent
@@ -1792,8 +1791,8 @@ Item {
         anchors.top: parent.top
         anchors.topMargin: window.isReady ? window.s(40) : window.s(-100)
         opacity: window.isReady ? 1.0 : 0.0
-        Behavior on anchors.topMargin { NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
-        Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
+        Behavior on anchors.topMargin { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+        Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
         anchors.horizontalCenter: parent.horizontalCenter
         z: 20
         height: window.s(56)
@@ -1832,9 +1831,9 @@ Item {
                 border.color: window.showNotification ? Qt.alpha(_theme.surface1, 0.4) : "transparent"
                 border.width: Config.borderWidth
 
-                Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400 } }
-                Behavior on border.color { ColorAnimation { duration: 400 } }
+                Behavior on width { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                 Item {
                     visible: window.showSpinner
@@ -1869,7 +1868,7 @@ Item {
                         RotationAnimation on rotation {
                             loops: Animation.Infinite
                             from: 0; to: 360
-                            duration: 800
+                            duration: Motion.moveMs
                             running: window.showSpinner && window.showNotification
                         }
                     }
@@ -1888,8 +1887,8 @@ Item {
                     font.bold: true
                     elide: Text.ElideRight
                     opacity: window.showNotification ? 0.9 : 0.0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
-                    Behavior on anchors.leftMargin { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
+                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                    Behavior on anchors.leftMargin { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
                 }
             }
 
@@ -1906,9 +1905,9 @@ Item {
                 border.color: window.isMonitorSelectorOpen ? _theme.text : Qt.alpha(_theme.surface1, 0.4)
                 border.width: window.isMonitorSelectorOpen ? window.s(2) : Config.borderWidth
                 
-                Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400 } }
-                Behavior on border.color { ColorAnimation { duration: 400 } }
+                Behavior on width { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                 MouseArea {
                     id: monitorIconMouse
@@ -1958,7 +1957,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: window.s(8)
                     opacity: window.isMonitorSelectorOpen ? 1.0 : 0.0
-                    Behavior on opacity { NumberAnimation { duration: 300 } }
+                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                     Repeater {
                         model: monitorModel
@@ -1973,9 +1972,9 @@ Item {
                                 color: model.selected ? _theme.text : _theme.surface1
                                 border.color: model.selected ? _theme.text : _theme.surface2
                                 border.width: 1
-                                Behavior on color { ColorAnimation { duration: 250 } }
-                                Behavior on border.color { ColorAnimation { duration: 250 } }
-                                
+                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+
                                 Text {
                                     id: monitorText
                                     text: model.name
@@ -1984,7 +1983,7 @@ Item {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: window.s(12)
                                     font.bold: model.selected
-                                    Behavior on color { ColorAnimation { duration: 250 } }
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                 }
                             }
 
@@ -2029,19 +2028,11 @@ Item {
                         color: window.currentFilter === modelData.name ? Qt.rgba(_theme.primary.r, _theme.primary.g, _theme.primary.b, 0.28) : (filterMouse.containsMouse ? Qt.rgba(_theme.surface1.r, _theme.surface1.g, _theme.surface1.b, 0.40) : Qt.rgba(_theme.surface0.r, _theme.surface0.g, _theme.surface0.b, Config.effectiveCardOpacity))
                         border.color: window.currentFilter === modelData.name ? _theme.primary : (filterMouse.containsMouse ? Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.25) : Qt.alpha(_theme.surface1, 0.3))
                         border.width: window.currentFilter === modelData.name ? window.s(2) : Config.borderWidth
-                        property real popScale: 1.0
                         property real targetScale: filterMouse.pressed ? 0.90 : (window.currentFilter === modelData.name ? 1.08 : (filterMouse.containsMouse ? 1.04 : 1.0))
-                        scale: targetScale * popScale
-                        
-                        SequentialAnimation {
-                            id: swatchPopAnim
-                            NumberAnimation { target: swatchCard; property: "popScale"; to: 1.25; duration: 110; easing.type: Easing.OutQuad }
-                            NumberAnimation { target: swatchCard; property: "popScale"; to: 1.0; duration: 420; easing.type: Easing.OutQuint }
-                        }
-                        
-                        Behavior on targetScale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-                        Behavior on border.color { ColorAnimation { duration: 250 } }
-                        Behavior on color { ColorAnimation { duration: 250 } }
+                        scale: targetScale
+                        Behavior on targetScale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                         Rectangle {
                             id: categorySwatch
@@ -2053,7 +2044,7 @@ Item {
                             color: window.getCategoryColor(modelData.name)
                             border.color: window.currentFilter === modelData.name ? _theme.text : Qt.rgba(1, 1, 1, 0.20)
                             border.width: 1
-                            Behavior on color { ColorAnimation { duration: 200 } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         }
 
                         Text {
@@ -2147,7 +2138,6 @@ Item {
                         hoverEnabled: true
                         enabled: !window.isApplying
                         onClicked: {
-                            swatchPopAnim.restart();
                             window.currentFilter = modelData.name;
                         }
                         cursorShape: Qt.PointingHandCursor
@@ -2167,8 +2157,8 @@ Item {
                 border.color: window.isSearchPaused ? _theme.text : _theme.surface1
                 border.width: window.isSearchPaused ? window.s(2) : 1
                 
-                Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                Behavior on width { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                 
                 MouseArea {
                     id: scMouse
@@ -2220,9 +2210,9 @@ Item {
                 border.color: window.currentFilter === "Search" ? _theme.text : Qt.alpha(_theme.surface1, 0.4)
                 border.width: window.currentFilter === "Search" ? window.s(2) : Config.borderWidth
                 
-                Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutBack; easing.overshoot: 0.5 } }
-                Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutQuart } }
-                Behavior on border.color { ColorAnimation { duration: 400 } }
+                Behavior on width { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                 MouseArea {
                     id: searchMouseArea
@@ -2246,7 +2236,7 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: window.currentFilter === "Search" ? window.s(5) : 0
                     anchors.verticalCenter: parent.verticalCenter
-                    Behavior on anchors.leftMargin { NumberAnimation { duration: 500; easing.type: Easing.OutExpo } }
+                    Behavior on anchors.leftMargin { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
                     property string activeColor: window.currentFilter === "Search" ? _theme.text : (searchMouseArea.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
                     onActiveColorChanged: requestPaint()
 
@@ -2287,7 +2277,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     opacity: window.currentFilter === "Search" ? 1.0 : 0.0
                     visible: opacity > 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
+                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                     color: _theme.text
                     font.family: "JetBrains Mono"
                     font.pixelSize: window.s(15)
@@ -2314,11 +2304,11 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     opacity: window.currentFilter === "Search" ? 1.0 : 0.0
                     visible: opacity > 0
-                    Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuad } }
+                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                     color: submitMouseArea.containsMouse ? _theme.surface1 : "transparent"
                     border.color: submitMouseArea.containsMouse ? _theme.text : _theme.surface2
                     border.width: 1
-                    Behavior on color { ColorAnimation { duration: 300 } }
+                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                     MouseArea {
                         id: submitMouseArea

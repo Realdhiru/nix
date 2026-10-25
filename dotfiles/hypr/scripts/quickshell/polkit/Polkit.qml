@@ -82,19 +82,12 @@ PanelWindow {
         function onAuthenticationFailed() {
             polkitWindow.isAuthenticating = false;
             passwordInput.text = "";
-            shakeAnim.restart();
+            shaker.trigger();
             focusRetryTimer.restart();
         }
     }
 
-    SequentialAnimation {
-        id: shakeAnim
-        NumberAnimation { target: dialogCard; property: "anchors.horizontalCenterOffset"; from: 0; to: -10; duration: 50 }
-        NumberAnimation { target: dialogCard; property: "anchors.horizontalCenterOffset"; from: -10; to: 10; duration: 50 }
-        NumberAnimation { target: dialogCard; property: "anchors.horizontalCenterOffset"; from: 10; to: -6; duration: 50 }
-        NumberAnimation { target: dialogCard; property: "anchors.horizontalCenterOffset"; from: -6; to: 6; duration: 50 }
-        NumberAnimation { target: dialogCard; property: "anchors.horizontalCenterOffset"; from: 6; to: 0; duration: 50 }
-    }
+    Shake { id: shaker; amplitude: 10 }
 
     MouseArea {
         anchors.fill: parent
@@ -111,6 +104,8 @@ PanelWindow {
         radius: 16
         border.color: Qt.rgba(_theme.surface0.r, _theme.surface0.g, _theme.surface0.b, 0.5)
         border.width: 1
+
+        transform: Translate { x: shaker.offset }
 
         MouseArea {
             anchors.fill: parent

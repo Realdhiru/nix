@@ -312,27 +312,20 @@ Item {
                 color: root.cMauve
                 z: 0
 
-                property int prevIdx: 0
                 property int curIdx: stateCache.activeMode
-
-                onCurIdxChanged: {
-                    if (curIdx > prevIdx) { rightAnim.duration = 200; leftAnim.duration = 350; }
-                    else if (curIdx < prevIdx) { leftAnim.duration = 200; rightAnim.duration = 350; }
-                    prevIdx = curIdx;
-                }
 
                 property real stepSize: (parent.width - root.s(4)) / 3
                 property real targetLeft: root.s(2) + (curIdx * stepSize)
                 property real targetRight: targetLeft + stepSize
 
-                property real actualLeft: targetLeft
-                property real actualRight: targetRight
+                Highlight {
+                    id: hl
+                    targetCoord: tabActiveHighlight.targetLeft
+                    targetSpan: tabActiveHighlight.targetRight - tabActiveHighlight.targetLeft
+                }
 
-                Behavior on actualLeft { NumberAnimation { id: leftAnim; duration: 250; easing.type: Easing.OutExpo } }
-                Behavior on actualRight { NumberAnimation { id: rightAnim; duration: 250; easing.type: Easing.OutExpo } }
-
-                x: actualLeft
-                width: actualRight - actualLeft
+                x: hl.coord
+                width: hl.span
             }
 
             Row {
@@ -353,7 +346,7 @@ Item {
                             font.bold: true
                             font.pixelSize: root.s(12)
                             color: stateCache.activeMode === index ? root.cMantle : root.cText
-                            Behavior on color { ColorAnimation { duration: 250 } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         }
 
                         MouseArea {
@@ -384,7 +377,7 @@ Item {
                 anchors.fill: parent
                 visible: stateCache.activeMode === 0
                 opacity: visible ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 250 } }
+                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                 property int activeEditSegment: 1 // 0: H, 1: M, 2: S
 
@@ -431,22 +424,14 @@ Item {
                     spacing: 0
 
                     property real upOffset: 0
-                    property real downOffset: 0
 
                     SequentialAnimation on upOffset {
                         running: isSelected && root.isTimerIdle && root.widgetVisible
                         loops: Animation.Infinite
-                        NumberAnimation { to: -root.s(4); duration: 500; easing.type: Easing.InOutSine }
-                        NumberAnimation { to: 0; duration: 500; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: -root.s(4); duration: Motion.enterMs; easing.type: Motion.fadeEasing }
+                        NumberAnimation { to: 0; duration: Motion.exitMs; easing.type: Motion.fadeEasing }
                     }
-                    onIsSelectedChanged: if (!isSelected) { upOffset = 0; downOffset = 0; }
-
-                    SequentialAnimation on downOffset {
-                        running: isSelected && root.isTimerIdle && root.widgetVisible
-                        loops: Animation.Infinite
-                        NumberAnimation { to: root.s(4); duration: 500; easing.type: Easing.InOutSine }
-                        NumberAnimation { to: 0; duration: 500; easing.type: Easing.InOutSine }
-                    }
+                    onIsSelectedChanged: if (!isSelected) upOffset = 0;
 
                     Item { // UP ARROW
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -459,8 +444,8 @@ Item {
                             color: isSelected ? root.cMauve : root.cSubtext0
                             font.pixelSize: root.s(16)
                             opacity: isSelected ? 1.0 : 0.2
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                            Behavior on color { ColorAnimation { duration: 200 } }
+                            Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         }
                         MouseArea { anchors.fill: parent; onClicked: (mouse) => upClicked(); cursorShape: Qt.PointingHandCursor }
                     }
@@ -474,7 +459,7 @@ Item {
                             font.weight: Font.Black
                             font.pixelSize: root.s(54)
                             color: isSelected ? root.cMauve : root.cText
-                            Behavior on color { ColorAnimation { duration: 200 } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         }
                         MouseArea {
                             anchors.fill: parent
@@ -488,14 +473,13 @@ Item {
                         width: root.s(48); height: root.s(24)
                         Text {
                             anchors.centerIn: parent
-                            anchors.verticalCenterOffset: downOffset
                             text: "\uF078"
                             font.family: root.iconFont
                             color: isSelected ? root.cMauve : root.cSubtext0
                             font.pixelSize: root.s(16)
                             opacity: isSelected ? 1.0 : 0.2
-                            Behavior on opacity { NumberAnimation { duration: 200 } }
-                            Behavior on color { ColorAnimation { duration: 200 } }
+                            Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         }
                         MouseArea { anchors.fill: parent; onClicked: (mouse) => downClicked(); cursorShape: Qt.PointingHandCursor }
                     }
@@ -516,7 +500,7 @@ Item {
                         font.weight: Font.Black
                         font.pixelSize: root.s(68)
                         color: root.isAlarmBuzzing ? _theme.red : (stateCache.timerRemainingMs === 0 && !root.isTimerRunning ? root.cMauve : root.cText)
-                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         visible: !root.isTimerIdle
                     }
 
@@ -596,7 +580,7 @@ Item {
                     Rectangle {
                         width: root.s(64); height: root.s(64); radius: root.s(10)
                         color: root.isAlarmBuzzing ? _theme.red : root.cMauve
-                        Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         Text {
                             anchors.centerIn: parent
                             text: root.isAlarmBuzzing ? "\uF04D" : (root.isTimerRunning ? "\uF04C" : "\uF04B")
@@ -622,7 +606,7 @@ Item {
                 anchors.fill: parent
                 visible: stateCache.activeMode === 1
                 opacity: visible ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 250 } }
+                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                 property bool isRunning: stateCache.swStartEpoch > 0
                 property real currentDisplayMs: 0
@@ -748,7 +732,7 @@ Item {
                 anchors.fill: parent
                 visible: stateCache.activeMode === 2
                 opacity: visible ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 250 } }
+                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                 property bool isRunning: stateCache.pomoTargetEpoch > 0
                 property bool showSettings: false

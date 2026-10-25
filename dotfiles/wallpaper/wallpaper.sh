@@ -108,7 +108,7 @@ cmd_kill() {
             target="$(cat "$HOME/.cache/last_wallpaper.txt" 2>/dev/null || true)"
         fi
         if [ -n "$target" ] && [ -f "$target" ]; then
-            cmd_set "$target" "fade" "0.25" "120"
+            "$BACKEND/set.sh" "$target" "fade" "0.25" "120"
         else
             rm -f "$HOME/.cache/wallpaper_killed"
             cmd_boot
@@ -139,8 +139,6 @@ cmd_kill() {
     # 2. Preserve wallpaper target file caches
     if [ -s "$CURRENT_TXT" ]; then
         cp -f "$CURRENT_TXT" "$LAST_TXT" 2>/dev/null || true
-    elif [ -f "$HOME/.cache/current_wallpaper.txt" ]; then
-        cp -f "$HOME/.cache/current_wallpaper.txt" "$LAST_TXT" 2>/dev/null || true
     fi
     rm -f "$CURRENT_TXT"
     touch "$CURRENT_TXT"

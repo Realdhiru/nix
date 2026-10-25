@@ -1,5 +1,75 @@
 # CHANGELOG
 
+## 2026-10-26 — Wallpaper Subsystem Cache Synchronization & Notification Lifecycle Fix
+
+- **Wallpaper Cache & Resumption Fix ([`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), [`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh))**:
+  - Restored persistent cache writing in `set.sh` (`current_wallpaper.txt` and `last_wallpaper.txt`), resolving an issue where toggling off wallpaper and re-enabling fell back to a random wallpaper from `cmd_boot`.
+  - Guarded `cmd_kill` in `wallpaper.sh` against copying empty 0-byte cache files over `last_wallpaper.txt`.
+  - Replaced `exec` invocation during toggle-on so `state_ctl` and `notify-send "ON"` complete cleanly.
+  - Enabled `WallpaperPicker.qml` to accurately track and highlight the currently active wallpaper on startup.
+- **Notification Server & Call Timeout Fix ([`NotifTicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifTicker.qml), [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml))**:
+  - Wired `tickerTimeoutTimer.onTriggered` to invoke `root.dismiss(uid)` so timed-out notifications cleanly unregister from both Quickshell and D-Bus.
+  - Reduced call safety timeout from 45s down to 20s.
+  - Conditioned `TopBar.qml` exclusive zone and layer mapping on `Config.topBarPosition !== "left"` to eliminate dead top margin reservations in Sidebar mode.
+
+
+- **Engine side ([`motion.lua`](file:///home/realdhiru/nix/dotfiles/hypr/motion.lua), [`appearance.lua`](file:///home/realdhiru/nix/dotfiles/hypr/appearance.lua), [`hyprlock.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hyprlock.conf), [`flake.nix`](file:///home/realdhiru/nix/flake.nix))**:
+  - `motion.lua` is generated from `motion-tokens.nix` via `lib/motion-gen.nix` (enter/exit/move/fade beziers, 13 anim leaves, borderangle/shadowangle/glowangle disabled); `appearance.lua` stripped of animations + 15 legacy curves; `hyprland.lua` requires `motion` after `appearance`.
+  - `hyprlock.conf` uses the same curve family (`bezier enter`/`exit_curve`; fadeIn 2.4, fadeOut 1.6).
+  - Flake `checks.motion-tokens` byte-compares generated vs checked-in runtime files *before* QML lint; `checks.qml-lint` fails on any numeric `duration:` or raw `Easing.*` outside `Motion.qml` (Canvas `bezierCurveTo` excluded as a drawing API).
+- **Remaining QML migration wave (all to `Motion.qml` tokens; zero raw `Easing.*`/numeric `duration:` outside Motion.qml)**:
+  - `TopBar.qml` / `SideBar.qml`: typewriter date timer deleted; power-pulse reduced to opacity-only enter/exit legs; marquee kept on `marqueeMsPerPx`/`marqueePauseMs` tokens.
+  - `ClipboardManager.qml`: preview morph confirmed in-window geometry (tokens kept); deleting `globalOrbitAngle` (static blob positions).
+  - `NetworkPopup.qml`: ping rings, 45 ms stagger timers, node bumps, power pending pulse ring and bob pulses deleted; loading dots + spinner retokenized (`fadeMs`/`moveMs`/`holdMs`), marquee on tokens; highlight rings handled by shared `Highlight.qml`.
+  - `MonitorPopup.qml`, `NetworkPopup.qml` intro/exit cascades → single card fade+scale.
+  - `WeatherSetupPopup.qml`, `WallpaperPicker.qml`, `quickactions/{SystemUsage,Timer,DrawAction}.qml`, `Polkit.qml`, `Lock.qml`, `Main.qml`, `Floating.qml`: all tweens moved to Motion tokens; drawers/expand from OutBack → `moveMs/moveEasing`; shakes → `Shake.qml`; PIN dots → fade tokens; `Main.qml` StackView replace enter/exit on tokens.
+- **Deletions wiped clean**: 42 overshoot lines (`OutBack`/`OutElastic`/`SpringAnimation`), 36 ambient `loops: Animation.Infinite` lines, 89 cascade/parallel animation lines, 622 retokenized raw duration/easing lines (diff vs baseline `84a9175`; line-signature counts, initial delete edits preserved ~same counts with token additions added independently).
+
+## 2026-10-26 — Standalone Display DPMS Power Control (Overnight Agent Workflows)
+
+- **Power CLI Display Subcommand ([`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh))**:
+  - Implemented `power.sh display [off|on|toggle]` and `power.sh dpms [off|on|toggle]` routing to Hyprland's native Lua DPMS dispatcher (`hl.dsp.dpms({action=...})`).
+  - Decouples display illumination from system sleep state: allows turning the OLED screen pitch black ($0\text{W}$) while Coffee mode (`systemd-inhibit`) or background workloads keep CPU/memory alive.
+- **Dedicated Display Off Keybindings ([`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:
+  - Bound `Super + Shift + Escape` and `Shift + F6` with `{ locked = true }` to `power.sh display off`, allowing instant screen blackout whether unlocked or locked.
+  - Normal input (key press or touchpad movement) immediately restores display via Hyprland's native DPMS wake path.
+
+## 2026-10-25 — Central `Motion` Token System & Popup Cascade Removal (Music / Focus Time)
+
+- **Centralized Motion Tokens ([`Motion.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Motion.qml))**: enter/exit 240/160 ms, move 220 ms, fade 140 ms, plus marquee tokens (`marqueeMsPerPx`, `marqueePauseMs`); all popup motion routs through the singleton (already imported by subpopup dirs via `import "../"`).
+- **Music Popup ([`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml))**:
+  - Deleted CPU-bound infinite animations: `catppuccinFlowOffset` (8 s loop), `globalOrbitAngle` (90 s loop), rotating-vinyl 8 s loop, and the entire EQ lightning subsystem (650+150+800 ms SequentialAnimation, 16 ms `requestPaint` Timer, full `Canvas` onPaint path, 1.0 s/1.5 s track/ring/flash pulse sweeps, hit-pulse handle ring).
+  - Deleted the 7-stage intro cascade (760–860 ms staggers with OutBack waves) and the decorative play-pulse row; replaced by ONE card fade+scale enter (0.96→1, `Motion.enterMs`) / exit (`Motion.exitMs`) on the root card.
+  - Marquee kept on tokens (`marqueePauseMs`, `marqueeMsPerPx`); all press/hover/color feedback mapped to `Motion.fadeMs`; slider value snap and EQ preset apply mapped to `Motion.moveMs`/`moveEasing`.
+- **Focus Time Popup ([`FocusTimePopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/focustime/FocusTimePopup.qml))**:
+  - Deleted the 900–1300 ms staggered intro cascade + exit battery (400–150 ms InQuart set) and the 120 s `globalOrbitAngle` loop; unified one card fade+scale enter/exit on the root card instead.
+  - Counter animation, weekly/app view-focus crossfades, bar height/width fills, list move transitions and app-icon `animWidth` mapped to `Motion.moveMs`/`moveEasing`; hover/color feedback mapped to `Motion.fadeMs`/`fadeEasing` (staggered OutBack heatmap cell pops now overshoot-free).
+  - Dead-code sweep: `intro*` properties, `isFirstLoad`/`firstLoadTimer` (inert after cascade removal) deleted; bar Behaviors are no longer gated on a cascade multiplier.
+
+## 2026-10-25 — Dynamic Island Notification Toast for Sidebar Mode
+
+- **Dynamic Island Notification Toast ([`NotifToast.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifToast.qml), [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml))**:
+  - Implemented top-centered Dynamic Island morphing pill toast for Sidebar mode (`Config.topBarPosition === "left"`), active only when notifications exist.
+  - Derived single token `toastOpacity: config.isSolidMode ? 1.0 : Math.max(0.70, config.effectivePopupOpacity)` to guarantee WCAG AA contrast ($\ge 4.5:1$) against bright wallpapers.
+  - LayerShell isolation configured with `exclusionMode: ExclusionMode.Ignore` and explicit `mask: Region { item: toastCard }` to prevent Hyprland exclusive monitor margin displacement.
+  - Morph animation utilizes Motion tokens (`enterMs: 240ms`, `exitMs: 160ms`, scale `0.94 → 1.0`, translate `s(-6) → 0`) with in-place queue updates (zero stacking).
+  - Wired interactive D-Bus action chips calling `NotifTicker.invokeAction(modelData.id)`.
+
+
+
+- **CalendarPopup Animation Refactor ([`CalendarPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/calendar/CalendarPopup.qml))**:
+  - Replaced the staggered intro/exit cascade (`introMain/Ambient/Clock/Calendar/Weather`) with a single tokenized card fade+scale (opacity 0/1, scale 0.96/1) on the root card keyed to visibility, using `Motion.enterMs/enterEasing` and `Motion.exitMs/exitEasing`.
+  - Deleted all ambient/looping visuals: 90s `globalOrbitAngle` orbit, ambient blob float, hub levitation/orbit-breath/pitch-yaw-roll breathing, hero icon drift, decorative per-second `secondPulse` tick, and arrow hover pulse repeats.
+  - Weather view switch now uses a plain opacity cross-fade (exit 0 → enter 1); deleted the 3D spin/scale/slide extras. Calendar month switch uses the same enter/exit token swap, slide offset removed.
+  - Migrated all remaining tweens to Motion tokens: temp data + gauge fills + year-percentage width → `moveMs/moveEasing`; all color/hover fades → `fadeMs/fadeEasing` (no overshoot easing anywhere).
+- **SunsetPopup Slider Motion ([`SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml))**:
+  - All five slider value Behaviors (100ms OutQuad) migrated to `Motion.moveMs + Motion.moveEasing`; 120ms backend apply-timer throttling intentionally unchanged.
+
+- **Battery & Monitors Popup Animation Refactor ([`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml), [`MonitorPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml))**:
+  - Deleted staggered intro/exit cascades (battery `introAnim`/`exitAnim` 100–550ms staggers; monitors `startupAnim` 900–1800ms), all 90s `globalOrbitAngle` ambient loops, battery hero/ring breathing + pump/discharge/text pulses, wave-phase and CRT `screenLight` entrance ramps; hover canvas block removed — battery ring repaints only on data change.
+  - Both popups now use one tokenized card fade+scale (opacity 0/1, scale 0.96/1) keyed to a `shown` visibility binding with `Motion.enterMs/exitMs` + enter/exit easings; dangling `menuTransitionAnim.restart()` reference deleted.
+  - Remaining tweens tokenized: slider knob x + profile pill x + monitor geometry/degree changes → `moveMs/moveEasing`; all hover/theme color, knob/fill/border-width fades → `fadeMs/fadeEasing`; press-hold fill/drain → `Motion.holdMs/holdEasing` + `Motion.exitMs/exitEasing`; status flash anims → `moveMs/moveEasing`.
+
 ## 2026-10-25 — Multi-Monitor Mirroring & Per-Monitor Wallpaper Architecture Fix
 
 - **Declarative Dynamic Multi-Monitor Layout Manager ([`hyprland.lua`](file:///home/realdhiru/nix/dotfiles/hypr/hyprland.lua), [`MonitorPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml))**:

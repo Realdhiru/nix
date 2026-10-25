@@ -22,7 +22,11 @@ Item {
 
     Timer {
         id: tickerTimeoutTimer
-        onTriggered: { if (root.tickerNotif) root.tickerNotif = null; }
+        onTriggered: {
+            if (root.tickerNotif) {
+                root.dismiss(root.tickerNotif.uid);
+            }
+        }
     }
 
     function _showTicker(notifData, timeoutMs) {
@@ -184,9 +188,9 @@ Item {
                 let exp = (n.expireTimeout !== undefined && !isNaN(n.expireTimeout)) ? n.expireTimeout : -1;
 
                 if (isCall) {
-                    // Incoming phone call: stays on ticker while ringing (with a 45s safety bound),
+                    // Incoming phone call: stays on ticker while ringing (with a 20s safety bound),
                     // but automatically disappears the exact millisecond the call is picked or hung up.
-                    timeoutMs = 45000;
+                    timeoutMs = 20000;
                 } else if (isTransientSignal) {
                     // Ephemeral hardware or dev alerts: show for 2 seconds only on ticker, never saved to history
                     timeoutMs = 2000;

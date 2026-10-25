@@ -48,9 +48,10 @@ All global architecture pillars, hardware authority (ASUS Vivobook S 15 OLED K55
   - Native PipeWire Equalizer & Handover: Virtual 10-band equalizer filter chain (`effect_input.eq10`) sits at priority 2200, guaranteeing audio apps process through the EQ while its passive output routes deterministically to external sinks (2150) or internal speakers (1000).
   - Multi-Output Audio Broadcast: `Super + Ctrl + V` (`toggle_multi_sink.sh` / `pw-broadcast`) dynamically broadcasts the equalizer output across all connected external endpoints simultaneously via sub-2ms `pw-link` graph links, auto-compensating Bluetooth buffer delay (340ms) on wired channels. Standalone Flake in `~/Projects/pipewire-multi-sink`.
   - KDE Connect On-Demand Control: `Super + Shift + K` (`kdeconnect_toggle.sh`) toggles `kdeconnect-indicator` and `kdeconnectd` on-demand to save ~80MB RAM and prevent Wi-Fi broadcast wakeups on battery.
-  - SideBar Dynamic Island: QuickShell renders an authentic iPhone Dynamic Island centered notification pill (`NotifToast.qml`) at top-center when `Config.topBarPosition === "left"` or TopBar is hidden, with Apple spring morphing physics, OLED obsidian black styling, call controls, and zero-reallocation dynamic Region masking.
+  - SideBar Dynamic Island: QuickShell renders a top-centered Dynamic Island morphing notification pill (`NotifToast.qml`) when `Config.topBarPosition === "left"`, using system center pill tokens, Motion token transitions, derived `Config.toastOpacity` (0.70 floor for WCAG AA contrast), dynamic action chips, and Region masking.
   - WebRTC Microphone Cleaning: `60-echo-cancel.conf` binds `libpipewire-module-echo-cancel` to internal stereo array `HiFi__Mic2__source`, cancels speaker acoustic bleed against `effect_input.eq10:monitor`, and publishes `echo_cancel_source` at priority 2100 with zero daemon overhead.
   - Web Apps Hardware Video Acceleration: All Brave web apps and browser windows must receive native VA-API zero-copy hardware acceleration via `~/.local/bin/brave` (`--use-gl=angle --use-angle=gl --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder,WaylandWindowDecorations --enable-zero-copy`). Video apps (YouTube) must remain 100% solid opacity (`1.0`) with `idle_inhibit = "focus"`. WhatsApp must never have translucent glass opacity.
+  - Multi-Monitor & External Display Runbook: Authoritative diagnostics, virtual headless replug scripts, Lua mirror/unmirror semantics, and systemd wallpaper routing are defined in [`docs/monitors_troubleshooting.md`](file:///home/realdhiru/nix/docs/monitors_troubleshooting.md). Always consult before modifying display logic.
 
 ## 3. Workflow & Verification Commands
 
@@ -76,6 +77,10 @@ sudo nixos-rebuild dry-run --flake ~/nix#nixos
 # Coffee mode query / toggle
 ~/.config/hypr/scripts/power.sh inhibit status
 ~/.config/hypr/scripts/power.sh inhibit toggle
+
+# Display DPMS power control (turn off OLED display without sleeping; Super+Shift+Esc or Shift+F6)
+~/.config/hypr/scripts/power.sh display off
+~/.config/hypr/scripts/power.sh display on
 
 # Fuzzel picker testing (app, file, emoji, glyph)
 ~/.config/hypr/scripts/fuzzel_menu.sh emoji

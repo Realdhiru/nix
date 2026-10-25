@@ -188,7 +188,7 @@ Item {
                     Layout.preferredHeight: s(36)
                     radius: s(18)
                     color: saveMa.containsMouse ? window.primary : window.lavender
-                    Behavior on color { ColorAnimation { duration: 200 } }
+                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                     Text {
                         anchors.centerIn: parent

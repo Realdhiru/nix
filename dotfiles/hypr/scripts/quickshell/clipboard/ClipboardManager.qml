@@ -40,7 +40,6 @@ Item {
     property bool isLoading: false
     property bool hasMore: true
     
-    property int navDuration: 0
     property bool previewMode: false
     property bool previewAnimationDone: false
     property string fullTextPreview: ""
@@ -72,9 +71,8 @@ Item {
         enabled: window.visible && !searchInput.activeFocus
         onActivated: {
             window.previewMode = false;
-            window.navDuration = 250; 
             window.pendingIndex = -1;
-            
+
             let targetIdx = clipList.currentIndex + 1;
             if (targetIdx < clipModel.count) { 
                 clipList.currentIndex = targetIdx; 
@@ -90,9 +88,8 @@ Item {
         enabled: window.visible && !searchInput.activeFocus
         onActivated: {
             window.previewMode = false;
-            window.navDuration = 250;
             window.pendingIndex = -1;
-            
+
             if (clipList.currentIndex > 0) { clipList.currentIndex--; }
         }
     }
@@ -105,9 +102,8 @@ Item {
                 textPreviewFlickable.contentY = Math.min(textPreviewFlickable.contentY + window.s(60), Math.max(0, textPreviewFlickable.contentHeight - textPreviewFlickable.height));
             } else {
                 window.previewMode = false;
-                window.navDuration = 250;
                 window.pendingIndex = -1;
-                
+
                 let targetIdx = clipList.currentIndex + mainBg.cols;
                 if (targetIdx < clipModel.count) {
                     clipList.currentIndex = targetIdx;
@@ -129,9 +125,8 @@ Item {
                 textPreviewFlickable.contentY = Math.max(textPreviewFlickable.contentY - window.s(60), 0);
             } else {
                 window.previewMode = false;
-                window.navDuration = 250;
                 window.pendingIndex = -1;
-                
+
                 if (clipList.currentIndex - mainBg.cols >= 0) {
                     clipList.currentIndex -= mainBg.cols;
                 } else {
@@ -322,7 +317,6 @@ Item {
 
         focusTimer.restart();
         introPhaseAnim.restart();
-        window.navDuration = 0;
         window.previewMode = false;
         window.previewAnimationDone = false;
         window.fullTextPreview = "";
@@ -377,15 +371,10 @@ Item {
         }
     }
 
-    property real globalOrbitAngle: 0
-    NumberAnimation on globalOrbitAngle {
-        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: window.visible
-    }
-
     property real introPhase: 0
     NumberAnimation on introPhase {
         id: introPhaseAnim
-        from: 0; to: 1; duration: 600; easing.type: Easing.OutExpo; running: true 
+        from: 0; to: 1; duration: Motion.enterMs; easing.type: Motion.enterEasing; running: true
     }
 
     Rectangle {
@@ -428,20 +417,20 @@ Item {
 
         Rectangle {
             width: parent.width * 0.8; height: width; radius: width / 2
-            x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
-            y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(100)
+            x: (parent.width / 2 - width / 2) + window.s(90)
+            y: (parent.height / 2 - height / 2) + window.s(60)
             opacity: 0.08
             color: window.mauve
-            Behavior on color { ColorAnimation { duration: 1000 } }
+            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
         }
-        
+
         Rectangle {
             width: parent.width * 0.9; height: width; radius: width / 2
-            x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
-            y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
+            x: (parent.width / 2 - width / 2) - window.s(90)
+            y: (parent.height / 2 - height / 2) - window.s(60)
             opacity: 0.06
             color: window.primary
-            Behavior on color { ColorAnimation { duration: 1000 } }
+            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
         }
 
         Rectangle {
@@ -474,10 +463,10 @@ Item {
                         scale: !window.previewMode ? 1 : 0.5
                         rotation: !window.previewMode ? 0 : -90
                         
-                        Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
-                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
-                        Behavior on rotation { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
-                        Behavior on color { ColorAnimation { duration: 100 } }
+                        Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on rotation { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                     }
 
                     Text {
@@ -491,9 +480,9 @@ Item {
                         scale: window.previewMode ? 1 : 0.5
                         rotation: window.previewMode ? 0 : 90
                         
-                        Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
-                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
-                        Behavior on rotation { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                        Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on rotation { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                     }
                 }
 
@@ -572,24 +561,19 @@ Item {
             highlightFollowsCurrentItem: false
 
             populate: Transition {
-                NumberAnimation { property: "opacity"; from: 1; to: 1; duration: 0 }
+                PropertyAction { property: "opacity"; value: 1 }
             }
-            
+
             add: Transition {
                 id: addTrans
-                SequentialAnimation {
-                    PropertyAction { property: "opacity"; value: 0 }
-                    PropertyAction { property: "scale"; value: 0.8 }
-                    PauseAnimation { duration: 10 }
-                    ParallelAnimation {
-                        NumberAnimation { property: "opacity"; to: 1; duration: 250; easing.type: Easing.OutCubic }
-                        NumberAnimation { property: "scale"; to: 1; duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
-                    }
+                ParallelAnimation {
+                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Motion.enterMs; easing.type: Motion.enterEasing }
+                    NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: Motion.enterMs; easing.type: Motion.enterEasing }
                 }
             }
-            
+
             displaced: Transition {
-                NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutExpo }
+                NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing }
             }
             
             onContentYChanged: {
@@ -599,8 +583,7 @@ Item {
             }
 
             Behavior on contentY {
-                enabled: window.navDuration > 0
-                NumberAnimation { duration: 250; easing.type: Easing.OutExpo }
+                NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
             }
 
             onCurrentIndexChanged: {
@@ -608,19 +591,15 @@ Item {
                     if (currentIndex >= clipModel.count - (mainBg.cols * 2)) {
                         window.loadMore();
                     }
-                    
+
                     let row = Math.floor(currentIndex / mainBg.cols);
                     let targetTop = row * mainBg.cellH;
                     let targetBottom = targetTop + mainBg.cellH;
 
-                    if (window.navDuration > 0) {
-                        if (targetTop < contentY) {
-                            contentY = targetTop;
-                        } else if (targetBottom > contentY + height) {
-                            contentY = targetBottom - height;
-                        }
-                    } else {
-                        positionViewAtIndex(currentIndex, GridView.Contain);
+                    if (targetTop < contentY) {
+                        contentY = targetTop;
+                    } else if (targetBottom > contentY + height) {
+                        contentY = targetBottom - height;
                     }
                 }
             }
@@ -649,13 +628,13 @@ Item {
                     property real targetX: curIdx === -1 || clipList.model === null ? 0 : (curIdx % mainBg.cols) * clipList.cellWidth
                     property real targetY: curIdx === -1 || clipList.model === null ? 0 : Math.floor(curIdx / mainBg.cols) * clipList.cellHeight
 
-                    Behavior on x { enabled: window.navDuration > 0; NumberAnimation { duration: window.navDuration; easing.type: Easing.OutExpo } }
-                    Behavior on y { enabled: window.navDuration > 0; NumberAnimation { duration: window.navDuration; easing.type: Easing.OutExpo } }
+                    Behavior on x { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                    Behavior on y { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
                     x: targetX + window.s(5)
                     y: targetY + window.s(5)
                     opacity: clipList.count > 0 && clipList.currentIndex >= 0 && clipList.model !== null ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: 300 } }
+                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                 }
             }
 
@@ -676,7 +655,7 @@ Item {
                     radius: window.s(8)
                     
                     color: ma.containsMouse && index !== clipList.currentIndex ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, 0.4) : "transparent"
-                    Behavior on color { ColorAnimation { duration: 250; easing.type: Easing.OutSine } }
+                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                     Rectangle {
                         z: 2
@@ -739,8 +718,8 @@ Item {
                             
                             property real textShift: index === clipList.currentIndex ? window.s(4) : 0
                             transform: Translate { x: clipText.textShift }
-                            Behavior on textShift { NumberAnimation { duration: 500; easing.type: Easing.OutExpo } }
-                            Behavior on color { ColorAnimation { duration: 300; easing.type: Easing.OutExpo } }
+                            Behavior on textShift { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         }
                     }
 
@@ -751,7 +730,6 @@ Item {
                         enabled: !window.previewMode
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
                         onClicked: (mouse) => {
-                            window.navDuration = 250;
                             clipList.currentIndex = index;
                             
                             if (mouse.button === Qt.RightButton) {
@@ -788,7 +766,7 @@ Item {
                 : Qt.rgba(window.base.r, window.base.g, window.base.b, Config.effectivePopupOpacity > 0 ? Math.min(0.92, Config.effectivePopupOpacity + 0.50) : 0.85)
             border.color: window.mauve
             border.width: window.previewMode ? window.s(2) : 0
-            Behavior on border.width { NumberAnimation { duration: 150 } }
+            Behavior on border.width { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
             clip: true
             
             Image {
@@ -804,9 +782,9 @@ Item {
                 visible: previewMorph.curItem && previewMorph.curItem.type === "image"
                 
                 opacity: window.previewMode ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 150;  } }
+                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
             }
-            
+
             Flickable {
                 id: textPreviewFlickable
                 anchors.top: parent.top
@@ -819,12 +797,12 @@ Item {
                 contentHeight: textPreviewContent.paintedHeight
                 clip: true
                 
-                Behavior on contentY { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                Behavior on contentY { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
                 
                 visible: previewMorph.curItem && previewMorph.curItem.type === "text"
                 opacity: window.previewMode ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 150;  } }
-                
+                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+
                 TextEdit {
                     id: textPreviewContent
                     width: parent.width
@@ -887,8 +865,8 @@ Item {
                     from: "hidden"; to: "visible"
                     SequentialAnimation {
                         ParallelAnimation {
-                            NumberAnimation { target: previewMorph; property: "opacity"; duration: 50 } 
-                            NumberAnimation { properties: "x,y,width,height,radius"; duration: 300; easing.type: Easing.OutExpo } 
+                            NumberAnimation { target: previewMorph; property: "opacity"; duration: Motion.fadeMs; easing.type: Motion.fadeEasing }
+                            NumberAnimation { properties: "x,y,width,height,radius"; duration: Motion.enterMs; easing.type: Motion.enterEasing }
                         }
                         ScriptAction { script: { window.previewAnimationDone = true; } }
                     }
@@ -896,11 +874,8 @@ Item {
                 Transition {
                     from: "visible"; to: "hidden"
                     ParallelAnimation {
-                        NumberAnimation { properties: "x,y,width,height,radius"; duration: 250; easing.type: Easing.OutExpo } 
-                        SequentialAnimation {
-                            PauseAnimation { duration: 150 }
-                            NumberAnimation { target: previewMorph; property: "opacity"; to: 0; duration: 100 }
-                        }
+                        NumberAnimation { properties: "x,y,width,height,radius"; duration: Motion.exitMs; easing.type: Motion.exitEasing }
+                        NumberAnimation { target: previewMorph; property: "opacity"; to: 0; duration: Motion.fadeMs; easing.type: Motion.fadeEasing }
                     }
                 }
             ]

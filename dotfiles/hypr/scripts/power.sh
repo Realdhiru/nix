@@ -8,6 +8,7 @@
 #   resume         Post-wake handler (restores display/profile/lock state)
 #   lid close|open Laptop lid switch event handler
 #   inhibit        Toggle idle inhibition (Coffee mode)
+#   display        Control display power state (off|on|toggle) via DPMS
 #   profile        Hardware power profile switcher (TLP + ACPI platform_profile)
 #
 
@@ -359,6 +360,28 @@ cmd_profile() {
 }
 
 # -----------------------------------------------------------------------------
+# SUBCOMMAND: display (DPMS display power control)
+# -----------------------------------------------------------------------------
+cmd_display() {
+    local action="${1:-off}"
+    case "$action" in
+        off)
+            hyprctl eval "hl.dispatch(hl.dsp.dpms({action='off'}))" >/dev/null 2>&1 || true
+            ;;
+        on)
+            hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))" >/dev/null 2>&1 || true
+            ;;
+        toggle)
+            hyprctl eval "hl.dispatch(hl.dsp.dpms({action='toggle'}))" >/dev/null 2>&1 || true
+            ;;
+        *)
+            echo "Usage: power.sh display {off|on|toggle}" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# -----------------------------------------------------------------------------
 # ROUTER
 # -----------------------------------------------------------------------------
 case "$CMD" in
@@ -367,9 +390,11 @@ case "$CMD" in
     resume)   cmd_resume "$@" ;;
     lid)      cmd_lid "$@" ;;
     inhibit)  cmd_inhibit "$@" ;;
+    display)  cmd_display "$@" ;;
+    dpms)     cmd_display "$@" ;;
     profile)  cmd_profile "$@" ;;
     *)
-        echo "Usage: power.sh [lock|suspend|resume|lid close|lid open|inhibit|profile <performance|balanced|power-saver>]" >&2
+        echo "Usage: power.sh [lock|suspend|resume|lid close|lid open|inhibit|display <off|on|toggle>|profile <performance|balanced|power-saver>]" >&2
         exit 1
         ;;
 esac

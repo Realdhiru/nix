@@ -179,16 +179,12 @@ Item {
     Theme { id: _theme }
     property bool isSolidMode: false
     property real effectivePopupOpacity: config.isSolidMode ? 1.0 : (_theme.isLightMode ? 0.30 : config.popupOpacity)
-    Behavior on effectivePopupOpacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
 
     property real effectiveCardOpacity: config.isSolidMode ? 1.0 : config.cardOpacity
-    Behavior on effectiveCardOpacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
 
     property real antiBleedOpacity: config.isSolidMode ? 0.0 : (_theme.isLightMode ? 0.18 : 0.04)
-    Behavior on antiBleedOpacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
 
     property real toastOpacity: config.isSolidMode ? 1.0 : Math.max(0.70, config.effectivePopupOpacity)
-    Behavior on toastOpacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
     property bool topbarHelpIcon: true
     property int workspaceCount: 8
     property int initialWorkspaceCount: 8

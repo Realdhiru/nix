@@ -409,7 +409,7 @@ EOF
 
                         Behavior on value {
                             enabled: !tempSlider.pressed
-                            NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                            NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
                         }
 
                         onPressedChanged: {
@@ -527,7 +527,7 @@ EOF
 
                         Behavior on value {
                             enabled: !gammaSlider.pressed
-                            NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                            NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
                         }
 
                         onPressedChanged: {
@@ -645,7 +645,7 @@ EOF
 
                         Behavior on value {
                             enabled: !satSlider.pressed
-                            NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                            NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
                         }
 
                         onPressedChanged: {
@@ -763,7 +763,7 @@ EOF
 
                         Behavior on value {
                             enabled: !grainSlider.pressed
-                            NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                            NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
                         }
 
                         onPressedChanged: {
@@ -881,7 +881,7 @@ EOF
 
                         Behavior on value {
                             enabled: !crtSlider.pressed
-                            NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                            NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
                         }
 
                         onPressedChanged: {

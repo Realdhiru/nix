@@ -123,8 +123,6 @@ Variants {
             }
 
             // ── Startup Stabilization ──
-            property bool isStartupReady: false
-            Timer { interval: 10; running: true; onTriggered: barWindow.isStartupReady = true }
 
             // ── Clock & Date ──
             property string timeStr: ""
@@ -569,8 +567,8 @@ Variants {
                     radius: barWindow.s(14)
                     border.width: Config.borderWidth
                     border.color: barWindow.cardBorder
-                    Behavior on color { ColorAnimation { duration: 250 } }
-                    Behavior on border.color { ColorAnimation { duration: 250 } }
+                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                    Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                     width: barWindow.barThickness
                     clip: true
 
@@ -597,7 +595,7 @@ Variants {
                         height: barWindow.isModuleActive("workspaces")
                                 ? (clampedCount * barWindow.s(32) + Math.max(0, clampedCount - 1) * barWindow.s(6) + barWindow.s(20))
                                 : 0
-                        Behavior on height { NumberAnimation { duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutCubic } }
+                        Behavior on height { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
                         function toKanji(num) {
                             let n = parseInt(num);
@@ -619,7 +617,7 @@ Variants {
 
                         visible: barWindow.isModuleActive("workspaces")
                         opacity: visible ? 1.0 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 250 } }
+                        Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                         Flickable {
                             id: wsFlickable
@@ -669,8 +667,8 @@ Variants {
                                 property real actualTop: targetTop
                                 property real actualHeight: targetHeight
 
-                                Behavior on actualTop { NumberAnimation { duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutExpo } }
-                                Behavior on actualHeight { NumberAnimation { duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutExpo } }
+                                Behavior on actualTop { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                                Behavior on actualHeight { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
                                 y: actualTop
                                 height: actualHeight
@@ -700,7 +698,7 @@ Variants {
 
                                         property real targetHeight: isItemVisible ? barWindow.s(32) : 0
                                         height: targetHeight
-                                        Behavior on targetHeight { NumberAnimation { duration: barWindow.isStartupReady ? 250 : 0; easing.type: Easing.OutCubic } }
+                                        Behavior on targetHeight { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
 
                                         width: isItemVisible ? barWindow.s(32) : 0
                                         radius: barWindow.s(10)
@@ -708,10 +706,10 @@ Variants {
                                         color: isHovered ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.1) : (stateLabel === "occupied" ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.15) : "transparent")
 
                                         scale: isHovered && stateLabel !== "active" ? 1.08 : 1.0
-                                        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                                        Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
-                                        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-                                        Behavior on color { ColorAnimation { duration: 180 } }
+                                        Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                         Text {
                                             anchors.centerIn: parent
@@ -724,7 +722,7 @@ Variants {
 
                                             color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
 
-                                            Behavior on color { ColorAnimation { duration: 250 } }
+                                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                         }
 
                                         MouseArea {
@@ -793,8 +791,8 @@ Variants {
                         opacity: barWindow.isRecording ? 1.0 : 0.0
                         clip: true
 
-                        Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
-                        Behavior on opacity { NumberAnimation { duration: 250 } }
+                        Behavior on height { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                        Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                         // Anti-bleed base layer
                         Rectangle {
@@ -814,14 +812,8 @@ Variants {
                             SequentialAnimation on opacity {
                                 running: barWindow.isRecording && !recMouse.containsMouse
                                 loops: Animation.Infinite
-                                NumberAnimation { to: 0.35; duration: 600; easing.type: Easing.InOutSine }
-                                NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
-                            }
-                            SequentialAnimation on scale {
-                                running: barWindow.isRecording && !recMouse.containsMouse
-                                loops: Animation.Infinite
-                                NumberAnimation { to: 1.15; duration: 600; easing.type: Easing.InOutSine }
-                                NumberAnimation { to: 1.0; duration: 600; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 0.5; duration: Motion.enterMs; easing.type: Motion.fadeEasing }
+                                NumberAnimation { to: 1.0; duration: Motion.exitMs; easing.type: Motion.fadeEasing }
                             }
                         }
 
@@ -893,8 +885,8 @@ Variants {
                                         property bool isHovered: trayMouse.containsMouse
                                         opacity: isHovered ? 1.0 : 0.85
                                         scale: isHovered ? 1.15 : 1.0
-                                        Behavior on opacity { NumberAnimation { duration: 150 } }
-                                        Behavior on scale { NumberAnimation { duration: 150 } }
+                                        Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                        Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                         QsMenuAnchor {
                                             id: menuAnchor
@@ -952,13 +944,13 @@ Variants {
                                     font.family: "JetBrainsMono Nerd Font, Iosevka Nerd Font"
                                     font.pixelSize: barWindow.s(16)
                                     color: coffeeTrayItem.isHovered ? barWindow.accentColor : mocha.text
-                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                 }
 
                                 opacity: isHovered ? 1.0 : 0.8
                                 scale: isHovered ? 1.15 : 1.0
-                                Behavior on opacity { NumberAnimation { duration: 150 } }
-                                Behavior on scale { NumberAnimation { duration: 150 } }
+                                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                 MouseArea {
                                     id: coffeeTrayMouse
@@ -1009,7 +1001,7 @@ Variants {
                                     font.pixelSize: barWindow.showBrightPct ? barWindow.s(10.5) : barWindow.s(15)
                                     font.weight: barWindow.showBrightPct ? Font.Black : Font.Normal
                                     color: sunsetMouse.containsMouse ? mocha.text : barWindow.brightColor
-                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                 }
 
                                 MouseArea {
@@ -1044,7 +1036,7 @@ Variants {
                                     font.pixelSize: barWindow.showVolPct ? barWindow.s(10.5) : barWindow.s(15)
                                     font.weight: barWindow.showVolPct ? Font.Black : Font.Normal
                                     color: volMouse.containsMouse ? mocha.text : barWindow.volColor
-                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                 }
 
                                 MouseArea {
@@ -1081,7 +1073,7 @@ Variants {
                                     font.family: barWindow.iconFont
                                     font.pixelSize: barWindow.s(15)
                                     color: wifiMouse.containsMouse ? mocha.text : barWindow.wifiColor
-                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                 }
 
                                 MouseArea {
@@ -1104,7 +1096,7 @@ Variants {
                                     font.family: barWindow.iconFont
                                     font.pixelSize: barWindow.s(15)
                                     color: btMouse.containsMouse ? mocha.text : barWindow.btColor
-                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                 }
 
                                 MouseArea {
@@ -1150,7 +1142,7 @@ Variants {
                             font.family: barWindow.iconFont
                             font.pixelSize: barWindow.s(16)
                             color: mocha.text
-                            Behavior on color { ColorAnimation { duration: 250 } }
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         }
 
                         // Hover: remaining runtime from native UPower telemetry
