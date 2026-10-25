@@ -2,8 +2,6 @@
 import QtQuick
 import Quickshell
 
-import "polkit"
-
 ShellRoot {
     Connections {
         target: Quickshell
@@ -22,5 +20,5 @@ ShellRoot {
     TopBar {}
     SideBar {}
     Floating {}
-    Polkit {}
+    NotifToast {}
 }

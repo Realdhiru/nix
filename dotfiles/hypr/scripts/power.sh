@@ -302,7 +302,7 @@ cmd_inhibit() {
             "$state_ctl" set modes.coffee true 2>/dev/null || true
         fi
 
-        notify-send -a "System" -r 9991 -t 1200 -u low -i "appointment-soon" "Coffee mode ON"
+        notify-send -a "Power" -r 9991 -t 1200 -u low -i "appointment-soon" "Coffee ON"
     else
         systemctl --user stop coffee-mode 2>/dev/null || true
         pkill -f "idle-inhibit-toggle" 2>/dev/null || true
@@ -312,7 +312,7 @@ cmd_inhibit() {
             "$state_ctl" set modes.coffee false 2>/dev/null || true
         fi
 
-        notify-send -a "System" -r 9991 -t 1200 -u low -i "appointment-missed" "Coffee mode OFF"
+        notify-send -a "Power" -r 9991 -t 1200 -u low -i "appointment-missed" "Coffee OFF"
     fi
 }
 

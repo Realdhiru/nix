@@ -195,7 +195,7 @@ case "$MODE" in
             fi
 
             if [ ! -f "$DB_PATH" ]; then
-                notify-send "DB missing"
+                notify-send -a "Fuzzel" -u low "DB Missing"
                 exit 1
             fi
 
@@ -244,7 +244,7 @@ case "$MODE" in
                 continue
             elif [ "$EXIT_CODE" -eq 0 ] && [ -n "$SELECTION" ]; then
                 printf "%s" "$SELECTION" | wl-copy --type text/plain\;charset=utf-8
-                notify-send "Copied $SELECTION"
+                notify-send -a "Clipboard" -u low "Copied $SELECTION"
                 break
             else
                 # User pressed Escape or cancelled

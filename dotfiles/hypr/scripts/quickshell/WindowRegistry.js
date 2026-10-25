@@ -6,7 +6,7 @@ const MIN_SCALE = 0.35;
 const HIDE_OFFSET = -5000;
 
 const WIDGETS = {
-    "battery":       { w: 801,  h: 660, anchor: "top-right",     path: "battery/BatteryPopup.qml" },
+    "battery":       { w: 480,  h: 660, anchor: "top-right",     path: "battery/BatteryPopup.qml" },
     "network":       { w: 900,  h: 700, anchor: "top-right",     path: "network/NetworkPopup.qml" },
     "clipboard":     { w: 800,  h: 700, anchor: "center",        path: "clipboard/ClipboardManager.qml" },
     "monitors":      { w: 700,  h: 410, anchor: "bottom-center", path: "monitors/MonitorPopup.qml" },

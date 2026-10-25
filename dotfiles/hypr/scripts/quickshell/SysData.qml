@@ -223,8 +223,8 @@ Item {
                 if (!root._lowBatteryNotified) {
                     root._lowBatteryNotified = true;
                     Quickshell.execDetached([
-                        "notify-send", "-u", "critical", "-a", "System", "-i", "battery-empty",
-                        "Low Battery (" + root.batCapacity + "%)", ""
+                        "notify-send", "-u", "critical", "-a", "Battery", "-i", "battery-empty",
+                        "Battery Low (" + root.batCapacity + "%)"
                     ]);
                 }
             } else {
@@ -571,8 +571,8 @@ Item {
         if (wasOnline === isOnline) return;
 
         Quickshell.execDetached([
-            "notify-send", "-a", "System", "-u", "low",
-            isOnline ? "Charger Connected" : "Charger Disconnected", ""
+            "notify-send", "-a", "Power", "-u", "low",
+            isOnline ? "AC Connected" : "AC Disconnected"
         ]);
 
         if (isOnline) {

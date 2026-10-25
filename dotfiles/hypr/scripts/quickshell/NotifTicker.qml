@@ -99,13 +99,21 @@ Item {
 
             let isTransientSignal = isTransientOsd ||
                 (notifAppName === "System" && (
-                    notifSummary.indexOf("Coffee mode") !== -1 ||
+                    notifSummary.indexOf("Coffee") !== -1 ||
                     notifSummary.indexOf("Charger") !== -1 ||
                     notifSummary.indexOf("Game Mode") !== -1 ||
                     notifSummary.indexOf("Low Battery") !== -1 ||
                     notifSummary.indexOf("Battery") !== -1
                 )) ||
-                (notifAppName === "Display" && notifSummary.indexOf("Orientation") !== -1) ||
+                (notifAppName === "Power") ||
+                (notifAppName === "Battery") ||
+                (notifAppName === "Audio") ||
+                (notifAppName === "Night Light") ||
+                (notifAppName === "Recorder") ||
+                (notifAppName === "Display") ||
+                (notifAppName === "Wallpaper") ||
+                (notifAppName === "QuickShell") ||
+                (notifAppName === "KDE Connect") ||
                 (notifAppName === "Display Update") ||
                 (notifAppName === "Wi-Fi") ||
                 (notifAppName === "Bluetooth") ||

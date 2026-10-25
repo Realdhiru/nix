@@ -29,7 +29,19 @@
 ### Naming & Structural Conventions
 - **Dynamic Semantic Tokens in QML:** Use dynamic tokens (`root.primary`, `root.base`, `Theme.colors.primary`) instead of legacy `mocha.*` names or literal color strings.
 - **Centralized Settings Authority:** Visual and behavioral parameters across QuickShell must be defined in `settings.json` and documented in [`docs/quickshell-settings.md`](quickshell-settings.md). Individual widget files must never hardcode localized styling or opacity overrides.
-- **Modular Widget Architecture:** QuickShell widgets must remain self-contained with localized `Scaler.qml` and `Theme` adapters, eliminating brittle relative parent traversals (`import "../"`) that break when files are relocated.
+### Notifications & Widget Architecture Preferences
+- **Ultra-Minimal Notification Format:** System notifications (`notify-send`) must NEVER emit conversational sentences, explanatory bodies, or descriptive prose. Text must be 1–3 words max (e.g., `"Coffee ON"`, `"Game Mode OFF"`, `"Broadcast ON"`, `"AC Connected"`), with NO secondary body text unless delivering strictly essential dynamic telemetry (e.g. connection SSID or IP).
+- **Mandatory Sender Application Flag (`-a`):** Every `notify-send` call across all scripts must explicitly specify `-a "<Category/App>"` (e.g. `-a "Power"`, `-a "Audio"`, `-a "Display"`, `-a "Night Light"`, `-a "KDE Connect"`, `-a "Clipboard"`). Bare `notify-send` without `-a` causes libnotify to report `"notify-send"` or `"bash"` as sender.
+- **Battery Widget Minimalism:** The battery popup (`BatteryPopup.qml`) must remain clean and uncluttered: no notification history list, and no top-row utility pills (tray box, battery left pill, DND button). The remaining runtime telemetry (`Xh Ym LEFT / FULL`) is integrated directly inside the central circular battery ring below the percentage. Card width is strictly locked to 480px.
+- **SideBar Notification Architecture:** QuickShell is the sole notification server (`NotifTicker.qml`). In SideBar mode (`Config.topBarPosition === "left"`), notifications float outside the bar as an elegant top-right QuickShell toast window (`NotifToast.qml`) without requiring external notification daemons (Mako/Dunst).
+- **KDE Connect Lifecycle Authority:** KDE Connect must be manually toggled on-demand via `kdeconnect_toggle.sh` (`Super + Shift + K`) rather than running indefinitely in the background. On battery, idle `kdeconnectd` prevents Wi-Fi and CPU deep C-states ($C8/C10$) due to periodic LAN broadcast packet handling, while consuming ~80MB RAM. The SNI system tray icon is provided by `kdeconnect-indicator`, which automatically connects to the daemon and surfaces device battery, ping, and transfer menus in QuickShell's tray.
+- **Hyprland Lua Monitor Mirroring & Reset Semantics:**
+  - `hl.get_monitors()` returns only active, non-mirrored outputs. Outputs configured as mirrors (`mirror = "<src>"`) drop from the active monitor list and return `nil` via `hl.get_monitor(name)`.
+  - To un-mirror an output in Lua without disabling/recreating it, pass `mirror = ""` in `hl.monitor({ output = name, mirror = "" })`.
+  - Disabling an output requires `hl.monitor({ output = name, disabled = true })`; passing `mode = "disable"` errors out in the Lua binding (`hl.monitor: error applying field 'mode'`).
+- **awww Wallpaper Query Protocol:**
+  - `awww query --json` outputs structured JSON (`{ "": [ { "name": ..., "displaying": { "image": ... } } ] }`).
+  - Text scraping of `awww query` output is banned; parse with `JSON.parse` in QML or `jq` in shell.
 
 ---
 
@@ -101,10 +113,11 @@
   - `dotfiles/wallust/`: Standalone color engine. Handles palette extraction, luminance calculations, and template generation. Zero UI dependencies.
   - `dotfiles/wallpaper/`: Background manager (`wallpaper.sh`). Manages daemons (`awww`, `mpvpaper`), directory watching, and thumbnail caching. Hands off to the color engine via an asynchronous call (`$THEME_ENGINE "$WALLPAPER" &`).
   - `dotfiles/hypr/scripts/quickshell/`: UI layer. Reads generated colors from `~/.cache/theme/colors.json` via native IPC and reloads on frame 0.
-- **System Tray Relocation:** The system tray was intentionally removed from `TopBar.qml` and placed inside `BatteryPopup.qml`. This preserves TopBar minimalism (reserving space for dynamic workspace pills, CAVA visualizer, and clock) and consolidates tray icons with system controls (Hotspot, DND, volume, brightness, power profiles).
+- **Notification & Battery Widget Layout Preference:** The user strictly prefers a minimal, focused Battery Widget: zero notification panel/history, zero tray icons, zero DND toggles, and zero detached pills. Battery time remaining (`Xh Ym LEFT / FULL`) is integrated directly inside the battery ring.
 - **Single-Pass Popup Scaler:** Popup `Scaler` components must bind `currentWidth: Screen.width`. Passing device-pixel bounds (`Config.masterWidth`) causes double-scaling multiplication ($1.33 \times 1.33 = 1.77$), clipping content off-screen on HiDPI displays.
 - **Declarative Browser & MIME Authority:** Web protocols (`http`, `https`, `text/html`) remain permanently locked to `brave-browser.desktop` in `home.nix`. Desktop entries cannot hijack default system associations.
 - **Single-Radio Wi-Fi Hardware Constraint:** The Wi-Fi adapter has a single frequency synthesizer (`#channels <= 1`). It cannot maintain a simultaneous Wi-Fi station connection and Wi-Fi hotspot on 5 GHz DFS networks without connection drops. The hotspot setup is architected to share Ethernet/USB tethering over Wi-Fi.
+- **Simultaneous Audio Graph Latency Disparity:** Bluetooth A2DP audio sinks (AAC/SBC) report hardware buffer latencies of 200–340ms (`pw-cli enum-params <id> Latency maxNs`), whereas wired analog/USB DACs run at <1ms. Direct fan-out across both results in audible echo/delay. Multi-output mode resolves this by spawning a zero-CPU transient `pw-loopback` delay service (`pw-wired-delay`) set specifically to the Bluetooth sink's reported buffer duration to keep both streams in phase.
 
 ### Resolved & Completed Threads
 - **Wallpaper Picker Multi-Level Sorting:** Completed. Reorganized the wallpaper picker widget to display GIFs first (sorted by dominant aesthetic color), static images second (sorted by dominant aesthetic color), and video wallpapers last (`getFileTypeRank` + HSL score band map).
@@ -169,6 +182,19 @@
   - *Symptom:* Quickshell abruptly crashes with `SIGSEGV` (signal 11) in `QQuickItem::stackBefore` / `QQuickRepeater::modelUpdated` when pressing `Tab` or navigating popups.
   - *Root Cause 1 (Global Shortcut Leakage in Preloaded Windows):* Popups preloaded in background/hidden state (`visible: false`) instantiate all top-level QML elements including `Shortcut`. In Qt Quick, a `Shortcut` without an explicit `enabled: window.visible` condition remains globally active in the Qt Application event loop. Any desktop keystroke (e.g. `Tab`) gets intercepted by the hidden window's shortcut handler.
   - *Root Cause 2 (Repeater `clear()` + Synchronous `append()` Collision):* In `NetworkPopup.qml`, changing modes executed `orbitListModel.clear()` immediately followed by `syncModel(orbitListModel, dataArray)` which called `listModel.append()`. Calling `clear()` queues delegate item destruction (`destroyObjectLater`). Synchronously appending new items in the same event loop tick forces `QQuickRepeater::initItem()` to call `item->stackBefore(after)`, accessing delegates in the middle of being torn down and indexing invalid sibling pointers (`childItems.lastIndexOf`), triggering null pointer dereference.
-  - *Mitigation:* Always guard all `Shortcut` elements in popups and sub-views with `enabled: window.visible && ...`. Never clear a `ListModel` immediately prior to repopulating it with `syncModel()`; allow `syncModel()` to reconcile differences (remove absent, update modified, append new) in place.
+- **HiDPI Monitor Scaling Popup Coordinate Inversion & PWA Download Bubbles:**
+  - *Symptom:* Context menus, dropdowns, or download popups clip off the screen edge, spawn detached, or render with negative coordinates (e.g. appearing off-screen on the left).
+  - *Root Cause 1 (Toolkit Coordinate Scale Desync):* On HiDPI displays with integer scale (e.g. `scale = 2` on 2880×1620), GTK and Qt apps lack explicit toolkit scale hints, causing them to negotiate `xdg_positioner` geometry against raw unscaled physical coordinates.
+  - *Root Cause 2 (Chromium PWA Download Bubble Wayland Bug):* In Chromium/Brave PWAs (`--app=...`), the download bubble sits inside a customized client-side decoration header. The Ozone Wayland backend calculates anchor coordinates with a negative offset (`x < 0`) relative to the window origin, projecting the detached subsurface out of screen bounds.
+- **ONLYOFFICE XWayland CEF Custom Titlebar UI Dropping:**
+  - *Symptom:* In ONLYOFFICE (`class = ONLYOFFICE`), the document canvas and ribbon disappear, render transparent/blank, or flicker black when resized or tiled.
+  - *Root Cause:* Under XWayland, ONLYOFFICE's custom CEF titlebar fails to propagate damaged surface rects during tiling adjustments when subjected to translucent compositor composition or CSD recalculations.
+- **XWayland & Modal Confirmation Dialogs Defaulting to (0, 0) / Screen Edges:**
+  - *Symptom:* Modal dialogs ("Are you sure?", "More than one document is open", file prompts) spawn in the upper-left corner under the side/top bar or clip off-screen.
+  - *Root Cause:* Under XWayland, transient dialogs lack relative parent surface anchoring metadata unless explicit window rules enforce centering. When Hyprland's window placement receives unanchored floating windows, they default to origin `(0, 0)`.
+  - *Mitigation:* In [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), declare `hl.window_rule({ match = { modal = true }, float = true, center = true })` and `hl.window_rule({ match = { xwayland = true, float = true }, center = true })`.
+- **LayerShell Surface Dynamic Morphing & DRM Buffer Thrashing:**
+  - *Symptom:* Animating `PanelWindow.implicitWidth` or `implicitHeight` directly on every frame of a spring curve (e.g. `Easing.OutBack` at 120Hz) forces the Wayland compositor to reallocate surface buffers and issue configure events on every frame (36+ buffer resizes across 300ms). Under high frame rates or simultaneous window animations, this causes micro-stutter and risks Intel GPU ring buffer pressure.
+  - *Mitigation:* Pin the `PanelWindow` to a stable outer bounding box (`implicitWidth: toastWindow.s(580)`, `implicitHeight: toastWindow.s(74)`) and apply `mask: Region { item: islandCard }`. This allows the inner capsule (`islandCard`) to animate its width, height, and scale freely with fluid Apple spring physics, while the compositor surface remains fixed and all non-pill pixels remain completely transparent and click-through.
 
 

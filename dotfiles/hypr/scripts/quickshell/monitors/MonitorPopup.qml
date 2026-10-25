@@ -548,7 +548,7 @@ Item {
                         if (data[i].mirrorOf && data[i].mirrorOf !== "none" && data[i].mirrorOf !== "") {
                             hasMirror = true;
                         }
-                        if (data[i].name && !data[i].name.match(/^(eDP|LVDS|MIPI)/)) {
+                        if (data[i].name && !window.isInternalName(data[i].name)) {
                             activeExtCount++;
                         }
                     }
@@ -572,6 +572,15 @@ Item {
     // -------------------------------------------------------------------------
     // SYSTEM APPLY FUNCTION & DEBUG LOGGING
     // -------------------------------------------------------------------------
+    function isInternalName(name) {
+        if (!name) return false;
+        let prefixes = ["eDP", "LVDS", "DSI", "MIPI"];
+        for (let i = 0; i < prefixes.length; i++) {
+            if (name.indexOf(prefixes[i]) === 0) return true;
+        }
+        return false;
+    }
+
     function triggerApply() {
         flashRect.opacity = 0.8;
         applyFlashAnim.start();
@@ -580,202 +589,34 @@ Item {
 
         window.debugLog("================= NEW APPLY RUN =================");
 
-        if (monitorsModel.count === 1) {
-            let m = monitorsModel.get(0);
-            let monitorStr = m.name + "," + m.resW + "x" + m.resH + "@" + m.rate + ",0x0," + m.sysScale + ",bitdepth,10";
-            if (m.transform !== 0) {
-                monitorStr += ",transform," + m.transform;
+        let stateDir = Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state");
+        let layoutFile = stateDir + "/hypr/layout.lua";
+        let tmpFile = layoutFile + ".tmp";
+        let intent = window.displayMode === "mirror" ? "mirror" : "extend";
+
+        // 1. Atomically persist single user intent
+        let stateCmd = "mkdir -p '" + stateDir + "/hypr' && echo 'return \"" + intent + "\"' > '" + tmpFile + "' && mv -f '" + tmpFile + "' '" + layoutFile + "'";
+
+        // 2. Build compositor calls: apply user-tuned mode/scale/transform, then layout intent
+        let evalCmds = [];
+        for (let i = 0; i < monitorsModel.count; i++) {
+            let m = monitorsModel.get(i);
+            if (m) {
+                let monOpts = "output='" + m.name + "',mode='" + m.resW + "x" + m.resH + "@" + m.rate + "',scale=" + m.sysScale;
+                if (m.transform !== 0) monOpts += ",transform=" + m.transform;
+                evalCmds.push("hl.monitor({" + monOpts + "})");
             }
-
-            let jsonMonitorsArray = [{
-                name: m.name, resW: m.resW, resH: m.resH, rate: parseInt(m.rate),
-                x: 0, y: 0, scale: m.sysScale, transform: m.transform
-            }];
-            let safeJson = JSON.stringify(jsonMonitorsArray).replace(/'/g, "'\\''");
-            let jsonCmd = "jq '.monitors = " + safeJson + " | .displayMode = \"" + window.displayMode + "\"' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
-            let postReloadCmd = "~/.config/hypr/scripts/ensure_awww.sh --restart";
-
-            let cacheWriteCmd = "echo 'monitor=" + monitorStr + "' > ~/.cache/hypr_power_monitor.conf";
-
-            let evalCmd = "hyprctl eval \"hl.monitor({output='" + m.name + "',mode='" + m.resW + "x" + m.resH + "@" + m.rate + "',position='0x0',scale='" + m.sysScale + "',bitdepth=10" + (m.transform !== 0 ? ",transform=" + m.transform : "") + "})\"";
-
-            Quickshell.execDetached(["notify-send", "Display Applied"]);
-            Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; " + evalCmd + " ; " + jsonCmd + " ; " + postReloadCmd]);
-
-            window.debugLog("Executed single monitor apply.");
-        } else if (window.displayMode === "internal") {
-            let internalMon = null;
-            let otherMons = [];
-            for (let i = 0; i < monitorsModel.count; i++) {
-                let m = monitorsModel.get(i);
-                if (m.name.match(/^(eDP|LVDS|MIPI)/)) {
-                    internalMon = m;
-                } else {
-                    otherMons.push(m);
-                }
-            }
-            if (!internalMon && monitorsModel.count > 0) internalMon = monitorsModel.get(0);
-
-            let monitorStr = internalMon.name + "," + internalMon.resW + "x" + internalMon.resH + "@" + internalMon.rate + ",0x0," + internalMon.sysScale + ",bitdepth,10";
-            if (internalMon.transform !== 0) monitorStr += ",transform," + internalMon.transform;
-
-            let evalCmds = ["hl.monitor({output='" + internalMon.name + "',mode='" + internalMon.resW + "x" + internalMon.resH + "@" + internalMon.rate + "',position='0x0',scale='" + internalMon.sysScale + "',bitdepth=10" + (internalMon.transform !== 0 ? ",transform=" + internalMon.transform : "") + "})"];
-            let confLines = ["monitor=" + monitorStr];
-
-            for (let i = 0; i < otherMons.length; i++) {
-                evalCmds.push("hl.monitor({output='" + otherMons[i].name + "',mode='disable'})");
-                confLines.push("monitor=" + otherMons[i].name + ",disable");
-            }
-
-            let jsonMonitorsArray = [{
-                name: internalMon.name, resW: internalMon.resW, resH: internalMon.resH, rate: parseInt(internalMon.rate),
-                x: 0, y: 0, scale: internalMon.sysScale, transform: internalMon.transform
-            }];
-            let safeJson = JSON.stringify(jsonMonitorsArray).replace(/'/g, "'\\''");
-            let jsonCmd = "jq '.monitors = " + safeJson + " | .displayMode = \"internal\"' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
-            let postReloadCmd = "~/.config/hypr/scripts/ensure_awww.sh --restart";
-            let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
-            let fullEvalCmd = evalCmds.map(lua => "hyprctl eval '" + lua.replace(/'/g, "'\\''") + "'").join(" ; ");
-
-            Quickshell.execDetached(["notify-send", "Display Applied"]);
-            Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; " + fullEvalCmd + " ; " + jsonCmd + " ; " + postReloadCmd]);
-        } else if (window.displayMode === "mirror") {
-            let primaryMon = monitorsModel.get(0);
-            let evalCmds = [];
-            let confLines = [];
-            let jsonMonitorsArray = [];
-
-            let primStr = primaryMon.name + "," + primaryMon.resW + "x" + primaryMon.resH + "@" + primaryMon.rate + ",0x0," + primaryMon.sysScale + ",bitdepth,10";
-            if (primaryMon.transform !== 0) primStr += ",transform," + primaryMon.transform;
-            evalCmds.push("hl.monitor({output='" + primaryMon.name + "',mode='" + primaryMon.resW + "x" + primaryMon.resH + "@" + primaryMon.rate + "',position='0x0',scale='" + primaryMon.sysScale + "',bitdepth=10" + (primaryMon.transform !== 0 ? ",transform=" + primaryMon.transform : "") + "})");
-            confLines.push("monitor=" + primStr);
-            jsonMonitorsArray.push({
-                name: primaryMon.name, resW: primaryMon.resW, resH: primaryMon.resH, rate: parseInt(primaryMon.rate),
-                x: 0, y: 0, scale: primaryMon.sysScale, transform: primaryMon.transform
-            });
-
-            for (let i = 1; i < monitorsModel.count; i++) {
-                let secMon = monitorsModel.get(i);
-                let secStr = secMon.name + "," + secMon.resW + "x" + secMon.resH + "@" + secMon.rate + ",0x0," + secMon.sysScale + ",mirror," + primaryMon.name + ",bitdepth,10";
-                if (secMon.transform !== 0) secStr += ",transform," + secMon.transform;
-                evalCmds.push("hl.monitor({output='" + secMon.name + "',mode='" + secMon.resW + "x" + secMon.resH + "@" + secMon.rate + "',position='0x0',scale='" + secMon.sysScale + "',mirror='" + primaryMon.name + "',bitdepth=10" + (secMon.transform !== 0 ? ",transform=" + secMon.transform : "") + "})");
-                confLines.push("monitor=" + secStr);
-                jsonMonitorsArray.push({
-                    name: secMon.name, resW: secMon.resW, resH: secMon.resH, rate: parseInt(secMon.rate),
-                    x: 0, y: 0, scale: secMon.sysScale, transform: secMon.transform, mirrorOf: primaryMon.name
-                });
-            }
-
-            let safeJson = JSON.stringify(jsonMonitorsArray).replace(/'/g, "'\\''");
-            let jsonCmd = "jq '.monitors = " + safeJson + " | .displayMode = \"mirror\"' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
-            let postReloadCmd = "~/.config/hypr/scripts/ensure_awww.sh --restart";
-            let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
-            let fullEvalCmd = evalCmds.map(lua => "hyprctl eval '" + lua.replace(/'/g, "'\\''") + "'").join(" ; ");
-
-            Quickshell.execDetached(["notify-send", "Display Applied"]);
-            Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; " + fullEvalCmd + " ; " + jsonCmd + " ; " + postReloadCmd]);
-        } else {
-            let rects = [];
-            let finalMinX = 999999;
-            let finalMinY = 999999;
-
-            for (let i = 0; i < monitorsModel.count; i++) {
-                let m = monitorsModel.get(i);
-                let isP = m.transform === 1 || m.transform === 3;
-                let physW = Math.round((isP ? m.resH : m.resW) / m.sysScale);
-                let physH = Math.round((isP ? m.resW : m.resH) / m.sysScale);
-
-                let rawX = m.uiX / window.uiScale;
-                let rawY = m.uiY / window.uiScale;
-
-                rects.push({
-                    x: rawX, y: rawY, w: physW, h: physH,
-                    resW: m.resW, resH: m.resH, name: m.name,
-                    rate: m.rate, sysScale: m.sysScale, transform: m.transform
-                });
-            }
-
-            function getTightSnap(pX, pY, sX, sY, sW, sH, mW, mH, t) {
-                let cx = pX; let cy = pY;
-                if (Math.abs(cx - (sX - mW)) < t) cx = sX - mW;
-                else if (Math.abs(cx - (sX + sW)) < t) cx = sX + sW;
-                else if (Math.abs(cx - sX) < t) cx = sX;
-                else if (Math.abs(cx - (sX + sW - mW)) < t) cx = sX + sW - mW;
-                else if (Math.abs(cx - (sX + sW/2 - mW/2)) < t) cx = sX + sW/2 - mW/2;
-
-                if (Math.abs(cy - (sY - mH)) < t) cy = sY - mH;
-                else if (Math.abs(cy - (sY + sH)) < t) cy = sY + sH;
-                else if (Math.abs(cy - sY) < t) cy = sY;
-                else if (Math.abs(cy - (sY + sH - mH)) < t) cy = sY + sH - mH;
-                else if (Math.abs(cy - (sY + sH/2 - mH/2)) < t) cy = sY + sH/2 - mH/2;
-
-                return {x: cx, y: cy};
-            }
-
-            for (let i = 1; i < rects.length; i++) {
-                let bestX = rects[i].x;
-                let bestY = rects[i].y;
-                let bestDist = 999999;
-                for (let j = 0; j < i; j++) {
-                    let r0 = rects[j];
-                    let snapped = getTightSnap(
-                        rects[i].x, rects[i].y,
-                        r0.x, r0.y,
-                        r0.w, r0.h, rects[i].w, rects[i].h, 25 // Intentionally unscaled (Physical display coordinates)
-                    );
-                    let dist = Math.hypot(rects[i].x - snapped.x, rects[i].y - snapped.y);
-                    if (dist < bestDist) {
-                        bestDist = dist;
-                        bestX = Math.round(snapped.x);
-                        bestY = Math.round(snapped.y);
-                    }
-                }
-                rects[i].x = bestX;
-                rects[i].y = bestY;
-            }
-
-            for (let i = 0; i < rects.length; i++) {
-                if (rects[i].x < finalMinX) finalMinX = rects[i].x;
-                if (rects[i].y < finalMinY) finalMinY = rects[i].y;
-            }
-
-            let batchCmds = [];
-            let summaryString = "";
-            let jsonMonitorsArray = [];
-            let confLines = [];
-
-            for (let i = 0; i < rects.length; i++) {
-                let r = rects[i];
-
-                r.x = Math.round(r.x - finalMinX);
-                r.y = Math.round(r.y - finalMinY);
-
-                let monitorStr = r.name + "," + r.resW + "x" + r.resH + "@" + r.rate + "," + r.x + "x" + r.y + "," + r.sysScale + ",bitdepth,10";
-                if (r.transform !== 0) {
-                    monitorStr += ",transform," + r.transform;
-                }
-
-                batchCmds.push("hl.monitor({output='" + r.name + "',mode='" + r.resW + "x" + r.resH + "@" + r.rate + "',position='" + r.x + "x" + r.y + "',scale='" + r.sysScale + "',bitdepth=10" + (r.transform !== 0 ? ",transform=" + r.transform : "") + "})");
-                confLines.push("monitor=" + monitorStr);
-                summaryString += r.name + " ";
-
-                jsonMonitorsArray.push({
-                    name: r.name, resW: r.resW, resH: r.resH, rate: parseInt(r.rate),
-                    x: r.x, y: r.y, scale: r.sysScale, transform: r.transform
-                });
-            }
-
-            let fullHyprCmd = batchCmds.map(lua => "hyprctl eval '" + lua.replace(/'/g, "'\\''") + "'").join(" ; ");
-            let safeJson = JSON.stringify(jsonMonitorsArray).replace(/'/g, "'\\''");
-            let jsonCmd = "jq '.monitors = " + safeJson + " | .displayMode = \"extend\"' ~/.config/hypr/settings.json > ~/.config/hypr/settings.json.tmp && mv ~/.config/hypr/settings.json.tmp ~/.config/hypr/settings.json";
-            let postReloadCmd = "~/.config/hypr/scripts/ensure_awww.sh --restart";
-            let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
-
-            Quickshell.execDetached(["sh", "-c", cacheWriteCmd + " ; " + fullHyprCmd + " ; " + jsonCmd + " ; " + postReloadCmd]);
-            Quickshell.execDetached(["notify-send", "Layout Applied"]);
-
-            window.debugLog("Executed multi monitor apply: " + fullHyprCmd);
         }
+        evalCmds.push("apply_layout('" + intent + "')");
+
+        let fullEval = evalCmds.map(lua => "hyprctl eval '" + lua.replace(/'/g, "'\\''") + "'").join(" ; ");
+
+        Quickshell.execDetached(["bash", "-c", stateCmd + " ; " + fullEval]);
+        Quickshell.execDetached(["notify-send", "-a", "Display", "-u", "low", "Display Applied"]);
+
+        window.debugLog("Executed display apply: intent=" + intent);
+        displayPoller.running = false;
+        displayPoller.running = true;
     }
 
 

@@ -137,6 +137,7 @@ Built for **100% portability** — clone, edit one file, and deploy on any machi
 | `Super + Shift + M` / `Super + V` | MPRIS Music Player & Equalizer / Clipboard Manager |
 | `Super + Ctrl + V` | Toggle Multi-Output Audio (Broadcast to all external endpoints) |
 | `Super + Alt + V` | PipeWire Volume Control (`pwvucontrol`) |
+| `Super + Shift + K` | Toggle KDE Connect Daemon & System Tray Indicator |
 | `Super + Shift + Z` | Selective Area Screenshot (`grim` + `slurp`) |
 
 ---

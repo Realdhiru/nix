@@ -99,8 +99,8 @@ Item {
     readonly property string batStatus: SysData.batStatus
     readonly property string powerProfile: SysData.powerProfile
     
-    readonly property int upHours: SysData.batHours
-    readonly property int upMins: SysData.batMins
+    property int upHours: SysData.batHours
+    property int upMins: SysData.batMins
 
     property real sysVolume: 0
     property bool sysMuted: false
@@ -495,820 +495,305 @@ Item {
                 Behavior on color { ColorAnimation { duration: 1000 } }
             }
 
-            RowLayout {
+            Item {
                 anchors.fill: parent
-                spacing: window.s(15)
 
                 Item {
-                    Layout.preferredWidth: window.s(320)
-                    Layout.fillHeight: true
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: window.s(20)
-                        spacing: window.s(15)
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: window.s(38)
-                            spacing: window.s(8)
-                            
-                            transform: Translate { y: window.s(-20) * (1.0 - introTop) }
-                            opacity: introTop
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: window.s(38)
-                                radius: window.s(12)
-                                color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
-                                border.color: Qt.alpha(window.surface1, 0.3)
-                                border.width: Config.borderWidth
-
-                                Row {
-                                    id: batTimeRow
-                                    anchors.centerIn: parent
-                                    spacing: window.s(8)
-
-                                    Text {
-                                        font.family: "Iosevka Nerd Font"
-                                        font.pixelSize: window.s(16)
-                                        color: window.batColorStart
-                                        text: SysData.batIcon(window.batCapacity, window.isCharging)
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-
-                                    Text {
-                                        text: (window.upHours > 0 || window.upMins > 0)
-                                              ? (window.upHours > 0 ? (window.upHours + "h " + window.upMins + "m") : (window.upMins + "m"))
-                                              : "--"
-                                        font.pixelSize: window.s(13)
-                                        font.family: "JetBrains Mono"
-                                        font.weight: Font.Black
-                                        color: window.text
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-
-                                    Text {
-                                        text: (window.batStatus === "Charging" || window.isCharging) ? "FULL" : "LEFT"
-                                        font.pixelSize: window.s(10)
-                                        font.family: "JetBrains Mono"
-                                        font.weight: Font.Bold
-                                        color: window.subtext0
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.preferredWidth: dndMa.containsMouse ? window.s(38) + dndText.implicitWidth + window.s(8) : window.s(38)
-                                Layout.preferredHeight: window.s(38)
-                                radius: window.s(12)
-                                color: window.dndEnabled ? Qt.alpha(window.red, 0.2) : (dndMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08))
-                                border.color: window.dndEnabled ? window.red : (dndMa.containsMouse ? window.surface2 : Qt.alpha(window.surface1, 0.3))
-                                border.width: Config.borderWidth
-                                clip: true
-
-                                Behavior on Layout.preferredWidth { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                                Behavior on border.color { ColorAnimation { duration: 150 } }
-
-                                Row {
-                                    anchors.centerIn: parent
-                                    spacing: window.s(6)
-
-                                    Text {
-                                        id: dndText
-                                        text: window.dndEnabled ? "Silent" : "Mute"
-                                        font.family: "JetBrains Mono"
-                                        font.weight: Font.Bold
-                                        font.pixelSize: window.s(12)
-                                        color: window.dndEnabled ? window.red : window.text
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        visible: dndMa.containsMouse
-                                    }
-
-                                    Text {
-                                        font.family: "Iosevka Nerd Font"
-                                        font.pixelSize: window.s(17)
-                                        color: window.dndEnabled ? window.red : (dndMa.containsMouse ? window.text : window.subtext0)
-                                        text: window.dndEnabled ? "󰂛" : "󰂚"
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: dndMa
-                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        window.dndEnabled = !window.dndEnabled;
-                                        Quickshell.execDetached(["bash", "-c", "bash '" + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh' set modes.dnd " + (window.dndEnabled ? "true" : "false") + " && mkdir -p '" + Caching.getCacheDir("dnd") + "' && echo '" + (window.dndEnabled ? "1" : "0") + "' > '" + Caching.getCacheDir("dnd") + "/state'"]);
-                                    }
-                                }
-                            }
-
-                            // Integrated System Tray inside Battery Widget
-                            Rectangle {
-                                id: popupTrayBox
-                                Layout.preferredHeight: window.s(38)
-                                radius: window.s(12)
-                                color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
-                                border.width: 0
-                                border.color: "transparent"
-                                clip: true
-
-                                property var filteredTrayItems: {
-                                    let raw = SystemTray.items.values || [];
-                                    let res = [];
-                                    for (let i = 0; i < raw.length; i++) {
-                                        let item = raw[i];
-                                        if (!item) continue;
-                                        res.push(item);
-                                    }
-                                    return res;
-                                }
-
-                                readonly property int totalItemCount: filteredTrayItems.length
-                                property real targetWidth: totalItemCount > 0 ? (totalItemCount * window.s(22) + (totalItemCount - 1) * window.s(8) + window.s(20)) : 0
-                                Layout.preferredWidth: targetWidth
-                                visible: targetWidth > 0
-
-                                Behavior on Layout.preferredWidth { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
-
-                                Row {
-                                    anchors.centerIn: parent
-                                    spacing: window.s(10)
-
-                                    Repeater {
-                                        id: trayPopupRepeater
-                                        model: popupTrayBox.filteredTrayItems
-                                        delegate: Image {
-                                            id: trayIconItem
-                                            source: modelData.icon || ""
-                                            fillMode: Image.PreserveAspectFit
-                                            sourceSize: Qt.size(window.s(18), window.s(18))
-                                            width: window.s(18)
-                                            height: window.s(18)
-                                            anchors.verticalCenter: parent.verticalCenter
-
-                                            property bool isHovered: trayIconMouse.containsMouse
-                                            opacity: isHovered ? 1.0 : 0.8
-                                            scale: isHovered ? 1.15 : 1.0
-                                            Behavior on opacity { NumberAnimation { duration: 150 } }
-                                            Behavior on scale { NumberAnimation { duration: 150 } }
-
-                                            QsMenuAnchor {
-                                                id: menuAnchor
-                                                anchor.window: typeof masterWindow !== "undefined" ? masterWindow : null
-                                                anchor.item: trayIconItem
-                                                menu: modelData.menu
-                                            }
-
-                                            MouseArea {
-                                                id: trayIconMouse
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: (event) => {
-                                                    if (event.button === Qt.LeftButton) {
-                                                        if (modelData.isMenuOnly || modelData.onlyMenu) {
-                                                            menuAnchor.open();
-                                                        } else if (typeof modelData.activate === "function") {
-                                                            modelData.activate();
-                                                        }
-                                                    } else if (event.button === Qt.MiddleButton) {
-                                                        if (typeof modelData.secondaryActivate === "function") {
-                                                            modelData.secondaryActivate();
-                                                        }
-                                                    } else if (event.button === Qt.RightButton) {
-                                                        if (modelData.menu) {
-                                                            menuAnchor.open();
-                                                        } else if (typeof modelData.contextMenu === "function") {
-                                                            modelData.contextMenu(event.x, event.y);
-                                                        } else {
-                                                            modelData.activate();
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-
-                        Text {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            font.family: "JetBrains Mono"
-                            font.weight: Font.Medium
-                            font.pixelSize: window.s(14)
-                            color: window.subtext0
-                            text: "You're all caught up."
-                            visible: !notifModel || notifModel.count === 0
-                            opacity: introNotifs
-                        }
-
-                        ListView {
-                            id: notifList
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            model: window.notifModel
-                            spacing: window.s(8)
-                            clip: true
-                            
-                            opacity: introNotifs
-                            transform: Translate { y: window.s(20) * (1 - introNotifs) }
-
-                            ScrollBar.vertical: ScrollBar {
-                                active: notifList.moving || notifList.movingVertically
-                                width: window.s(4)
-                                policy: ScrollBar.AsNeeded
-                                contentItem: Rectangle { implicitWidth: window.s(4); radius: window.s(2); color: window.surface2 }
-                            }
-
-                            add: Transition {
-                                enabled: window.visible
-                                ParallelAnimation {
-                                    NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 400; easing.type: Easing.OutQuint }
-                                    NumberAnimation { property: "x"; from: window.s(-40); to: 0; duration: 500; easing.type: Easing.OutExpo }
-                                    NumberAnimation { property: "scale"; from: 0.95; to: 1.0; duration: 500; easing.type: Easing.OutBack }
-                                }
-                            }
-                            remove: Transition {
-                                ParallelAnimation {
-                                    NumberAnimation { property: "opacity"; to: 0.0; duration: 300; easing.type: Easing.OutQuint }
-                                    NumberAnimation { property: "scale"; to: 0.9; duration: 300; easing.type: Easing.OutQuint }
-                                }
-                            }
-                            displaced: Transition {
-                                enabled: window.visible
-                                NumberAnimation { properties: "y"; duration: 400; easing.type: Easing.OutExpo }
-                            }
-
-                            section.property: "appName"
-                            section.criteria: ViewSection.FullString
-                            section.delegate: Item {
-                                width: ListView.view.width
-                                height: window.s(46)
-                                
-                                Rectangle {
-                                    anchors.fill: parent
-                                    anchors.topMargin: window.s(10)
-                                    anchors.bottomMargin: window.s(4)
-                                    color: headerMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.10) : "transparent"
-                                    radius: window.s(8)
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.leftMargin: window.s(6)
-                                        anchors.rightMargin: window.s(6)
-                                        spacing: window.s(8)
-
-                                        MouseArea {
-                                            id: headerMa
-                                            Layout.fillWidth: true
-                                            Layout.fillHeight: true
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: window.toggleGroup(section)
-
-                                            RowLayout {
-                                                anchors.fill: parent
-                                                spacing: window.s(8)
-                                                
-                                                Text {
-                                                    font.family: "Iosevka Nerd Font"
-                                                    font.pixelSize: window.s(14)
-                                                    color: window.mauve
-                                                    text: window.isCollapsed(section) ? "󰅂" : "󰅀"
-                                                    Behavior on rotation { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-                                                }
-
-                                                Text {
-                                                    text: section.toUpperCase()
-                                                    font.family: "JetBrains Mono"
-                                                    font.weight: Font.Black
-                                                    font.pixelSize: window.s(11)
-                                                    color: window.text
-                                                    Layout.fillWidth: true
-                                                    verticalAlignment: Text.AlignVCenter
-                                                }
-                                            }
-                                        }
-
-                                        Rectangle {
-                                            Layout.preferredWidth: window.s(26)
-                                            Layout.preferredHeight: window.s(26)
-                                            radius: window.s(13)
-                                            color: groupClearMa.containsMouse ? window.surface2 : "transparent"
-                                            Behavior on color { ColorAnimation { duration: 150 } }
-
-                                            Text {
-                                                anchors.centerIn: parent
-                                                font.family: "Iosevka Nerd Font"
-                                                font.pixelSize: window.s(14)
-                                                color: groupClearMa.containsMouse ? window.red : window.overlay0
-                                                text: "󰅖"
-                                                Behavior on color { ColorAnimation { duration: 150 } }
-                                            }
-
-                                            MouseArea {
-                                                id: groupClearMa
-                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                onClicked: window.clearGroup(section)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            delegate: Item {
-                                id: delegateWrapper
-                                width: ListView.view.width
-                                property bool isHidden: window.isCollapsed(model.appName)
-                                height: isHidden ? 0 : innerCard.height
-                                visible: height > 0
-                                opacity: isHidden ? 0 : 1
-                                clip: true
-                                
-                                Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
-                                Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutQuint } }
-
-                                property var realNotif: window.liveNotifs ? window.liveNotifs[model.uid] : null
-
-                                Connections {
-                                    target: delegateWrapper.realNotif || null
-                                    function onClosed() {
-                                        // Only auto-delete transient active phone call notifications when the call ends.
-                                        // Persistent notifications (errors, messages, updates, alerts) remain in history.
-                                        let app = (model.appName || "").toLowerCase();
-                                        let sum = (model.summary || "").toLowerCase();
-                                        let isCall = (app.includes("kde") && (sum.includes("call") || sum.includes("incoming")));
-                                        if (isCall) {
-                                            delegateWrapper.removeThisNotif();
-                                        }
-                                    }
-                                }
-
-                                function removeThisNotif() {
-                                    if (!window.notifModel) return;
-                                    for (let i = 0; i < window.notifModel.count; i++) {
-                                        if (window.notifModel.get(i).uid === model.uid) {
-                                            if (window.liveNotifs && window.liveNotifs[model.uid]) {
-                                                delete window.liveNotifs[model.uid];
-                                            }
-                                            window.notifModel.remove(i);
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                property var actionArray: {
-                                    try {
-                                        let parsed = model.actionsJson ? JSON.parse(model.actionsJson) : [];
-                                        return parsed;
-                                    } catch (e) {
-                                        return [];
-                                    }
-                                }
-
-                                Rectangle {
-                                    id: innerCard
-                                    width: parent.width
-                                    height: cardContent.height + window.s(24)
-                                    radius: window.s(14)
-                                    color: cardHover.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.14) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
-                                    border.color: cardHover.containsMouse ? Qt.alpha(window.surface2, 0.4) : "transparent"
-                                    border.width: Config.borderWidth
-                                    clip: true
-                                    Behavior on color { ColorAnimation { duration: 200 } }
-                                    Behavior on border.color { ColorAnimation { duration: 200 } }
-
-                                    MouseArea {
-                                        id: cardHover
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            if ((model.appName === "Screenshot" || model.appName === "Screen Recorder") && model.iconPath !== "") {
-                                                let folderPath = model.iconPath.substring(0, model.iconPath.lastIndexOf('/'))
-                                                Quickshell.execDetached(["xdg-open", folderPath])
-                                            } else {
-                                                if (delegateWrapper.realNotif && delegateWrapper.realNotif.actions) {
-                                                    for (var i = 0; i < delegateWrapper.realNotif.actions.length; i++) {
-                                                        if (delegateWrapper.realNotif.actions[i].identifier === "default") {
-                                                            delegateWrapper.realNotif.actions[i].invoke();
-                                                            break;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            if (delegateWrapper.realNotif && typeof delegateWrapper.realNotif.close === "function") {
-                                                delegateWrapper.realNotif.close()
-                                            }
-                                            delegateWrapper.removeThisNotif();
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        width: window.s(4)
-                                        height: parent.height
-                                        anchors.left: parent.left
-                                        color: window.ambientPrimary
-                                    }
-
-                                    ColumnLayout {
-                                        id: cardContent
-                                        anchors.left: parent.left
-                                        anchors.right: parent.right
-                                        anchors.top: parent.top
-                                        anchors.margins: window.s(14)
-                                        anchors.leftMargin: window.s(18) 
-                                        spacing: window.s(6)
-
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            spacing: window.s(8)
-
-                                            Text {
-                                                text: model.summary || "Notification"
-                                                font.family: "JetBrains Mono"
-                                                font.weight: Font.Bold
-                                                font.pixelSize: window.s(13)
-                                                color: window.text
-                                                Layout.fillWidth: true
-                                                wrapMode: Text.Wrap
-                                                textFormat: Text.StyledText
-                                            }
-
-                                            Rectangle {
-                                                Layout.preferredWidth: window.s(22)
-                                                Layout.preferredHeight: window.s(22)
-                                                radius: window.s(11)
-                                                color: itemClearMa.containsMouse ? Qt.alpha(window.red, 0.15) : "transparent"
-                                                Behavior on color { ColorAnimation { duration: 150 } }
-
-                                                Text {
-                                                    anchors.centerIn: parent
-                                                    font.family: "Iosevka Nerd Font"
-                                                    font.pixelSize: window.s(12)
-                                                    color: itemClearMa.containsMouse ? window.red : window.overlay0
-                                                    text: "󰅖"
-                                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                                }
-
-                                                MouseArea {
-                                                    id: itemClearMa
-                                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                    onClicked: delegateWrapper.removeThisNotif();
-                                                }
-                                            }
-                                        }
-
-                                        Text {
-                                            text: model.body || ""
-                                            font.family: "JetBrains Mono"
-                                            font.weight: Font.Medium
-                                            font.pixelSize: window.s(11)
-                                            color: window.subtext0
-                                            Layout.fillWidth: true
-                                            wrapMode: Text.Wrap
-                                            visible: text !== ""
-                                            textFormat: Text.StyledText 
-                                            onLinkActivated: (link) => Quickshell.execDetached(["xdg-open", link])
-                                        }
-
-                                        RowLayout {
-                                            Layout.fillWidth: true
-                                            Layout.topMargin: delegateWrapper.actionArray.length > 0 ? window.s(6) : 0
-                                            spacing: window.s(8)
-                                            visible: delegateWrapper.actionArray.length > 0
-
-                                            Repeater {
-                                                model: delegateWrapper.actionArray
-                                                delegate: Rectangle {
-                                                    Layout.fillWidth: true
-                                                    Layout.preferredHeight: window.s(28)
-                                                    radius: window.s(8)
-
-                                                    property bool isPrimary: index === 0
-
-                                                    color: {
-                                                        if (isPrimary) {
-                                                            return actionBtnMa.containsMouse ? window.primary : Qt.darker(window.primary, 1.2)
-                                                        } else {
-                                                            return actionBtnMa.containsMouse ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
-                                                        }
-                                                    }
-                                                    
-                                                    border.color: isPrimary ? window.primary : Qt.alpha(window.surface2, 0.4)
-                                                    border.width: Config.borderWidth
-                                                    
-                                                    Behavior on color { ColorAnimation { duration: 150 } }
-
-                                                    Text {
-                                                        anchors.centerIn: parent
-                                                        text: modelData.text || "Action"
-                                                        font.family: "JetBrains Mono"
-                                                        font.weight: Font.Bold
-                                                        font.pixelSize: window.s(11)
-                                                        color: isPrimary ? window.crust : window.text
-                                                    }
-
-                                                    MouseArea {
-                                                        id: actionBtnMa
-                                                        anchors.fill: parent
-                                                        hoverEnabled: true
-                                                        cursorShape: Qt.PointingHandCursor
-
-                                                        onClicked: {
-                                                            if (delegateWrapper.realNotif && delegateWrapper.realNotif.actions) {
-                                                                for (var i = 0; i < delegateWrapper.realNotif.actions.length; i++) {
-                                                                    if (delegateWrapper.realNotif.actions[i].identifier === modelData.id) {
-                                                                        delegateWrapper.realNotif.actions[i].invoke();
-                                                                        break;
-                                                                    }
-                                                                }
-                                                            }
-                                                            delegateWrapper.removeThisNotif();
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                    anchors.fill: parent
+                    
+                    Repeater {
+                        model: 3
+                        Rectangle {
+                            anchors.centerIn: parent
+                            anchors.verticalCenterOffset: window.s(-140)
+                            width: window.s(320) + (index * window.s(170))
+                            height: width
+                            radius: width / 2
+                            color: "transparent"
+                            border.color: window.ambientSecondary
+                            border.width: 1
+                            Behavior on border.color { ColorAnimation { duration: 1000 } }
+                            opacity: 0.06 - (index * 0.02)
                         }
                     }
                 }
 
                 Item {
-                    Layout.preferredWidth: window.s(480)
-                    Layout.fillHeight: true
+                    anchors.fill: parent
+                    z: 1
+                    
+                    opacity: introCore
+                    transform: Translate { y: window.s(25) * (1 - introCore) }
+                    scale: 0.9 + (0.1 * introCore)
 
-                    Item {
-                        anchors.fill: parent
-                        
-                        Repeater {
-                            model: 3
-                            Rectangle {
-                                anchors.centerIn: parent
-                                anchors.verticalCenterOffset: window.s(-140)
-                                width: window.s(320) + (index * window.s(170))
-                                height: width
-                                radius: width / 2
-                                color: "transparent"
-                                border.color: window.ambientSecondary
-                                border.width: 1
-                                Behavior on border.color { ColorAnimation { duration: 1000 } }
-                                opacity: 0.06 - (index * 0.02)
-                            }
+                    Rectangle {
+                        anchors.centerIn: centralCore
+                        width: centralCore.width + window.s(45)
+                        height: width
+                        radius: width / 2
+                        color: centralCore.isDangerState ? window.red : window.ambientPrimary
+                        opacity: centralCore.isDangerState ? 0.25 : 0.0
+                        z: 0 
+                        Behavior on color { ColorAnimation { duration: 400 } }
+                        SequentialAnimation on scale {
+                            loops: Animation.Infinite; running: window.visible
+                            NumberAnimation { to: heroMa.containsMouse ? 1.15 : 1.08; duration: heroMa.containsMouse ? 800 : 2000; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.0; duration: heroMa.containsMouse ? 800 : 2000; easing.type: Easing.InOutSine }
                         }
                     }
 
-                    Item {
-                        anchors.fill: parent
+                    Rectangle {
+                        id: centralCore
+                        width: window.s(260)
+                        height: width
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: window.s(-140)
+                        radius: width / 2
                         z: 1
                         
-                        opacity: introCore
-                        transform: Translate { y: window.s(25) * (1 - introCore) }
-                        scale: 0.9 + (0.1 * introCore)
-
-                        Rectangle {
-                            anchors.centerIn: centralCore
-                            width: centralCore.width + window.s(45)
-                            height: width
-                            radius: width / 2
-                            color: centralCore.isDangerState ? window.red : window.ambientPrimary
-                            opacity: centralCore.isDangerState ? 0.25 : 0.0
-                            z: 0 
-                            Behavior on color { ColorAnimation { duration: 400 } }
-                            SequentialAnimation on scale {
-                                loops: Animation.Infinite; running: window.visible
-                                NumberAnimation { to: heroMa.containsMouse ? 1.15 : 1.08; duration: heroMa.containsMouse ? 800 : 2000; easing.type: Easing.InOutSine }
-                                NumberAnimation { to: 1.0; duration: heroMa.containsMouse ? 800 : 2000; easing.type: Easing.InOutSine }
+                        property bool isDangerState: !window.isCharging && window.batCapacity < 15
+                        
+                        SequentialAnimation on scale {
+                            loops: Animation.Infinite
+                            running: window.visible
+                            NumberAnimation {
+                                to: heroMa.containsMouse ? 1.05 : (centralCore.isDangerState ? 1.04 : 1.01)
+                                duration: heroMa.containsMouse ? 1200 : (centralCore.isDangerState ? 600 : 2500)
+                                easing.type: Easing.InOutSine 
+                            }
+                            NumberAnimation { 
+                                to: 1.0
+                                duration: heroMa.containsMouse ? 1200 : (centralCore.isDangerState ? 600 : 2500)
+                                easing.type: Easing.InOutSine 
                             }
                         }
 
+                        border.color: Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.40)
+                        border.width: 1
+
+                        color: "transparent"
+
                         Rectangle {
-                            id: centralCore
-                            width: window.s(260)
-                            height: width
-                            anchors.centerIn: parent
-                            anchors.verticalCenterOffset: window.s(-140)
+                            anchors.fill: parent
                             radius: width / 2
-                            z: 1
+                            color: window.maroon
+                            opacity: centralCore.isDangerState ? 0.15 : 0.0
+                            Behavior on opacity { NumberAnimation { duration: 1000 } }
+                            SequentialAnimation on opacity {
+                                loops: Animation.Infinite; running: centralCore.isDangerState
+                                NumberAnimation { to: 0.25; duration: 600; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 0.15; duration: 600; easing.type: Easing.InOutSine }
+                            }
+                        }
+
+                        Item {
+                            anchors.fill: parent
                             
-                            property bool isDangerState: !window.isCharging && window.batCapacity < 15
+                            property real textPulse: 0.0
+                            SequentialAnimation on textPulse {
+                                loops: Animation.Infinite; running: window.visible
+                                NumberAnimation { from: 0.0; to: 1.0; duration: 1200; easing.type: Easing.InOutSine }
+                                NumberAnimation { from: 1.0; to: 0.0; duration: 1200; easing.type: Easing.InOutSine }
+                            }
                             
-                            SequentialAnimation on scale {
+                            property real pumpPhase: 0.0
+                            NumberAnimation on pumpPhase {
+                                running: heroMa.containsMouse && window.isCharging
                                 loops: Animation.Infinite
-                                running: window.visible
-                                NumberAnimation {
-                                    to: heroMa.containsMouse ? 1.05 : (centralCore.isDangerState ? 1.04 : 1.01)
-                                    duration: heroMa.containsMouse ? 1200 : (centralCore.isDangerState ? 600 : 2500)
-                                    easing.type: Easing.InOutSine 
-                                }
-                                NumberAnimation { 
-                                    to: 1.0
-                                    duration: heroMa.containsMouse ? 1200 : (centralCore.isDangerState ? 600 : 2500)
-                                    easing.type: Easing.InOutSine 
-                                }
+                                from: 0.0; to: 1.0; duration: 1200
+                                easing.type: Easing.InOutSine 
+                                onStopped: batCanvas.requestPaint()
                             }
-
-                            border.color: Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.40)
-                            border.width: 1
-
-                            color: "transparent"
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: width / 2
-                                color: window.maroon
-                                opacity: centralCore.isDangerState ? 0.15 : 0.0
-                                Behavior on opacity { NumberAnimation { duration: 1000 } }
-                                SequentialAnimation on opacity {
-                                    loops: Animation.Infinite; running: centralCore.isDangerState
-                                    NumberAnimation { to: 0.25; duration: 600; easing.type: Easing.InOutSine }
-                                    NumberAnimation { to: 0.15; duration: 600; easing.type: Easing.InOutSine }
-                                }
+                            
+                            property real dischargePhase: 1.0
+                            NumberAnimation on dischargePhase {
+                                running: heroMa.containsMouse && !window.isCharging
+                                loops: Animation.Infinite
+                                from: 1.0; to: 0.0; duration: 1600
+                                easing.type: Easing.InOutSine
+                                onStopped: batCanvas.requestPaint()
                             }
-
-                            Item {
+                            
+                            onPumpPhaseChanged: { if(heroMa.containsMouse && window.isCharging) batCanvas.requestPaint() }
+                            onDischargePhaseChanged: { if(heroMa.containsMouse && !window.isCharging) batCanvas.requestPaint() }
+                            
+                            Canvas {
+                                id: batCanvas
                                 anchors.fill: parent
+                                rotation: 180 
                                 
-                                property real textPulse: 0.0
-                                SequentialAnimation on textPulse {
-                                    loops: Animation.Infinite; running: window.visible
-                                    NumberAnimation { from: 0.0; to: 1.0; duration: 1200; easing.type: Easing.InOutSine }
-                                    NumberAnimation { from: 1.0; to: 0.0; duration: 1200; easing.type: Easing.InOutSine }
-                                }
-                                
-                                property real pumpPhase: 0.0
-                                NumberAnimation on pumpPhase {
-                                    running: heroMa.containsMouse && window.isCharging
-                                    loops: Animation.Infinite
-                                    from: 0.0; to: 1.0; duration: 1200
-                                    easing.type: Easing.InOutSine 
-                                    onStopped: batCanvas.requestPaint()
-                                }
-                                
-                                property real dischargePhase: 1.0
-                                NumberAnimation on dischargePhase {
-                                    running: heroMa.containsMouse && !window.isCharging
-                                    loops: Animation.Infinite
-                                    from: 1.0; to: 0.0; duration: 1600
-                                    easing.type: Easing.InOutSine
-                                    onStopped: batCanvas.requestPaint()
-                                }
-                                
-                                onPumpPhaseChanged: { if(heroMa.containsMouse && window.isCharging) batCanvas.requestPaint() }
-                                onDischargePhaseChanged: { if(heroMa.containsMouse && !window.isCharging) batCanvas.requestPaint() }
-                                
-                                Canvas {
-                                    id: batCanvas
-                                    anchors.fill: parent
-                                    rotation: 180 
+                                onPaint: {
+                                    var ctx = getContext("2d");
+                                    ctx.clearRect(0, 0, width, height);
                                     
-                                    onPaint: {
-                                        var ctx = getContext("2d");
-                                        ctx.clearRect(0, 0, width, height);
-                                        
-                                        var centerX = width / 2;
-                                        var centerY = height / 2;
-                                        var radius = (width / 2) - window.s(18); 
-                                        var endAngle = (window.animCapacity / 100) * 2 * Math.PI;
-                                        
-                                        ctx.lineCap = "round";
-                                        
-                                        ctx.lineWidth = window.s(10);
-                                        ctx.beginPath();
-                                        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-                                        ctx.strokeStyle = _theme.isLightMode ? Qt.rgba(window.crust.r, window.crust.g, window.crust.b, 0.40).toString() : Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.35).toString();
-                                        ctx.stroke();
-                                        
-                                        var fillGrad = ctx.createLinearGradient(0, height, width, 0);
-                                        fillGrad.addColorStop(0, window.batColorStart.toString());
-                                        fillGrad.addColorStop(1, window.batColorEnd.toString());
+                                    var centerX = width / 2;
+                                    var centerY = height / 2;
+                                    var radius = (width / 2) - window.s(18); 
+                                    var endAngle = (window.animCapacity / 100) * 2 * Math.PI;
+                                    
+                                    ctx.lineCap = "round";
+                                    
+                                    ctx.lineWidth = window.s(10);
+                                    ctx.beginPath();
+                                    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                                    ctx.strokeStyle = _theme.isLightMode ? Qt.rgba(window.crust.r, window.crust.g, window.crust.b, 0.40).toString() : Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.35).toString();
+                                    ctx.stroke();
+                                    
+                                    var fillGrad = ctx.createLinearGradient(0, height, width, 0);
+                                    fillGrad.addColorStop(0, window.batColorStart.toString());
+                                    fillGrad.addColorStop(1, window.batColorEnd.toString());
 
-                                        ctx.globalAlpha = 1.0;
-                                        ctx.lineWidth = window.s(14);
-                                        ctx.beginPath();
-                                        ctx.arc(centerX, centerY, radius, 0, endAngle);
-                                        ctx.strokeStyle = fillGrad;
-                                        ctx.stroke();
-                                        
-                                        if (heroMa.containsMouse && endAngle > 0.1) {
-                                            if (window.isCharging) {
-                                                var surgeAngle = parent.pumpPhase * (endAngle + 0.6) - 0.3;
-                                                if (surgeAngle > 0 && surgeAngle < endAngle) {
-                                                    var sStart = Math.max(0, surgeAngle - 0.4);
-                                                    var sEnd = Math.min(endAngle, surgeAngle + 0.4);
-                                                    ctx.beginPath();
-                                                    ctx.arc(centerX, centerY, radius, sStart, sEnd);
-                                                    ctx.lineWidth = window.s(22);
-                                                    ctx.strokeStyle = window.batColorStart.toString();
-                                                    ctx.globalAlpha = 0.5 * Math.sin(parent.pumpPhase * Math.PI);
-                                                    ctx.stroke();
+                                    ctx.globalAlpha = 1.0;
+                                    ctx.lineWidth = window.s(14);
+                                    ctx.beginPath();
+                                    ctx.arc(centerX, centerY, radius, 0, endAngle);
+                                    ctx.strokeStyle = fillGrad;
+                                    ctx.stroke();
+                                    
+                                    if (heroMa.containsMouse && endAngle > 0.1) {
+                                        if (window.isCharging) {
+                                            var surgeAngle = parent.pumpPhase * (endAngle + 0.6) - 0.3;
+                                            if (surgeAngle > 0 && surgeAngle < endAngle) {
+                                                var sStart = Math.max(0, surgeAngle - 0.4);
+                                                var sEnd = Math.min(endAngle, surgeAngle + 0.4);
+                                                ctx.beginPath();
+                                                ctx.arc(centerX, centerY, radius, sStart, sEnd);
+                                                ctx.lineWidth = window.s(22);
+                                                ctx.strokeStyle = window.batColorStart.toString();
+                                                ctx.globalAlpha = 0.5 * Math.sin(parent.pumpPhase * Math.PI);
+                                                ctx.stroke();
 
-                                                    sStart = Math.max(0, surgeAngle - 0.2);
-                                                    sEnd = Math.min(endAngle, surgeAngle + 0.2);
-                                                    ctx.beginPath();
-                                                    ctx.arc(centerX, centerY, radius, sStart, sEnd);
-                                                    ctx.lineWidth = window.s(28);
-                                                    ctx.strokeStyle = window.batColorEnd.toString();
-                                                    ctx.globalAlpha = 0.8 * Math.sin(parent.pumpPhase * Math.PI);
-                                                    ctx.stroke();
-                                                }
+                                                sStart = Math.max(0, surgeAngle - 0.2);
+                                                sEnd = Math.min(endAngle, surgeAngle + 0.2);
+                                                ctx.beginPath();
+                                                ctx.arc(centerX, centerY, radius, sStart, sEnd);
+                                                ctx.lineWidth = window.s(28);
+                                                ctx.strokeStyle = window.batColorEnd.toString();
+                                                ctx.globalAlpha = 0.8 * Math.sin(parent.pumpPhase * Math.PI);
+                                                ctx.stroke();
+                                            }
+                                            
+                                            if (parent.pumpPhase > 0.7) {
+                                                var flarePhase = (parent.pumpPhase - 0.7) / 0.3;
+                                                var hitX = centerX + Math.cos(endAngle) * radius;
+                                                var hitY = centerY + Math.sin(endAngle) * radius;
+                                                ctx.beginPath();
+                                                ctx.arc(hitX, hitY, window.s(7) + (flarePhase * window.s(15)), 0, 2*Math.PI);
+                                                ctx.fillStyle = window.batColorEnd.toString();
+                                                ctx.globalAlpha = (1.0 - flarePhase) * 0.6;
+                                                ctx.fill();
+                                            }
+                                        } else {
+                                            var drainCenter = parent.dischargePhase * endAngle;
+                                            for (var d = 0; d < 2; d++) {
+                                                var dSpread = 0.2 + (d * 0.15);
+                                                var dStart = Math.max(0, drainCenter - dSpread);
+                                                var dEnd = Math.min(endAngle, drainCenter + dSpread);
                                                 
-                                                if (parent.pumpPhase > 0.7) {
-                                                    var flarePhase = (parent.pumpPhase - 0.7) / 0.3;
-                                                    var hitX = centerX + Math.cos(endAngle) * radius;
-                                                    var hitY = centerY + Math.sin(endAngle) * radius;
+                                                if (dStart < dEnd) {
                                                     ctx.beginPath();
-                                                    ctx.arc(hitX, hitY, window.s(7) + (flarePhase * window.s(15)), 0, 2*Math.PI);
-                                                    ctx.fillStyle = window.batColorEnd.toString();
-                                                    ctx.globalAlpha = (1.0 - flarePhase) * 0.6;
-                                                    ctx.fill();
-                                                }
-                                            } else {
-                                                var drainCenter = parent.dischargePhase * endAngle;
-                                                for (var d = 0; d < 2; d++) {
-                                                    var dSpread = 0.2 + (d * 0.15);
-                                                    var dStart = Math.max(0, drainCenter - dSpread);
-                                                    var dEnd = Math.min(endAngle, drainCenter + dSpread);
-                                                    
-                                                    if (dStart < dEnd) {
-                                                        ctx.beginPath();
-                                                        ctx.arc(centerX, centerY, radius, dStart, dEnd);
-                                                        ctx.lineWidth = window.s(14) + (1 - d) * window.s(2);
-                                                        ctx.strokeStyle = window.batColorEnd.toString();
-                                                        ctx.globalAlpha = 0.2 * Math.sin(parent.dischargePhase * Math.PI);
-                                                        ctx.stroke();
-                                                    }
+                                                    ctx.arc(centerX, centerY, radius, dStart, dEnd);
+                                                    ctx.lineWidth = window.s(14) + (1 - d) * window.s(2);
+                                                    ctx.strokeStyle = window.batColorEnd.toString();
+                                                    ctx.globalAlpha = 0.2 * Math.sin(parent.dischargePhase * Math.PI);
+                                                    ctx.stroke();
                                                 }
                                             }
                                         }
                                     }
                                 }
+                            }
 
-                                ColumnLayout {
-                                    anchors.centerIn: parent
-                                    spacing: window.s(-2)
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: window.s(1)
+                                
+                                RowLayout {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    spacing: window.s(8)
                                     
-                                    RowLayout {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        spacing: window.s(8)
-                                        
-                                        Text {
-                                            font.family: "Iosevka Nerd Font"
-                                            font.pixelSize: window.s(28)
-                                            color: window.batColorStart
-                                            text: SysData.batIcon(window.batCapacity, window.isCharging)
-                                            Behavior on color { ColorAnimation { duration: 400 } }
-                                        }
-                                        
-                                        Text {
-                                            font.family: "JetBrains Mono"
-                                            font.weight: Font.Black
-                                            font.pixelSize: window.s(54)
-                                            color: window.text
-                                            text: Math.round(window.animCapacity) + "%" 
-                                        }
-                                    }
-
                                     Text {
-                                        Layout.alignment: Qt.AlignHCenter
+                                        font.family: "Iosevka Nerd Font"
+                                        font.pixelSize: window.s(28)
+                                        color: window.batColorStart
+                                        text: SysData.batIcon(window.batCapacity, window.isCharging)
+                                        Behavior on color { ColorAnimation { duration: 400 } }
+                                    }
+                                    
+                                    Text {
                                         font.family: "JetBrains Mono"
-                                        font.weight: Font.Bold
-                                        font.pixelSize: window.s(13)
-                                        
-                                        color: window.isCharging 
-                                                ? Qt.tint(window.primary, Qt.rgba(1, 1, 1, parent.textPulse * 0.4)) 
-                                                : (centralCore.isDangerState ? Qt.tint(window.red, Qt.rgba(1, 1, 1, parent.textPulse * 0.3)) : window.subtext0)
-                                        
-                                        text: (window.batStatus === "Not charging" && window.isCharging) ? "CHARGED" : window.batStatus.toUpperCase()
-                                        Behavior on color { ColorAnimation { duration: 300 } }
+                                        font.weight: Font.Black
+                                        font.pixelSize: window.s(52)
+                                        color: window.text
+                                        text: Math.round(window.animCapacity) + "%" 
+                                    }
+                                }
+
+                                Text {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Bold
+                                    font.pixelSize: window.s(13)
+                                    
+                                    color: window.isCharging 
+                                            ? Qt.tint(window.primary, Qt.rgba(1, 1, 1, parent.textPulse * 0.4)) 
+                                            : (centralCore.isDangerState ? Qt.tint(window.red, Qt.rgba(1, 1, 1, parent.textPulse * 0.3)) : window.subtext0)
+                                    
+                                    text: (window.batStatus === "Not charging" && window.isCharging) ? "CHARGED" : window.batStatus.toUpperCase()
+                                    Behavior on color { ColorAnimation { duration: 300 } }
+                                }
+
+                                RowLayout {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    Layout.topMargin: window.s(4)
+                                    spacing: window.s(6)
+                                    visible: (window.upHours > 0 || window.upMins > 0)
+
+                                    Rectangle {
+                                        radius: window.s(6)
+                                        color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
+                                        border.color: Qt.alpha(window.surface1, 0.3)
+                                        border.width: Config.borderWidth
+                                        implicitWidth: timeTextRow.implicitWidth + window.s(12)
+                                        implicitHeight: window.s(20)
+
+                                        Row {
+                                            id: timeTextRow
+                                            anchors.centerIn: parent
+                                            spacing: window.s(4)
+
+                                            Text {
+                                                text: (window.upHours > 0 ? (window.upHours + "h " + window.upMins + "m") : (window.upMins + "m"))
+                                                font.pixelSize: window.s(10)
+                                                font.family: "JetBrains Mono"
+                                                font.weight: Font.Black
+                                                color: window.batColorStart
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+
+                                            Text {
+                                                text: (window.batStatus === "Charging" || window.isCharging) ? "FULL" : "LEFT"
+                                                font.pixelSize: window.s(9)
+                                                font.family: "JetBrains Mono"
+                                                font.weight: Font.Bold
+                                                color: window.subtext0
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                        }
                                     }
                                 }
                             }
-
-                            MouseArea {
-                                id: heroMa
-                                anchors.fill: centralCore 
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: batCanvas.requestPaint()
-                                onExited: batCanvas.requestPaint()
-                            }
                         }
+
+                        MouseArea {
+                            id: heroMa
+                            anchors.fill: centralCore 
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onEntered: batCanvas.requestPaint()
+                            onExited: batCanvas.requestPaint()
+                        }
+                    }
 
                         ColumnLayout {
                             anchors.bottom: parent.bottom
@@ -1795,4 +1280,3 @@ Item {
             }
         }
     }
-}

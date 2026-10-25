@@ -64,6 +64,11 @@ Every new feature, refactor, script, service, or configuration must adhere to th
 
 ### D. Notification Length & Formatting Policy
 - **Minimum Length Only (Zero Sentences)**: System notifications (`notify-send`) must NEVER emit conversational sentences, explanatory bodies, or descriptive prose. Notification text must be ultra-minimal: 1–3 words max (e.g., `"Coffee mode ON"`, `"Game Mode OFF"`, `"Hotspot ON"`), with NO secondary body text unless delivering strictly essential dynamic telemetry (e.g. connection SSID or IP). TopBar ticker (`NotifTicker.qml`) and minimal notification cards are constrained visual elements designed for concise state signals only.
+- **Explicit Application Name (-a)**: All `notify-send` invocations MUST explicitly pass `-a "<Category/App>"` (e.g., `-a "Audio"`, `-a "System"`, `-a "Battery"`, `-a "Wallpaper"`). Never allow notifications to emit with `"notify-send"` or `"bash"` as the sender name.
+- **Floating Toast in Sidebar Mode**: When TopBar is set to `SideBar` (`Config.topBarPosition === "left"`), notifications must display outside the bar via a sleek QuickShell floating overlay toast (top-right/top-center) matching the system specular glass styling.
+- **Battery Widget Minimalism**: The battery widget (`BatteryPopup.qml`) must remain clean and uncluttered: no notification list/panel, no top tray icons, no DND button, and no redundant time pills. The time remaining (`Xh Ym LEFT / FULL`) belongs directly inside the battery ring alongside percentage and charging status.
+- **KDE Connect Lifecycle Authority**: KDE Connect must be manually toggled on-demand via `kdeconnect_toggle.sh` (`Super + Shift + K`) rather than running indefinitely in the background. On battery, idle `kdeconnectd` prevents Wi-Fi and CPU deep C-states ($C8/C10$) due to periodic LAN broadcast packet handling, while consuming ~80MB RAM. The SNI system tray icon is provided by `kdeconnect-indicator`, which automatically connects to the daemon and surfaces device battery, ping, and transfer menus in QuickShell's tray.
+
 
 ---
 

@@ -7,18 +7,18 @@
     ./modules/home/theme.nix
   ];
 
-  # Ensure dynamic state files exist before Hyprland boots
-  home.activation = {
-    initPowerMonitor = config.lib.dag.entryAfter [ "writeBoundary" ] ''
-      # Ensure dynamic state files exist before Hyprland boots to prevent parsing errors
-      mkdir -p $HOME/.cache
-      touch $HOME/.cache/hypr_power_monitor.conf
+  # Host-specific declarative monitor override (Samsung 2.8K 120Hz OLED panel)
+  xdg.configFile."hypr-local/monitors.lua" = {
+    force = true;
+    text = ''
+      hl.monitor({ output = "desc:Samsung Display Corp. 0x4180", mode = "preferred", position = "auto", scale = 2, bitdepth = 10 })
     '';
   };
 
   # Universal Hardware Acceleration Wrapper for Brave & Web Apps:
   # Injects VA-API zero-copy and ANGLE GL flags into the PATH wrapper, ensuring
   # hardware decoding on Intel/AMD/Nvidia without relying on unparsed flags.conf.
+  # Disables DownloadBubble detached popup subsurfaces to prevent out-of-screen Wayland anchor bugs.
   home.file.".local/bin/brave" = {
     executable = true;
     text = ''
@@ -27,8 +27,19 @@
         --use-gl=angle \
         --use-angle=gl \
         --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder,WaylandWindowDecorations \
+        --disable-features=DownloadBubble,DownloadBubbleV2 \
         --enable-zero-copy \
         "$@"
+    '';
+  };
+
+  # Declarative OnlyOffice Wrapper:
+  # Enforces system window decorations to prevent CEF custom titlebar redraw/blanking drops under XWayland.
+  home.file.".local/bin/onlyoffice-desktopeditors" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      exec /run/current-system/sw/bin/onlyoffice-desktopeditors --system-title-bar "$@"
     '';
   };
 
@@ -323,6 +334,36 @@
     };
     Install = {
       WantedBy = [ "graphical-session.target" ];
+    };
+  };
+
+  # Declarative wallpaper daemon managed by systemd
+  systemd.user.services.awww-daemon = {
+    Unit = {
+      Description = "awww wallpaper daemon";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${pkgs.awww}/bin/awww-daemon";
+      Restart = "on-failure";
+    };
+    Install = {
+      WantedBy = [ "graphical-session.target" ];
+    };
+  };
+
+  # Per-output mpvpaper video wallpaper template service
+  systemd.user.services."mpvpaper@" = {
+    Unit = {
+      Description = "mpvpaper video wallpaper for %I";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      EnvironmentFile = "%h/.local/state/mpvpaper/%i.env";
+      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p -o \"no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0\" %I \${WALLPAPER_VIDEO}";
+      Restart = "on-failure";
     };
   };
 

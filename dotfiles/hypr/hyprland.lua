@@ -7,70 +7,99 @@ require("input")
 require("appearance")
 require("misc")
 
--- 1. Dynamically generated internal monitor power state (bypasses DRM modeset)
--- Parse the hyprlang-format cache line:
---   monitor=<OUTPUT>,<MODE>,<POS>,<SCALE>,bitdepth,<B>,transform,<T>
--- Kept in sync with the writers (rotate_display.sh, BatteryPopup.qml).
-local function apply_power_monitor()
-    local f = io.open(os.getenv("HOME") .. "/.cache/hypr_power_monitor.conf", "r")
-    if not f then
-        return
-    end
-    local line = f:read("*l")
-    f:close()
-    if not line then
-        return
-    end
-    -- Strip the 'monitor=' prefix if it exists
-    if line:sub(1, 8) == "monitor=" then
-        line = line:sub(9)
-    end
-    -- Split on commas; unknown trailing key/value pairs are ignored.
-    local fields = {}
-    for field in line:gmatch("[^,]+") do
-        fields[#fields + 1] = field
-    end
-    if #fields < 4 then
-        return
-    end
-    local mon = {
-        output   = fields[1],
-        mode     = fields[2],
-        position = fields[3],
-        scale    = tonumber(fields[4]) or fields[4],
-    }
-    local i = 5
-    while i < #fields do
-        if fields[i] == "bitdepth" then
-            mon.bitdepth = tonumber(fields[i + 1])
-        elseif fields[i] == "transform" then
-            mon.transform = tonumber(fields[i + 1])
-        elseif fields[i] == "cm" then
-            mon.cm = fields[i + 1]
+-- 1. Universal catch-all rule: any unknown monitor works with zero config
+hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
+
+-- 2. Declarative per-host monitor overrides (deployed by Nix if present)
+pcall(function()
+    local cfg_dir = os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")
+    dofile(cfg_dir .. "/hypr-local/monitors.lua")
+end)
+
+-- 3. Dynamic layout intent manager (persisted in $XDG_STATE_HOME/hypr/layout.lua)
+function is_internal_monitor(name)
+    if not name then return false end
+    for _, prefix in ipairs({"eDP", "LVDS", "DSI"}) do
+        if name:sub(1, #prefix) == prefix then
+            return true
         end
-        i = i + 2
     end
-    if mon.transform == nil then
-        local sf = io.open(os.getenv("HOME") .. "/.config/hypr/settings.json", "r")
-        if sf then
-            local content = sf:read("*a")
-            sf:close()
-            if content then
-                local tf = content:match('"transform"%s*:%s*(%d+)')
-                if tf and tonumber(tf) ~= 0 then
-                    mon.transform = tonumber(tf)
-                end
+    return false
+end
+
+function get_layout_intent()
+    local state_dir = os.getenv("XDG_STATE_HOME") or (os.getenv("HOME") .. "/.local/state")
+    local layout_file = state_dir .. "/hypr/layout.lua"
+    local f = io.open(layout_file, "r")
+    if not f then return "extend" end
+    local content = f:read("*a")
+    f:close()
+    if not content then return "extend" end
+    local intent = content:match('["\'](%w+)["\']')
+    if intent == "mirror" then return "mirror" end
+    return "extend"
+end
+
+function apply_layout(explicit_intent)
+    local intent = explicit_intent or get_layout_intent()
+    local mons = hl.get_monitors()
+    if #mons <= 1 then
+        return
+    end
+
+    if intent == "mirror" then
+        local source = nil
+        for _, m in ipairs(mons) do
+            if is_internal_monitor(m.name) then
+                source = m
+                break
+            end
+        end
+        if not source then
+            -- Desktop system with only external displays: do nothing (remains extended)
+            return
+        end
+
+        for _, m in ipairs(mons) do
+            if m.name ~= source.name then
+                hl.monitor({ output = m.name, mirror = source.name })
+            end
+        end
+    else
+        -- Extend mode: re-apply preferred auto positioning to clear mirroring
+        for _, m in ipairs(mons) do
+            if not is_internal_monitor(m.name) then
+                hl.monitor({ output = m.name, mode = "preferred", position = "auto", scale = "auto", mirror = "" })
             end
         end
     end
-    mon.transform = mon.transform or 0
-    hl.monitor(mon)
 end
-apply_power_monitor()
 
+-- Apply on startup
+apply_layout()
 
--- 2. Universal fallback for ALL external monitors
-hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1, bitdepth = 10 })
+-- Re-run logic synchronously on monitor hotplug events
+hl.on("monitor.added", function(m)
+    apply_layout()
+    if m and m.name then
+        local state_dir = os.getenv("XDG_STATE_HOME") or (os.getenv("HOME") .. "/.local/state")
+        local video_env = state_dir .. "/mpvpaper/" .. m.name .. ".env"
+        local f = io.open(video_env, "r")
+        if f then
+            f:close()
+            hl.exec_cmd("systemctl --user restart mpvpaper@" .. m.name)
+        else
+            hl.exec_cmd("awww restore --outputs " .. m.name)
+        end
+    else
+        hl.exec_cmd("awww restore")
+    end
+end)
+
+hl.on("monitor.removed", function(_)
+    apply_layout()
+end)
+
 hl.config({
     xwayland = {
         force_zero_scaling = true

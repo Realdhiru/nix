@@ -74,6 +74,12 @@ hl.window_rule({
 -- Ignore maximize requests from applications
 hl.window_rule({ match = { class = ".*" }, suppress_event = "maximize" })
 
+-- Automatically center all modal dialogs ("Are you sure?", file prompts, confirmation boxes)
+hl.window_rule({ match = { modal = true }, float = true, center = true })
+
+-- Automatically center all floating XWayland popups/dialogs
+hl.window_rule({ match = { xwayland = true, float = true }, center = true })
+
 -- Prevent focus issues with transient XWayland windows
 hl.window_rule({ match = { class = "^$", title = "^$", xwayland = true, float = true }, no_focus = true })
 
@@ -82,6 +88,12 @@ hl.window_rule({ match = { class = "^$", title = "^$", xwayland = true, float = 
 -- ======================================================
 
 hl.window_rule({ match = { class = "^(blueman-manager)$" }, float = true, center = true, size = { 700, 500 } })
+
+-- ======================================================
+-- KDE Connect
+-- ======================================================
+
+hl.window_rule({ match = { class = "^(org\\.kde\\.kdeconnect\\.app|kdeconnect-app)$" }, float = true, center = true, size = { 750, 550 } })
 
 -- ======================================================
 -- PipeWire Volume Control
@@ -133,6 +145,12 @@ hl.window_rule({ match = { class = "^(steam)$", title = "^(Steam Settings)$" }, 
 
 hl.window_rule({ match = { class = "^(mpv)$" }, idle_inhibit = "focus" })
 hl.window_rule({ match = { class = "^(brave-youtube\\.com__-youtube|youtube)$" }, idle_inhibit = "focus", opacity = "1.0 override 1.0 override" })
+
+-- ======================================================
+-- Office Suites (Solid Opacity to prevent XWayland/CEF buffer drops)
+-- ======================================================
+
+hl.window_rule({ match = { class = "^(ONLYOFFICE)$" }, opacity = "1.0 override 1.0 override" })
 
 -- ======================================================
 -- Quickshell

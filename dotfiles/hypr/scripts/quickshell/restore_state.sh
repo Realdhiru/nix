@@ -6,7 +6,8 @@ STATE_DIR="$HOME/.cache/quickshell"
 STATE_FILE="$STATE_DIR/state.json"
 SHADER_FILE="$HOME/.cache/screen_shader.frag"
 
-mkdir -p "$STATE_DIR"
+mkdir -p "$STATE_DIR/recording"
+[ -f "$STATE_DIR/recording/rec_pid" ] || touch "$STATE_DIR/recording/rec_pid"
 
 # NOTE: the old `hyprctl monitors -j > monitors.json` snapshot write was retired —
 # its only consumer (Main.qml monitorPhys* via FileView) now reads live per-screen

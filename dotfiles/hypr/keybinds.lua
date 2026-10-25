@@ -149,6 +149,7 @@ hl.bind(mainMod .. " + SHIFT + D", hl.dsp.window.move({ workspace = "special:mus
 hl.bind(mainMod .. " + F", hl.dsp.workspace.toggle_special("notes"))
 hl.bind(mainMod .. " + G", hl.dsp.workspace.toggle_special("misc"))
 hl.bind(mainMod .. " + SHIFT + G", hl.dsp.exec_cmd(scripts .. "toggle_gaming_mode.sh"))
+hl.bind(mainMod .. " + SHIFT + K", hl.dsp.exec_cmd(scripts .. "kdeconnect_toggle.sh"), { description = "toggle kde connect daemon & tray" })
 
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })

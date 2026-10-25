@@ -236,14 +236,29 @@ Item {
         markersProc.running = true;
     }
 
-    function loadMonitors() {
-        monitorModel.clear();
+    function syncMonitors() {
         let screens = Quickshell.screens;
-        let batch = [];
-        for (let i = 0; i < screens.length; i++) {
-            batch.push({ "name": screens[i].name, "selected": true });
+        if (!screens) return;
+        let prevSelected = {};
+        for (let i = 0; i < monitorModel.count; i++) {
+            let item = monitorModel.get(i);
+            if (item && item.name) {
+                prevSelected[item.name] = item.selected;
+            }
         }
-        monitorModel.append(batch);
+        monitorModel.clear();
+        for (let i = 0; i < screens.length; i++) {
+            let sName = screens[i].name;
+            let isSel = prevSelected.hasOwnProperty(sName) ? prevSelected[sName] : true;
+            monitorModel.append({ "name": sName, "selected": isSel });
+        }
+    }
+
+    Connections {
+        target: Quickshell
+        function onScreensChanged() {
+            window.syncMonitors();
+        }
     }
 
     function getMonitorOutputs() {
@@ -257,6 +272,35 @@ Item {
         if (selected.length === 0) return "none";
         if (selected.length === monitorModel.count) return "all";
         return selected.join(",");
+    }
+
+    property var activeWallpapersByOutput: ({})
+    Process {
+        id: awwwQueryProc
+        command: ["awww", "query", "--json"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    let data = JSON.parse(this.text.trim());
+                    let map = {};
+                    for (let ns in data) {
+                        let list = data[ns] || [];
+                        for (let i = 0; i < list.length; i++) {
+                            let entry = list[i];
+                            if (entry && entry.name && entry.displaying && entry.displaying.image) {
+                                map[entry.name] = entry.displaying.image;
+                            }
+                        }
+                    }
+                    window.activeWallpapersByOutput = map;
+                } catch(e) {}
+            }
+        }
+    }
+
+    function refreshActiveWallpapers() {
+        awwwQueryProc.running = false;
+        awwwQueryProc.running = true;
     }
 
     readonly property string activeWallpaperFile: Quickshell.env("HOME") + "/.cache/current_wallpaper.txt"
@@ -290,6 +334,7 @@ Item {
             window.reloadActiveWallpaperPath();
             let c = window.getCleanName(window.activeWallpaperName);
             if (c !== "") window.appliedWallCleanName = c;
+            window.refreshActiveWallpapers();
         }
     }
 
@@ -315,26 +360,40 @@ Item {
             return;
         }
 
-        // If clicking the EXACT same wallpaper that is already active on desktop and idle, ignore redundant click
-        if (cleanTarget !== "" && cleanTarget === window.appliedWallCleanName && !window.isApplying) {
-            console.log("[WALLPAPER_PICKER] Wallpaper is already active, ignoring redundant click:", safeFileName);
+        let outputs = window.getMonitorOutputs();
+        if (outputs === "none") return;
+
+        // Check if wallpaper is already active on all targeted outputs via awww query --json
+        let targetList = (outputs === "all" || outputs === "") 
+            ? Object.keys(window.activeWallpapersByOutput) 
+            : outputs.split(",");
+
+        let allActive = targetList.length > 0;
+        for (let i = 0; i < targetList.length; i++) {
+            let mon = targetList[i];
+            let activePath = window.activeWallpapersByOutput[mon] || "";
+            let activeFile = activePath.split("/").pop();
+            if (window.getCleanName(activeFile) !== cleanTarget) {
+                allActive = false;
+                break;
+            }
+        }
+
+        if (allActive && !window.isApplying) {
+            console.log("[WALLPAPER_PICKER] Wallpaper already active on selected outputs:", safeFileName);
             window.statusToast = "Already active";
             toastTimer.restart();
             return;
         }
-        
-        let outputs = window.getMonitorOutputs();
-        if (outputs === "none") return;
         
         window.applyingWallCleanName = cleanTarget;
         window.targetWallName = safeFileName;
         window.isApplying = true;
         applyUnlockTimer.restart();
         
-        window.targetWallName = safeFileName;
         let cleanName = window.getCleanName(safeFileName);
-
         const escapeBash = (str) => String(str).replace(/(["\\$`])/g, '\\$1');
+        let outArg = (outputs !== "all" && outputs !== "") ? ("--outputs \"" + escapeBash(outputs) + "\"") : "";
         
         if (window.currentFilter === "Search" && window.hasSearched) {
             let alreadyExists = window.isDownloaded(safeFileName);
@@ -348,7 +407,7 @@ Item {
                     export DEST_FILE="${escapeBash(destFile)}"
                     export FINAL_THUMB="${escapeBash(finalThumb)}"
                     
-                    ~/.config/hypr/scripts/set_wallpaper.sh "$DEST_FILE"
+                    ~/.config/hypr/scripts/set_wallpaper.sh ${outArg} "$DEST_FILE"
                 `;
                 Quickshell.execDetached(["bash", "-c", applyScript]);
             } else {
@@ -386,7 +445,7 @@ Item {
                         exit 1
                     fi
                     
-                    ~/.config/hypr/scripts/set_wallpaper.sh "\$DEST_FILE"
+                    ~/.config/hypr/scripts/set_wallpaper.sh ${outArg} "\$DEST_FILE"
                     ~/.config/hypr/scripts/wallpaper_thumbnail.sh &
                 `;
                 downloadProc.command = ["bash", "-c", downloadScript];
@@ -400,7 +459,7 @@ Item {
         const escOriginal = escapeBash(originalFile);
 
         const fullScript = `
-            ~/.config/hypr/scripts/set_wallpaper.sh "${escOriginal}"
+            ~/.config/hypr/scripts/set_wallpaper.sh ${outArg} "${escOriginal}"
         `;
         Quickshell.execDetached(["bash", "-c", fullScript]);
     }
@@ -437,6 +496,8 @@ Item {
             }
         } else {
             Quickshell.execDetached(["bash", "-c", "mkdir -p '" + Caching.getRunDir("wallpaper_picker") + "'; touch '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
+            window.syncMonitors();
+            window.refreshActiveWallpapers();
             window.isApplying = false;
             window.applyingWallCleanName = "";
             window.centerRetryCount = 0;
@@ -2301,7 +2362,8 @@ Item {
 
     Component.onCompleted: {
         Quickshell.execDetached(["bash", "-c", "mkdir -p '" + decodeURIComponent(window.searchDir.replace("file://", "")) + "'; mkdir -p '" + Caching.getRunDir("wallpaper_picker") + "'; touch '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
-        window.loadMonitors();
+        window.syncMonitors();
+        window.refreshActiveWallpapers();
 
         if (searchState.searched) {
             searchInput.text = searchState.query;

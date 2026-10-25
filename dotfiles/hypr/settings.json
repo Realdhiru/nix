@@ -34,5 +34,6 @@
   "keybinds": [],
   "topbarHelpIcon": true,
   "topbarPosition": "left",
-  "barAutohide": false
+  "barAutohide": false,
+  "displayMode": "internal"
 }

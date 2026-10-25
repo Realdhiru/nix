@@ -33,7 +33,7 @@ if [ "$IS_RUNNING" -eq 1 ]; then
     # Update state.json: temp=6500, gamma=100, sat=100, grain=0, crt=0, active=false
     bash "$HOME/.config/hypr/scripts/quickshell/state_ctl.sh" sunset 6500 100 100 0 0 false
 
-    notify-send -u low "Night Light OFF"
+    notify-send -a "Night Light" -u low "OFF"
 else
     # Currently OFF -> Restore state and turn ON
     RESTORED=0
@@ -50,5 +50,5 @@ else
     fi
 
     bash "$HOME/.config/hypr/scripts/quickshell/restore_state.sh"
-    notify-send -u low "Night Light ON"
+    notify-send -a "Night Light" -u low "ON"
 fi

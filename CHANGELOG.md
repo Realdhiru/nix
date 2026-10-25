@@ -1,5 +1,74 @@
 # CHANGELOG
 
+## 2026-10-25 — Multi-Monitor Mirroring & Per-Monitor Wallpaper Architecture Fix
+
+- **Declarative Dynamic Multi-Monitor Layout Manager ([`hyprland.lua`](file:///home/realdhiru/nix/dotfiles/hypr/hyprland.lua), [`MonitorPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/monitors/MonitorPopup.qml))**:
+  - Replaced hardcoded script patching (`hypr_power_monitor.conf`, jq mutation) with atomic single-intent state persistence (`"extend"` or `"mirror"`) to `$XDG_STATE_HOME/hypr/layout.lua`.
+  - Exported global `apply_layout(explicit_intent)` and prefix detector `is_internal_monitor(name)` in `hyprland.lua` (`eDP`, `LVDS`, `DSI`) for zero-regex Lua compliance.
+  - Mirrored mode assigns external displays to mirror the internal screen; extend mode cleanly un-mirrors with `mirror = ""` and returns displays to preferred auto positions.
+  - Automatically handles docking scenarios, multi-monitor hotplug events (`monitor.added`, `monitor.removed`), and gracefully handles headless/desktop configurations without internal panels.
+- **Per-Monitor Wallpaper Routing & Service Lifecycles ([`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml), [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), [`home.nix`](file:///home/realdhiru/nix/home.nix))**:
+  - Migrated `WallpaperPicker.qml` from fragile screen count tracking to native `awww query --json` parsing via dedicated `awwwQueryProc` (no regex or text scraping).
+  - Wired `--outputs` targeting across `WallpaperPicker.qml`, `set_wallpaper.sh`, and `set.sh`.
+  - Replaced ad-hoc daemon spawns with declarative Home Manager systemd user units (`awww-daemon.service` and templated `mpvpaper@<out>.service`).
+  - Implemented clean service-coordinated transitions: `set.sh` stops running `mpvpaper@<out>` before invoking `awww img --outputs`, and writes target video paths to transparent environment files (`%h/.local/state/mpvpaper/%i.env`) for automatic replug restoration.
+- **Hardware Profile Decoupling ([`home.nix`](file:///home/realdhiru/nix/home.nix), `hypr-local/monitors.lua`)**:
+  - Purged machine-specific Samsung OLED panel descriptions from universal `hyprland.lua` into declarative per-host Nix configuration (`xdg.configFile."hypr-local/monitors.lua"`), loaded via protected `pcall`.
+
+## 2026-10-25 — Battery Widget Redesign, Notification Standardization & KDE Connect On-Demand Control
+
+- **Battery Widget Simplification & Circular Telemetry Integration ([`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml), [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js))**:
+  - Completely purged the redundant left-side notification panel and top utility header buttons (system tray pill, battery time pill, DND toggle).
+  - Resized the popup card geometry in `WindowRegistry.js` from 801px down to a focused 480px width (`w: 480, h: 660`).
+  - Integrated the remaining time telemetry (`Xh Ym LEFT / FULL`) directly inside the central circular battery ring beneath the capacity percentage and charging state, preserving full visual hierarchy with zero dead space.
+- **Universal Desktop Notification Audit & Standardization**:
+  - Enforced mandatory `-a "<Category/App>"` flag across all desktop scripts and QML triggers to prevent notifications reporting generic `"notify-send"` or `"bash"` as sender.
+  - Standardized notification body text to strict 1–3 words max (zero conversational sentences or explanatory paragraphs):
+    - `power.sh`: `-a "Power" "Coffee ON" / "Coffee OFF"`
+    - `SysData.qml`: `-a "Battery" "Battery Low (X%)"`, `-a "Power" "AC Connected" / "AC Disconnected"`
+    - `toggle_sunset.sh`: `-a "Night Light" "ON" / "OFF"`
+    - `record.sh`: `-a "Recorder" "Recording Saved"`
+    - `rotate_display.sh`: `-a "Display" "Inverted 180°" / "Standard"`
+    - `Config.qml` & `MonitorPopup.qml`: `-a "Display" "Applied"` / `"Layout Applied"`
+    - `fuzzel_menu.sh`: `-a "Fuzzel" "DB Missing"`, `-a "Clipboard" "Copied <glyph>"`
+    - `toggle_multi_sink.sh`: `-a "Audio" "Broadcast Missing"`
+    - `pw-broadcast`: `-a "Audio" "Broadcast ON" / "Broadcast OFF" / "No Sinks"`
+    - `Timer.qml`: `-a "Timer"`
+  - Updated `NotifTicker.qml` `isTransientSignal` filter to recognize `Power`, `Battery`, `Audio`, `Night Light`, `Recorder`, `Display`, `Wallpaper`, `QuickShell`, and `KDE Connect` as transient feedback, keeping persistent history clean.
+- **SideBar iPhone Dynamic Island Architecture ([`NotifToast.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifToast.qml), [`Shell.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Shell.qml))**:
+  - Completely re-architected SideBar mode notification delivery into an authentic **iPhone Dynamic Island** centered pill at top-center (`anchors.top: true`, layer-shell horizontal center, `margins.top: 8px`).
+  - Fluid Apple spring physics: elastic morphing expansion (`Easing.OutBack`, overshoot `1.25`, duration `320ms`) with smooth capsule curvature (`radius: height / 2`).
+  - OLED obsidian aesthetic: pure OLED black backdrop (`Qt.rgba(0.04, 0.04, 0.05, 0.96)`), 0-bleed underlayer, and subtle specular rim highlight.
+  - Staggered content bloom: delayed text/icon reveal prevents layout stretching during pill expansion.
+  - Dedicated call interface: incoming phone calls (KDE Connect) render an animated pulsing green answer button (`󰏲`), red decline button (`󰅖`), and caller metadata.
+  - Zero-reallocation LayerShell surface: uses fixed container bounds with dynamic `mask: Region { item: islandCard }`, eliminating compositor buffer reallocation bursts for flawless 120Hz animation.
+- **System Stability & Polkit Cleanup ([`Shell.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Shell.qml), [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), [`restore_state.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh))**:
+  - Removed duplicate `Polkit {}` listener from `Shell.qml` to eliminate D-Bus registration conflicts with `polkit-gnome`.
+  - Added floating window rule for `kdeconnect-app` in `rules.lua` (`float = true`, `center = true`, `size = { 750, 550 }`).
+  - Initialized `~/.cache/quickshell/recording/rec_pid` in `restore_state.sh` to eliminate startup `FileView` read warnings.
+- **On-Demand KDE Connect Lifecycle Control ([`kdeconnect_toggle.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/kdeconnect_toggle.sh), [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:
+  - Created `kdeconnect_toggle.sh` and bound it to `Super + Shift + K` in `keybinds.lua`.
+  - Solves the missing tray icon quirk: launches `kdeconnect-indicator`, which triggers D-Bus activation for `kdeconnectd` and directly renders the native SNI tray applet in QuickShell's SystemTray.
+  - Toggling OFF cleanly terminates `kdeconnect-indicator` and `kdeconnectd`, freeing ~80MB RAM and completely preventing background LAN UDP broadcast packet handling, allowing the CPU and Intel Wi-Fi radio to stay in deep package C-states ($C8/C10$).
+- **Multi-Output PipeWire Broadcast Extraction ([`pw-broadcast`](file:///home/realdhiru/Projects/pipewire-multi-sink/bin/pw-broadcast))**:
+  - Extracted dynamic multi-sink audio broadcasting into a standalone, portable Flake repository at `~/Projects/pipewire-multi-sink`.
+  - Pinned calibrated compensation delay to `0.340s` (340ms) with hardware volume lock at 100% on external endpoints, delegating loudness control cleanly to master volume.
+
+## 2026-10-24 — HiDPI Popup Placement & Browser Download Bubble Bugfix
+
+- **HiDPI Toolkit Coordinate Synchronization ([`env.lua`](file:///home/realdhiru/nix/dotfiles/hypr/env.lua))**:
+  - Exported `GDK_SCALE = "2"`, `QT_AUTO_SCREEN_SCALE_FACTOR = "1"`, and `QT_ENABLE_HIGHDPI_SCALING = "1"` in `env.lua`.
+  - Fixes coordinate misalignment where GTK, Qt, and browser UI toolkits computed subsurface popup and menu anchors against unscaled coordinate space on the 2.0x HiDPI display (2880×1620), preventing context menus and dropdowns from clipping or spawning out of screen bounds.
+- **Chromium / Brave PWA Download Bubble Elimination ([`home.nix`](file:///home/realdhiru/nix/home.nix))**:
+  - Added `--disable-features=DownloadBubble,DownloadBubbleV2` to the Brave launcher wrapper in `home.nix`.
+  - Disables Chromium's detached `xdg_popup` download flyout that computes negative coordinate offsets in frameless PWA mode (`--app=...`), reverting to reliable in-window download tracking and notifications.
+- **ONLYOFFICE UI Disappearance & Buffer Drops Fix ([`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), [`home.nix`](file:///home/realdhiru/nix/home.nix), [`DesktopEditors.conf`](file:///home/realdhiru/.config/onlyoffice/DesktopEditors.conf))**:
+  - Added explicit solid opacity rule `hl.window_rule({ match = { class = "^(ONLYOFFICE)$" }, opacity = "1.0 override 1.0 override" })` to prevent compositor transparency passes from dropping XWayland/CEF damage rects.
+  - Switched `titlebar=system` in `~/.config/onlyoffice/DesktopEditors.conf` and added a declarative launcher wrapper passing `--system-title-bar` in `home.nix`, completely preventing custom CEF titlebar canvas blanking.
+- **Universal Modal & Floating XWayland Dialog Centering ([`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua))**:
+  - Enforced global Hyprland rules `match = { modal = true }, float = true, center = true` and `match = { xwayland = true, float = true }, center = true`.
+  - Fixes confirmation boxes, warning prompts (e.g. ONLYOFFICE "More than one document is open"), and app dialogs defaulting to the top-left monitor origin `(0, 0)` behind the side/top bar. All dialogs now center reliably on screen.
+
 ## 2026-10-23 — AI Instruction Streamlining & Token De-bloat
 
 - **System Rule Invariant & Zero Global Dependency Bloat ([`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md))**:
@@ -51,10 +120,11 @@
   - Synchronized router tokens in [`INDEX.md`](file:///home/realdhiru/Projects/Vault/INDEX.md), `Whitepapers.base`, [`decisions.md`](file:///home/realdhiru/nix/docs/decisions.md), and the `vault-architect` skill across `~/nix` and `~/.gemini/config`.
 
 - **Multi-Output Audio Broadcast Keybind ([`toggle_multi_sink.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/toggle_multi_sink.sh), [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:
-  - Implemented `SUPER + CTRL + V` mapped to [`toggle_multi_sink.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/toggle_multi_sink.sh).
-  - Normal mode routes audio to the primary connected sink (or internal speakers).
-  - Toggling ON dynamically unlinks the internal laptop speakers and fans out the 10-band equalizer output (`effect_output.eq10`) across **all** detected external physical sinks (Bluetooth earbuds/speakers + wired headphones/DACs) concurrently via sub-2ms native `pw-link` graph connections.
-  - If no external devices are present, notifies `"No external sink"` with zero state corruption.
+  - Implemented `SUPER + CTRL + V` mapped to [`toggle_multi_sink.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/toggle_multi_sink.sh), delegating directly to standalone tool `pw-broadcast`.
+  - Extracted standalone, distro-agnostic project to `~/Projects/pipewire-multi-sink` with pure `flake.nix`, `Makefile`, POSIX executable (`bin/pw-broadcast`), and zero-bloat architecture.
+  - Toggling ON dynamically unlinks internal laptop speakers and fans out the equalizer output (`effect_output.eq10`) across **all** detected external physical sinks (Bluetooth earbuds/speakers + wired headphones/DACs) concurrently via sub-2ms native `pw-link` graph connections.
+  - **Calibrated Latency & Hardware Volume Preservation**: When simultaneous Bluetooth and wired endpoints are present, dynamically spawns a transient `pw-loopback` delay service (`pw-wired-delay`) buffering the wired line by the calibrated 0.340s AAC Bluetooth pipeline latency, eliminating echo/drift. Physical endpoints remain at 100% hardware scale so master volume controls loudness without double attenuation. Cleanly unlinks and stops the delay service on toggle OFF.
+  - If no external devices are present, notifies `"No external sink"` with zero state corruption. Detailed architectural documentation written to [`docs/multi_output_audio.md`](file:///home/realdhiru/nix/docs/multi_output_audio.md).
 - **Universal Native PipeWire Priority & Handover Structure ([`home.nix`](file:///home/realdhiru/nix/home.nix))**:
   - Maintained universal native plug-and-play across all endpoints without machine-specific hardcoded disables: dynamic jack detection routes to HDMI monitors when connected and ignores them when unplugged (`haveAvailableRoutes`).
   - Elevated `effect_input.eq10` priority to `2200` to prevent connected external devices (2150) from bypassing the 10-band equalizer filter chain, ensuring consistent audio processing across all hardware endpoints.

@@ -186,6 +186,9 @@ Item {
 
     property real antiBleedOpacity: config.isSolidMode ? 0.0 : (_theme.isLightMode ? 0.18 : 0.04)
     Behavior on antiBleedOpacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
+
+    property real toastOpacity: config.isSolidMode ? 1.0 : Math.max(0.70, config.effectivePopupOpacity)
+    Behavior on toastOpacity { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
     property bool topbarHelpIcon: true
     property int workspaceCount: 8
     property int initialWorkspaceCount: 8
@@ -337,7 +340,7 @@ Item {
             let cacheWriteCmd = "echo 'monitor=" + monitorStr + "' > ~/.cache/hypr_power_monitor.conf";
             let evalCmd = "hyprctl eval \"hl.monitor({output='" + m.name + "',mode='" + m.resW + "x" + m.resH + "@" + m.rate + "',position='0x0',scale='" + m.sysScale + "'" + (m.transform !== 0 ? ",transform=" + m.transform : "") + "})\"";
             config.sh(cacheWriteCmd + " ; " + evalCmd + " ; ~/.config/hypr/scripts/ensure_awww.sh --restart");
-            Quickshell.execDetached(["notify-send", "Display Update", "Applied: " + m.resW + "x" + m.resH + " @ " + m.rate + "Hz"]);
+            Quickshell.execDetached(["notify-send", "-a", "Display", "-u", "low", "Applied", m.resW + "x" + m.resH]);
         } else {
             let rects = [];
             for (let i = 0; i < monitorsModel.count; i++) {
@@ -389,7 +392,7 @@ Item {
             config.setSetting("monitors", jsonArr);
             let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
             config.sh(cacheWriteCmd + " ; hyprctl --batch '" + batchCmds.join(" ; ") + "' ; ~/.config/hypr/scripts/ensure_awww.sh --restart");
-            Quickshell.execDetached(["notify-send", "Display Update", "Applied layout for: " + summaryString.trim()]);
+            Quickshell.execDetached(["notify-send", "-a", "Display", "-u", "low", "Layout Applied"]);
         }
     }
 

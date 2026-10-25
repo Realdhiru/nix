@@ -149,7 +149,7 @@ Item {
 
     function notify(title, icon) {
         notifyProc.running = false; // Reset to allow sequential calls
-        notifyProc.command = ["notify-send", "-a", "Quickshell Timer", "-i", icon, title];
+        notifyProc.command = ["notify-send", "-a", "Timer", "-i", icon, title];
         notifyProc.running = true;
     }
 

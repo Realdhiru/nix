@@ -95,9 +95,9 @@ fi
 hyprctl eval "$LUA_MON}); hl.exec_scheduled_prop_refresh_immediately()" >/dev/null 2>&1
 
 if [ "$NEW" = "2" ]; then
-    notify-send -a "Display" -i video-display "Orientation: 180° Inverted" "Screen rotated 180 degrees" 2>/dev/null || true
+    notify-send -a "Display" -u low -i video-display "Inverted 180°" 2>/dev/null || true
 else
-    notify-send -a "Display" -i video-display "Orientation: Standard" "Screen restored to standard orientation" 2>/dev/null || true
+    notify-send -a "Display" -u low -i video-display "Standard" 2>/dev/null || true
 fi
 
 
