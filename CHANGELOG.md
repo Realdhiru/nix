@@ -1,16 +1,31 @@
 # CHANGELOG
 
-## 2026-10-26 — Wallpaper Subsystem Cache Synchronization & Notification Lifecycle Fix
+## 2026-10-26 — NetworkPopup State-Motion Regression Repair (ambient/hero tokens)
 
-- **Wallpaper Cache & Resumption Fix ([`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), [`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh))**:
-  - Restored persistent cache writing in `set.sh` (`current_wallpaper.txt` and `last_wallpaper.txt`), resolving an issue where toggling off wallpaper and re-enabling fell back to a random wallpaper from `cmd_boot`.
-  - Guarded `cmd_kill` in `wallpaper.sh` against copying empty 0-byte cache files over `last_wallpaper.txt`.
-  - Replaced `exec` invocation during toggle-on so `state_ctl` and `notify-send "ON"` complete cleanly.
-  - Enabled `WallpaperPicker.qml` to accurately track and highlight the currently active wallpaper on startup.
-- **Notification Server & Call Timeout Fix ([`NotifTicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifTicker.qml), [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml))**:
-  - Wired `tickerTimeoutTimer.onTriggered` to invoke `root.dismiss(uid)` so timed-out notifications cleanly unregister from both Quickshell and D-Bus.
-  - Reduced call safety timeout from 45s down to 20s.
-  - Conditioned `TopBar.qml` exclusive zone and layer mapping on `Config.topBarPosition !== "left"` to eliminate dead top margin reservations in Sidebar mode.
+- **Regression**: after the motion-tokens unification, NetworkPopup lost its state-carrying motion (stream strand repaint, hold-wave phase, scan radar rings, connected-ring breathing, glow pulse) and large-surface morphs were compressed to feedback-scale durations; the popup read rigid/static.
+- **New tokens** ([`motion-tokens.nix`](file:///home/realdhiru/nix/dotfiles/hypr/motion-tokens.nix) → generated [`Motion.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Motion.qml)): `ambient` 3200 ms InOutSine (state loops: strands/waves/breathing) and `hero` 440 ms OutCubic (rare large-surface morphs: power toggle, core state change). Generator updated; byte-compare check still passes.
+- **Restored (all token-driven, `running:` gated on visible/state, phase-driven canvas repaint — no Timer ticks, no OutBack/overshoot)**: strandPhase data-flow canvas loop; coreWave + floatCard waveCanvas phase loops (wave bezier control points re-derived from phase); connected halo-ring scale breathing; core glow-ring opacity/scale pulse; scanning radar rings (staggered step index offset); scan icon opacity breathing. `pwrIcon` size morph rebuilt as scale-only (pixelSize snap kept, no `font.pixelSize` animation per policy).
+- **Retokenized to `heroMs`**: `smoothedActiveCoreCount` (was 1000 ms InOutExpo), `multiTransitionState` (1200 ms InOutExpo), `activeTransition` (800 ms OutCubic), `radarItem` opacity/scale, `pwrMorph` (800 ms InOutQuint), power-fill overlay opacity, `pwrIcon` color.
+- **New `flow` token**: 800 ms Linear added for the once-per-state-change hold-wave sweeps (coreWave + floatCard `waveCanvas` phase loops) — restores the 800 ms-class wave pace without reintroducing a repaint loop.
+- **Strand canvas → scene-graph**: strand data-flow replaced the full-canvas 60 Hz `Canvas.requestPaint` loop with per-node `strandPulse` Items (opacity/position driven by animated `flowT` over `Motion.flowMs`, target = parent core / primary core); `nodeLinesCanvas` now repaints only on data change. Inner node glow-pulse retained as an ambient breathing animation, gated on popup visibility.
+- **Loop-gate audit**: every remaining infinite loop in NetworkPopup gated on `window.visible` / `window.isPopupActive` / radio-state (glow pulse, halo breathing, radar rings ×3, scan icon, wave phases) — no loops run while popup hidden.
+- **Engine fix**: generator emitted a reference to undefined bezier `"exit"` for both `windowsOut` and `layersOut` leaves → corrected to `exit_curve` in `lib/motion-gen.nix`, regenerated `motion.lua`, verified live via `hyprctl animations` (both leaves `overridden: 1, bezier: exit_curve`, reload clean).
+- **CPU final (5×10 s, `/proc` tick deltas, qs PID live)**: closed 0–0.7% (avg ≈0.3%, target 1.4–2.0% met); open wifi idle-connected 0–0.1%; open BT scanning (settled) 0–0.1%; open eth no-device 0–0.1% (9.3% only as one-shot mode-switch transition burst); transient only: fresh BT power-on discovery flood ≈25% for tens of seconds while the device list populates (data-driven churn, not a loop). `nix flake check` all-pass; screenshots: `/tmp/opencode/network-idle-connected.png`, `network-scanning.png`, `network-poweroff.png`.
+
+## 2026-10-26 — Wallpaper State Migration ($XDG_STATE_HOME) & D-Bus Notification Lifecycle Invariants
+
+- **Wallpaper Subsystem State Migration ([`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), [`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh), [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**:
+  - Migrated `current_wallpaper.txt` and `last_wallpaper.txt` from legacy `~/.cache` to `$XDG_STATE_HOME/quickshell/wallpaper/`.
+  - Implemented atomic state updates using local hidden tempfiles (`tmp + mv -f` in same directory) across `set.sh` and `wallpaper.sh`.
+  - Guarded state readers and writers with `[ -s "$CURRENT_TXT" ]`: empty/killed state stores `"none"`, preserving the previous valid path in `last_wallpaper.txt` without zero-byte overwrites.
+  - Removed random wallpaper selection (`find ... | sort -rn | head -n 1`) from `cmd_boot`; missing or empty state deterministically falls back to `$DEFAULT_WALLPAPER` token or exits with a clear error.
+  - Maintained atomic backward compatibility symlinks at `~/.cache/{current,last}_wallpaper.txt` to support external untouched utilities.
+  - Updated `WallpaperPicker.qml` to read from `$XDG_STATE_HOME/quickshell/wallpaper/`, ignoring `"none"` so that killed wallpaper state does not focus arbitrary files on startup.
+- **Notification Lifecycle & Call Invariants ([`NotifTicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifTicker.qml))**:
+  - Clarified and aligned notification teardown with Quickshell API and FreeDesktop spec: daemon/caller dismissal uses D-Bus `CloseNotification` (reason 3), user click triggers `dismiss()` (reason 2), and timer timeout triggers `expire()` (reason 1).
+  - Wired `tickerTimeoutTimer.onTriggered` to invoke `root.expire(uid)` instead of `dismiss()`.
+  - Replaced literal 20000ms call timeout with `Config.getSetting("notifCallTimeout", 20000)` token.
+  - Reverted unrelated position/exclusiveZone edits in [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml).
 
 
 - **Engine side ([`motion.lua`](file:///home/realdhiru/nix/dotfiles/hypr/motion.lua), [`appearance.lua`](file:///home/realdhiru/nix/dotfiles/hypr/appearance.lua), [`hyprlock.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hyprlock.conf), [`flake.nix`](file:///home/realdhiru/nix/flake.nix))**:
@@ -25,14 +40,14 @@
   - `WeatherSetupPopup.qml`, `WallpaperPicker.qml`, `quickactions/{SystemUsage,Timer,DrawAction}.qml`, `Polkit.qml`, `Lock.qml`, `Main.qml`, `Floating.qml`: all tweens moved to Motion tokens; drawers/expand from OutBack → `moveMs/moveEasing`; shakes → `Shake.qml`; PIN dots → fade tokens; `Main.qml` StackView replace enter/exit on tokens.
 - **Deletions wiped clean**: 42 overshoot lines (`OutBack`/`OutElastic`/`SpringAnimation`), 36 ambient `loops: Animation.Infinite` lines, 89 cascade/parallel animation lines, 622 retokenized raw duration/easing lines (diff vs baseline `84a9175`; line-signature counts, initial delete edits preserved ~same counts with token additions added independently).
 
-## 2026-10-26 — Standalone Display DPMS Power Control (Overnight Agent Workflows)
+## 2026-10-26 — Power Button Display Toggle & DPMS Wakeup Fix (Overnight Agent Workflows)
 
-- **Power CLI Display Subcommand ([`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh))**:
-  - Implemented `power.sh display [off|on|toggle]` and `power.sh dpms [off|on|toggle]` routing to Hyprland's native Lua DPMS dispatcher (`hl.dsp.dpms({action=...})`).
-  - Decouples display illumination from system sleep state: allows turning the OLED screen pitch black ($0\text{W}$) while Coffee mode (`systemd-inhibit`) or background workloads keep CPU/memory alive.
-- **Dedicated Display Off Keybindings ([`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua))**:
-  - Bound `Super + Shift + Escape` and `Shift + F6` with `{ locked = true }` to `power.sh display off`, allowing instant screen blackout whether unlocked or locked.
-  - Normal input (key press or touchpad movement) immediately restores display via Hyprland's native DPMS wake path.
+- **Power Button Toggle ([`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), [`services.nix`](file:///home/realdhiru/nix/modules/system/services.nix), [`restore_state.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh))**:
+  - Bound `XF86PowerOff` directly to `power.sh display toggle` with `{ locked = true }`. Removed intermediate hotkeys (`Super+Shift+Esc`, `Shift+F6`).
+  - Switched `services.logind.settings.Login.HandlePowerKey = "ignore"` and spawned user unit `inhibit-power-key` (`systemd-inhibit --what=handle-power-key`) so logind passes the power key to Hyprland instead of forcing a session lock.
+- **DPMS Wakeup Root Cause Fix ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua), [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh))**:
+  - Enabled `key_press_enables_dpms = true` and `mouse_move_enables_dpms = true` in Hyprland's `misc` config. (Default was `false`, causing DPMS off to be unrecoverable on key/mouse input when hypridle timers were inhibited by Coffee Mode).
+  - Implemented robust state-marker handling (`/run/user/$UID/display_dpms_off`), DRM backlight pulse (`brightnessctl set +0%`), and synthetic input nudge (`ydotool mousemove`) in `power.sh display toggle` to ensure OLED panel wakeups never hang.
 
 ## 2026-10-25 — Central `Motion` Token System & Popup Cascade Removal (Music / Focus Time)
 

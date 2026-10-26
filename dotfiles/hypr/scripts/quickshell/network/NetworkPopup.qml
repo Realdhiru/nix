@@ -320,7 +320,7 @@ Item {
     property var coreVisualIndices: [0, 0, 0, 0, 0]
     property int activeCoreCount: 0
     property real smoothedActiveCoreCount: activeCoreCount
-    Behavior on smoothedActiveCoreCount { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+    Behavior on smoothedActiveCoreCount { NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing } }
 
     function syncCores() {
         let list = [];
@@ -565,7 +565,7 @@ Item {
     readonly property bool isLogicMultiState: window.activeMode === "bt" && window.activeCoreCount > 1
 
     property real multiTransitionState: (isLogicMultiState && window.currentPower) ? 1.0 : 0.0
-    Behavior on multiTransitionState { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+    Behavior on multiTransitionState { NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing } }
 
     function updateInfoNodes() {
         let nodes = [];
@@ -1008,8 +1008,8 @@ Item {
                 opacity: window.currentPower ? 1.0 : 0.0
                 scale: window.currentPower ? 1.0 : 1.05
                 visible: opacity > 0.01
-                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                Behavior on scale { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                Behavior on opacity { NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing } }
+                Behavior on scale { NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing } }
 
                 Repeater {
                     model: 3
@@ -1171,7 +1171,7 @@ Item {
                         property real activeTransition: isReallyActive ? 1.0 : 0.0
 
                         Behavior on activeTransition {
-                            NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
+                            NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing }
                         }
 
                         property real multiShift: window.activeMode === "wifi" || window.activeMode === "eth" ? 0.0 : window.multiTransitionState
@@ -1272,6 +1272,18 @@ Item {
 
                                 Connections { target: centralCore; function onDisconnectFillChanged() { coreWave.requestPaint() } }
 
+                                // Time-based hold wave: baseline-period (flow) phase loop
+                                // repaints the canvas while the disconnect fill runs.
+                                property real wavePhase: 0.0
+                                NumberAnimation on wavePhase {
+                                    running: centralCore.disconnectFill > 0.0 && centralCore.disconnectFill < 1.0 && window.isPopupActive
+                                    loops: Animation.Infinite
+                                    from: 0; to: Math.PI * 2
+                                    duration: Motion.flowMs
+                                    easing.type: Motion.flowEasing
+                                }
+                                onWavePhaseChanged: requestPaint()
+
                                 onPaint: {
                                     var ctx = getContext("2d");
                                     var s = window.s;
@@ -1290,8 +1302,8 @@ Item {
                                     ctx.moveTo(0, fillY);
                                     if (centralCore.disconnectFill < 0.99) {
                                         var waveAmp = s(10) * Math.sin(centralCore.disconnectFill * Math.PI);
-                                        var cp1y = fillY + waveAmp;
-                                        var cp2y = fillY - waveAmp;
+                                        var cp1y = fillY + Math.sin(wavePhase) * waveAmp;
+                                        var cp2y = fillY + Math.cos(wavePhase + Math.PI) * waveAmp;
                                         ctx.bezierCurveTo(width * 0.33, cp2y, width * 0.66, cp1y, width, fillY);
                                         ctx.lineTo(width, height);
                                         ctx.lineTo(0, height);
@@ -1321,6 +1333,12 @@ Item {
                                 z: -1
                                 Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                 Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+
+                                SequentialAnimation on scale {
+                                    loops: Animation.Infinite; running: (window.currentConn || showPassword) && window.isPopupActive
+                                    NumberAnimation { to: 1.1; duration: Motion.ambientMs; easing.type: Motion.ambientEasing }
+                                    NumberAnimation { to: 1.0; duration: Motion.ambientMs; easing.type: Motion.ambientEasing }
+                                }
                             }
 
                             Rectangle {
@@ -1332,8 +1350,23 @@ Item {
                                 border.color: centralCore.isDangerState && !showPassword ? window.red : window.activeColor
                                 z: -2
 
-                                opacity: ((window.currentConn || showPassword) && window.showInfoView && window.currentPower && !isMyDisconnecting) ? 0.3 : 0.0
-                                scale: 1.0
+                                property real pulseOp: 0.0
+                                property real pulseSc: 1.0
+                                opacity: ((window.currentConn || showPassword) && window.showInfoView && window.currentPower && !isMyDisconnecting) ? pulseOp : 0.0
+                                scale: pulseSc
+
+                                SequentialAnimation on pulseOp {
+                                    loops: Animation.Infinite
+                                    running: (window.currentConn || showPassword) && window.showInfoView && window.currentPower && !isMyDisconnecting && window.isPopupActive
+                                    NumberAnimation { to: 0.30; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
+                                    NumberAnimation { to: 0.15; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
+                                }
+                                SequentialAnimation on pulseSc {
+                                    loops: Animation.Infinite
+                                    running: (window.currentConn || showPassword) && window.showInfoView && window.currentPower && !isMyDisconnecting && window.isPopupActive
+                                    NumberAnimation { to: 1.04; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
+                                    NumberAnimation { to: 1.02; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
+                                }
                             }
 
                             Item {
@@ -1349,7 +1382,17 @@ Item {
                                         width: parent.width * 0.4; height: width; radius: width / 2
                                         color: "transparent"
                                         border.color: window.activeColor; border.width: window.s(2)
-                                        opacity: 0.4 - (index * 0.1)
+
+                                        SequentialAnimation on scale {
+                                            running: showScanning && window.isPopupActive; loops: Animation.Infinite
+                                            PauseAnimation { duration: index * Motion.ambientMs / 4 }
+                                            NumberAnimation { from: 1.0; to: 2.5; duration: Motion.ambientMs; easing.type: Motion.ambientEasing }
+                                        }
+                                        SequentialAnimation on opacity {
+                                            running: showScanning && window.isPopupActive; loops: Animation.Infinite
+                                            PauseAnimation { duration: index * Motion.ambientMs / 4 }
+                                            NumberAnimation { from: 0.8; to: 0.0; duration: Motion.ambientMs; easing.type: Motion.ambientEasing }
+                                        }
                                     }
                                 }
                                 Text {
@@ -1358,6 +1401,12 @@ Item {
                                     font.pixelSize: window.s(48) - (window.s(16) * coreContainer.multiShift)
                                     color: window.activeColor
                                     text: window.activeMode === "wifi" ? "󰤨" : (window.activeMode === "eth" ? "󰈀" : "󰂯")
+
+                                    SequentialAnimation on opacity {
+                                        running: showScanning && window.isPopupActive; loops: Animation.Infinite
+                                        NumberAnimation { to: 0.5; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
+                                        NumberAnimation { to: 1.0; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
+                                    }
                                 }
                             }
 
@@ -1700,6 +1749,63 @@ Item {
                             x: targetX
                             y: targetY
 
+                            // Data-flow pulse: traveling glow dot along the
+                            // strand toward its parent/core node. Scene-graph
+                            // Item — the strand Canvas below only repaints on
+                            // data change, no per-frame canvas work at all.
+                            Item {
+                                id: strandPulse
+                                readonly property Item pulseTarget: floatCardDelegateContainer.myParentIdx !== -1
+                                    ? floatCardDelegateContainer.pItem
+                                    : coreRepeater.itemAt(0)
+                                readonly property real targetCx: pulseTarget ? (pulseTarget.x + pulseTarget.width / 2) : 0
+                                readonly property real targetCy: pulseTarget ? (pulseTarget.y + pulseTarget.height / 2) : 0
+                                readonly property real originCx: floatCardDelegateContainer.x + floatCardDelegateContainer.width / 2
+                                readonly property real originCy: floatCardDelegateContainer.y + floatCardDelegateContainer.height / 2
+
+                                property real flowT: 0.0
+                                NumberAnimation on flowT {
+                                    running: strandPulse.pulseTarget !== null
+                                        && nodeLinesCanvas.opacity > 0.01
+                                        && window.isPopupActive
+                                        && floatCardDelegateContainer.visible
+                                    loops: Animation.Infinite
+                                    from: 0; to: 1.0
+                                    duration: Motion.flowMs
+                                    easing.type: Motion.flowEasing
+                                }
+
+                                x: (targetCx - originCx) * flowT
+                                y: (targetCy - originCy) * flowT
+                                width: window.s(10); height: width
+                                opacity: pulseTarget ? pulseTarget.activeTransition * nodeLinesCanvas.opacity : 0.0
+                                visible: opacity > 0.01
+                                parent: orbitContainer
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    property real pulseR: window.s(2)
+                                    SequentialAnimation on pulseR {
+                                        loops: Animation.Infinite
+                                        running: strandPulse.visible && window.isPopupActive && window.currentPower
+                                        NumberAnimation { to: window.s(3.5); duration: Motion.ambientMs / 4; easing.type: Motion.ambientEasing }
+                                        NumberAnimation { to: window.s(2); duration: Motion.ambientMs / 4; easing.type: Motion.ambientEasing }
+                                    }
+                                    radius: width / 2
+                                    width: pulseR; height: pulseR
+                                    color: window.activeColor
+                                    opacity: 0.9
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        anchors.margins: -window.s(4)
+                                        radius: width / 2
+                                        color: window.activeColor
+                                        opacity: 0.25
+                                    }
+                                }
+                            }
+
                             scale: (!isLoaded ? 0.92 : (floatMa.pressed ? dynamicScale * 0.95 : (floatCard.locksList ? dynamicScale * 1.08 : dynamicScale)))
                             Behavior on scale { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
                             z: floatCard.locksList ? 10 : 1
@@ -1846,6 +1952,18 @@ Item {
                                     property real scaleTrigger: window.s(1)
                                     onScaleTriggerChanged: requestPaint()
 
+                                    // Connecting/hold wave: baseline-period (flow)
+                                    // phase loop driving Canvas repaints (no fixed tick).
+                                    property real wavePhase: 0.0
+                                    NumberAnimation on wavePhase {
+                                        running: floatCard.renderFill > 0.0 && floatCard.renderFill < 1.0 && window.isPopupActive
+                                        loops: Animation.Infinite
+                                        from: 0; to: Math.PI * 2
+                                        duration: Motion.flowMs
+                                        easing.type: Motion.flowEasing
+                                    }
+                                    onWavePhaseChanged: requestPaint()
+
                                     Connections { target: floatCard; function onRenderFillChanged() { waveCanvas.requestPaint() } }
 
                                     onPaint: {
@@ -1864,8 +1982,8 @@ Item {
                                         if (floatCard.renderFill < 0.99) {
                                             var waveAmp = s(12) * Math.sin(floatCard.renderFill * Math.PI);
                                             if (currentW - waveAmp < 0) waveAmp = currentW;
-                                            var cp1x = currentW + waveAmp;
-                                            var cp2x = currentW - waveAmp;
+                                            var cp1x = currentW + Math.sin(wavePhase) * waveAmp;
+                                            var cp2x = currentW + Math.cos(wavePhase + Math.PI) * waveAmp;
 
                                             ctx.lineTo(currentW, 0);
                                             ctx.bezierCurveTo(cp2x, height * 0.33, cp1x, height * 0.66, currentW, height);
@@ -2292,7 +2410,7 @@ Item {
                 property real pwrMorph: window.currentPower ? 1.0 : 0.0
                 Behavior on pwrMorph {
                     enabled: window.powerAnimAllowed;
-                    NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
+                    NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing }
                 }
 
                 width: window.s(160) + (window.s(48) - window.s(160)) * pwrMorph
@@ -2340,8 +2458,8 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         radius: parent.radius
-                        opacity: window.currentPower ? 1.0 : 0.0
-                        Behavior on opacity { enabled: window.powerAnimAllowed; NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                    opacity: window.currentPower ? 1.0 : 0.0
+                    Behavior on opacity { enabled: window.powerAnimAllowed; NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing } }
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
                             GradientStop { position: 0.0; color: Qt.lighter(window.activeColor, 1.15) }
@@ -2353,10 +2471,12 @@ Item {
                         id: pwrIcon
                         anchors.centerIn: parent
                         font.family: "Iosevka Nerd Font"
-                        font.pixelSize: window.currentPower ? window.s(22) : window.s(64)
+                        font.pixelSize: window.s(64)
                         color: window.currentPower ? window.crust : window.text
-                        text: window.currentPowerPending ? "󰑮" : ""
-                        Behavior on color { enabled: window.powerAnimAllowed; ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        text: window.currentPowerPending ? "󰑮" : "⏻"
+                        scale: window.currentPower ? (window.s(22) / window.s(64)) : 1.0
+                        Behavior on scale { enabled: window.powerAnimAllowed; NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing } }
+                        Behavior on color { enabled: window.powerAnimAllowed; ColorAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing } }
 
                         RotationAnimation {
                             target: pwrIcon
@@ -2410,8 +2530,6 @@ Item {
                                 if (window.btPowerPending) return;
                                 window.expectedBtPower = window.btPower === "on" ? "off" : "on";
                                 window.btPowerPending = true;
-                                if (window.expectedBtPower === "on") window.playSfx("power_on.wav"); else window.playSfx("power_off.wav");
-                                btPendingReset.restart();
                                 window.btPower = window.expectedBtPower;
                                 powerToggleProcess.command = ["bash", window.scriptsDir + "/bluetooth_panel_logic.sh", "--toggle"];
                                 powerToggleProcess.running = true;

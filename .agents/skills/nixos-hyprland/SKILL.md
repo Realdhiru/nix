@@ -78,9 +78,9 @@ sudo nixos-rebuild dry-run --flake ~/nix#nixos
 ~/.config/hypr/scripts/power.sh inhibit status
 ~/.config/hypr/scripts/power.sh inhibit toggle
 
-# Display DPMS power control (turn off OLED display without sleeping; Super+Shift+Esc or Shift+F6)
-~/.config/hypr/scripts/power.sh display off
-~/.config/hypr/scripts/power.sh display on
+# Display DPMS power control (toggle OLED display without sleeping; Power Button or CLI)
+~/.config/hypr/scripts/power.sh display toggle
+~/.config/hypr/scripts/power.sh display status
 
 # Fuzzel picker testing (app, file, emoji, glyph)
 ~/.config/hypr/scripts/fuzzel_menu.sh emoji

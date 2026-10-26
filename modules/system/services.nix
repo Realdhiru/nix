@@ -163,7 +163,7 @@
 
   services.logind = {
     settings.Login = {
-      HandlePowerKey = "lock";
+      HandlePowerKey = "ignore";
       HandleLidSwitch = "ignore";
     };
   };

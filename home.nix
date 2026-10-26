@@ -7,6 +7,11 @@
     ./modules/home/theme.nix
   ];
 
+  # Declarative Default Wallpaper (Flake store-path)
+  home.sessionVariables.DEFAULT_WALLPAPER = "${./dotfiles/wallpaper/default.jpg}";
+  xdg.configFile."environment.d/wallpaper.conf".text =
+    "DEFAULT_WALLPAPER=${./dotfiles/wallpaper/default.jpg}\n";
+
   # Host-specific declarative monitor override (Samsung 2.8K 120Hz OLED panel)
   xdg.configFile."hypr-local/monitors.lua" = {
     force = true;

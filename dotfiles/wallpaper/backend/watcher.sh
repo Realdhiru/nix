@@ -12,7 +12,8 @@ THUMB="$CACHE_DIR/thumbs"
 COLOR_DIR="$CACHE_DIR/colors_markers"
 FLAT_DIR="$CACHE_DIR/flat"
 GIF_DIR="$HOME/.cache/converted_gifs"
-CURRENT_TXT="$HOME/.cache/current_wallpaper.txt"
+STATE_WALL_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/wallpaper"
+CURRENT_TXT="$STATE_WALL_DIR/current_wallpaper.txt"
 THUMB_SCRIPT="$SCRIPT_DIR/thumbnail.sh"
 
 # Prevent multiple watcher instances
@@ -127,7 +128,7 @@ cleanup_residue() {
     fi
 
     # 6. Clean last and previous wallpaper caches if deleted
-    for f in "$HOME/.cache/last_wallpaper.txt" "$HOME/.cache/previous_wallpaper.txt"; do
+    for f in "$STATE_WALL_DIR/last_wallpaper.txt" "$HOME/.cache/previous_wallpaper.txt"; do
         if [ -f "$f" ]; then
             local p
             p="$(cat "$f" 2>/dev/null || echo "")"

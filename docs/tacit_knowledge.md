@@ -39,9 +39,11 @@
 - **Hyprland-Lua DPMS Dispatcher Syntax:**
   - Raw `hyprctl dispatch dpms off` fails under Hyprland-Lua (`error: ')' expected near 'off'`) because `hyprctl dispatch` in lua shorthand requires Lua table/function argument syntax.
   - The deterministic way to control DPMS from scripts and CLI is `hyprctl eval "hl.dispatch(hl.dsp.dpms({action='off'}))"`.
-- **Overnight Agent Workflows with Coffee Mode:**
+- **Overnight Agent Workflows & Power Button Display Toggle:**
   - When running background AI coding agents overnight, Coffee mode (`SUPER + CTRL + U`) prevents automated 30-minute system sleep (`systemctl suspend`), but also blocks hypridle's 120s automated DPMS screen shutoff.
-  - Use `SUPER + SHIFT + ESCAPE`, `SHIFT + F6`, or `power.sh display off` to turn off the OLED panel ($0\text{W}$) without putting the laptop to sleep. Hyprland restores DPMS immediately on any keyboard or mouse input.
+  - Press the **Power Button** (`XF86PowerOff`) to toggle the display power state cleanly via `power.sh display toggle` ($0\text{W}$ OLED draw).
+  - **Critical Invariant:** `misc.key_press_enables_dpms = true` and `misc.mouse_move_enables_dpms = true` must ALWAYS remain enabled in `misc.lua`. If disabled, manual DPMS off while hypridle is inhibited traps the user in a black screen because Hyprland ignores key/mouse inputs by default and cannot wake the display.
+  - In `services.nix`, `services.logind.settings.Login.HandlePowerKey = "ignore"` ensures logind yields the power key to Hyprland's `XF86PowerOff` dispatcher rather than triggering lockscreen.
 - **Hyprland Lua Monitor Mirroring & Reset Semantics:**
   - `hl.get_monitors()` returns only active, non-mirrored outputs. Outputs configured as mirrors (`mirror = "<src>"`) drop from the active monitor list and return `nil` via `hl.get_monitor(name)`.
   - To un-mirror an output in Lua without disabling/recreating it, pass `mirror = ""` in `hl.monitor({ output = name, mirror = "" })`.
@@ -49,6 +51,10 @@
 - **awww Wallpaper Query Protocol:**
   - `awww query --json` outputs structured JSON (`{ "": [ { "name": ..., "displaying": { "image": ... } } ] }`).
   - Text scraping of `awww query` output is banned; parse with `JSON.parse` in QML or `jq` in shell.
+- **Wallpaper Atomic State & Process Replacement Trap in `cmd_kill`:**
+  - Replacing `exec "$BACKEND/set.sh"` with direct execution in `cmd_kill` toggle-on is mandatory: `exec` replaces the running shell process, truncating trailing status cleanup (`state_ctl set modes.wallpaperKilled false`, `notify-send "ON"`).
+  - State files (`current_wallpaper.txt`, `last_wallpaper.txt`) must always be written via hidden tmp + rename in `$XDG_STATE_HOME/quickshell/wallpaper/` to prevent zero-byte corruption.
+  - The `[ -s "$CURRENT_TXT" ]` guard ensures an empty or zero-byte file is never written to `last_wallpaper.txt`.
 
 ---
 
@@ -85,6 +91,7 @@
 
 ### Verification & Testing Discipline
 - **Exit Code 0 is Not Proof of Completion:** Never declare a task complete merely because a QML file compiled or `quickshell ipc call main reloadTheme` returned exit code 0.
+- **Hyprland Bezier Name Trap (generated motion.lua):** Hyprland only reports undefined bezier references at runtime (error banner), not at reload exit-code level. When editing `lib/motion-gen.nix` token→bezier mappings, always regenerate `motion.lua` and confirm with `hyprctl animations` that every overridden leaf shows `bezier: <mapped-name>` matching a `bezier:` block actually emitted. Bug fix 2026-10-26: `windowsOut`/`layersOut` referenced a nonexistent `"exit"` curve (`exit_curve` is the real one).
 - **Visual Layout & Proportion Audit:** Before marking UI work done, verify content proportions, check that containers fill available space without voids, ensure buttons are symmetrical, and verify anti-bleed layering against high-contrast backgrounds.
 - **The Cold-Start Verification Gate:** Widgets frequently appear fine on repeated opens because geometry is cached in memory. You must test the **FIRST open** immediately following a fresh `forceReload` or compositor restart. Cold-start reveals shape snaps, container resizing jumps, and uninitialized geometry.
 - **Empirical System Measurement:** When modifying power, audio, or hardware configs, verify actual runtime state (e.g., `tlp-stat -p`, sysfs register reads, PipeWire node states), not just that a script completed cleanly.

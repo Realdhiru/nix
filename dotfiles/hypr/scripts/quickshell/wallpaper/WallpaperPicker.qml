@@ -303,8 +303,9 @@ Item {
         awwwQueryProc.running = true;
     }
 
-    readonly property string activeWallpaperFile: Quickshell.env("HOME") + "/.cache/current_wallpaper.txt"
-    readonly property string lastWallpaperFile: Quickshell.env("HOME") + "/.cache/last_wallpaper.txt"
+    readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/quickshell/wallpaper"
+    readonly property string activeWallpaperFile: stateDir + "/current_wallpaper.txt"
+    readonly property string lastWallpaperFile: stateDir + "/last_wallpaper.txt"
     property string activeWallpaperPath: window.reloadActiveWallpaperPath()
     property string activeWallpaperName: {
         let p = window.activeWallpaperPath;
@@ -322,8 +323,26 @@ Item {
         }
         if (p) {
             window.activeWallpaperPath = p;
+        } else {
+            window.activeWallpaperPath = "";
         }
-        return p;
+        return window.activeWallpaperPath;
+    }
+
+    FolderListModel {
+        id: stateDirWatcher
+        folder: "file://" + window.stateDir
+        nameFilters: ["current_wallpaper.txt", "last_wallpaper.txt"]
+        showFiles: true
+        showDirs: false
+        onStatusChanged: {
+            if (status === FolderListModel.Ready) {
+                window.reloadActiveWallpaperPath();
+                let c = window.getCleanName(window.activeWallpaperName);
+                if (c !== "") window.appliedWallCleanName = c;
+                window.refreshActiveWallpapers();
+            }
+        }
     }
 
     FileView {
@@ -343,7 +362,8 @@ Item {
         path: window.lastWallpaperFile
         watchChanges: true
         onFileChanged: {
-            if ((activeWallWatcher.text() || "").trim() === "") {
+            let cur = (activeWallWatcher.text() || "").trim();
+            if (!cur) {
                 window.reloadActiveWallpaperPath();
             }
         }
@@ -916,7 +936,7 @@ Item {
         window.currentFilter = "All";
         let p = window.reloadActiveWallpaperPath();
         let activeWall = window.targetWallName !== "" ? window.targetWallName : window.activeWallpaperName;
-        if (activeWall === "") return;
+        if (activeWall === "" || activeWall === "none") return;
 
         let cleanActive = window.getCleanName(activeWall);
         let foundIdx = -1;
@@ -949,13 +969,13 @@ Item {
         window.processMarkers();
         window.currentFilter = "All";
         let p = window.reloadActiveWallpaperPath();
-        if (p !== "") {
+        if (p !== "" && p !== "none") {
             let parts = p.split("/");
             let fname = parts[parts.length - 1];
-            if (fname !== "") {
+            if (fname !== "" && fname !== "none") {
                 window.targetWallName = fname;
             }
-        } else if (window.activeWallpaperName !== "") {
+        } else if (window.activeWallpaperName !== "" && window.activeWallpaperName !== "none") {
             window.targetWallName = window.activeWallpaperName;
         }
         window.applyFilters(true);

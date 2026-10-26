@@ -217,7 +217,8 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
         CURRENT_SRC=""
         # Authoritative source: state file written by set_wallpaper.sh on every
         # apply. Missing/empty file falls through to the process-query fallback.
-        STATE_FILE="$HOME/.cache/current_wallpaper.txt"
+        STATE_WALL_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/wallpaper"
+        STATE_FILE="$STATE_WALL_DIR/current_wallpaper.txt"
         if [ -s "$STATE_FILE" ]; then
             read -r CURRENT_SRC < "$STATE_FILE" 2>/dev/null || CURRENT_SRC=""
         fi
@@ -230,7 +231,7 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
         fi
         # Fallback to last applied wallpaper if wallpaper is disabled/killed
         if [ -z "$CURRENT_SRC" ]; then
-            LAST_FILE="$HOME/.cache/last_wallpaper.txt"
+            LAST_FILE="$STATE_WALL_DIR/last_wallpaper.txt"
             if [ -s "$LAST_FILE" ]; then
                 read -r CURRENT_SRC < "$LAST_FILE" 2>/dev/null || CURRENT_SRC=""
             fi

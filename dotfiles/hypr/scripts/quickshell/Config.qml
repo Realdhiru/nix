@@ -184,7 +184,12 @@ Item {
 
     property real antiBleedOpacity: config.isSolidMode ? 0.0 : (_theme.isLightMode ? 0.18 : 0.04)
 
-    property real toastOpacity: config.isSolidMode ? 1.0 : Math.max(0.70, config.effectivePopupOpacity)
+    // Minimum alpha floor for text contrast over worst-case white/bright wallpapers.
+    // Derived: with mocha.base (#060306) over #FFFFFF, subtext0 (#D5CECE, L=0.6186)
+    // requires blended luminance <= 0.0986 for WCAG AA (>= 4.5:1), which solves to
+    // alpha >= 0.67. We lock toastFloor to 0.70 (yielding CR >= 5.27:1).
+    readonly property real toastFloor: 0.70
+    property real toastOpacity: config.isSolidMode ? 1.0 : Math.max(config.toastFloor, config.effectivePopupOpacity)
     property bool topbarHelpIcon: true
     property int workspaceCount: 8
     property int initialWorkspaceCount: 8

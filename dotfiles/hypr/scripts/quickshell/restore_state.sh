@@ -191,3 +191,8 @@ fi
 
 # 8. Remove obsolete hyprsunset_state.json if present
 rm -f "$HOME/.cache/hyprsunset_state.json"
+
+# 9. Power Key Inhibit Synchronization (routes power button to Hyprland XF86PowerOff)
+if ! systemctl --user is-active --quiet inhibit-power-key 2>/dev/null && ! systemd-inhibit --list 2>/dev/null | grep -q "handle-power-key"; then
+    systemd-run --user --unit=inhibit-power-key systemd-inhibit --what=handle-power-key --who=hyprland --why="Handle power key in Hyprland" --mode=block sleep infinity >/dev/null 2>&1 || true
+fi

@@ -114,7 +114,8 @@ cmd_lock() {
         export CURRENT_WALLPAPER="$lock_snap"
         export CURRENT_WALLPAPER_THUMB=""
     else
-        local wp="$(head -n 1 "$HOME/.cache/current_wallpaper.txt" 2>/dev/null || true)"
+        local state_wall_dir="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/wallpaper"
+        local wp="$(head -n 1 "$state_wall_dir/current_wallpaper.txt" 2>/dev/null || true)"
         export CURRENT_WALLPAPER="$wp"
         export CURRENT_WALLPAPER_THUMB=""
         if [[ "$wp" =~ \.(mp4|mkv|mov|webm)$ ]]; then
@@ -363,19 +364,35 @@ cmd_profile() {
 # SUBCOMMAND: display (DPMS display power control)
 # -----------------------------------------------------------------------------
 cmd_display() {
-    local action="${1:-off}"
+    local action="${1:-toggle}"
+    local marker="/run/user/${UID:-1000}/display_dpms_off"
+
     case "$action" in
         off)
+            touch "$marker" 2>/dev/null || true
             hyprctl eval "hl.dispatch(hl.dsp.dpms({action='off'}))" >/dev/null 2>&1 || true
             ;;
         on)
+            rm -f "$marker" 2>/dev/null || true
             hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))" >/dev/null 2>&1 || true
+            brightnessctl -d intel_backlight set +0% >/dev/null 2>&1 || true
+            ydotool mousemove -x 1 -y 0 2>/dev/null || true
+            ydotool mousemove -x -1 -y 0 2>/dev/null || true
             ;;
         toggle)
-            hyprctl eval "hl.dispatch(hl.dsp.dpms({action='toggle'}))" >/dev/null 2>&1 || true
+            local status
+            status=$(hyprctl monitors -j 2>/dev/null | jq -r '.[0].dpmsStatus // true')
+            if [ "$status" = "false" ] || [ -f "$marker" ]; then
+                cmd_display on
+            else
+                cmd_display off
+            fi
+            ;;
+        status)
+            hyprctl monitors -j 2>/dev/null | jq -r '.[0].dpmsStatus // true'
             ;;
         *)
-            echo "Usage: power.sh display {off|on|toggle}" >&2
+            echo "Usage: power.sh display {toggle|off|on|status}" >&2
             exit 1
             ;;
     esac

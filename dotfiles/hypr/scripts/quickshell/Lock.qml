@@ -346,7 +346,7 @@ ShellRoot {
 
                 FileView {
                     id: wallFileFallback
-                    path: Quickshell.env("HOME") + "/.cache/current_wallpaper.txt"
+                    path: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/quickshell/wallpaper/current_wallpaper.txt"
                     onTextChanged: {
                         if (screenRoot.currentWallpaperPath === "") {
                             let raw = safeFileText(wallFileFallback);

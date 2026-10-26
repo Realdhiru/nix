@@ -45,7 +45,8 @@ BASENAME=$(basename "$WALL")
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
-mkdir -p "$STATE_DIR/mpvpaper" "$CACHE_DIR"
+WALL_STATE_DIR="$STATE_DIR/quickshell/wallpaper"
+mkdir -p "$STATE_DIR/mpvpaper" "$CACHE_DIR" "$WALL_STATE_DIR"
 
 LOCKFILE="$CACHE_DIR/set_wallpaper.lock"
 exec 8>"$LOCKFILE"
@@ -55,15 +56,28 @@ WAS_KILLED=0
 [ -f "$CACHE_DIR/wallpaper_killed" ] && WAS_KILLED=1
 rm -f "$CACHE_DIR/wallpaper_killed"
 
-# Update persistent cache files
-if [ -s "$CACHE_DIR/current_wallpaper.txt" ]; then
-    prev_wall="$(cat "$CACHE_DIR/current_wallpaper.txt" 2>/dev/null || true)"
+atomic_write() {
+    local target="$1"
+    local content="$2"
+    local dir
+    dir="$(dirname "$target")"
+    local tmp="$dir/.$(basename "$target").tmp.$$"
+    printf '%s\n' "$content" > "$tmp"
+    mv -f "$tmp" "$target"
+}
+
+CURRENT_TXT="$WALL_STATE_DIR/current_wallpaper.txt"
+LAST_TXT="$WALL_STATE_DIR/last_wallpaper.txt"
+
+# Update persistent state files atomically (tmp + mv in same dir)
+if [ -s "$CURRENT_TXT" ]; then
+    prev_wall="$(cat "$CURRENT_TXT" 2>/dev/null || true)"
     if [ -n "$prev_wall" ] && [ "$prev_wall" != "$WALL" ]; then
-        echo "$prev_wall" > "$CACHE_DIR/last_wallpaper.txt"
+        atomic_write "$LAST_TXT" "$prev_wall"
     fi
 fi
-echo "$WALL" > "$CACHE_DIR/current_wallpaper.txt"
-[ ! -s "$CACHE_DIR/last_wallpaper.txt" ] && echo "$WALL" > "$CACHE_DIR/last_wallpaper.txt"
+atomic_write "$CURRENT_TXT" "$WALL"
+[ ! -s "$LAST_TXT" ] && atomic_write "$LAST_TXT" "$WALL"
 
 # 1. Video Wallpapers (Handled via systemd user template unit mpvpaper@<out>)
 if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then

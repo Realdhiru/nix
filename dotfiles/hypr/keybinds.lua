@@ -16,8 +16,7 @@ hl.define_submap("locked", function()
 end)
 
 hl.bind("SHIFT + escape", hl.dsp.exec_cmd(scripts .. "power.sh suspend"))
-hl.bind(mainMod .. " + SHIFT + escape", hl.dsp.exec_cmd(scripts .. "power.sh display off"), { locked = true, description = "turn display off" })
-hl.bind("SHIFT + F6", hl.dsp.exec_cmd(scripts .. "power.sh display off"), { locked = true, description = "turn display off" })
+hl.bind("XF86PowerOff", hl.dsp.exec_cmd(scripts .. "power.sh display toggle"), { locked = true, description = "toggle display power" })
 hl.bind("CTRL + escape", hl.dsp.exec_cmd(scripts .. "rotate_display.sh"))
 hl.bind("SHIFT + F1", hl.dsp.window.fullscreen({ action = "toggle", mode = "fullscreen" })) -- 1 for semi fullscreen
 hl.bind("SHIFT + F2", hl.dsp.exec_cmd(scripts .. "power.sh lock"))

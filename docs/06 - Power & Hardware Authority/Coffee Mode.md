@@ -34,10 +34,8 @@ Coffee mode inhibits both `idle` (preventing automated hypridle screen timeouts 
 
 When running long-running batch jobs or AI coding agents overnight while sleeping:
 - Keep Coffee Mode active (`SUPER + CTRL + U`) so the laptop never suspends.
-- Turn off the OLED display immediately using:
-  - Keybind: `SUPER + SHIFT + ESCAPE` or `SHIFT + F6`
-  - CLI: `~/.config/hypr/scripts/power.sh display off`
-- The system remains fully active in the background, drawing minimal power with the display turned off (0W OLED draw). Moving the trackpad or pressing any key immediately restores the display.
+- Toggle the OLED display immediately using the physical **Power Button** (`XF86PowerOff`) or CLI `~/.config/hypr/scripts/power.sh display toggle`.
+- The system remains fully active in the background, drawing minimal power with the display turned off (0W OLED draw). Pressing the power button again, moving the trackpad, or tapping any key immediately restores the display.
 
 ## Related Nodes
 - [[TLP Exclusive Authority]]

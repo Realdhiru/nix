@@ -24,11 +24,23 @@ CACHE_DIR="$HOME/.cache/quickshell/wallpaper_picker"
 THUMB_DIR="$CACHE_DIR/thumbs"
 COLOR_DIR="$CACHE_DIR/colors_markers"
 FLAT_DIR="$CACHE_DIR/flat"
-GIF_DIR="$HOME/.cache/converted_gifs"
-CURRENT_TXT="$HOME/.cache/current_wallpaper.txt"
-LAST_TXT="$HOME/.cache/last_wallpaper.txt"
+GIF_DIR="$CACHE_DIR/gifs"
+STATE_WALL_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/wallpaper"
+CURRENT_TXT="$STATE_WALL_DIR/current_wallpaper.txt"
+LAST_TXT="$STATE_WALL_DIR/last_wallpaper.txt"
+DEFAULT_WALLPAPER="${DEFAULT_WALLPAPER:-}"
 
-mkdir -p "$CACHE_DIR" "$THUMB_DIR" "$COLOR_DIR" "$FLAT_DIR" "$GIF_DIR"
+mkdir -p "$CACHE_DIR" "$THUMB_DIR" "$COLOR_DIR" "$FLAT_DIR" "$GIF_DIR" "$STATE_WALL_DIR"
+
+atomic_write() {
+    local target="$1"
+    local content="$2"
+    local dir
+    dir="$(dirname "$target")"
+    local tmp="$dir/.$(basename "$target").tmp.$$"
+    printf '%s\n' "$content" > "$tmp"
+    mv -f "$tmp" "$target"
+}
 
 # -----------------------------------------------------------------------------
 # SUBCOMMAND: ensure
@@ -73,7 +85,6 @@ cmd_clean() {
         local cur
         cur="$(cat "$CURRENT_TXT" 2>/dev/null || true)"
         if [ -n "$cur" ] && [ ! -f "$cur" ]; then
-            rm -f "$CURRENT_TXT"
             cmd_boot
         fi
     fi
@@ -104,8 +115,6 @@ cmd_kill() {
         local target=""
         if [ -s "$LAST_TXT" ]; then
             target="$(cat "$LAST_TXT" 2>/dev/null || true)"
-        elif [ -f "$HOME/.cache/last_wallpaper.txt" ]; then
-            target="$(cat "$HOME/.cache/last_wallpaper.txt" 2>/dev/null || true)"
         fi
         if [ -n "$target" ] && [ -f "$target" ]; then
             "$BACKEND/set.sh" "$target" "fade" "0.25" "120"
@@ -136,12 +145,14 @@ cmd_kill() {
     bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
     notify-send -a "Wallpaper" -u low "OFF"
 
-    # 2. Preserve wallpaper target file caches
+    # 2. Preserve wallpaper target file in LAST_TXT
     if [ -s "$CURRENT_TXT" ]; then
-        cp -f "$CURRENT_TXT" "$LAST_TXT" 2>/dev/null || true
+        local prev_cur
+        prev_cur="$(cat "$CURRENT_TXT" 2>/dev/null || true)"
+        if [ -n "$prev_cur" ] && [ -f "$prev_cur" ]; then
+            atomic_write "$LAST_TXT" "$prev_cur"
+        fi
     fi
-    rm -f "$CURRENT_TXT"
-    touch "$CURRENT_TXT"
 
     # 3. Clean daemon teardown (fast check without artificial 100ms sleep)
     "$BACKEND/ensure_awww.sh" --stop 2>/dev/null || true
@@ -181,7 +192,7 @@ cmd_boot() {
     fi
 
     local wall=""
-    if [ -f "$CURRENT_TXT" ]; then
+    if [ -s "$CURRENT_TXT" ]; then
         local cached
         cached="$(cat "$CURRENT_TXT" 2>/dev/null || true)"
         if [ -n "$cached" ] && [ -f "$cached" ] && [[ "$cached" != *"/previews/"* ]]; then
@@ -189,15 +200,23 @@ cmd_boot() {
         fi
     fi
 
-    if [ -z "$wall" ]; then
-        wall="$(find "$WALL_DIR" -not -path '*/.*' -not -path '*/previews/*' -not -path '*/scripts/*' -type f \( \
-            -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o \
-            -iname '*.gif' -o -iname '*.mp4' -o -iname '*.mkv' -o \
-            -iname '*.mov' -o -iname '*.webm' \) -printf '%T@ %p\n' 2>/dev/null \
-            | sort -rn | head -n 1 | cut -d' ' -f2- || true)"
+    if [ -z "$wall" ] && [ -s "$LAST_TXT" ]; then
+        local last
+        last="$(cat "$LAST_TXT" 2>/dev/null || true)"
+        if [ -n "$last" ] && [ -f "$last" ]; then
+            wall="$last"
+        fi
     fi
 
-    [ -n "$wall" ] || exit 0
+    if [ -z "$wall" ]; then
+        if [ -n "$DEFAULT_WALLPAPER" ] && [ -f "$DEFAULT_WALLPAPER" ]; then
+            wall="$DEFAULT_WALLPAPER"
+        else
+            echo "Error: DEFAULT_WALLPAPER is not configured or does not exist: '${DEFAULT_WALLPAPER:-}'" >&2
+            exit 1
+        fi
+    fi
+
     cmd_set "$wall"
 }
 

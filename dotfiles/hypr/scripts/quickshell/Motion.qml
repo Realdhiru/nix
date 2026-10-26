@@ -15,6 +15,15 @@ QtObject {
     readonly property int holdMs: 700
     readonly property int holdEasing: Easing.Linear
 
+    readonly property int ambientMs: 3200
+    readonly property int ambientEasing: Easing.InOutSine
+
+    readonly property int heroMs: 440
+    readonly property int heroEasing: Easing.OutCubic
+
+    readonly property int flowMs: 800
+    readonly property int flowEasing: Easing.Linear
+
     readonly property real marqueeMsPerPx: 30
     readonly property int marqueePauseMs: 2500
 }

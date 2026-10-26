@@ -137,7 +137,7 @@ Built for **100% portability** — clone, edit one file, and deploy on any machi
 | `Super + Shift + M` / `Super + V` | MPRIS Music Player & Equalizer / Clipboard Manager |
 | `Super + Ctrl + V` | Toggle Multi-Output Audio (Broadcast to all external endpoints) |
 | `Super + Ctrl + U` | Toggle Coffee Mode (Idle & sleep inhibition for presentations/streaming) |
-| `Super + Shift + Escape` / `Shift + F6` | Turn Display Off immediately (DPMS off without sleeping; tap key/mouse to wake) |
+| `Power Button` (`XF86PowerOff`) | Toggle Display Power (DPMS off/on without system sleep; any key or mouse wakes) |
 | `Super + Shift + K` | Toggle KDE Connect Daemon & System Tray Indicator |
 | `Super + Shift + Z` | Selective Area Screenshot (`grim` + `slurp`) |
 

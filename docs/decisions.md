@@ -4,9 +4,15 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 
 ---
 
-### 0aaa. Standalone Display DPMS Power Control vs System Sleep State
-- **Decision:** Expose standalone DPMS control (`power.sh display [off|on|toggle]`, `SUPER + SHIFT + ESCAPE`, `SHIFT + F6` with `{ locked = true }`) routing directly to Hyprland's native Lua DPMS dispatcher (`hl.dsp.dpms({action=...})`).
-- **Rationale:** Coffee mode (`SUPER + CTRL + U`) holds a systemd `idle:sleep` inhibitor so background AI agents and long batch compilations do not trigger automated `systemctl suspend` after 30 minutes of inactivity. However, inhibiting `idle` also halts hypridle's automated DPMS timeout (120s), leaving OLED displays glowing at full power ($>15\text{W}$) in bedrooms overnight. Providing independent DPMS control allows turning off OLED panel drive ($0\text{W}$) while keeping the processor, memory, and networking awake. Native Hyprland DPMS wakes instantly on any mouse movement or keyboard event.
+### 0aaaa. Wallpaper State Migration ($XDG_STATE_HOME) & D-Bus Notification Close Invariants
+- **Decision:** Wallpaper state is strictly maintained under `$XDG_STATE_HOME/quickshell/wallpaper/{current,last}_wallpaper.txt` using atomic writes (`tmp + mv -f` in the same directory). Empty or killed wallpaper state stores `"none"`. Boot never falls back to random directory scans; it resolves `$DEFAULT_WALLPAPER` or exits 1 with a descriptive error. Notification teardown distinguishes between D-Bus `CloseNotification` (reason 3 `CloseRequested`), user dismissal (reason 2 `Dismissed`), and timeout expiration (reason 1 `Expired`).
+- **Rationale:** Writing state files to `~/.cache` without atomic renames caused zero-byte corruption when keybinds or processes toggled wallpaper state concurrently. Reading empty files caused `cmd_boot` to invoke `find` and select arbitrary wallpapers. In FreeDesktop Notifications and Quickshell's `NotificationServer`, timeouts must call `expire()` so external clients receive reason 1 instead of reason 2.
+
+---
+
+### 0aaa. Power Button Display Power Toggle & DPMS Wakeup Invariants
+- **Decision:** Bind physical power button (`XF86PowerOff`) directly to `power.sh display toggle` with `{ locked = true }`. Set `services.logind.settings.Login.HandlePowerKey = "ignore"` (and run user inhibitor `inhibit-power-key`). Enable `key_press_enables_dpms = true` and `mouse_move_enables_dpms = true` in [`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua).
+- **Rationale:** Coffee mode (`SUPER + CTRL + U`) holds a systemd `idle:sleep` inhibitor so background AI agents and long batch compilations do not trigger automated `systemctl suspend` after 30 minutes of inactivity. However, inhibiting `idle` halts hypridle's automated DPMS timeout (120s). Previously, turning DPMS off manually when `key_press_enables_dpms` was `false` left the user permanently trapped with a black screen because hypridle could not trigger `on-resume` and Hyprland ignored key/mouse events. Binding the power button (`XF86PowerOff`) provides an intuitive hardware screen toggle, while `key_press_enables_dpms` and `mouse_move_enables_dpms` ensure any keyboard or trackpad interaction immediately restores the OLED panel ($0\text{W} \leftrightarrow 100\%$).
 
 ---
 

@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Notifications
 
 Item {
@@ -18,13 +19,26 @@ Item {
     readonly property bool tickerVisible: tickerNotif !== null
     property bool tickerIsSticky: false
 
+    readonly property int defaultCallTimeout: 20000
+    readonly property int callTimeoutBound: Config.getSetting("notifCallTimeout", defaultCallTimeout)
+
+    IpcHandler {
+        target: "notif"
+        function invoke(actionId: string) {
+            root.invokeAction(actionId);
+        }
+        function dismiss() {
+            if (root.tickerNotif) root.dismiss(root.tickerNotif.uid);
+        }
+    }
+
     function _notifKey(appName, summary) { return appName + "\u0000" + summary; }
 
     Timer {
         id: tickerTimeoutTimer
         onTriggered: {
             if (root.tickerNotif) {
-                root.dismiss(root.tickerNotif.uid);
+                root.expire(root.tickerNotif.uid);
             }
         }
     }
@@ -36,6 +50,22 @@ Item {
         if (timeoutMs > 0) {
             tickerTimeoutTimer.interval = timeoutMs;
             tickerTimeoutTimer.start();
+        }
+    }
+
+    function expire(uid) {
+        if (root.tickerNotif && root.tickerNotif.uid === uid) {
+            root.tickerNotif = null;
+            tickerTimeoutTimer.stop();
+            root.tickerIsSticky = false;
+        }
+        let liveN = root.liveNotifs[uid];
+        if (liveN) {
+            try {
+                liveN.expire();
+            } catch (e) {
+                console.warn("[NOTIF] Failed to expire notification:", e);
+            }
         }
     }
 
@@ -188,9 +218,9 @@ Item {
                 let exp = (n.expireTimeout !== undefined && !isNaN(n.expireTimeout)) ? n.expireTimeout : -1;
 
                 if (isCall) {
-                    // Incoming phone call: stays on ticker while ringing (with a 20s safety bound),
+                    // Incoming phone call: stays on ticker while ringing (with safety bound from Config),
                     // but automatically disappears the exact millisecond the call is picked or hung up.
-                    timeoutMs = 20000;
+                    timeoutMs = root.callTimeoutBound;
                 } else if (isTransientSignal) {
                     // Ephemeral hardware or dev alerts: show for 2 seconds only on ticker, never saved to history
                     timeoutMs = 2000;

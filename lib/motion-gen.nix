@@ -39,6 +39,15 @@ QtObject {
     readonly property int holdMs: ${fmt tokens.hold.ms}
     readonly property int holdEasing: Easing.${tokens.hold.easing}
 
+    readonly property int ambientMs: ${fmt tokens.ambient.ms}
+    readonly property int ambientEasing: Easing.${tokens.ambient.easing}
+
+    readonly property int heroMs: ${fmt tokens.hero.ms}
+    readonly property int heroEasing: Easing.${tokens.hero.easing}
+
+    readonly property int flowMs: ${fmt tokens.flow.ms}
+    readonly property int flowEasing: Easing.${tokens.flow.easing}
+
     readonly property real marqueeMsPerPx: ${fmt tokens.msPerPx}
     readonly property int marqueePauseMs: ${fmt tokens.pauseMs}
 }
@@ -61,9 +70,9 @@ ${luaCurve "fade" tokens.fade.bezier}
 ${luaAnimation "windows" true tokens.move.ms "move" null}
 ${luaAnimation "windowsMove" true tokens.move.ms "move" null}
 ${luaAnimation "windowsIn" true tokens.enter.ms "enter" "popin 80%"}
-${luaAnimation "windowsOut" true tokens.exit.ms "exit" "popin 80%"}
+${luaAnimation "windowsOut" true tokens.exit.ms "exit_curve" "popin 80%"}
 ${luaAnimation "layersIn" true tokens.enter.ms "enter" null}
-${luaAnimation "layersOut" true tokens.exit.ms "exit" null}
+${luaAnimation "layersOut" true tokens.exit.ms "exit_curve" null}
 ${luaAnimation "fade" true tokens.fade.ms "fade" null}
 ${luaAnimation "fadeLayersIn" true tokens.fade.ms "fade" null}
 ${luaAnimation "fadeLayersOut" true tokens.fade.ms "fade" null}
