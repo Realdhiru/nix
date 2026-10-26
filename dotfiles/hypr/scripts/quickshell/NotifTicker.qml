@@ -54,30 +54,46 @@ Item {
     }
 
     function expire(uid) {
+        if (!uid) return;
         if (root.tickerNotif && root.tickerNotif.uid === uid) {
             root.tickerNotif = null;
             tickerTimeoutTimer.stop();
             root.tickerIsSticky = false;
         }
         let liveN = root.liveNotifs[uid];
-        if (liveN) {
-            try {
-                liveN.expire();
-            } catch (e) {
-                console.warn("[NOTIF] Failed to expire notification:", e);
+        if (liveN && typeof liveN.expire === "function") {
+            liveN.expire();
+        } else if (globalNotificationServer && globalNotificationServer.trackedNotifications) {
+            let list = globalNotificationServer.trackedNotifications.values || [];
+            for (let i = 0; i < list.length; i++) {
+                let notif = list[i];
+                if (notif && (notif.id === uid || notif.uid === uid) && typeof notif.expire === "function") {
+                    notif.expire();
+                    break;
+                }
             }
         }
     }
 
     function dismiss(uid) {
+        if (!uid) return;
         if (root.tickerNotif && root.tickerNotif.uid === uid) {
             root.tickerNotif = null;
             tickerTimeoutTimer.stop();
             root.tickerIsSticky = false;
         }
         let liveN = root.liveNotifs[uid];
-        if (liveN) {
-            try { liveN.dismiss(); } catch(e) {}
+        if (liveN && typeof liveN.dismiss === "function") {
+            liveN.dismiss();
+        } else if (globalNotificationServer && globalNotificationServer.trackedNotifications) {
+            let list = globalNotificationServer.trackedNotifications.values || [];
+            for (let i = 0; i < list.length; i++) {
+                let notif = list[i];
+                if (notif && (notif.id === uid || notif.uid === uid) && typeof notif.dismiss === "function") {
+                    notif.dismiss();
+                    break;
+                }
+            }
         }
     }
 

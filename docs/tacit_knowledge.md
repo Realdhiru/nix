@@ -55,6 +55,8 @@
   - Replacing `exec "$BACKEND/set.sh"` with direct execution in `cmd_kill` toggle-on is mandatory: `exec` replaces the running shell process, truncating trailing status cleanup (`state_ctl set modes.wallpaperKilled false`, `notify-send "ON"`).
   - State files (`current_wallpaper.txt`, `last_wallpaper.txt`) must always be written via hidden tmp + rename in `$XDG_STATE_HOME/quickshell/wallpaper/` to prevent zero-byte corruption.
   - The `[ -s "$CURRENT_TXT" ]` guard ensures an empty or zero-byte file is never written to `last_wallpaper.txt`.
+- **FileView Inode Drop on Atomic Rename:**
+  - Inotify watches on file paths (`FileView { watchChanges: true }`) track the filesystem inode. An atomic `mv -f tmp target` creates a new inode, leaving `FileView` watching the dead unlinked inode. Watching the parent directory via `FolderListModel` detects the directory change (`IN_MOVED_TO`), allowing instantaneous `reload()` without polling.
 
 ---
 

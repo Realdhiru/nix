@@ -17,10 +17,12 @@
 - **Wallpaper Subsystem State Migration ([`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), [`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh), [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**:
   - Migrated `current_wallpaper.txt` and `last_wallpaper.txt` from legacy `~/.cache` to `$XDG_STATE_HOME/quickshell/wallpaper/`.
   - Implemented atomic state updates using local hidden tempfiles (`tmp + mv -f` in same directory) across `set.sh` and `wallpaper.sh`.
-  - Guarded state readers and writers with `[ -s "$CURRENT_TXT" ]`: empty/killed state stores `"none"`, preserving the previous valid path in `last_wallpaper.txt` without zero-byte overwrites.
-  - Removed random wallpaper selection (`find ... | sort -rn | head -n 1`) from `cmd_boot`; missing or empty state deterministically falls back to `$DEFAULT_WALLPAPER` token or exits with a clear error.
-  - Maintained atomic backward compatibility symlinks at `~/.cache/{current,last}_wallpaper.txt` to support external untouched utilities.
-  - Updated `WallpaperPicker.qml` to read from `$XDG_STATE_HOME/quickshell/wallpaper/`, ignoring `"none"` so that killed wallpaper state does not focus arbitrary files on startup.
+  - Purged sentinel `"none"` strings and legacy `~/.cache` symlinks; killed state is tracked exclusively by `modes.wallpaperKilled` in Quickshell while state files always store valid wallpaper paths.
+  - Implemented dynamic fallback resolution for `$DEFAULT_WALLPAPER` via `systemd --user show-environment` and `~/.config/environment.d/10-home-manager.conf` without requiring session re-login.
+  - Added `FolderListModel` directory watcher to [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml) to detect atomic renames without losing inotify tracking.
+- **Dynamic Island Notification Toast ([`NotifToast.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifToast.qml))**:
+  - Centered floating overlay across entire monitor via `anchors { top: true; left: true; right: true }` and `horizontalCenter: parent.horizontalCenter` with Region mask restricted to active pill.
+  - Added native OSD slider mirroring TopBar (Volume / Brightness / Microphone) and content-fitting width/height for long body text and action chips.
 - **Notification Lifecycle & Call Invariants ([`NotifTicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/NotifTicker.qml))**:
   - Clarified and aligned notification teardown with Quickshell API and FreeDesktop spec: daemon/caller dismissal uses D-Bus `CloseNotification` (reason 3), user click triggers `dismiss()` (reason 2), and timer timeout triggers `expire()` (reason 1).
   - Wired `tickerTimeoutTimer.onTriggered` to invoke `root.expire(uid)` instead of `dismiss()`.

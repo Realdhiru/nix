@@ -936,7 +936,7 @@ Item {
         window.currentFilter = "All";
         let p = window.reloadActiveWallpaperPath();
         let activeWall = window.targetWallName !== "" ? window.targetWallName : window.activeWallpaperName;
-        if (activeWall === "" || activeWall === "none") return;
+        if (activeWall === "") return;
 
         let cleanActive = window.getCleanName(activeWall);
         let foundIdx = -1;
@@ -969,13 +969,13 @@ Item {
         window.processMarkers();
         window.currentFilter = "All";
         let p = window.reloadActiveWallpaperPath();
-        if (p !== "" && p !== "none") {
+        if (p !== "") {
             let parts = p.split("/");
             let fname = parts[parts.length - 1];
-            if (fname !== "" && fname !== "none") {
+            if (fname !== "") {
                 window.targetWallName = fname;
             }
-        } else if (window.activeWallpaperName !== "" && window.activeWallpaperName !== "none") {
+        } else if (window.activeWallpaperName !== "") {
             window.targetWallName = window.activeWallpaperName;
         }
         window.applyFilters(true);

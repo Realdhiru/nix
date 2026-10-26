@@ -209,7 +209,7 @@ cmd_boot() {
     fi
 
     if [ -z "$wall" ]; then
-        if [ -n "$DEFAULT_WALLPAPER" ] && [ -f "$DEFAULT_WALLPAPER" ]; then
+        if [ -n "${DEFAULT_WALLPAPER:-}" ] && [ -f "$DEFAULT_WALLPAPER" ]; then
             wall="$DEFAULT_WALLPAPER"
         else
             echo "Error: DEFAULT_WALLPAPER is not configured or does not exist: '${DEFAULT_WALLPAPER:-}'" >&2

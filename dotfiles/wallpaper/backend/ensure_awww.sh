@@ -105,7 +105,7 @@ daemon_socket_exists() {
 # cache depth: state files (e.g. `eDP-1`) and everything else are untouched.
 #
 # EXCEPTION: the cache of the currently selected wallpaper (read from
-# ~/.cache/current_wallpaper.txt) is preserved. Its animation frames are
+# $XDG_STATE_HOME/quickshell/wallpaper/current_wallpaper.txt) is preserved. Its animation frames are
 # named after the sanitized wallpaper path (`/` -> `_`), so on the next
 # daemon start (e.g. login) the wallpaper can be pushed without re-decoding
 # every frame of a large gif. Without this, every login paid a multi-second

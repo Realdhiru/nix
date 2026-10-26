@@ -39,14 +39,18 @@ Variants {
 
             anchors {
                 top: true
+                left: true
+                right: true
             }
 
             margins {
                 top: toastWindow.s(Config.barEdgeMargin || 8)
             }
 
-            exclusiveZone: 0
+            exclusiveZone: -1
             exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.exclusiveZone: -1
+            WlrLayershell.exclusionMode: ExclusionMode.Ignore
             color: "transparent"
             WlrLayershell.namespace: "qs-notif-toast"
             WlrLayershell.layer: WlrLayer.Overlay
@@ -78,18 +82,20 @@ Variants {
                 catch (e) { return []; }
             }
 
-            // Fixed layer surface bounds; Region mask restricts input to the active card
-            implicitWidth: toastWindow.s(600)
-            implicitHeight: toastWindow.s(60)
+            readonly property bool isOsd: n && n.appName === "System" && (n.summary === "Volume" || n.summary === "Brightness" || n.summary === "Microphone")
+
+            implicitHeight: toastCard.height + toastWindow.s(20)
 
             mask: Region { item: toastCard }
 
             Rectangle {
                 id: toastCard
-                x: Math.round((parent.width - width) / 2)
+                anchors.horizontalCenter: parent.horizontalCenter
                 y: 0
                 height: toastWindow.s(40)
-                width: Math.max(toastWindow.s(180), contentRow.implicitWidth + toastWindow.s(28))
+                width: toastWindow.isOsd
+                    ? toastWindow.s(320)
+                    : Math.min(toastWindow.s(820), Math.max(toastWindow.s(180), contentRow.implicitWidth + toastWindow.s(32)))
                 radius: toastWindow.s(14)
                 color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.toastOpacity)
                 border.width: Config.borderWidth
@@ -165,10 +171,91 @@ Variants {
                     }
                 }
 
+                // OSD slider row (Volume / Brightness / Microphone - identical to TopBar.qml:1010-1090)
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: toastWindow.s(16)
+                    visible: toastWindow.isOsd
+
+                    Text {
+                        Layout.alignment: Qt.AlignVCenter
+                        font.family: "Iosevka Nerd Font"
+                        font.pixelSize: toastWindow.s(18)
+                        color: mocha.text
+                        text: {
+                            if (!toastWindow.n) return "";
+                            if (toastWindow.n.summary === "Volume") {
+                                if (toastWindow.n.body.indexOf("Muted") !== -1 || toastWindow.n.body === "Muted") return "󰝟";
+                                return "󰕾";
+                            }
+                            if (toastWindow.n.summary === "Brightness") return "󰃠";
+                            if (toastWindow.n.summary === "Microphone") {
+                                if (toastWindow.n.body.indexOf("Muted") !== -1 || toastWindow.n.body === "Muted") return "󰍭";
+                                return "󰍬";
+                            }
+                            return "";
+                        }
+                    }
+
+                    Item {
+                        id: osdSliderContainer
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.preferredWidth: toastWindow.s(180)
+                        Layout.preferredHeight: toastWindow.s(14)
+
+                        property bool isMuted: toastWindow.n && (toastWindow.n.body.indexOf("Muted") !== -1 || toastWindow.n.body === "Muted")
+                        property real pct: {
+                            if (!toastWindow.n) return 0;
+                            let v = parseInt(toastWindow.n.body);
+                            return isNaN(v) ? 0 : Math.max(0, Math.min(100, v)) / 100.0;
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: height / 2
+                            color: mocha.surface1
+                        }
+
+                        Item {
+                            anchors.fill: parent
+                            property real fillW: osdSliderContainer.pct > 0 ? Math.max(parent.height, osdSliderContainer.pct * parent.width) : 0
+                            Behavior on fillW { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+
+                            Rectangle {
+                                width: parent.fillW
+                                height: parent.height
+                                radius: height / 2
+                                color: osdSliderContainer.isMuted ? mocha.subtext1 : mocha.blue
+                            }
+
+                            Rectangle {
+                                width: parent.height + toastWindow.s(4)
+                                height: parent.height + toastWindow.s(4)
+                                radius: width / 2
+                                color: osdSliderContainer.isMuted ? mocha.subtext1 : mocha.blue
+                                border.color: mocha.surface2
+                                border.width: toastWindow.s(1)
+                                x: Math.max(0, Math.min(osdSliderContainer.width - width, parent.fillW - width / 2))
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                    }
+
+                    Text {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: toastWindow.n ? toastWindow.n.body : ""
+                        font.family: "JetBrains Mono"
+                        font.weight: Font.Bold
+                        font.pixelSize: toastWindow.s(13)
+                        color: mocha.text
+                    }
+                }
+
                 RowLayout {
                     id: contentRow
                     anchors.centerIn: parent
                     spacing: toastWindow.s(10)
+                    visible: !toastWindow.isOsd
 
                     Image {
                         Layout.alignment: Qt.AlignVCenter
@@ -212,6 +299,8 @@ Variants {
                         font.weight: Font.Medium
                         font.pixelSize: toastWindow.s(13)
                         color: mocha.subtext0
+                        Layout.maximumWidth: toastWindow.s(360)
+                        elide: Text.ElideRight
                     }
 
                     // Native action chips (Directly from TopBar.qml:948-982)
