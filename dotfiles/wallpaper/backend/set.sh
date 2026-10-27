@@ -8,8 +8,8 @@ set -uo pipefail
 
 TARGET_OUTPUTS=""
 WALL=""
-TRANS_TYPE="${AWWW_TRANSITION:-none}"
-TRANS_DURATION="${AWWW_TRANSITION_DURATION:-0.0}"
+TRANS_TYPE="${AWWW_TRANSITION:-fade}"
+TRANS_DURATION="${AWWW_TRANSITION_DURATION:-0.3}"
 TRANS_FPS="${AWWW_TRANSITION_FPS:-120}"
 TRANS_BEZIER="${AWWW_TRANSITION_BEZIER:-.1,.9,.2,1}"
 
@@ -43,12 +43,13 @@ EXT="${WALL##*.}"
 EXT="${EXT,,}"
 BASENAME=$(basename "$WALL")
 
-DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-$STATE_DIR/desktop}"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 WALL_STATE_DIR="$DESKTOP_STATE_DIR/wallpaper"
 MODES_STATE_DIR="$DESKTOP_STATE_DIR/modes"
 POWER_STATE_DIR="$DESKTOP_STATE_DIR/power"
-mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/mpvpaper" "$CACHE_DIR" "$WALL_STATE_DIR" "$MODES_STATE_DIR" "$POWER_STATE_DIR"
+mkdir -p "$STATE_DIR/mpvpaper" "$CACHE_DIR" "$WALL_STATE_DIR" "$MODES_STATE_DIR" "$POWER_STATE_DIR"
 
 LOCKFILE="$CACHE_DIR/set_wallpaper.lock"
 exec 8>"$LOCKFILE"
@@ -128,8 +129,7 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
         echo "WALLPAPER_VIDEO=\"$WALL_TARGET\"" > "$TMP_ENV"
         mv -f "$TMP_ENV" "$ENV_FILE"
 
-        # Clear awww layer on this output and restart systemd-managed mpvpaper
-        command -v awww >/dev/null 2>&1 && awww clear -o "$out" >/dev/null 2>&1 || true
+        # Start/restart systemd-managed mpvpaper first
         systemctl --user restart "mpvpaper@$out" 2>/dev/null || true
 
         # Robust fallback: if systemd unit is not active, launch mpvpaper directly
@@ -140,23 +140,15 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
                 disown $! 2>/dev/null || true
             fi
         fi
+
+        # Clear awww layer on this output ONLY after new surface (mpvpaper) maps
+        (
+            sleep 0.2
+            command -v awww >/dev/null 2>&1 && awww clear -o "$out" >/dev/null 2>&1 || true
+        ) &
     done
 else
     # 2. Static Images (Handled natively via awww)
-    # Stop mpvpaper on targeted outputs before pushing image to awww
-    if [ -n "$TARGET_OUTPUTS" ] && [ "$TARGET_OUTPUTS" != "all" ]; then
-        for out in "${RESOLVED_OUTPUTS[@]}"; do
-            [ -n "$out" ] || continue
-            systemctl --user stop "mpvpaper@$out" 2>/dev/null || true
-            pkill -f "mpvpaper.*$out" 2>/dev/null || true
-            rm -f "$STATE_DIR/mpvpaper/${out}.env"
-        done
-    else
-        systemctl --user stop "mpvpaper@*" 2>/dev/null || true
-        pkill -f "mpvpaper" 2>/dev/null || true
-        rm -rf "$STATE_DIR/mpvpaper"
-    fi
-
     # Ensure awww daemon is active
     if (command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet awww-daemon) || [ -n "$(pidof .awww-daemon-wrapped 2>/dev/null || true)" ]; then
         : # Running under systemd or active process
@@ -180,7 +172,22 @@ else
             AWWW_ARGS+=(--outputs "$TARGET_OUTPUTS")
         fi
 
+        # Map new image surface before stopping old mpvpaper surface
         awww img "${AWWW_ARGS[@]}" "$WALL" > /dev/null 2>&1
+    fi
+
+    # Now that awww surface has mapped, stop mpvpaper on targeted outputs
+    if [ -n "$TARGET_OUTPUTS" ] && [ "$TARGET_OUTPUTS" != "all" ]; then
+        for out in "${RESOLVED_OUTPUTS[@]}"; do
+            [ -n "$out" ] || continue
+            systemctl --user stop "mpvpaper@$out" 2>/dev/null || true
+            pkill -f "mpvpaper.*$out" 2>/dev/null || true
+            rm -f "$STATE_DIR/mpvpaper/${out}.env"
+        done
+    else
+        systemctl --user stop "mpvpaper@*" 2>/dev/null || true
+        pkill -f "mpvpaper" 2>/dev/null || true
+        rm -rf "$STATE_DIR/mpvpaper"
     fi
 fi
 
@@ -196,7 +203,6 @@ if [ "$WAS_KILLED" -eq 1 ]; then
         CURRENT_PROFILE="$(cat "$POWER_STATE_DIR/profile" 2>/dev/null || echo "")"
         if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$MODES_STATE_DIR/gaming_mode" ]; then
             hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
-            hyprctl reload >/dev/null 2>&1 || true
         fi
         bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
     fi

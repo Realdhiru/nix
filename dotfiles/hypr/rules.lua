@@ -18,17 +18,16 @@ local function check_state_json()
     local content = f:read("*a")
     f:close()
     if not content then return false end
-    if content:match('"gaming"%s*:%s*true') or content:match('"wallpaperKilled"%s*:%s*true') or content:match('"profile"%s*:%s*"power%-saver"') then
+    if content:match('"gaming"%s*:%s*true') or content:match('"profile"%s*:%s*"power%-saver"') then
         return true
     end
     return false
 end
 
-local killed_ok, _ = check_file(desktop_state .. "/modes/wallpaper_killed")
 local game_ok, _ = check_file(desktop_state .. "/modes/gaming_mode")
 local prof_ok, prof_val = check_file(desktop_state .. "/power/profile")
 
-if check_state_json() or killed_ok or game_ok or (prof_ok and prof_val and prof_val:match("power%-saver")) then
+if check_state_json() or game_ok or (prof_ok and prof_val and prof_val:match("power%-saver")) then
     is_opaque = true
 end
 
