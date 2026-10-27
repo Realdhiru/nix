@@ -134,11 +134,11 @@ PanelWindow {
 
         Behavior on x {
             enabled: !topBarHole.isVertical && masterWindow.currentActive !== "hidden"
-            NumberAnimation { duration: masterWindow.isWindowActive ? Motion.enterMs : Motion.exitMs; easing.type: masterWindow.isWindowActive ? Motion.enterEasing : Motion.exitEasing }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
         Behavior on width {
             enabled: !topBarHole.isVertical && masterWindow.currentActive !== "hidden"
-            NumberAnimation { duration: masterWindow.isWindowActive ? Motion.enterMs : Motion.exitMs; easing.type: masterWindow.isWindowActive ? Motion.enterEasing : Motion.exitEasing }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
     }
 
@@ -239,6 +239,9 @@ PanelWindow {
     property int switchGeneration: 0
     property int _pendingGen: 0
 
+    property int morphDuration: 110
+    property int morphDurationShift: 110
+    property int exitDuration: 90
     property real animW: 1
     property real animH: 1
     property real animX: 0
@@ -413,19 +416,19 @@ PanelWindow {
 
         Behavior on x {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.isWindowActive ? Motion.enterMs : Motion.exitMs; easing.type: masterWindow.isWindowActive ? Motion.enterEasing : Motion.exitEasing }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
         Behavior on y {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.isWindowActive ? Motion.enterMs : Motion.exitMs; easing.type: masterWindow.isWindowActive ? Motion.enterEasing : Motion.exitEasing }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
         Behavior on width {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.isWindowActive ? Motion.enterMs : Motion.exitMs; easing.type: masterWindow.isWindowActive ? Motion.enterEasing : Motion.exitEasing }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: Easing.OutCubic }
         }
         Behavior on height {
             enabled: !masterWindow.disableMorph
-            NumberAnimation { duration: masterWindow.isWindowActive ? Motion.enterMs : Motion.exitMs; easing.type: masterWindow.isWindowActive ? Motion.enterEasing : Motion.exitEasing }
+            NumberAnimation { duration: masterWindow.morphDuration; easing.type: masterWindow.isWindowActive ? Easing.OutCubic : Easing.InCubic }
         }
 
         scale: masterWindow.isWindowActive ? 1.0 : 0.96
@@ -434,16 +437,16 @@ PanelWindow {
         Behavior on scale {
             enabled: !masterWindow.disableMorph
             NumberAnimation {
-                duration: masterWindow.isWindowActive ? Motion.enterMs : Motion.exitMs
-                easing.type: masterWindow.isWindowActive ? Motion.enterEasing : Motion.exitEasing
+                duration: 100
+                easing.type: masterWindow.isWindowActive ? Easing.OutCubic : Easing.InCubic
             }
         }
 
         opacity: masterWindow.isWindowActive ? 1.0 : 0.0
         Behavior on opacity {
             NumberAnimation {
-                duration: masterWindow.isWindowActive ? Motion.enterMs : Motion.exitMs
-                easing.type: masterWindow.isWindowActive ? Motion.enterEasing : Motion.exitEasing
+                duration: 100
+                easing.type: masterWindow.isWindowActive ? Easing.OutCubic : Easing.InCubic
             }
         }
 
@@ -471,14 +474,14 @@ PanelWindow {
                         NumberAnimation {
                             property: "opacity"
                             from: 0.0; to: 1.0
-                            duration: Motion.enterMs
-                            easing.type: Motion.enterEasing
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.OutQuint
                         }
                         NumberAnimation {
                             property: "scale"
                             from: 0.98; to: 1.0
-                            duration: Motion.enterMs
-                            easing.type: Motion.enterEasing
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.OutCubic
                         }
                     }
                 }
@@ -488,14 +491,14 @@ PanelWindow {
                         NumberAnimation {
                             property: "opacity"
                             from: 1.0; to: 0.0
-                            duration: Motion.exitMs
-                            easing.type: Motion.exitEasing
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.InQuint
                         }
                         NumberAnimation {
                             property: "scale"
                             from: 1.0; to: 0.98
-                            duration: Motion.enterMs
-                            easing.type: Motion.enterEasing
+                            duration: masterWindow.morphDurationShift
+                            easing.type: Easing.OutCubic
                         }
                     }
                 }
@@ -536,6 +539,7 @@ PanelWindow {
 
         if (newWidget === "hidden") {
             if (currentActive !== "hidden") {
+                masterWindow.morphDuration = 130;
                 masterWindow.disableMorph = false;
                 masterWindow.isWindowActive = false;
 
@@ -546,6 +550,7 @@ PanelWindow {
             delayedClear.stop();
             if (currentActive === "hidden" || !masterWindow.isWindowActive) {
                 morphReenableTimer.stop();
+                masterWindow.morphDuration = 140;
                 masterWindow.disableMorph = true;
 
                 let t = getLayout(newWidget);
@@ -586,6 +591,7 @@ PanelWindow {
             } else {
                 morphReenableTimer.stop();
                 let isFull = (newWidget === "wallpaper");
+                masterWindow.morphDuration = masterWindow.morphDurationShift;
                 masterWindow.disableMorph = isFull;
                 executeSwitch(newWidget, arg, isFull, gen);
             }

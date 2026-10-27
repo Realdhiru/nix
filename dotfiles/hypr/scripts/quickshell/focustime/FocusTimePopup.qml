@@ -91,7 +91,7 @@ Item {
     // Animation properties
     property real animatedTotalSeconds: 0
     Behavior on animatedTotalSeconds {
-        NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
+        NumberAnimation { duration: 850; easing.type: Easing.OutQuint }
     }
     onTotalSecondsChanged: {
         animatedTotalSeconds = totalSeconds;
@@ -100,18 +100,71 @@ Item {
     // --- ENHANCED UI NAVIGATION FOCUS STATES ---
     property real weekViewFocus: window.isWeekView ? 1.0 : 0.0
     Behavior on weekViewFocus {
-        NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
+        NumberAnimation { duration: 550; easing.type: Easing.OutExpo }
     }
 
     property real appViewFocus: window.selectedAppClass !== "" ? 1.0 : 0.0
     Behavior on appViewFocus {
-        NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
+        NumberAnimation { duration: 550; easing.type: Easing.OutExpo }
     }
 
+    property bool isFirstLoad: true
     readonly property bool isTodaySelected: window.selectedDateStr === getIsoDate(new Date())
 
     readonly property string scriptsDir: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/focustime"
     readonly property string stateFilePath: Caching.getRunDir("focustime") + "/focustime_state.json"
+
+    // --- INSTANTaneous INITIALIZATION FOR SMOOTH OPENING ---
+    property real introMain: 1.0
+    property real introHeader: 1.0
+    property real introStats: 1.0
+    property real introMidLeft: 1.0
+    property real introMidRight: 1.0
+    property real introBottom: 1.0
+    property real introAppBars: 1.0
+
+    // Staggered intro animation disabled to eliminate opening jitter and pop-in lag.
+    ParallelAnimation {
+        running: false
+
+        // Base window fades, scales slightly
+        NumberAnimation { target: window; property: "introMain"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutQuart }
+
+        // Header drops down
+        SequentialAnimation {
+            PauseAnimation { duration: 100 }
+            NumberAnimation { target: window; property: "introHeader"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutBack; easing.overshoot: 1.0 }
+        }
+
+        // Stats Row scales and springs up
+        SequentialAnimation {
+            PauseAnimation { duration: 250 }
+            NumberAnimation { target: window; property: "introStats"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+        }
+
+        // Mid Charts slide in from opposite sides
+        SequentialAnimation {
+            PauseAnimation { duration: 350 }
+            NumberAnimation { target: window; property: "introMidLeft"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuart }
+        }
+        
+        // Universal Bar Fill starts early, runs slow and smooth
+        SequentialAnimation {
+            PauseAnimation { duration: 300 } // Starts slightly before the charts finish entering
+            NumberAnimation { target: window; property: "introAppBars"; from: 0; to: 1.0; duration: 1300; easing.type: Easing.OutQuart }
+        }
+        
+        SequentialAnimation {
+            PauseAnimation { duration: 450 }
+            NumberAnimation { target: window; property: "introMidRight"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuart }
+        }
+
+        // Bottom List / Chart sweeps up with internal cascading
+        SequentialAnimation {
+            PauseAnimation { duration: 550 }
+            NumberAnimation { target: window; property: "introBottom"; from: 0; to: 1.0; duration: 1000; easing.type: Easing.OutExpo }
+        }
+    }
 
     Component.onCompleted: {
         requestDataUpdate();
@@ -123,6 +176,23 @@ Item {
         }
     }
 
+    // Clean, unified exit animation for when an action is clicked
+    ParallelAnimation {
+        id: exitAnim
+        NumberAnimation { target: window; property: "introMain"; to: 0; duration: 400; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introHeader"; to: 0; duration: 300; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introStats"; to: 0; duration: 350; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introMidLeft"; to: 0; duration: 250; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introMidRight"; to: 0; duration: 200; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introBottom"; to: 0; duration: 150; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introAppBars"; to: 0; duration: 250; easing.type: Easing.InQuart }
+    }
+
+    property real globalOrbitAngle: 0
+    NumberAnimation on globalOrbitAngle {
+        from: 0; to: Math.PI * 2; duration: 120000; loops: Animation.Infinite; running: window.visible
+    }
+
     // --- SHARED DATA INGESTION ---
     function updateFromData(data) {
         window.selectedDateStr = data.selected_date;
@@ -131,6 +201,8 @@ Item {
         window.yesterdaySeconds = data.yesterday || 0;
         window.weekRangeStr = data.week_range || "";
         window.liveActiveApp = data.current || "Unknown";
+
+        if (window.isFirstLoad) firstLoadTimer.start();
 
         window.topApps = data.apps || [];
         syncAppsModel();
@@ -281,6 +353,7 @@ Item {
         } else {
             window.appDate = d;
         }
+        window.isFirstLoad = true; 
         window.requestDataUpdate();
     }
     
@@ -292,6 +365,12 @@ Item {
         let dClicked = new Date(clickedDateStr + "T12:00:00");
         let diffDays = Math.round((dClicked - dCurrent) / (1000 * 60 * 60 * 24));
         if (diffDays !== 0) changeDay(diffDays);
+    }
+
+    Timer {
+        id: firstLoadTimer
+        interval: 1000
+        onTriggered: window.isFirstLoad = false
     }
 
     ListModel { id: appListModel }
@@ -455,16 +534,8 @@ Item {
     // -------------------------------------------------------------------------
     Item {
         anchors.fill: parent
-        transformOrigin: Item.Center
-        opacity: window.visible ? 1.0 : 0.0
-        scale: window.visible ? 1.0 : 0.96
-
-        Behavior on opacity {
-            NumberAnimation { duration: window.visible ? Motion.enterMs : Motion.exitMs; easing.type: window.visible ? Motion.enterEasing : Motion.exitEasing }
-        }
-        Behavior on scale {
-            NumberAnimation { duration: window.visible ? Motion.enterMs : Motion.exitMs; easing.type: window.visible ? Motion.enterEasing : Motion.exitEasing }
-        }
+        scale: 0.97 + (0.03 * introMain)
+        opacity: introMain
 
         Rectangle {
             id: mainCardRect
@@ -486,15 +557,15 @@ Item {
 
             Rectangle {
                 width: parent.width * 1.2; height: width; radius: width / 2
-                x: (parent.width / 2 - width / 2)
-                y: (parent.height / 2 - height / 2)
+                x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
+                y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(100)
                 opacity: 0.015
                 color: window.mauve
             }
             Rectangle {
                 width: parent.width * 1.1; height: width; radius: width / 2
-                x: (parent.width / 2 - width / 2)
-                y: (parent.height / 2 - height / 2)
+                x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
+                y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
                 opacity: 0.010
                 color: window.primary
             }
@@ -512,6 +583,9 @@ Item {
                     Layout.topMargin: window.s(4)
                     Layout.preferredHeight: window.s(40)
 
+                    opacity: introHeader
+                    transform: Translate { y: window.s(-20) * (1 - introHeader) }
+                    
                     // Left Buttons (Overlapped to prevent layout shifting)
                     RowLayout {
                         Layout.alignment: Qt.AlignVCenter
@@ -529,8 +603,8 @@ Item {
                                 color: backMa.containsMouse ? window.surface0 : "transparent"
                                 opacity: (window.selectedAppClass !== "" || window.isWeekView) ? 1.0 : 0.0
                                 visible: opacity > 0
-                                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutQuint } }
+                                Behavior on color { ColorAnimation { duration: 150 } }
                                 
                                 Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; text: "󰁍"; color: window.text; font.pixelSize: window.s(18) }
                                 MouseArea { 
@@ -555,8 +629,8 @@ Item {
                                 color: weekMa.containsMouse ? window.surface0 : "transparent"
                                 opacity: (window.selectedAppClass === "" && !window.isWeekView) ? 1.0 : 0.0
                                 visible: opacity > 0
-                                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutQuint } }
+                                Behavior on color { ColorAnimation { duration: 150 } }
                                 
                                 Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; text: "󰃭"; color: window.text; font.pixelSize: window.s(18) }
                                 MouseArea { 
@@ -572,7 +646,7 @@ Item {
                             Layout.preferredHeight: window.s(40)
                             radius: window.s(20)
                             color: prevWeekMa.containsMouse ? window.surface0 : "transparent"
-                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on color { ColorAnimation { duration: 150 } }
                             Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; text: "󰅁"; color: window.text; font.pixelSize: window.s(18) }
                             MouseArea { id: prevWeekMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: changeDay(window.isWeekView ? -7 : -1) }
                         }
@@ -588,7 +662,7 @@ Item {
                         Image {
                             property bool active: window.selectedAppClass !== "" && window.selectedAppIcon !== "" && !window.isWeekView
                             property real animWidth: active ? window.s(20) : 0
-                            Behavior on animWidth { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                            Behavior on animWidth { NumberAnimation { duration: 350; easing.type: Easing.OutQuint } }
 
                             source: window.selectedAppIcon.startsWith("/") ? "file://" + window.selectedAppIcon : "image://icon/" + window.selectedAppIcon
                             sourceSize: Qt.size(window.s(20), window.s(20))
@@ -621,7 +695,7 @@ Item {
                         Layout.preferredHeight: window.s(40)
                         radius: window.s(20)
                         color: nextWeekMa.containsMouse ? window.surface0 : "transparent"
-                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on color { ColorAnimation { duration: 150 } }
                         Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; text: "󰅂"; color: window.text; font.pixelSize: window.s(18) }
                         MouseArea { id: nextWeekMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: changeDay(window.isWeekView ? 7 : 1) }
                     }
@@ -657,6 +731,9 @@ Item {
                             Layout.maximumHeight: window.s(90) 
                             Layout.minimumHeight: window.s(90)
                             spacing: window.s(16)
+
+                            opacity: introStats
+                            transform: Translate { y: window.s(30) * (1 - introStats) }
 
                             // LEFT: Daily Average (2/7 weight = 200)
                             Rectangle {
@@ -803,6 +880,9 @@ Item {
                                 border.color: Qt.alpha(window.surface1, 0.3)
                                 border.width: Config.borderWidth
 
+                                opacity: introMidLeft
+                                transform: Translate { x: window.s(-30) * (1 - introMidLeft) }
+
                                 RowLayout {
                                     anchors.centerIn: parent
                                     height: parent.height - window.s(32)
@@ -829,9 +909,12 @@ Item {
                                                 anchors.bottomMargin: window.s(8)
                                                 anchors.horizontalCenter: parent.horizontalCenter
                                                 width: window.s(45) 
-                                                height: Math.max(window.s(4), (parent.height - window.s(25)) * (model.total / Math.max(window.maxWeekTotal, 1)))
+                                                // Tied strictly to the introAppBars multiplier for fluid simultaneous fill
+                                                height: Math.max(window.s(4), (parent.height - window.s(25)) * (model.total / Math.max(window.maxWeekTotal, 1)) * window.introAppBars)
                                                 Behavior on height { 
-                                                    NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } 
+                                                    // ONLY enable reactive behavior after the startup cascade is fully complete
+                                                    enabled: window.introAppBars === 1.0 
+                                                    NumberAnimation { duration: 600; easing.type: Easing.OutQuint } 
                                                 }
 
                                                 Rectangle {
@@ -840,7 +923,7 @@ Item {
                                                     color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
                                                     visible: !model.isTarget
                                                     opacity: barMa.containsMouse ? 0.7 : 1.0
-                                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                                    Behavior on color { ColorAnimation { duration: 400; easing.type: Easing.OutCubic } }
                                                 }
 
                                                 Rectangle {
@@ -861,7 +944,7 @@ Item {
                                                 font.pixelSize: window.s(12)
                                                 color: model.isTarget ? window.text : window.overlay0
                                                 text: model.dayName 
-                                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                                Behavior on color { ColorAnimation { duration: 400 } }
                                             }
                                         }
                                     }
@@ -877,6 +960,9 @@ Item {
                                 color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : "transparent"
                                 border.color: Qt.alpha(window.surface1, 0.3)
                                 border.width: Config.borderWidth
+
+                                opacity: introMidRight
+                                transform: Translate { x: window.s(30) * (1 - introMidRight) }
 
                                 ColumnLayout {
                                     anchors.fill: parent
@@ -905,13 +991,16 @@ Item {
                                                 height: window.s(18) 
                                                 radius: window.s(4)
                                                 color: model.total === -1 ? "transparent" : (model.total === 0 ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08) : Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, Math.min(1.0, 0.3 + 0.7 * (model.total / window.maxMonthTotal))))
-                                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                                Behavior on color { ColorAnimation { duration: 700; easing.type: Easing.OutQuint } }
 
                                                 border.color: model.isTarget ? window.text : "transparent"
                                                 border.width: model.isTarget ? 1 : 0
-                                                Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                                Behavior on border.color { ColorAnimation { duration: 300 } }
                                                 
                                                 visible: model.total !== -1
+
+                                                // Slight animated bounce upon load
+                                                scale: 0.7 + (0.3 * introMidRight)
 
                                                 MouseArea {
                                                     anchors.fill: parent
@@ -943,6 +1032,8 @@ Item {
                             border.color: Qt.alpha(window.surface1, 0.3)
                             border.width: Config.borderWidth
 
+                            opacity: introBottom
+                            transform: Translate { y: window.s(30) * (1 - introBottom) }
                             
                             Item {
                                 anchors.fill: parent
@@ -965,7 +1056,7 @@ Item {
                                     clip: true        
                                     spacing: window.s(2)
                                     
-                                    move: Transition { NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                                    move: Transition { NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutQuint } }
                                     
                                     ScrollBar.vertical: ScrollBar {
                                         active: appList.moving || appList.movingVertically
@@ -980,11 +1071,15 @@ Item {
                                         color: "transparent"
                                         radius: window.s(10)
 
+                                        // Micro-staggering cascading animation inside the list
+                                        opacity: introBottom
+                                        transform: Translate { y: (index * window.s(12)) * (1 - introBottom) }
+
                                         Rectangle {
                                             anchors.fill: parent
                                             radius: window.s(10)
                                             color: rowMa.containsMouse ? window.surface0 : "transparent"
-                                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                            Behavior on color { ColorAnimation { duration: 150 } }
                                         }
 
                                         MouseArea {
@@ -1048,11 +1143,12 @@ Item {
                                                 Rectangle {
                                                     height: parent.height
                                                     // Tied to the synchronized app bars state
-                                                    width: Math.max(window.s(10), parent.width * (model.percent / 100.0))
+                                                    width: Math.max(window.s(10), parent.width * (model.percent / 100.0) * window.introAppBars)
                                                     radius: window.s(5)
                                                     color: window.primary
                                                     Behavior on width { 
-                                                        NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } 
+                                                        enabled: window.introAppBars === 1.0
+                                                        NumberAnimation { duration: 600; easing.type: Easing.OutQuint } 
                                                     }
                                                 }
                                             }
@@ -1095,14 +1191,16 @@ Item {
                                                 Rectangle {
                                                     anchors.bottom: parent.bottom
                                                     width: parent.width
-                                                    height: Math.max(window.s(4), parent.height * (window.hourlyData[index] / Math.max(window.maxHourlyTotal, 1)))
+                                                    // Actively grow from ground up tied to introAppBars
+                                                    height: Math.max(window.s(4), parent.height * (window.hourlyData[index] / Math.max(window.maxHourlyTotal, 1)) * window.introAppBars)
                                                     radius: window.s(2)
                                                     color: window.hourlyData[index] > 0 ? window.primary : window.surface0
                                                     
                                                     Behavior on height { 
-                                                        NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } 
+                                                        enabled: window.introAppBars === 1.0
+                                                        NumberAnimation { duration: 600; easing.type: Easing.OutQuint } 
                                                     }
-                                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                                    Behavior on color { ColorAnimation { duration: 400 } }
 
                                                     MouseArea {
                                                         anchors.fill: parent
@@ -1157,6 +1255,9 @@ Item {
                             border.color: Qt.alpha(window.surface1, 0.3)
                             border.width: Config.borderWidth
 
+                            opacity: introMidLeft
+                            transform: Translate { y: window.s(20) * (1 - introMidLeft) }
+
                             // Outer RowLayout: splits [Heatmap+Xaxis] (left) and [Stats] (right)
                             RowLayout {
                                 anchors.fill: parent
@@ -1182,6 +1283,9 @@ Item {
                                                 Layout.fillWidth: true
                                                 Layout.fillHeight: true
                                                 spacing: window.s(8)
+
+                                                opacity: introMidLeft
+                                                transform: Translate { x: window.s(-20) * (1 - introMidLeft) + (dayIndex * window.s(5) * (1 - introMidLeft)) }
 
                                                 Text {
                                                     text: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][dayIndex]
@@ -1216,14 +1320,15 @@ Item {
                                                                 property real intensity: Math.min(1.0, 0.2 + 0.8 * (val / Math.max(window.maxWeekHour, 1)))
                                                                 color: val === 0 ? window.surface0 : Qt.rgba(window.mauve.r, window.mauve.g, window.mauve.b, intensity)
 
+                                                                // Staggered animated popup matrix effect for the heatmap cells
                                                                 scale: window.isWeekView ? 1.0 : 0.5
                                                                 Behavior on scale {
                                                                     NumberAnimation {
-                                                                        duration: Motion.moveMs
-                                                                        easing.type: Motion.moveEasing
+                                                                        duration: 400 + (dayIndex * 30) + (index * 10)
+                                                                        easing.type: Easing.OutBack
                                                                     }
                                                                 }
-                                                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                                                Behavior on color { ColorAnimation { duration: 600; easing.type: Easing.OutQuint } }
 
                                                                 MouseArea {
                                                                     anchors.fill: parent
@@ -1335,6 +1440,8 @@ Item {
                             border.color: Qt.alpha(window.surface1, 0.3)
                             border.width: Config.borderWidth
 
+                            opacity: introBottom
+                            transform: Translate { y: window.s(30) * (1 - introBottom) }
 
                             ListView {
                                 id: weekAppList
@@ -1347,7 +1454,7 @@ Item {
                                 clip: true        
                                 spacing: window.s(2)
                                 
-                                move: Transition { NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                                move: Transition { NumberAnimation { properties: "x,y"; duration: 400; easing.type: Easing.OutQuint } }
                                 
                                 ScrollBar.vertical: ScrollBar {
                                     active: weekAppList.moving || weekAppList.movingVertically
@@ -1362,11 +1469,14 @@ Item {
                                     color: "transparent"
                                     radius: window.s(10)
 
+                                    opacity: introBottom
+                                    transform: Translate { y: (index * window.s(12)) * (1 - introBottom) }
+
                                     Rectangle {
                                         anchors.fill: parent
                                         radius: window.s(10)
                                         color: weekRowMa.containsMouse ? window.surface0 : "transparent"
-                                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                        Behavior on color { ColorAnimation { duration: 150 } }
                                     }
 
                                     MouseArea {
@@ -1430,11 +1540,12 @@ Item {
                                             Rectangle { anchors.fill: parent; radius: window.s(5); color: Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08) }
                                             Rectangle {
                                                 height: parent.height
-                                                width: Math.max(window.s(10), parent.width * (model.percent / 100.0))
+                                                width: Math.max(window.s(10), parent.width * (model.percent / 100.0) * window.introAppBars)
                                                 radius: window.s(5)
                                                 color: window.primary
                                                 Behavior on width { 
-                                                    NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } 
+                                                    enabled: window.introAppBars === 1.0
+                                                    NumberAnimation { duration: 600; easing.type: Easing.OutQuint } 
                                                 }
                                             }
                                         }

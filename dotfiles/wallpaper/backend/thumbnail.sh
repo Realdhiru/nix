@@ -141,6 +141,15 @@ process_wallpaper() {
             # Safe ffmpeg extraction: 1 frame at 1s mark, scaling width to 400, auto-height
             ffmpeg -hide_banner -loglevel error -y -ss 00:00:01 -i "$file" -frames:v 1 -vf "scale=400:-1" "$target"
         fi
+    elif [[ "$ext" == "gif" ]]; then
+        target="$THUMB/$name.jpg"
+        if [ ! -f "$target" ]; then
+            magick -define jpeg:size=800x800 "${file}[0]" -strip -thumbnail 400x400^ -gravity center -extent 400x400 "$target"
+        fi
+        local gif_mp4="$GIF_DIR/${raw_name%.*}.mp4"
+        if [ ! -s "$gif_mp4" ]; then
+            ffmpeg -hide_banner -loglevel error -y -i "$file" -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" -c:v libx264 -preset ultrafast -pix_fmt yuv420p -an "$gif_mp4" 2>/dev/null || true
+        fi
     else
         # Image processing block
         if [ ! -f "$target" ]; then

@@ -121,19 +121,25 @@ if [ -n "$WALL" ] && [ -f "$WALL" ]; then
             ) &
             ;;
         *)
+            filter="Bilinear"
+            [ "$EXT" = "gif" ] && filter="Nearest"
             if awww query >/dev/null 2>&1; then
                 awww img "$WALL" \
                     --transition-type fade \
                     --transition-step 255 \
                     --transition-duration 0.1 \
-                    --transition-fps 60 >/dev/null 2>&1
+                    --transition-fps 60 \
+                    --filter "$filter" \
+                    --outputs "$MONITOR" >/dev/null 2>&1
             else
                 "$HOME/.config/hypr/scripts/ensure_awww.sh" >/dev/null 2>&1
                 awww img "$WALL" \
                     --transition-type fade \
                     --transition-step 255 \
                     --transition-duration 0.1 \
-                    --transition-fps 60 >/dev/null 2>&1
+                    --transition-fps 60 \
+                    --filter "$filter" \
+                    --outputs "$MONITOR" >/dev/null 2>&1
             fi
             ;;
     esac

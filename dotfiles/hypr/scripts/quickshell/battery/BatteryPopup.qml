@@ -260,7 +260,7 @@ Item {
             cap=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1 || echo '0')
             stat=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1 || echo 'Unknown')
             
-            prof=$(cat "${DESKTOP_STATE_DIR:-$HOME/.local/state/desktop}/power/profile" 2>/dev/null)
+            prof=$(cat "\${DESKTOP_STATE_DIR:-$HOME/.local/state/desktop}/power/profile" 2>/dev/null)
             if [ -z "$prof" ]; then
                 epp=$(cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference 2>/dev/null || echo 'balance_performance')
                 case "$epp" in

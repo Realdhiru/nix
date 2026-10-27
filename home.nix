@@ -2,16 +2,11 @@
 
 {
   imports = [
+    ./modules/home/desktop-state.nix
     ./modules/home/shell.nix
     ./modules/home/spicetify.nix
     ./modules/home/theme.nix
   ];
-
-  options.desktop.stateDir = lib.mkOption {
-    type = lib.types.str;
-    default = "${config.xdg.stateHome}/desktop";
-    description = "Unified persistent state directory for desktop components";
-  };
 
   # Declarative Default Wallpaper (Flake store-path)
   home.sessionVariables.DEFAULT_WALLPAPER = "${./dotfiles/wallpaper/default.jpg}";
