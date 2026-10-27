@@ -5,7 +5,6 @@ require("keybinds")
 require("rules")
 require("input")
 require("appearance")
-require("motion")
 require("misc")
 
 -- 1. Universal catch-all rule: any unknown monitor works with zero config
@@ -17,10 +16,13 @@ pcall(function()
     dofile(cfg_dir .. "/hypr-local/monitors.lua")
 end)
 
--- 3. Dynamic layout intent manager (persisted in $XDG_STATE_HOME/hypr/layout.lua)
+-- 3. Dynamic layout intent manager (persisted in $DESKTOP_STATE_DIR/monitors/intent.json)
+local connected_monitors = {}
+
 function is_internal_monitor(name)
     if not name then return false end
-    for _, prefix in ipairs({"eDP", "LVDS", "DSI"}) do
+    local prefixes = {"eDP", "LVDS", "DSI", "MIPI"}
+    for _, prefix in ipairs(prefixes) do
         if name:sub(1, #prefix) == prefix then
             return true
         end
@@ -28,49 +30,101 @@ function is_internal_monitor(name)
     return false
 end
 
-function get_layout_intent()
-    local state_dir = os.getenv("XDG_STATE_HOME") or (os.getenv("HOME") .. "/.local/state")
-    local layout_file = state_dir .. "/hypr/layout.lua"
-    local f = io.open(layout_file, "r")
-    if not f then return "extend" end
+local function sync_connected_monitors()
+    local mons = hl.get_monitors()
+    for _, m in ipairs(mons) do
+        connected_monitors[m.name] = {
+            name = m.name,
+            description = m.description or "",
+            width = m.width,
+            height = m.height,
+            scale = m.scale
+        }
+    end
+end
+
+local function get_display_intent(raw, desc, name)
+    if not raw then return nil end
+    local block = nil
+    if desc and #desc > 0 then
+        local safe_desc = desc:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
+        block = raw:match('"desc:' .. safe_desc .. '"%s*:%s*{([^}]+)}')
+             or raw:match('"' .. safe_desc .. '"%s*:%s*{([^}]+)}')
+    end
+    if not block and name and #name > 0 then
+        local safe_name = name:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
+        block = raw:match('"' .. safe_name .. '"%s*:%s*{([^}]+)}')
+    end
+    if not block then return nil end
+
+    local scale = block:match('"scale"%s*:%s*([0-9.]+)')
+    local mode = block:match('"mode"%s*:%s*"([^"]+)"')
+    local transform = block:match('"transform"%s*:%s*([0-9]+)')
+    local placement = block:match('"placement"%s*:%s*"([^"]+)"')
+    return {
+        scale = scale and tonumber(scale) or nil,
+        mode = mode,
+        transform = transform and tonumber(transform) or nil,
+        placement = placement
+    }
+end
+
+function get_monitor_intent()
+    local desktop_state = os.getenv("DESKTOP_STATE_DIR") or ((os.getenv("XDG_STATE_HOME") or (os.getenv("HOME") .. "/.local/state")) .. "/desktop")
+    local intent_file = desktop_state .. "/monitors/intent.json"
+    local f = io.open(intent_file, "r")
+    if not f then return { layout = "extend", raw = "" } end
     local content = f:read("*a")
     f:close()
-    if not content then return "extend" end
-    local intent = content:match('["\'](%w+)["\']')
-    if intent == "mirror" then return "mirror" end
-    return "extend"
+    if not content or #content == 0 then return { layout = "extend", raw = "" } end
+    local layout = content:match('"layout"%s*:%s*"([^"]+)"') or "extend"
+    return { layout = layout, raw = content }
 end
 
 function apply_layout(explicit_intent)
-    local intent = explicit_intent or get_layout_intent()
-    local mons = hl.get_monitors()
-    if #mons <= 1 then
+    sync_connected_monitors()
+    local intent_data = get_monitor_intent()
+    local intent = explicit_intent or intent_data.layout
+
+    local internal = nil
+    for name, m in pairs(connected_monitors) do
+        if is_internal_monitor(name) then
+            internal = m
+            break
+        end
+    end
+
+    if not internal then
+        -- No internal panel: ignore mirror intent silently, all stay extended
         return
     end
 
     if intent == "mirror" then
-        local source = nil
-        for _, m in ipairs(mons) do
-            if is_internal_monitor(m.name) then
-                source = m
-                break
+        for name, m in pairs(connected_monitors) do
+            if name ~= internal.name then
+                hl.monitor({ output = name, mirror = internal.name })
             end
         end
-        if not source then
-            -- Desktop system with only external displays: do nothing (remains extended)
-            return
-        end
-
-        for _, m in ipairs(mons) do
-            if m.name ~= source.name then
-                hl.monitor({ output = m.name, mirror = source.name })
+    elseif intent == "internal" then
+        for name, m in pairs(connected_monitors) do
+            if name ~= internal.name then
+                hl.monitor({ output = name, mode = "disabled" })
             end
         end
     else
-        -- Extend mode: re-apply preferred auto positioning to clear mirroring
-        for _, m in ipairs(mons) do
-            if not is_internal_monitor(m.name) then
-                hl.monitor({ output = m.name, mode = "preferred", position = "auto", scale = "auto", mirror = "" })
+        -- Extend mode: internal panel is at 0x0. External placed beside internal panel.
+        local internal_logical_w = math.floor((internal.width or 2880) / (internal.scale or 2) + 0.5)
+        for name, m in pairs(connected_monitors) do
+            if name ~= internal.name then
+                local disp_cfg = get_display_intent(intent_data.raw, m.description, name)
+                local scale_val = disp_cfg and disp_cfg.scale or (m.scale or "auto")
+                local mode_val = disp_cfg and disp_cfg.mode or "preferred"
+                local pos_val = (disp_cfg and disp_cfg.placement and disp_cfg.placement ~= "auto") and disp_cfg.placement or string.format("%dx0", internal_logical_w)
+                local mon_opts = { output = name, mode = mode_val, position = pos_val, scale = scale_val, mirror = "" }
+                if disp_cfg and disp_cfg.transform then
+                    mon_opts.transform = disp_cfg.transform
+                end
+                hl.monitor(mon_opts)
             end
         end
     end
@@ -81,8 +135,15 @@ apply_layout()
 
 -- Re-run logic synchronously on monitor hotplug events
 hl.on("monitor.added", function(m)
-    apply_layout()
     if m and m.name then
+        connected_monitors[m.name] = {
+            name = m.name,
+            description = m.description or "",
+            width = m.width,
+            height = m.height,
+            scale = m.scale
+        }
+        apply_layout()
         local state_dir = os.getenv("XDG_STATE_HOME") or (os.getenv("HOME") .. "/.local/state")
         local video_env = state_dir .. "/mpvpaper/" .. m.name .. ".env"
         local f = io.open(video_env, "r")
@@ -93,11 +154,15 @@ hl.on("monitor.added", function(m)
             hl.exec_cmd("awww restore --outputs " .. m.name)
         end
     else
+        apply_layout()
         hl.exec_cmd("awww restore")
     end
 end)
 
-hl.on("monitor.removed", function(_)
+hl.on("monitor.removed", function(m)
+    if m and m.name then
+        connected_monitors[m.name] = nil
+    end
     apply_layout()
 end)
 

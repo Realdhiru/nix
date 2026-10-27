@@ -24,17 +24,18 @@ This document is the authoritative diagnostic and operational manual for testing
      - Loaded safely via protected `pcall` in `hyprland.lua`. Universal dotfiles remain 100% portable across hardware.
 
 4. **Dynamic Layout Intent Management**:
-   - Persisted in `$XDG_STATE_HOME/hypr/layout.lua` (`return "extend"` or `return "mirror"`).
+   - Persisted in `${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/monitors/intent.json` (`{"layout": "extend"|"mirror", "displays": { ... }}`).
    - `apply_layout(explicit_intent)` evaluates the intent dynamically:
-     - Identifies the internal panel via prefix check: `is_internal_monitor(name)` matches `eDP`, `LVDS`, `DSI`.
-     - In **Mirror Mode**: external displays mirror the internal display (`hl.monitor({ output = m.name, mirror = source.name })`).
-     - In **Extend Mode**: external displays are un-mirrored with `mirror = ""` and returned to preferred auto positions.
+     - Identifies the internal panel via prefix check: `is_internal_monitor(name)` matches `eDP`, `LVDS`, `DSI`, `MIPI`.
+     - In **Mirror Mode**: external displays mirror the internal display (`hl.monitor({ output = m.name, mirror = internal.name })`).
+     - In **Extend Mode**: external displays are un-mirrored with `mirror = ""` and positioned beside the internal panel using saved custom scale/placement if present.
      - Headless / Desktop systems without an internal panel cleanly fallback to extend mode without arbitrary source selection.
 
 5. **Per-Output Wallpaper Routing**:
    - Managed via Home Manager systemd user units:
-     - `awww-daemon.service`: Wayland wallpaper daemon listening on `$XDG_RUNTIME_DIR/wayland-1-awww-daemon.sock`.
-     - `mpvpaper@<out>.service`: Per-output templated video wallpaper unit consuming `%h/.local/state/mpvpaper/%i.env`.
+     - `awww-daemon.service`: Wayland wallpaper daemon listening on `$XDG_RUNTIME_DIR/wayland-1-awww-daemon.sock`, launched with `--no-cache --format argb` to avoid raw frame caching bloat.
+     - `mpvpaper@<out>.service`: Per-output templated video wallpaper unit consuming `%h/.local/state/mpvpaper/%i.env` with `%i` (verbatim connector name, preserving dashes).
+   - `set.sh` resolves all outputs upfront (`OUT_JOINED`) and guarantees `--outputs "$OUT_JOINED"` is passed to `awww img` along with `--filter Nearest` (GIFs) and `--filter Bilinear` (images), preventing disconnected cache scans and Lanczos3 stalls.
    - `WallpaperPicker.qml` inspects active wallpapers via native `awww query --json` (zero regex scraping) and dispatches commands with `-o <out>`.
 
 ---
@@ -65,9 +66,9 @@ done
 
 ### Step 3: Check Display Layout Intent
 ```bash
-cat "${XDG_STATE_HOME:-$HOME/.local/state}/hypr/layout.lua"
+cat "${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/monitors/intent.json"
 ```
-- Should output `return "extend"` or `return "mirror"`.
+- Should output JSON containing `"layout": "extend"` or `"mirror"` and display preferences.
 
 ### Step 4: Check Active Wallpaper State per Monitor
 ```bash

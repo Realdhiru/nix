@@ -241,6 +241,15 @@ Item {
         return currentIsPortrait ? mon.resW : mon.resH;
     }
 
+    property real globalOrbitAngle: 0
+    NumberAnimation on globalOrbitAngle {
+        from: 0
+        to: Math.PI * 2
+        duration: 90000
+        loops: Animation.Infinite
+        running: window.visible
+    }
+
     // -------------------------------------------------------------------------
     // KEYBOARD NAVIGATION LOGIC
     // -------------------------------------------------------------------------
@@ -350,13 +359,30 @@ Item {
         }
     }
 
-    // Single card-level enter/exit: one fade + one scale on the card root,
-    // driven by Main.qml's visibility handling (populated on show, hidden at
-    // preload / when the widget leaves the stack).
-    readonly property bool shown: visible
+    // -------------------------------------------------------------------------
+    // FLUID STARTUP ANIMATIONS
+    // -------------------------------------------------------------------------
+    property real introProgress: 0.0
+    property real monitorScale: 0.85
+    property real uiYOffset: window.s(25)
+    property real screenLight: 0.0
 
+    Component.onCompleted: startupAnim.start()
+
+    ParallelAnimation {
+        id: startupAnim
+        NumberAnimation { target: window; property: "introProgress"; from: 0.0; to: 1.0; duration: 900; easing.type: Easing.OutQuint }
+        NumberAnimation { target: window; property: "monitorScale"; from: 0.85; to: 1.0; duration: 1200; easing.type: Easing.OutQuint }
+        NumberAnimation { target: window; property: "uiYOffset"; from: window.s(25); to: 0; duration: 1800; easing.type: Easing.OutQuint }
+        NumberAnimation { target: window; property: "screenLight"; from: 0.0; to: 1.0; duration: 1500; easing.type: Easing.InOutQuad }
+    }
     property bool applyHovered: false
     property bool applyPressed: false
+    property bool applyInFlight: false
+
+    onActiveEditIndexChanged: {
+        menuTransitionAnim.restart();
+    }
 
     // -------------------------------------------------------------------------
     // MATHEMATICAL PERIMETER GLUE (Virtual Coordinates - Do not scale)
@@ -476,7 +502,7 @@ Item {
 
     Process {
         id: displayPoller
-        command: ["hyprctl", "monitors", "-j"]
+        command: ["hyprctl", "monitors", "all", "-j"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
@@ -503,6 +529,7 @@ Item {
 
                         batch.push({
                             name: data[i].name,
+                            description: data[i].description || data[i].name,
                             resW: data[i].width,
                             resH: data[i].height,
                             sysScale: scl,
@@ -540,6 +567,7 @@ Item {
 
                     window.forceLayoutUpdate();
                 } catch(e) {}
+                window.applyInFlight = false;
             }
         }
     }
@@ -557,22 +585,45 @@ Item {
     }
 
     function triggerApply() {
+        if (applyInFlight || monitorsModel.count === 0) return;
+        applyInFlight = true;
+
         flashRect.opacity = 0.8;
         applyFlashAnim.start();
 
-        if (monitorsModel.count === 0) return;
-
         window.debugLog("================= NEW APPLY RUN =================");
 
-        let stateDir = Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state");
-        let layoutFile = stateDir + "/hypr/layout.lua";
-        let tmpFile = layoutFile + ".tmp";
-        let intent = window.displayMode === "mirror" ? "mirror" : "extend";
+        let stateDir = Quickshell.env("DESKTOP_STATE_DIR") || ((Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/desktop");
+        let monitorsDir = stateDir + "/monitors";
+        let intentFile = monitorsDir + "/intent.json";
+        let tmpFile = intentFile + ".tmp";
+        let intent = window.displayMode === "mirror" ? "mirror" : (window.displayMode === "internal" ? "internal" : "extend");
 
-        // 1. Atomically persist single user intent
-        let stateCmd = "mkdir -p '" + stateDir + "/hypr' && echo 'return \"" + intent + "\"' > '" + tmpFile + "' && mv -f '" + tmpFile + "' '" + layoutFile + "'";
+        // 1. Build displays dictionary keyed by desc:
+        let displays = {};
+        for (let i = 0; i < monitorsModel.count; i++) {
+            let m = monitorsModel.get(i);
+            if (m) {
+                let key = (m.description && m.description.length > 0) ? ("desc:" + m.description) : m.name;
+                displays[key] = {
+                    name: m.name,
+                    description: m.description || "",
+                    scale: m.sysScale,
+                    transform: m.transform,
+                    mode: m.resW + "x" + m.resH + "@" + m.rate
+                };
+            }
+        }
 
-        // 2. Build compositor calls: apply user-tuned mode/scale/transform, then layout intent
+        let intentObj = {
+            layout: intent,
+            displays: displays
+        };
+
+        let intentJson = JSON.stringify(intentObj, null, 2);
+        let stateCmd = "mkdir -p '" + monitorsDir + "' && cat << 'EOF' > '" + tmpFile + "'\n" + intentJson + "\nEOF\nmv -f '" + tmpFile + "' '" + intentFile + "'";
+
+        // 2. Compositor calls: first apply individual monitor mode/scale/transform via native Lua eval, then apply_layout()
         let evalCmds = [];
         for (let i = 0; i < monitorsModel.count; i++) {
             let m = monitorsModel.get(i);
@@ -600,11 +651,8 @@ Item {
     // -------------------------------------------------------------------------
     Item {
         anchors.fill: parent
-        scale: window.shown ? 1.0 : 0.96
-        opacity: window.shown ? 1.0 : 0.0
-
-        Behavior on opacity { NumberAnimation { duration: window.shown ? Motion.enterMs : Motion.exitMs; easing.type: window.shown ? Motion.enterEasing : Motion.exitEasing } }
-        Behavior on scale { NumberAnimation { duration: window.shown ? Motion.enterMs : Motion.exitMs; easing.type: window.shown ? Motion.enterEasing : Motion.exitEasing } }
+        scale: 0.95 + (0.05 * window.introProgress)
+        opacity: window.introProgress
 
         // Anti-bleed base
         Rectangle {
@@ -627,21 +675,21 @@ Item {
                 width: parent.width * 0.8
                 height: width
                 radius: width / 2
-                x: (parent.width / 2 - width / 2) + window.s(150)
-                y: parent.height / 2 - height / 2
+                x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
+                y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(100)
                 opacity: 0.04
                 color: window.selectedResAccent
-                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                Behavior on color { ColorAnimation { duration: 1000 } }
             }
             Rectangle {
                 width: parent.width * 0.9
                 height: width
                 radius: width / 2
-                x: parent.width / 2 - width / 2
-                y: (parent.height / 2 - height / 2) - window.s(100)
+                x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
+                y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
                 opacity: 0.04
                 color: window.selectedRateAccent
-                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                Behavior on color { ColorAnimation { duration: 1000 } }
             }
 
             // ==========================================
@@ -670,8 +718,9 @@ Item {
                         height: window.s(280)
 
                         property real baseScale: Math.min(1.0, Math.min(2200 / window.currentSimW, 1400 / Math.max(1, window.currentSimH)))
-                        scale: baseScale
-                        Behavior on baseScale { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                        scale: baseScale * window.monitorScale
+                        opacity: window.introProgress
+                        Behavior on baseScale { NumberAnimation { duration: 600; easing.type: Easing.OutQuint } }
 
                         Rectangle {
                             id: deskSurface
@@ -737,8 +786,8 @@ Item {
                             border.color: window.surface2
                             border.width: window.s(2)
 
-                            Behavior on width { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
-                            Behavior on height { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                            Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutQuint } }
+                            Behavior on height { NumberAnimation { duration: 600; easing.type: Easing.OutQuint } }
 
                             Rectangle {
                                 anchors.fill: parent
@@ -750,18 +799,19 @@ Item {
                                 Rectangle {
                                     anchors.fill: parent
                                     color: "transparent"
+                                    opacity: window.screenLight
 
                                     gradient: Gradient {
                                         orientation: Gradient.Vertical
                                         GradientStop {
                                             position: 0.0
                                             color: Qt.tint(window.surface0, Qt.alpha(window.selectedResAccent, 0.15))
-                                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                            Behavior on color { ColorAnimation { duration: 400 } }
                                         }
                                         GradientStop {
                                             position: 1.0
                                             color: Qt.tint(window.surface0, Qt.alpha(window.selectedRateAccent, 0.1))
-                                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                            Behavior on color { ColorAnimation { duration: 400 } }
                                         }
                                     }
 
@@ -803,7 +853,7 @@ Item {
                                             font.pixelSize: window.s(38)
                                             color: window.selectedResAccent
                                             text: "󰍹"
-                                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                            Behavior on color { ColorAnimation { duration: 400 } }
                                         }
                                         Text {
                                             Layout.alignment: Qt.AlignHCenter
@@ -811,7 +861,7 @@ Item {
                                             font.weight: Font.Bold
                                             font.pixelSize: window.s(16)
                                             color: window.text
-                                            text: monitorsModel.count > 0 ? monitorsModel.get(0).name : "Unknown"
+                                            text: (window.activeEditIndex >= 0 && window.activeEditIndex < monitorsModel.count) ? monitorsModel.get(window.activeEditIndex).name : (monitorsModel.count > 0 ? monitorsModel.get(0).name : "Unknown")
                                         }
 
                                     }
@@ -909,9 +959,9 @@ Item {
                             scale: multiMonitorView.targetScale
                             transformOrigin: Item.TopLeft
 
-                            Behavior on x { enabled: window.visible; NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
-                            Behavior on y { enabled: window.visible; NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
-                            Behavior on scale { enabled: window.visible; NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                            Behavior on x { enabled: window.visible; NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                            Behavior on y { enabled: window.visible; NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                            Behavior on scale { enabled: window.visible; NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
 
                             Repeater {
                                 id: monitorRepeater
@@ -936,13 +986,13 @@ Item {
                                         border.width: isActive ? window.s(2) : window.s(1)
                                         z: isActive ? 5 : 0
 
-                                        Behavior on x { enabled: window.visible; NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
-                                        Behavior on y { enabled: window.visible; NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                                        Behavior on x { enabled: window.visible; NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
+                                        Behavior on y { enabled: window.visible; NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
 
-                                        Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                                        Behavior on width { enabled: window.visible; NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
-                                        Behavior on height { enabled: window.visible; NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                                        Behavior on border.color { ColorAnimation { duration: 300 } }
+                                        Behavior on color { ColorAnimation { duration: 300 } }
+                                        Behavior on width { enabled: window.visible; NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                                        Behavior on height { enabled: window.visible; NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
 
                                         Item {
                                             anchors.centerIn: parent
@@ -961,13 +1011,15 @@ Item {
                                                 anchors.centerIn: parent
                                                 spacing: window.s(2)
 
+                                                Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+
                                                 Text {
                                                     Layout.alignment: Qt.AlignHCenter
                                                     font.family: "Iosevka Nerd Font"
                                                     font.pixelSize: window.s(32)
                                                     color: isActive ? window.selectedResAccent : window.text
                                                     text: "󰍹"
-                                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                                    Behavior on color { ColorAnimation { duration: 300 } }
                                                 }
                                                 Text {
                                                     Layout.alignment: Qt.AlignHCenter
@@ -1092,6 +1144,9 @@ Item {
                 anchors.leftMargin: window.s(10)
                 anchors.rightMargin: window.s(24)
 
+                opacity: window.introProgress
+                transform: Translate { y: window.uiYOffset }
+
                 Item {
                     id: rightSideContainer
                     anchors.fill: parent
@@ -1130,8 +1185,8 @@ Item {
                                     border.color: isSel ? accentColor : (resMa.containsMouse ? Qt.alpha(window.text, 0.2) : Qt.alpha(window.surface1, 0.3))
                                     border.width: isSel ? window.s(2) : window.s(1)
 
-                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                                    Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Behavior on border.color { ColorAnimation { duration: 200 } }
 
                                     RowLayout {
                                         anchors.fill: parent
@@ -1144,7 +1199,7 @@ Item {
                                             font.pixelSize: window.s(14)
                                             color: isSel ? accentColor : window.text
                                             text: modelData.l
-                                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                            Behavior on color { ColorAnimation { duration: 200 } }
                                         }
 
                                         Item { Layout.fillWidth: true }
@@ -1154,12 +1209,12 @@ Item {
                                             font.pixelSize: window.s(10)
                                             color: isSel ? window.text : window.subtext0
                                             text: modelData.w + "x" + modelData.h
-                                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                            Behavior on color { ColorAnimation { duration: 200 } }
                                         }
                                     }
 
                                     scale: resMa.pressed ? 0.96 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: Motion.enterMs; easing.type: Motion.enterEasing } }
+                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutSine } }
 
                                     MouseArea {
                                         id: resMa
@@ -1229,6 +1284,7 @@ Item {
                 anchors.right: parent.right
                 anchors.leftMargin: window.s(20)
                 anchors.rightMargin: window.s(20)
+                opacity: window.introProgress
 
                 RowLayout {
                     anchors.fill: parent
@@ -1298,7 +1354,7 @@ Item {
                                     height: parent.height
                                     radius: parent.radius
                                     color: window.selectedRateAccent
-                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on color { ColorAnimation { duration: 200 } }
                                 }
 
                                 Rectangle {
@@ -1312,13 +1368,13 @@ Item {
 
                                     Behavior on x {
                                         enabled: !sliderMa.pressed
-                                        NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
+                                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
                                     }
-                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on color { ColorAnimation { duration: 150 } }
 
                                     border.width: (sliderMa.containsMouse || window.activeFocusIndex === 2) ? window.s(3) : 0
                                     border.color: Qt.alpha(window.selectedRateAccent, 0.4)
-                                    Behavior on border.width { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on border.width { NumberAnimation { duration: 150 } }
                                 }
                             }
 
@@ -1335,7 +1391,7 @@ Item {
                                         font.pixelSize: window.s(10)
                                         font.weight: sliderContainer.currentIndex === index ? Font.Bold : Font.Normal
                                         color: sliderContainer.currentIndex === index ? window.selectedRateAccent : window.subtext0
-                                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                        Behavior on color { ColorAnimation { duration: 200 } }
                                     }
                                 }
                             }
@@ -1427,7 +1483,7 @@ Item {
                                     height: parent.height
                                     radius: parent.radius
                                     color: window.selectedScaleAccent
-                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on color { ColorAnimation { duration: 200 } }
                                 }
 
                                 Rectangle {
@@ -1441,13 +1497,13 @@ Item {
 
                                     Behavior on x {
                                         enabled: !scaleSliderMa.pressed
-                                        NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
+                                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
                                     }
-                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on color { ColorAnimation { duration: 150 } }
 
                                     border.width: (scaleSliderMa.containsMouse || window.activeFocusIndex === 3) ? window.s(3) : 0
                                     border.color: Qt.alpha(window.selectedScaleAccent, 0.4)
-                                    Behavior on border.width { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on border.width { NumberAnimation { duration: 150 } }
                                 }
                             }
 
@@ -1464,7 +1520,7 @@ Item {
                                         font.pixelSize: window.s(10)
                                         font.weight: scaleSliderContainer.currentIndex === index ? Font.Bold : Font.Normal
                                         color: scaleSliderContainer.currentIndex === index ? window.selectedScaleAccent : window.subtext0
-                                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                        Behavior on color { ColorAnimation { duration: 200 } }
                                     }
                                 }
                             }
@@ -1513,6 +1569,9 @@ Item {
                         Layout.fillHeight: false
                         Layout.alignment: Qt.AlignVCenter
                         spacing: window.s(5)
+                        enabled: !window.applyInFlight
+                        opacity: window.applyInFlight ? 0.5 : 1.0
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
 
                         property var modeItems: [
                             { mode: "extend",   label: "Extend" },
@@ -1534,8 +1593,8 @@ Item {
                                 border.color: isSelected ? window.primary : (modeItemMa.containsMouse ? Qt.alpha(window.text, 0.2) : Qt.alpha(window.surface1, 0.3))
                                 border.width: isSelected ? window.s(1.5) : window.s(1)
 
-                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                                Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
 
                                 Text {
                                     anchors.centerIn: parent
@@ -1584,8 +1643,8 @@ Item {
 
                             border.color: window.activeFocusIndex === 1 ? window.primary : Qt.alpha(window.surface1, 0.3)
                             border.width: window.activeFocusIndex === 1 ? window.s(2) : window.s(1)
-                            Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                            Behavior on border.width { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on border.color { ColorAnimation { duration: 200 } }
+                            Behavior on border.width { NumberAnimation { duration: 200 } }
 
                             // 12-Hour Clock Tick Marks
                             Repeater {
@@ -1611,7 +1670,7 @@ Item {
                                 anchors.fill: parent
                                 property int activeTransform: monitorsModel.count > 0 ? monitorsModel.get(window.activeEditIndex).transform : 0
                                 rotation: activeTransform * 90
-                                Behavior on rotation { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                                Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
 
                                 Rectangle {
                                     width: window.s(3)
@@ -1620,7 +1679,7 @@ Item {
                                     color: window.primary
                                     anchors.bottom: parent.verticalCenter
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on color { ColorAnimation { duration: 300 } }
                                 }
 
                                 Rectangle {
@@ -1631,7 +1690,7 @@ Item {
                                     border.color: window.primary
                                     border.width: window.s(2)
                                     anchors.centerIn: parent
-                                    Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on border.color { ColorAnimation { duration: 300 } }
                                 }
                             }
 
@@ -1672,6 +1731,9 @@ Item {
                             Layout.preferredWidth: window.s(90)
                             Layout.preferredHeight: window.s(32)
                             Layout.alignment: Qt.AlignHCenter
+                            enabled: !window.applyInFlight
+                            opacity: window.applyInFlight ? 0.5 : 1.0
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
 
                             MultiEffect {
                                 source: applyBtn
@@ -1682,8 +1744,8 @@ Item {
                                 shadowOpacity: window.applyHovered || window.activeFocusIndex === 5 ? 0.5 : 0.15
                                 shadowVerticalOffset: window.s(2)
                                 z: -1
-                                Behavior on shadowBlur { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                                Behavior on shadowOpacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                Behavior on shadowBlur { NumberAnimation { duration: 250 } }
+                                Behavior on shadowOpacity { NumberAnimation { duration: 250 } }
                             }
 
                             Rectangle {
@@ -1691,13 +1753,13 @@ Item {
                                 anchors.fill: parent
                                 radius: window.s(16)
                                 color: window.primary
-                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                Behavior on color { ColorAnimation { duration: 250 } }
 
                                 border.color: window.activeFocusIndex === 5 ? window.crust : "transparent"
                                 border.width: window.activeFocusIndex === 5 ? window.s(2) : 0
 
                                 scale: window.applyPressed ? 0.94 : (window.applyHovered || window.activeFocusIndex === 5 ? 1.04 : 1.0)
-                                Behavior on scale { NumberAnimation { duration: Motion.enterMs; easing.type: Motion.enterEasing } }
+                                Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
 
                                 Rectangle {
                                     id: flashRect
@@ -1708,8 +1770,8 @@ Item {
                                     PropertyAnimation on opacity {
                                         id: applyFlashAnim
                                         to: 0.0
-                                        duration: Motion.moveMs
-                                        easing.type: Motion.moveEasing
+                                        duration: 400
+                                        easing.type: Easing.OutExpo
                                     }
                                 }
 
