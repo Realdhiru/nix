@@ -41,6 +41,17 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 - **WebRTC Microphone Denoising**: `libpipewire-module-echo-cancel` with `monitor.mode = true` binds to the microphone array, cancels speaker playback acoustic bleed from `effect_input.eq10:monitor`, and publishes `echo_cancel_source` at priority 2100 with zero daemon overhead.
 - **Multi-Output Audio Broadcast**: `Super + Ctrl + V` (`toggle_multi_sink.sh` / `pw-broadcast`) dynamically broadcasts equalizer output across all connected external endpoints simultaneously via sub-2ms `pw-link` graph connections, auto-compensating Bluetooth buffer latency (340ms) on wired channels.
 - **MPV MPRIS Integration**: `mpv` overridden with `mpvScripts.mpris` symlinked to `~/.config/mpv/scripts/mpris.so` to broadcast D-Bus `org.mpris.MediaPlayer2` signals.
+- **WirePlumber Diagnostic Audit**:
+  - `mod.rt`: `failed to set realtime policy: Operation not permitted` in journal indicates user session lacking `RLIMIT_RTPRIO` / RTKit permissions; falls back to standard nice scheduling with no dropouts, addressable via `security.rtkit.enable = true`.
+  - `m-mpris`: `failed to get DesktopEntry` occurs when browser instances (Brave/Chromium) register dynamic MPRIS D-Bus interfaces with instance PIDs without static `.desktop` file matches; benign telemetry warning.
+- **Imperative `pw-link` Scripts & Declarative Migration Plan**:
+  - *Current Imperative Scripts*:
+    - `cycle_audio_sink.sh`: Queries `pw-link -i` / `pw-link -l`, tears down links with `pw-link -d`, connects `effect_output.eq10` to next physical sink with `pw-link`, and sets default via `wpctl set-default`.
+    - `pw-broadcast` (`toggle_multi_sink.sh`): Queries external endpoints via `pw-link -i`, unlinks internal speaker via `pw-link -d`, launches dynamic `pw-loopback` unit with `--delay 0.340`, and wires `effect_output.eq10` to both Bluetooth and loopback nodes.
+  - *Declarative Replacement Architecture*:
+    - Sink Cycling: Migrate to pure WirePlumber session management (`wpctl set-default <id>`). With `linking.follow-default-target = true` and `linking.allow-moving-streams = true`, WirePlumber automatically reparents passive filter-chain outputs (`effect_output.eq10`) without explicit `pw-link` surgery.
+    - Multi-Sink Broadcast: Define declarative `libpipewire-module-combine-sink` or static `libpipewire-module-loopback` in `pipewire.conf.d/`. WirePlumber policy node matching routes `effect_output.eq10` into the broadcast distributor.
+    - EQ Priority Invariant: Master virtual sink `effect_input.eq10` strictly retains priority 2200; broadcast/delay filters sit strictly downstream between `effect_output.eq10` and physical sinks (priority 2150/1000), preventing double-filtering and preserving single-point volume authority.
 
 ## 5. Power & State Management Design
 - **State Directory Invariant**:

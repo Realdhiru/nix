@@ -2,7 +2,9 @@
 
 ## 2026-10-27 — Wallpaper Instant Applying & Animation Optimization
 
-- **Documentation Consolidation**: Consolidated instructions into lean 20-line [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md), generic technical specs into [`docs/system.md`](file:///home/realdhiru/nix/docs/system.md), machine/personal facts into [`hosts/nixos/PERSONAL.md`](file:///home/realdhiru/nix/hosts/nixos/PERSONAL.md), and renumbered ADRs (ADR-001 through ADR-075) in [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md).
+- **Audio Pipeline Audit & Declarative Migration Plan ([`docs/system.md`](file:///home/realdhiru/nix/docs/system.md))**:
+  - Investigated WirePlumber debug logs: analyzed `mod.rt` realtime permissions and browser dynamic MPRIS desktop entry telemetry.
+  - Documented imperative `pw-link` scripts (`cycle_audio_sink.sh`, `pw-broadcast`) and proposed declarative replacements (WirePlumber policy node rules and `libpipewire-module-combine-sink`/`loopback`) preserving 10-band EQ virtual sink priority 2200.
 
 - **Instant GIF & Photo Wallpaper Applying ([`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), [`ensure_awww.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/ensure_awww.sh), [`rotate_display.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/rotate_display.sh))**:
   - Eliminated the 32+ second stall on GIF wallpapers by switching filter from `Lanczos3` to `--filter Nearest` for `.gif` files, reducing cold apply time from 32.65s to 0.42s (77x speedup) and warm apply time to 0.18s (180x speedup).
