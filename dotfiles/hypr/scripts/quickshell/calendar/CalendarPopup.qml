@@ -170,14 +170,7 @@ Item {
     // -------------------------------------------------------------------------
     // STATE & TIME (WITH SECOND PULSE)
     // -------------------------------------------------------------------------
-    property real remoteTimezoneSec: window.weatherData && window.weatherData.timezone ? parseInt(window.weatherData.timezone) : -(new Date().getTimezoneOffset() * 60)
-
-    property var currentTime: {
-        let now = new Date();
-        let localOffsetSec = -(now.getTimezoneOffset() * 60);
-        let diffSec = remoteTimezoneSec - localOffsetSec;
-        return new Date(now.getTime() + (diffSec * 1000));
-    }
+    property var currentTime: new Date()
     property real currentEpoch: currentTime.getTime() / 1000
     
     property real secondPulse: 1.0
@@ -186,13 +179,24 @@ Item {
         to: 1.0; duration: 600; easing.type: Easing.OutQuint; running: false 
     }
 
+    function showWidget() {
+        window.currentTime = new Date();
+        window.monthOffset = 0;
+        window.targetMonthOffset = 0;
+        updateCalendarGrid();
+        weatherPoller.running = true;
+    }
+
+    onVisibleChanged: {
+        if (visible) {
+            showWidget();
+        }
+    }
+
     Timer {
         interval: 1000; running: window.visible; repeat: true
         onTriggered: {
-            let now = new Date();
-            let localOffsetSec = -(now.getTimezoneOffset() * 60);
-            let diffSec = remoteTimezoneSec - localOffsetSec;
-            window.currentTime = new Date(now.getTime() + (diffSec * 1000));
+            window.currentTime = new Date();
             window.secondPulse = 1.06; 
             pulseReset.start();        
             

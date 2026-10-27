@@ -16,12 +16,11 @@ Item {
     function showWidget() {
         window.showInfoView = false;
         window.isInteractingWithCard = false;
-        if (window.activeMode === "eth") ethPoller.running = true;
-        else if (window.activeMode === "wifi") {
-            wifiPoller.running = true;
-            savedNetworksFetcher.running = true;
-            Quickshell.execDetached(["bash", "-c", "nmcli device wifi rescan 2>/dev/null || true"]);
-        } else if (window.activeMode === "bt") btPoller.running = true;
+        ethPoller.running = true;
+        wifiPoller.running = true;
+        btPoller.running = true;
+        savedNetworksFetcher.running = true;
+        Quickshell.execDetached(["bash", "-c", "nmcli device wifi rescan 2>/dev/null || true"]);
         syncCores();
         window._syncBtScan();
     }

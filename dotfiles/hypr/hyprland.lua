@@ -106,13 +106,29 @@ function apply_layout(explicit_intent)
             end
         end
     elseif intent == "internal" then
+        hl.monitor({ output = internal.name, disabled = false })
         for name, m in pairs(connected_monitors) do
             if name ~= internal.name then
-                hl.monitor({ output = name, mode = "disabled" })
+                hl.monitor({ output = name, disabled = true })
             end
         end
+    elseif intent == "external" then
+        for name, m in pairs(connected_monitors) do
+            if name ~= internal.name then
+                local disp_cfg = get_display_intent(intent_data.raw, m.description, name)
+                local scale_val = disp_cfg and disp_cfg.scale or (m.scale or "auto")
+                local mode_val = disp_cfg and disp_cfg.mode or "preferred"
+                local mon_opts = { output = name, mode = mode_val, position = "0x0", scale = scale_val, mirror = "", disabled = false }
+                if disp_cfg and disp_cfg.transform then
+                    mon_opts.transform = disp_cfg.transform
+                end
+                hl.monitor(mon_opts)
+            end
+        end
+        hl.monitor({ output = internal.name, disabled = true })
     else
         -- Extend mode: internal panel is at 0x0. External placed beside internal panel.
+        hl.monitor({ output = internal.name, disabled = false })
         local internal_logical_w = math.floor((internal.width or 2880) / (internal.scale or 2) + 0.5)
         for name, m in pairs(connected_monitors) do
             if name ~= internal.name then
@@ -120,7 +136,7 @@ function apply_layout(explicit_intent)
                 local scale_val = disp_cfg and disp_cfg.scale or (m.scale or "auto")
                 local mode_val = disp_cfg and disp_cfg.mode or "preferred"
                 local pos_val = (disp_cfg and disp_cfg.placement and disp_cfg.placement ~= "auto") and disp_cfg.placement or string.format("%dx0", internal_logical_w)
-                local mon_opts = { output = name, mode = mode_val, position = pos_val, scale = scale_val, mirror = "" }
+                local mon_opts = { output = name, mode = mode_val, position = pos_val, scale = scale_val, mirror = "", disabled = false }
                 if disp_cfg and disp_cfg.transform then
                     mon_opts.transform = disp_cfg.transform
                 end
@@ -128,6 +144,25 @@ function apply_layout(explicit_intent)
             end
         end
     end
+
+    -- Map touch devices to external touchscreen if present, otherwise internal
+    pcall(function()
+        local h = io.popen("hyprctl devices -j 2>/dev/null")
+        if not h then return end
+        local raw = h:read("*a")
+        h:close()
+        if not raw or #raw == 0 then return end
+        for dev_name in raw:gmatch('"name"%s*:%s*"([^"]+)"') do
+            if dev_name:lower():match("touch") then
+                for mon_name, _ in pairs(connected_monitors) do
+                    if not is_internal_monitor(mon_name) then
+                        hl.config({ device = { { name = dev_name, output = mon_name } } })
+                        break
+                    end
+                end
+            end
+        end
+    end)
 end
 
 -- Apply on startup

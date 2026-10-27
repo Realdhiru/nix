@@ -489,14 +489,20 @@ Item {
     // NATIVE SYSTEM PROCESSES
     // -------------------------------------------------------------------------
     StackView.onActivated: {
-        // Populate once. Re-running the poller on every activation wiped
-        // the model (clear + re-append): unapplied res/rate/scale edits were
-        // lost, the grid rebuilt/flashed, and recycled delegates could show
-        // phantom duplicate tiles. Hotplug while open is covered by the
-        // live Quickshell.screens bindings + Apply re-poll.
         if (monitorsModel.count === 0) {
             displayPoller.running = false;
             displayPoller.running = true;
+        }
+    }
+
+    function showWidget() {
+        window.applyInFlight = false;
+        displayPoller.running = true;
+    }
+
+    onVisibleChanged: {
+        if (visible) {
+            window.showWidget();
         }
     }
 
@@ -546,12 +552,15 @@ Item {
 
                     let hasMirror = false;
                     let activeExtCount = 0;
+                    let internalActive = false;
                     for (let i = 0; i < data.length; i++) {
                         if (data[i].mirrorOf && data[i].mirrorOf !== "none" && data[i].mirrorOf !== "") {
                             hasMirror = true;
                         }
-                        if (data[i].name && !window.isInternalName(data[i].name)) {
-                            activeExtCount++;
+                        if (data[i].name && window.isInternalName(data[i].name)) {
+                            if (!data[i].disabled) internalActive = true;
+                        } else if (data[i].name) {
+                            if (!data[i].disabled) activeExtCount++;
                         }
                     }
 
@@ -559,6 +568,8 @@ Item {
                         window.displayMode = "mirror";
                     } else if (activeExtCount === 0) {
                         window.displayMode = "internal";
+                    } else if (!internalActive && activeExtCount > 0) {
+                        window.displayMode = "external";
                     } else {
                         window.displayMode = "extend";
                     }
@@ -597,7 +608,7 @@ Item {
         let monitorsDir = stateDir + "/monitors";
         let intentFile = monitorsDir + "/intent.json";
         let tmpFile = intentFile + ".tmp";
-        let intent = window.displayMode === "mirror" ? "mirror" : (window.displayMode === "internal" ? "internal" : "extend");
+        let intent = (window.displayMode === "mirror" || window.displayMode === "internal" || window.displayMode === "external") ? window.displayMode : "extend";
 
         // 1. Build displays dictionary keyed by desc:
         let displays = {};
@@ -1576,7 +1587,8 @@ Item {
                         property var modeItems: [
                             { mode: "extend",   label: "Extend" },
                             { mode: "mirror",   label: "Mirror" },
-                            { mode: "internal", label: "Laptop" }
+                            { mode: "internal", label: "Laptop" },
+                            { mode: "external", label: "External" }
                         ]
 
                         Repeater {
