@@ -217,11 +217,8 @@ cmd_lid() {
             sudo /run/current-system/sw/bin/tlp power-saver >/dev/null 2>&1 &
             ;;
         open)
-            # 1. Immediate DPMS wake + DRM backlight pulse
+            # 1. Immediate DPMS wake
             hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))" >/dev/null 2>&1 || true
-            brightnessctl -d intel_backlight set +0% >/dev/null 2>&1 || true
-            ydotool mousemove -x 1 -y 0 2>/dev/null || true
-            ydotool mousemove -x -1 -y 0 2>/dev/null || true
 
             # 2. Restore peripherals and profiles asynchronously in background (zero display delay)
             (

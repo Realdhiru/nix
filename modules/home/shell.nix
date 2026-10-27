@@ -68,7 +68,7 @@
         printf '%s %s %s\n' "$start" "$gen" "$rev" >> "$HOME/.cache/nix_rebuild_log"
         git tag -f known-good >/dev/null 2>&1
 
-        git add -A
+        git add -u
 
         if git diff --cached --quiet && git diff --quiet; then
           echo "Nothing to commit."

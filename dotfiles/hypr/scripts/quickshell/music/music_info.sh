@@ -78,19 +78,14 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
                 tempArt="$TMP_DIR/${trackHash}_temp_art.jpg"
                 tempBlur="$TMP_DIR/${trackHash}_temp_blur.png"
 
-                # Secure Python fetcher handles encoded file:// URIs (%20), http/https, and base64 payloads automatically
-                python3 -c "
-import urllib.request, urllib.parse, sys
-try:
-    url = sys.argv[1]
-    if url.startswith('file://'):
-        url = 'file://' + urllib.parse.unquote(url[7:])
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    with urllib.request.urlopen(req, timeout=8) as response, open(sys.argv[2], 'wb') as out_file:
-        out_file.write(response.read())
-except Exception as e:
-    sys.exit(1)
-" "$rawUrl" "$tempArt"
+                # Fast native fetcher handles encoded file:// URIs and http/https
+                if [[ "$rawUrl" == file://* ]]; then
+                    local_url="${rawUrl#file://}"
+                    decoded_url="$(printf '%b' "${local_url//%/\\x}")"
+                    cp "$decoded_url" "$tempArt" 2>/dev/null || true
+                else
+                    curl -sSL --max-time 8 -A "Mozilla/5.0" "$rawUrl" -o "$tempArt" 2>/dev/null || true
+                fi
 
                 if [ -s "$tempArt" ]; then
                     # Real download succeeded — this is the only case that

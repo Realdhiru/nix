@@ -49,8 +49,6 @@ Variants {
 
             exclusiveZone: -1
             exclusionMode: ExclusionMode.Ignore
-            WlrLayershell.exclusiveZone: -1
-            WlrLayershell.exclusionMode: ExclusionMode.Ignore
             color: "transparent"
             WlrLayershell.namespace: "qs-notif-toast"
             WlrLayershell.layer: WlrLayer.Overlay
