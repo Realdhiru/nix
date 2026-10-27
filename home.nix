@@ -493,6 +493,17 @@
     };
   };
 
+  # Refresh KDE Connect discovery after Wi-Fi address changes, without enabling
+  # the daemon when the user has left it off.
+  systemd.user.services.kdeconnect-network-refresh = {
+    Unit.Description = "Refresh KDE Connect discovery after Wi-Fi changes";
+    Service = {
+      Type = "oneshot";
+      ExecCondition = "${pkgs.procps}/bin/pgrep -x '.*kdeconnectd.*'";
+      ExecStart = "${pkgs.kdePackages.kdeconnect-kde}/bin/kdeconnect-cli --refresh";
+    };
+  };
+
 
   programs.alacritty.enable = true;
 

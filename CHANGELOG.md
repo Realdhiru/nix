@@ -2,6 +2,8 @@
 
 ## 2026-10-27 — Wallpaper Instant Applying & Animation Optimization
 
+- **KDE Connect Wi-Fi Recovery** ([`hosts/nixos/default.nix`](file:///home/realdhiru/nix/hosts/nixos/default.nix), [`home.nix`](file:///home/realdhiru/nix/home.nix)): Refresh LAN discovery after Wi-Fi address changes only when the on-demand daemon is already running.
+
 - **Audio Pipeline Audit & Declarative Migration Plan ([`docs/system.md`](file:///home/realdhiru/nix/docs/system.md))**:
   - Investigated WirePlumber debug logs: analyzed `mod.rt` realtime permissions and browser dynamic MPRIS desktop entry telemetry.
   - Documented imperative `pw-link` scripts (`cycle_audio_sink.sh`, `pw-broadcast`) and proposed declarative replacements (WirePlumber policy node rules and `libpipewire-module-combine-sink`/`loopback`) preserving 10-band EQ virtual sink priority 2200.
