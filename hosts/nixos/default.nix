@@ -122,20 +122,6 @@
         '';
         type = "basic";
       }
-      {
-        source = pkgs.writeShellScript "kdeconnect-network-refresh" ''
-          case "$2" in
-            up|dhcp4-change|dhcp6-change) ;;
-            *) exit 0 ;;
-          esac
-
-          DEVICE_TYPE=$(${pkgs.networkmanager}/bin/nmcli -g GENERAL.TYPE device show "$1" 2>/dev/null || true)
-          [ "$DEVICE_TYPE" = "wifi" ] || exit 0
-
-          ${pkgs.systemd}/bin/systemctl --no-block --user -M ${user.username}@ start kdeconnect-network-refresh.service 2>/dev/null || true
-        '';
-        type = "basic";
-      }
     ];
   };
   systemd.services.NetworkManager-wait-online.enable = false;
