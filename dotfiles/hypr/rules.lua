@@ -167,9 +167,9 @@ hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, blur = true })
 hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, ignore_alpha = 0.05 })
 hl.layer_rule({ match = { namespace = "^(fuzzel|launcher)$" }, animation = "fade" })
 
--- Quickshell (Liquid Glassmorphism)
-hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, blur = true })
-hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, ignore_alpha = 0.05 })
+-- Quickshell (Liquid Glassmorphism on bar, sidebar, popups, and toast)
+hl.layer_rule({ match = { namespace = "^(quickshell|qs-master|qs-notif-toast)$" }, blur = true })
+hl.layer_rule({ match = { namespace = "^(quickshell|qs-master|qs-notif-toast)$" }, ignore_alpha = 0.05 })
 hl.layer_rule({ match = { namespace = "^(quickshell|qs-.*)$" }, animation = "none" })
 
 -- Wallpaper Daemons (Instant, Zero Animation Jump)

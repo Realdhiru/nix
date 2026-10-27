@@ -33,6 +33,9 @@
     alsa.enable = true;
     alsa.support32Bit = true;
   };
+  systemd.user.services.wireplumber.environment = {
+    WIREPLUMBER_DEBUG = "I,s-linking:D,s-default-nodes:D";
+  };
 
   # Bluetooth.
   hardware.bluetooth = {

@@ -135,7 +135,7 @@ Item {
 
     Timer {
         id: applyTimer
-        interval: 120
+        interval: 40
         repeat: false
         onTriggered: root.doApplyBackend()
     }
@@ -203,19 +203,12 @@ Item {
         let needsShader = (root.currentSat !== 100 || root.currentGrain > 0 || root.currentCrt > 0);
 
         let script = `
-            # 1. Hardware CTM (hyprsunset)
+            # 1. Hardware CTM (hyprsunset managed via declarative systemd user service)
             if [ "${root.currentTemp}" -ne 6500 ] || [ "${root.currentGamma}" -ne 100 ]; then
-                if ! pgrep -x hyprsunset >/dev/null 2>&1; then
-                    hyprsunset -t ${root.currentTemp} -g ${root.currentGamma} >/dev/null 2>&1 &
-                    sleep 0.08
-                fi
                 hyprctl hyprsunset temperature ${root.currentTemp} >/dev/null 2>&1 || true
                 hyprctl hyprsunset gamma ${root.currentGamma} >/dev/null 2>&1 || true
             else
-                if pgrep -x hyprsunset >/dev/null 2>&1; then
-                    hyprctl hyprsunset identity >/dev/null 2>&1 || true
-                    pkill -x hyprsunset >/dev/null 2>&1 || true
-                fi
+                hyprctl hyprsunset identity >/dev/null 2>&1 || true
             fi
 
             # 2. Dynamic Shader Pipeline (Sat / Grain / CRT)
@@ -296,11 +289,8 @@ EOF
         root.isActive = false;
 
         let script = `
-            if pgrep -x hyprsunset >/dev/null 2>&1; then
-                hyprctl hyprsunset identity >/dev/null 2>&1 || true
-                hyprctl hyprsunset gamma 100 >/dev/null 2>&1 || true
-                pkill -x hyprsunset >/dev/null 2>&1 || true
-            fi
+            hyprctl hyprsunset identity >/dev/null 2>&1 || true
+            hyprctl hyprsunset gamma 100 >/dev/null 2>&1 || true
             hyprctl eval "hl.config({ decoration = { screen_shader = '' } })" >/dev/null 2>&1 || true
             rm -f "${root.shaderFile}" "${root.satShaderFile}"
             bash "${Quickshell.env("HOME")}/.config/hypr/scripts/quickshell/state_ctl.sh" sunset 6500 100 100 0 0 false
@@ -407,15 +397,13 @@ EOF
                         stepSize: 50
                         value: root.currentTemp
 
-                        Behavior on value {
-                            enabled: !tempSlider.pressed
-                            NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
-                        }
-
                         onPressedChanged: {
                             if (pressed) {
                                 root.selectedControl = 0;
                                 root.forceActiveFocus();
+                            } else {
+                                applyTimer.stop();
+                                root.doApplyBackend();
                             }
                         }
                         onMoved: root.applyBackend(value, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt)
@@ -525,15 +513,13 @@ EOF
                         stepSize: 1
                         value: root.currentGamma
 
-                        Behavior on value {
-                            enabled: !gammaSlider.pressed
-                            NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
-                        }
-
                         onPressedChanged: {
                             if (pressed) {
                                 root.selectedControl = 1;
                                 root.forceActiveFocus();
+                            } else {
+                                applyTimer.stop();
+                                root.doApplyBackend();
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, value, root.currentSat, root.currentGrain, root.currentCrt)
@@ -643,15 +629,13 @@ EOF
                         stepSize: 1
                         value: root.currentSat
 
-                        Behavior on value {
-                            enabled: !satSlider.pressed
-                            NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
-                        }
-
                         onPressedChanged: {
                             if (pressed) {
                                 root.selectedControl = 2;
                                 root.forceActiveFocus();
+                            } else {
+                                applyTimer.stop();
+                                root.doApplyBackend();
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, value, root.currentGrain, root.currentCrt)
@@ -761,15 +745,13 @@ EOF
                         stepSize: 1
                         value: root.currentGrain
 
-                        Behavior on value {
-                            enabled: !grainSlider.pressed
-                            NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
-                        }
-
                         onPressedChanged: {
                             if (pressed) {
                                 root.selectedControl = 3;
                                 root.forceActiveFocus();
+                            } else {
+                                applyTimer.stop();
+                                root.doApplyBackend();
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, value, root.currentCrt)
@@ -879,15 +861,13 @@ EOF
                         stepSize: 1
                         value: root.currentCrt
 
-                        Behavior on value {
-                            enabled: !crtSlider.pressed
-                            NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing }
-                        }
-
                         onPressedChanged: {
                             if (pressed) {
                                 root.selectedControl = 4;
                                 root.forceActiveFocus();
+                            } else {
+                                applyTimer.stop();
+                                root.doApplyBackend();
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, value)

@@ -190,7 +190,9 @@ prune_frame_cache
 # which otherwise flashes the stale pre-video wallpaper before the newly
 # selected one is pushed (daemon/src/wallpaper.rs commit_surface_changes).
 # Our own restore path (--restart) and set_wallpaper.sh cover restoring.
-if command -v systemd-run >/dev/null 2>&1; then
+if command -v systemctl >/dev/null 2>&1 && systemctl --user start awww-daemon >/dev/null 2>&1; then
+  : # Started under systemd unit
+elif command -v systemd-run >/dev/null 2>&1; then
   systemctl --user reset-failed awww-daemon >/dev/null 2>&1 || true
   systemd-run --user --unit=awww-daemon --description="awww wallpaper daemon" \
     "$(command -v awww-daemon)" --no-cache --format argb >/dev/null 2>&1 || \

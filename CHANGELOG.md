@@ -1,6 +1,39 @@
 # CHANGELOG
 
-## 2026-10-26 — NetworkPopup State-Motion Regression Repair (ambient/hero tokens)
+## 2026-10-26 — WirePlumber Persistent Telemetry, Wallpaper Physics & Cycling Order Fixes
+
+- **WirePlumber Persistent Event-Driven Telemetry ([`services.nix`](file:///home/realdhiru/nix/modules/system/services.nix))**:
+  - Declaratively set `systemd.user.services.wireplumber.environment.WIREPLUMBER_DEBUG = "I,s-linking:D,s-default-nodes:D"` in NixOS configuration.
+  - Ensures all endpoint additions, stream relinking decisions, and default node selections are logged to `journalctl --user -u wireplumber` without overhead.
+- **WallpaperPicker Smooth Carousel Physics ([`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**:
+  - Re-synced `highlightMoveDuration` to `Motion.moveMs` (220ms, was 350ms) to eliminate coordinate mismatch between delegate resizing and list translation.
+  - Lowered `scrollThreshold` from `s(120)` to `s(40)` and reduced `scrollThrottle` interval from 150ms to 50ms for responsive, stutter-free wheel and trackpad navigation.
+- **Wallpaper Cycling Order & Stale Cache Eviction ([`cycle_wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/cycle_wallpaper.sh), [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh))**:
+  - Added timestamp-based invalidation for `target_wallpaper.txt`: if `current_wallpaper.txt` is newer or `target_wallpaper.txt` is older than 2s, cycling starts strictly from active wallpaper.
+  - Removed `target_wallpaper.txt` whenever a wallpaper is applied via picker or CLI (`set.sh`), preventing category jumps (e.g. jumping between GIFs and photos) when cycling left/right.
+- **Wallpaper Kill Mode Debounce & Fast Restore ([`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh), [`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh))**:
+  - Reduced throttle lock threshold from 600ms to 180ms to permit rapid, deliberate key toggles without dropping keybinds.
+  - Removed full `hyprctl reload` from unkill restore flow, relying on direct `hl.config` decoration restoration.
+  - Repaired `ensure_awww.sh` systemd activation path to start the unit via `systemctl --user start awww-daemon`.
+
+## 2026-10-26 — Desktop Latency, GPU Idle Power & hyprsunset Hardening
+
+- **Declarative Monitor Refresh Rate by Power Source ([`home.nix`](file:///home/realdhiru/nix/home.nix), [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml))**:
+  - Made NixOS flake the single source of truth for monitor refresh rates via declarative `hypr-local/monitors.lua`.
+  - Derives target mode directly at runtime from panel hardware EDID detailed timings (`/sys/class/drm/card*-eDP-*/edid`): 60Hz on battery, 120Hz on AC.
+  - Eliminated duplicate parallel logic in QML bash heredocs and removed `~/.cache/hypr_power_monitor.conf`.
+  - Verified reload idempotence: `SUPER+R` (`reload.sh`) and raw `hyprctl reload` reliably preserve 60Hz on battery.
+- **`hyprsunset` Hardware CTM & Slider Hardening ([`SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml), [`home.nix`](file:///home/realdhiru/nix/home.nix))**:
+  - Declarative systemd user unit `hyprsunset.service` runs persistently with `Restart=on-failure`.
+  - QML slider interacts directly via `hyprctl hyprsunset` with a 40ms throttle and final apply on release.
+  - Removed all `systemctl start/stop`, `pgrep`, `pkill`, subshells, and `sleep` from QML.
+- **Layer Blur Narrowing ([`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua))**:
+  - Narrowed compositor layer blur regex from `^(quickshell|qs-.*)$` to `^(quickshell|qs-master|qs-notif-toast)$`.
+  - Excluded the full-screen (1440x750) `qs-floating-overlay` from GPU blur passes while preserving liquid glass specular styling on active bars, sidebar, and popups.
+- **Empirical Results (30s Idle Comparison)**:
+  - Hyprland CPU: 20.13% → 13.43% (-33.3% load reduction).
+  - GPU Frequency: 393.5 MHz → 221.0 MHz (-43.8% active clock frequency).
+  - GPU RC6 Sleep Residency: 34.66% → 43.56% (+25.7% deeper power sleep).
 
 - **Regression**: after the motion-tokens unification, NetworkPopup lost its state-carrying motion (stream strand repaint, hold-wave phase, scan radar rings, connected-ring breathing, glow pulse) and large-surface morphs were compressed to feedback-scale durations; the popup read rigid/static.
 - **New tokens** ([`motion-tokens.nix`](file:///home/realdhiru/nix/dotfiles/hypr/motion-tokens.nix) → generated [`Motion.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Motion.qml)): `ambient` 3200 ms InOutSine (state loops: strands/waves/breathing) and `hero` 440 ms OutCubic (rare large-surface morphs: power toggle, core state change). Generator updated; byte-compare check still passes.

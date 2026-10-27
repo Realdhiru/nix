@@ -612,28 +612,5 @@ Item {
         let tlpCmd = (name === "performance") ? "performance" : (name === "power-saver") ? "power-saver" : "balanced";
         Quickshell.execDetached(["bash", "-c", "$HOME/.config/hypr/scripts/power.sh profile " + tlpCmd]);
         profileRefreshTimer.restart();
-
-        let targetRR = (name === "performance") ? "120" : "60";
-
-        let bashCmd = `
-            INT_MON=$(hyprctl monitors -j | jq -r '.[] | select(.name | test("eDP|LVDS|MIPI")).name' | head -n1)
-
-            if [ -n "$INT_MON" ]; then
-                RES=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n) | "\\(.width)x\\(.height)"')
-                SCALE=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).scale')
-                TRANSFORM=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).transform')
-                TRANSFORM_VAL="\${TRANSFORM:-0}"
-
-                echo "monitor=$INT_MON,$RES@${targetRR},auto,$SCALE,bitdepth,10,transform,$TRANSFORM_VAL" > ~/.cache/hypr_power_monitor.conf
-
-                CUR_RR=$(hyprctl monitors -j | jq -r --arg n "$INT_MON" '.[] | select(.name==$n).refreshRate' | awk '{print int($1 + 0.5)}')
-                if [ "$CUR_RR" != "${targetRR}" ]; then
-                    hyprctl eval "hl.monitor({output='$INT_MON',mode='$RES@${targetRR}',position='auto',scale=$SCALE,bitdepth=10,transform=$TRANSFORM_VAL}); hl.exec_scheduled_prop_refresh_immediately()" 2>/dev/null
-                fi
-
-            fi
-        `;
-
-        Quickshell.execDetached(["bash", "-c", bashCmd]);
     }
 }

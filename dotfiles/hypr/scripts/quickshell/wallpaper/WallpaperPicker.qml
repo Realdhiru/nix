@@ -28,7 +28,7 @@ Item {
     property bool initialFocusSet: false
     property int visibleItemCount: -1
     property int scrollAccum: 0
-    property real scrollThreshold: window.s(120)
+    property real scrollThreshold: window.s(40)
     property int scrollVelocity: 1
     property int scrollDirection: 0
     property double lastWheelMs: 0
@@ -1230,7 +1230,7 @@ Item {
     readonly property real skewFactor: -0.35
     readonly property real selectedCenterOffset: (window.skewFactor * (window.itemHeight)) / 2
 
-    Timer { id: scrollThrottle; interval: 150 }
+    Timer { id: scrollThrottle; interval: 50 }
 
     property bool isFilterAnimating: false
     Timer {
@@ -1606,7 +1606,7 @@ Item {
         highlightRangeMode: ListView.StrictlyEnforceRange
         preferredHighlightBegin: Math.max(0, (width / 2) - ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset)
         preferredHighlightEnd: Math.max(0, (width / 2) + ((window.itemWidth * 1.5 + window.spacing) / 2) + window.selectedCenterOffset)
-        highlightMoveDuration: (window.isFilterAnimating || window.isModelChanging) ? 0 : 350
+        highlightMoveDuration: (window.isFilterAnimating || window.isModelChanging) ? 0 : Motion.moveMs
         focus: true
         
         onWidthChanged: {

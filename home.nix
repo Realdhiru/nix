@@ -12,11 +12,90 @@
   xdg.configFile."environment.d/wallpaper.conf".text =
     "DEFAULT_WALLPAPER=${./dotfiles/wallpaper/default.jpg}\n";
 
-  # Host-specific declarative monitor override (Samsung 2.8K 120Hz OLED panel)
+  # Host-specific declarative monitor override (Samsung 2.8K OLED panel)
+  # Dynamic refresh-rate-by-power-source: derives target resolution and available
+  # refresh rates directly from the panel's hardware EDID detailed timings (no hardcoded rates).
+  # 60Hz on battery / 120Hz on AC enforced declaratively across startup, hotplug, and compositor reloads.
   xdg.configFile."hypr-local/monitors.lua" = {
     force = true;
     text = ''
-      hl.monitor({ output = "desc:Samsung Display Corp. 0x4180", mode = "preferred", position = "auto", scale = 2, bitdepth = 10 })
+      local function is_ac_online()
+          for _, path in ipairs({"/sys/class/power_supply/AC0/online", "/sys/class/power_supply/ADP1/online", "/sys/class/power_supply/AC/online"}) do
+              local f = io.open(path, "r")
+              if f then
+                  local v = f:read("*l")
+                  f:close()
+                  if v and v:match("1") then return true end
+                  if v and v:match("0") then return false end
+              end
+          end
+          return true
+      end
+
+      local function get_edid_modes(edid_bytes)
+          local modes = {}
+          if not edid_bytes or #edid_bytes < 128 then return modes end
+          for _, offset in ipairs({54, 72, 90, 108}) do
+              local b1 = string.byte(edid_bytes, offset + 1)
+              local b2 = string.byte(edid_bytes, offset + 2)
+              if b1 and b2 and (b1 ~= 0 or b2 ~= 0) then
+                  local pix_clk = (b1 + b2 * 256) * 10000
+                  local b3 = string.byte(edid_bytes, offset + 3)
+                  local b4 = string.byte(edid_bytes, offset + 4)
+                  local b5 = string.byte(edid_bytes, offset + 5)
+                  local b6 = string.byte(edid_bytes, offset + 6)
+                  local b7 = string.byte(edid_bytes, offset + 7)
+                  local b8 = string.byte(edid_bytes, offset + 8)
+
+                  local h_act = b3 + (math.floor(b5 / 16) * 256)
+                  local h_blank = b4 + ((b5 % 16) * 256)
+                  local v_act = b6 + (math.floor(b8 / 16) * 256)
+                  local v_blank = b7 + ((b8 % 16) * 256)
+
+                  local h_total = h_act + h_blank
+                  local v_total = v_act + v_blank
+                  if h_total > 0 and v_total > 0 then
+                      local rr = pix_clk / (h_total * v_total)
+                      table.insert(modes, { width = h_act, height = v_act, rr = rr })
+                  end
+              end
+          end
+          return modes
+      end
+
+      local function resolve_mode()
+          local edid_paths = {
+              "/sys/class/drm/card1-eDP-1/edid",
+              "/sys/class/drm/card0-eDP-1/edid",
+          }
+          local modes = {}
+          for _, path in ipairs(edid_paths) do
+              local f = io.open(path, "rb")
+              if f then
+                  local content = f:read("*a")
+                  f:close()
+                  modes = get_edid_modes(content)
+                  if #modes > 0 then break end
+              end
+          end
+
+          if #modes == 0 then
+              return "preferred"
+          end
+
+          local max_mode = modes[1]
+          local min_mode = modes[1]
+          for _, m in ipairs(modes) do
+              if m.rr > max_mode.rr then max_mode = m end
+              if m.rr < min_mode.rr then min_mode = m end
+          end
+
+          local chosen = is_ac_online() and max_mode or min_mode
+          return string.format("%dx%d@%d", chosen.width, chosen.height, math.floor(chosen.rr + 0.5))
+      end
+
+      local target_mode = resolve_mode()
+      hl.monitor({ output = "desc:Samsung Display Corp. 0x4180", mode = target_mode, position = "auto", scale = 2, bitdepth = 10 })
     '';
   };
 
@@ -369,6 +448,23 @@
       EnvironmentFile = "%h/.local/state/mpvpaper/%i.env";
       ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p -o \"no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0\" %I \${WALLPAPER_VIDEO}";
       Restart = "on-failure";
+    };
+  };
+
+  # Declarative color temperature and display CTM daemon managed by systemd
+  systemd.user.services.hyprsunset = {
+    Unit = {
+      Description = "hyprsunset color temperature and gamma manager";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${pkgs.hyprsunset}/bin/hyprsunset -i";
+      Restart = "on-failure";
+      RestartSec = "1s";
+    };
+    Install = {
+      WantedBy = [ "graphical-session.target" ];
     };
   };
 

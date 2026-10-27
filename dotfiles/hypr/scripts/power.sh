@@ -375,9 +375,6 @@ cmd_display() {
         on)
             rm -f "$marker" 2>/dev/null || true
             hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))" >/dev/null 2>&1 || true
-            brightnessctl -d intel_backlight set +0% >/dev/null 2>&1 || true
-            ydotool mousemove -x 1 -y 0 2>/dev/null || true
-            ydotool mousemove -x -1 -y 0 2>/dev/null || true
             ;;
         toggle)
             local status

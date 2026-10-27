@@ -23,7 +23,7 @@
 
 ### Borders, Shadows & Glassmorphism
 - **Frameless / Zero-Border Standard:** Artificial hairline borders, stroke wrappers, and rotating animated masks are banned across all QuickShell widgets (`borderWidth = 0`, `borderOpacity = 0.0` in `settings.json`). Adding unrequested borders or outlines is an immediate point of contention.
-- **Hardware Kawase Blur:** Blur is enforced at the compositor level on all QuickShell surfaces via `rules.lua` matching namespaces `^(quickshell|qs-.*)$` with `ignore_alpha = 0.05`.
+- **Hardware Kawase Blur:** Blur is enforced at the compositor level on QuickShell card surfaces via `rules.lua` matching namespaces `^(quickshell|qs-master|qs-notif-toast)$` with `ignore_alpha = 0.05`. Full-screen transparent overlay surfaces (`qs-floating-overlay`) must be excluded from blur rules to prevent unnecessary GPU blur overhead.
 - **Anti-Bleed Layering:** Glass surfaces must prevent high-contrast wallpaper elements (sketches, linework, text) from showing through translucent cards. Popups must use a solid foundation layer (`root.base + effectivePopupOpacity`) behind translucent components to maintain contrast and legibility.
 
 ### Naming & Structural Conventions
@@ -209,8 +209,14 @@
   - *Symptom:* Modal dialogs ("Are you sure?", "More than one document is open", file prompts) spawn in the upper-left corner under the side/top bar or clip off-screen.
   - *Root Cause:* Under XWayland, transient dialogs lack relative parent surface anchoring metadata unless explicit window rules enforce centering. When Hyprland's window placement receives unanchored floating windows, they default to origin `(0, 0)`.
   - *Mitigation:* In [`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), declare `hl.window_rule({ match = { modal = true }, float = true, center = true })` and `hl.window_rule({ match = { xwayland = true, float = true }, center = true })`.
-- **LayerShell Surface Dynamic Morphing & DRM Buffer Thrashing:**
-  - *Symptom:* Animating `PanelWindow.implicitWidth` or `implicitHeight` directly on every frame of a spring curve (e.g. `Easing.OutBack` at 120Hz) forces the Wayland compositor to reallocate surface buffers and issue configure events on every frame (36+ buffer resizes across 300ms). Under high frame rates or simultaneous window animations, this causes micro-stutter and risks Intel GPU ring buffer pressure.
-  - *Mitigation:* Pin the `PanelWindow` to a stable outer bounding box (`implicitWidth: toastWindow.s(580)`, `implicitHeight: toastWindow.s(74)`) and apply `mask: Region { item: islandCard }`. This allows the inner capsule (`islandCard`) to animate its width, height, and scale freely with fluid Apple spring physics, while the compositor surface remains fixed and all non-pill pixels remain completely transparent and click-through.
+- **Wallpaper Cycling In-Flight Pointer (`target_wallpaper.txt`) Invalidation:**
+  - *Symptom:* Pressing next/prev wallpaper cycle keybinds jumps to a photo wallpaper in a distant category instead of cycling around the currently active wallpaper (e.g. an active GIF).
+  - *Root Cause:* `cycle_wallpaper.sh` cached its target destination in `~/.cache/target_wallpaper.txt` to support rapid sub-second key repeat. However, when the user selected a new wallpaper via `WallpaperPicker.qml` or `wallpaper.sh set`, `target_wallpaper.txt` was never updated or cleared. Any subsequent cycle keypress read the stale target file from earlier sessions, overriding the actual live active wallpaper path in `current_wallpaper.txt`.
+  - *Mitigation:* In `cycle_wallpaper.sh`, invalidate `target_wallpaper.txt` if `current_wallpaper.txt` has a newer modification time or if `target_wallpaper.txt` is older than 2 seconds. In `set.sh`, unconditionally delete `target_wallpaper.txt` whenever any non-cycling wallpaper application occurs (`[ -z "${FORCE_CYCLE:-}" ] && rm -f "$CACHE_DIR/target_wallpaper.txt"`).
+- **WirePlumber Diagnostic Event-Driven Telemetry in Systemd:**
+  - *Symptom:* Intermittent audio loss or dangling virtual sink forward links cannot be debugged from standard journal logs because WirePlumber runs at warning/notice log level (`W`) by default with zero linking decisions recorded.
+  - *Root Cause:* WirePlumber 0.5 uses granular logging topics (`s-linking`, `s-default-nodes`) rather than simple global verbosity flags. Without setting `WIREPLUMBER_DEBUG`, session item linking, target resolution failures, and default device elections emit no journal entries.
+  - *Mitigation:* Declare `systemd.user.services.wireplumber.environment.WIREPLUMBER_DEBUG = "I,s-linking:D,s-default-nodes:D"` in `modules/system/services.nix`. WirePlumber automatically emits timestamped linking decisions directly to the user journal without file I/O overhead.
+
 
 

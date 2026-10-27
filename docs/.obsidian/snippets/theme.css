@@ -1,62 +1,62 @@
 /* Dynamic Wallust Palette for Obsidian */
 .theme-dark, .theme-light {
-    --background-primary: #030308;
-    --background-primary-alt: #0D0D12;
-    --background-secondary: #030308;
-    --background-secondary-alt: #17171C;
-    --background-modifier-border: #212126;
-    --background-modifier-border-hover: #303034;
-    --background-modifier-border-focus: #5CADA9;
-    --background-modifier-form-field: #0D0D12;
+    --background-primary: #010407;
+    --background-primary-alt: #0B0E11;
+    --background-secondary: #010407;
+    --background-secondary-alt: #15181B;
+    --background-modifier-border: #1F2225;
+    --background-modifier-border-hover: #2F3134;
+    --background-modifier-border-focus: #6F8D9B;
+    --background-modifier-form-field: #0B0E11;
     
-    --text-normal: #F4F6F5;
-    --text-muted: #CED5D4;
-    --text-faint: #ADB8B8;
-    --text-accent: #5CADA9;
-    --text-accent-hover: #CED5D4;
+    --text-normal: #F4F5F6;
+    --text-muted: #CED2D5;
+    --text-faint: #ADB5B8;
+    --text-accent: #6F8D9B;
+    --text-accent-hover: #CED2D5;
     
-    --interactive-normal: #0D0D12;
-    --interactive-hover: #17171C;
-    --interactive-accent: #5CADA9;
-    --interactive-accent-hover: #CED5D4;
+    --interactive-normal: #0B0E11;
+    --interactive-hover: #15181B;
+    --interactive-accent: #6F8D9B;
+    --interactive-accent-hover: #CED2D5;
     
-    --text-selection: #5CADA955;
+    --text-selection: #6F8D9B55;
     
     /* Headings & Links */
-    --link-color: #5CADA9;
-    --link-color-hover: #CED5D4;
-    --h1-color: #5CADA9;
-    --h2-color: #16B5BD;
-    --h3-color: #3B8272;
-    --h4-color: #3588BE;
-    --h5-color: #5CADA9;
-    --h6-color: #CED5D4;
+    --link-color: #6F8D9B;
+    --link-color-hover: #CED2D5;
+    --h1-color: #6F8D9B;
+    --h2-color: #B17C1F;
+    --h3-color: #80756B;
+    --h4-color: #5D8294;
+    --h5-color: #6F8D9B;
+    --h6-color: #CED2D5;
 
     /* Graph View Elements */
-    --graph-node: #5CADA9;
-    --graph-node-focused: #F4F6F5;
-    --graph-line: #212126;
+    --graph-node: #6F8D9B;
+    --graph-node-focused: #F4F5F6;
+    --graph-line: #1F2225;
 }
 
 .theme-dark {
-    --color-base-00: #030307;
-    --color-base-10: #030308;
-    --color-base-20: #030308;
-    --color-base-25: #0D0D12;
-    --color-base-30: #17171C;
-    --color-base-35: #212126;
-    --color-base-40: #303034;
-    --color-base-50: #3F3F43;
-    --color-base-60: #4F4F52;
-    --color-base-70: #ADB8B8;
-    --color-base-100: #F4F6F5;
+    --color-base-00: #010306;
+    --color-base-10: #010407;
+    --color-base-20: #010407;
+    --color-base-25: #0B0E11;
+    --color-base-30: #15181B;
+    --color-base-35: #1F2225;
+    --color-base-40: #2F3134;
+    --color-base-50: #3E4043;
+    --color-base-60: #4D4F51;
+    --color-base-70: #ADB5B8;
+    --color-base-100: #F4F5F6;
     
-    --color-red: #736A87;
-    --color-orange: #3588BE;
-    --color-yellow: #477C9E;
-    --color-green: #746D5A;
-    --color-cyan: #16B5BD;
-    --color-blue: #3B8272;
-    --color-purple: #5CADA9;
-    --color-pink: #96984D;
+    --color-red: #575D60;
+    --color-orange: #5D8294;
+    --color-yellow: #687F8A;
+    --color-green: #785A59;
+    --color-cyan: #B17C1F;
+    --color-blue: #80756B;
+    --color-purple: #6F8D9B;
+    --color-pink: #CD4F39;
 }

@@ -97,14 +97,14 @@ cmd_kill() {
     local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
     local throttle_lock="$HOME/.cache/wallpaper_kill_throttle"
 
-    # Throttle rapid keybind spam (protects Intel GPU ring buffer from back-to-back texture reallocation)
+    # Throttle rapid keybind spam (protects Intel GPU ring buffer from sub-180ms debounce chattering)
     if [ -f "$throttle_lock" ]; then
         local now
         now=$(date +%s%N)
         local last
         last=$(cat "$throttle_lock" 2>/dev/null || echo 0)
-        # 600ms minimum threshold between kill/revive passes
-        if [ $((now - last)) -lt 600000000 ]; then
+        # 180ms debounce threshold between kill/revive passes
+        if [ $((now - last)) -lt 180000000 ]; then
             return 0
         fi
     fi
@@ -117,13 +117,12 @@ cmd_kill() {
             target="$(cat "$LAST_TXT" 2>/dev/null || true)"
         fi
         if [ -n "$target" ] && [ -f "$target" ]; then
-            "$BACKEND/set.sh" "$target" "fade" "0.25" "120"
+            "$BACKEND/set.sh" "$target"
         else
             rm -f "$HOME/.cache/wallpaper_killed"
             cmd_boot
             if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
                 hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
-                hyprctl reload >/dev/null 2>&1 || true
             fi
             # Restore terminal translucency
             bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true

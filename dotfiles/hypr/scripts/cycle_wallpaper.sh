@@ -56,9 +56,24 @@ if [ -f "$INDEX_FILE" ] && { [ ! -s "$PATHS_FILE" ] || [ "$INDEX_FILE" -nt "$PAT
 fi
 
 CUR_PATH=""
+# Only respect TARGET_TXT during active sub-second rapid cycling bursts
 if [ -f "$TARGET_TXT" ] && [ -s "$TARGET_TXT" ]; then
-    CUR_PATH="$(cat "$TARGET_TXT" 2>/dev/null | tr -d '\r\n')"
-elif [ -f "$CURRENT_TXT" ] && [ -s "$CURRENT_TXT" ]; then
+    if [ -f "$CURRENT_TXT" ] && [ "$CURRENT_TXT" -nt "$TARGET_TXT" ]; then
+        CUR_PATH="$(cat "$CURRENT_TXT" 2>/dev/null | tr -d '\r\n')"
+        rm -f "$TARGET_TXT" 2>/dev/null || true
+    else
+        target_mtime=$(stat -c %Y "$TARGET_TXT" 2>/dev/null || echo 0)
+        now_sec=$(date +%s)
+        if [ $((now_sec - target_mtime)) -gt 2 ]; then
+            [ -f "$CURRENT_TXT" ] && CUR_PATH="$(cat "$CURRENT_TXT" 2>/dev/null | tr -d '\r\n')"
+            rm -f "$TARGET_TXT" 2>/dev/null || true
+        else
+            CUR_PATH="$(cat "$TARGET_TXT" 2>/dev/null | tr -d '\r\n')"
+        fi
+    fi
+fi
+
+if [ -z "$CUR_PATH" ] && [ -f "$CURRENT_TXT" ] && [ -s "$CURRENT_TXT" ]; then
     CUR_PATH="$(cat "$CURRENT_TXT" 2>/dev/null | tr -d '\r\n')"
 fi
 CUR_NAME="$(basename "$CUR_PATH" 2>/dev/null || echo "")"

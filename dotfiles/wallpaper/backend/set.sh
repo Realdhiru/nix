@@ -78,6 +78,7 @@ if [ -s "$CURRENT_TXT" ]; then
 fi
 atomic_write "$CURRENT_TXT" "$WALL"
 [ ! -s "$LAST_TXT" ] && atomic_write "$LAST_TXT" "$WALL"
+[ -z "${FORCE_CYCLE:-}" ] && rm -f "$CACHE_DIR/target_wallpaper.txt"
 
 # 1. Video Wallpapers (Handled via systemd user template unit mpvpaper@<out>)
 if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then
@@ -119,8 +120,8 @@ else
     fi
 
     # Ensure awww daemon is active
-    if command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet awww-daemon; then
-        : # Running under systemd
+    if (command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet awww-daemon) || [ -n "$(pidof .awww-daemon-wrapped 2>/dev/null || true)" ]; then
+        : # Running under systemd or active process
     else
         "$SCRIPT_DIR/ensure_awww.sh" 8>&- 2>/dev/null || true
     fi
@@ -153,7 +154,6 @@ if [ "$WAS_KILLED" -eq 1 ]; then
         CURRENT_PROFILE="$(cat "$CACHE_DIR/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
         if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$CACHE_DIR/gaming_mode" ]; then
             hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
-            hyprctl reload >/dev/null 2>&1 || true
         fi
         bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
     fi
