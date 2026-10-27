@@ -18,6 +18,7 @@ end)
 
 -- 3. Dynamic layout intent manager (persisted in $DESKTOP_STATE_DIR/monitors/intent.json)
 local connected_monitors = {}
+local known_internal_name = "eDP-1"
 
 function is_internal_monitor(name)
     if not name then return false end
@@ -30,6 +31,13 @@ function is_internal_monitor(name)
     return false
 end
 
+function is_real_external(name)
+    if not name or #name == 0 then return false end
+    if is_internal_monitor(name) then return false end
+    if name == "FALLBACK" or name == "NOOP" then return false end
+    return true
+end
+
 local function sync_connected_monitors()
     local mons = hl.get_monitors()
     for _, m in ipairs(mons) do
@@ -40,6 +48,9 @@ local function sync_connected_monitors()
             height = m.height,
             scale = m.scale
         }
+        if is_internal_monitor(m.name) then
+            known_internal_name = m.name
+        end
     end
 end
 
@@ -86,52 +97,62 @@ function apply_layout(explicit_intent)
     local intent_data = get_monitor_intent()
     local intent = explicit_intent or intent_data.layout
 
-    local internal = nil
-    for name, m in pairs(connected_monitors) do
-        if is_internal_monitor(name) then
-            internal = m
-            break
+    local external_count = 0
+    for name, _ in pairs(connected_monitors) do
+        if is_real_external(name) then
+            external_count = external_count + 1
         end
     end
 
-    if not internal then
-        -- No internal panel: ignore mirror intent silently, all stay extended
+    -- Safety rule: if no external monitors are present, internal panel MUST be active!
+    if external_count == 0 then
+        hl.monitor({ output = known_internal_name, disabled = false, position = "0x0" })
         return
     end
 
+    local internal = connected_monitors[known_internal_name]
+    if not internal then
+        internal = { name = known_internal_name, width = 2880, height = 1620, scale = 2 }
+    end
+
     if intent == "mirror" then
+        hl.monitor({ output = internal.name, disabled = false })
         for name, m in pairs(connected_monitors) do
-            if name ~= internal.name then
+            if is_real_external(name) then
                 hl.monitor({ output = name, mirror = internal.name })
             end
         end
     elseif intent == "internal" then
         hl.monitor({ output = internal.name, disabled = false })
         for name, m in pairs(connected_monitors) do
-            if name ~= internal.name then
+            if is_real_external(name) then
                 hl.monitor({ output = name, disabled = true })
             end
         end
     elseif intent == "external" then
-        for name, m in pairs(connected_monitors) do
-            if name ~= internal.name then
-                local disp_cfg = get_display_intent(intent_data.raw, m.description, name)
-                local scale_val = disp_cfg and disp_cfg.scale or (m.scale or "auto")
-                local mode_val = disp_cfg and disp_cfg.mode or "preferred"
-                local mon_opts = { output = name, mode = mode_val, position = "0x0", scale = scale_val, mirror = "", disabled = false }
-                if disp_cfg and disp_cfg.transform then
-                    mon_opts.transform = disp_cfg.transform
+        if external_count == 0 then
+            hl.monitor({ output = internal.name, disabled = false, position = "0x0" })
+        else
+            for name, m in pairs(connected_monitors) do
+                if is_real_external(name) then
+                    local disp_cfg = get_display_intent(intent_data.raw, m.description, name)
+                    local scale_val = disp_cfg and disp_cfg.scale or (m.scale or "auto")
+                    local mode_val = disp_cfg and disp_cfg.mode or "preferred"
+                    local mon_opts = { output = name, mode = mode_val, position = "0x0", scale = scale_val, mirror = "", disabled = false }
+                    if disp_cfg and disp_cfg.transform then
+                        mon_opts.transform = disp_cfg.transform
+                    end
+                    hl.monitor(mon_opts)
                 end
-                hl.monitor(mon_opts)
             end
+            hl.monitor({ output = internal.name, disabled = true })
         end
-        hl.monitor({ output = internal.name, disabled = true })
     else
         -- Extend mode: internal panel is at 0x0. External placed beside internal panel.
         hl.monitor({ output = internal.name, disabled = false })
         local internal_logical_w = math.floor((internal.width or 2880) / (internal.scale or 2) + 0.5)
         for name, m in pairs(connected_monitors) do
-            if name ~= internal.name then
+            if is_real_external(name) then
                 local disp_cfg = get_display_intent(intent_data.raw, m.description, name)
                 local scale_val = disp_cfg and disp_cfg.scale or (m.scale or "auto")
                 local mode_val = disp_cfg and disp_cfg.mode or "preferred"
@@ -144,25 +165,6 @@ function apply_layout(explicit_intent)
             end
         end
     end
-
-    -- Map touch devices to external touchscreen if present, otherwise internal
-    pcall(function()
-        local h = io.popen("hyprctl devices -j 2>/dev/null")
-        if not h then return end
-        local raw = h:read("*a")
-        h:close()
-        if not raw or #raw == 0 then return end
-        for dev_name in raw:gmatch('"name"%s*:%s*"([^"]+)"') do
-            if dev_name:lower():match("touch") then
-                for mon_name, _ in pairs(connected_monitors) do
-                    if not is_internal_monitor(mon_name) then
-                        hl.config({ device = { { name = dev_name, output = mon_name } } })
-                        break
-                    end
-                end
-            end
-        end
-    end)
 end
 
 -- Apply on startup
@@ -197,6 +199,15 @@ end)
 hl.on("monitor.removed", function(m)
     if m and m.name then
         connected_monitors[m.name] = nil
+    end
+    local external_count = 0
+    for name, _ in pairs(connected_monitors) do
+        if is_real_external(name) then
+            external_count = external_count + 1
+        end
+    end
+    if external_count == 0 then
+        hl.monitor({ output = known_internal_name, disabled = false, position = "0x0" })
     end
     apply_layout()
 end)

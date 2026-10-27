@@ -42,6 +42,8 @@
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
       user = import ./user.nix;
+      motion-tokens = import ./dotfiles/hypr/motion-tokens.nix;
+      motion-gen = import ./lib/motion-gen.nix { lib = pkgs.lib; };
     in {
     nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
       inherit system;
@@ -109,28 +111,47 @@
       ];
     };
 
-    checks.${system}.qml-lint = pkgs.runCommandLocal "qml-lint" { } ''
-      QT_QML=${pkgs.qt6.qtdeclarative}/lib/qt-6/qml
-      QS_QML=${pkgs.quickshell}/lib/qt-6/qml
-      QMLLINT=${pkgs.qt6.qtdeclarative}/bin/qmllint
-      cp -r ${./dotfiles/hypr/scripts/quickshell} src
-      fail=0
-      while IFS= read -r f; do
-        echo "qmllint: ''${f#src/}"
-        if lintout=$("$QMLLINT" -I "$QT_QML" -I "$QS_QML" "$f" 2>&1); then
-          if printf '%s\n' "$lintout" | grep -q "unknown attached property scope"; then
-            echo "FAIL: unresolved attached property in ''${f#src/}:"
-            printf '%s\n' "$lintout" | grep "unknown attached property scope"
-            fail=1
-          fi
-        else
-          echo "FAIL: qmllint exited non-zero on ''${f#src/}:"
-          printf '%s\n' "$lintout" | tail -20
-          fail=1
-        fi
-      done < <(find src -name '*.qml' -type f | sort)
-      mkdir -p "$out"
-      exit "$fail"
-    '';
+    checks = {
+      ${system} = {
+        motion-tokens = pkgs.runCommandLocal "motion-tokens" { } ''
+          cmp ${pkgs.writeText "motion.lua.generated" (motion-gen.motionLua motion-tokens)} ${./dotfiles/hypr/motion.lua}
+          cmp ${pkgs.writeText "Motion.qml.generated" (motion-gen.motionQml motion-tokens)} ${./dotfiles/hypr/scripts/quickshell/Motion.qml}
+          mkdir -p "$out"
+        '';
+        qml-lint = pkgs.runCommandLocal "qml-lint" { } ''
+          QT_QML=${pkgs.qt6.qtdeclarative}/lib/qt-6/qml
+          QS_QML=${pkgs.quickshell}/lib/qt-6/qml
+          QMLLINT=${pkgs.qt6.qtdeclarative}/bin/qmllint
+          cp -r ${./dotfiles/hypr/scripts/quickshell} src
+          fail=0
+          while IFS= read -r f; do
+            echo "qmllint: ''${f#src/}"
+            if lintout=$("$QMLLINT" -I "$QT_QML" -I "$QS_QML" "$f" 2>&1); then
+              if printf '%s\n' "$lintout" | grep -q "unknown attached property scope"; then
+                echo "FAIL: unresolved attached property in ''${f#src/}:"
+                printf '%s\n' "$lintout" | grep "unknown attached property scope"
+                fail=1
+              fi
+            else
+              echo "FAIL: qmllint exited non-zero on ''${f#src/}:"
+              printf '%s\n' "$lintout" | tail -20
+              fail=1
+            fi
+          done < <(find src -name '*.qml' -type f | sort)
+          echo "motion-check: numeric durations and raw easings may only exist in Motion.qml"
+          while IFS= read -r f; do
+            case "''${f}" in */Motion.qml) continue ;; esac
+            if grep -nE 'duration[[:space:]]*:[[:space:]]*[0-9]' "''${f}"; then
+              echo "LINT: numeric duration in ''${f#src/}:"
+            fi
+            if { grep -nE 'Easing\.[A-Za-z]+' "''${f}" || grep -n 'bezierCurve' "''${f}" | grep -v 'bezierCurveTo'; } | grep -v '^$'; then
+              echo "LINT: raw easing in ''${f#src/} (use Motion.qml tokens)"
+            fi
+          done < <(find src -name '*.qml' -type f | sort)
+          mkdir -p "$out"
+          exit "$fail"
+        '';
+      };
+    };
   };
 }

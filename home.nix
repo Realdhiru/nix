@@ -104,6 +104,7 @@
 
       local target_mode = resolve_mode()
       hl.monitor({ output = "desc:Samsung Display Corp. 0x4180", mode = target_mode, position = "auto", scale = 2, bitdepth = 10 })
+      hl.monitor({ output = "eDP-1", mode = target_mode, position = "auto", scale = 2, bitdepth = 10 })
     '';
   };
 
