@@ -127,7 +127,7 @@ Item {
 
     FileView {
         id: stateFileView
-        path: Quickshell.env("HOME") + "/.cache/quickshell/state.json"
+        path: Caching.stateJsonFile
         watchChanges: true
         onTextChanged: window.syncModeFromState()
     }

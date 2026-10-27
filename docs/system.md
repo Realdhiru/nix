@@ -46,7 +46,7 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 - **State Directory Invariant**:
   - Persistent desktop state lives strictly in `${XDG_STATE_HOME:-$HOME/.local/state}/desktop/` (subdivided by area: `wallpaper/`, `power/`, `audio/`). State writes must be atomic (`tmp` file + `mv -f` in the same directory).
   - Regenerable cache files belong in `~/.cache`.
-  - *Known Legacy Violations (scheduled for migration)*: `coffee state.json` (`~/.cache/quickshell/state.json`), `wallpaper_killed` (`~/.cache/wallpaper_killed`), `gaming_mode` (`~/.cache/gaming_mode`), `rec_pid` (`~/.cache/rec_pid`), `qs_power_profile` (`~/.cache/qs_power_profile`).
+  - *Persistent State Unified*: All persistent state migrated to `${XDG_STATE_HOME:-$HOME/.local/state}/desktop/` (`quickshell/state.json`, `power/profile`, `modes/wallpaper_killed`, `modes/gaming_mode`, `recording/rec_pid`, `wallpaper/current_wallpaper.txt`). Legacy cache locations purged.
 - **Race-to-Sleep Strategy**: Maximize package C-state sleep ($C8/C10$) by bursting tasks at full frequency and sleeping immediately. Periodic polling loops are banned.
 - **Coffee Mode & Persistent Idle Inhibition**:
   - `SUPER + CTRL + U` invokes `power.sh inhibit` to acquire `systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity`.

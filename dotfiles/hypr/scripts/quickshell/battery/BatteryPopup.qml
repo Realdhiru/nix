@@ -150,9 +150,20 @@ Item {
     }
 
     // Called by Main.qml whenever this cached popup is shown again.
-    // Entry/exit motion is a single property-driven fade+scale on the card
-    // root (shown), so only the action capsules need a state reset here.
+    // exitAnim leaves all intro* properties at 0 and actions in a triggered
+    // state, so restore the entry state and reset the action capsules.
+    // The master window opacity + StackView replaceEnter transitions already
+    // provide the entry animation — replaying the timeline here would stack a
+    // third fade on top and look like a blink/refresh.
     function showWidget() {
+        exitAnim.stop();
+        introMain = 1;
+        introTop = 1;
+        introNotifs = 1;
+        introCore = 1;
+        introSliders = 1;
+        introActions = 1;
+        introProfiles = 1;
         for (var i = 0; i < actionRowRepeater.count; i++) {
             let cap = actionRowRepeater.itemAt(i);
             if (cap) {
@@ -194,7 +205,7 @@ Item {
     readonly property color ambientSecondary: isCharging ? window.primary : (batCapacity >= 70 ? window.mauve : (batCapacity >= 30 ? window.peach : window.maroon))
 
     property real animCapacity: SysData.batCapacity
-    Behavior on animCapacity { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+    Behavior on animCapacity { NumberAnimation { duration: 1200; easing.type: Easing.OutQuint } }
     
     onAnimCapacityChanged: batCanvas.requestPaint()
     onBatColorStartChanged: batCanvas.requestPaint()
@@ -249,7 +260,7 @@ Item {
             cap=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1 || echo '0')
             stat=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1 || echo 'Unknown')
             
-            prof=$(cat /tmp/qs_power_profile 2>/dev/null)
+            prof=$(cat "${DESKTOP_STATE_DIR:-$HOME/.local/state/desktop}/power/profile" 2>/dev/null)
             if [ -z "$prof" ]; then
                 epp=$(cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference 2>/dev/null || echo 'balance_performance')
                 case "$epp" in
@@ -373,10 +384,61 @@ Item {
         }
     }
 
-    // Single card-level enter/exit: one fade + one scale on the card root.
-    // shown mirrors the window visibility Main.qml tracks (visible:true on
-    // executeSwitch, false at preload / when the widget leaves the stack).
-    readonly property bool shown: visible
+    property real globalOrbitAngle: 0
+    NumberAnimation on globalOrbitAngle {
+        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: window.visible
+    }
+
+    property real introMain: 1.0
+    property real introTop: 1.0
+    property real introNotifs: 1.0
+    property real introCore: 1.0
+    property real introSliders: 1.0
+    property real introActions: 1.0
+    property real introProfiles: 1.0
+
+    // Staggered intro animation disabled to prevent double-refresh and frame hitching on open.
+    // Master container in Main.qml provides single-pass hardware-accelerated 100ms fade/scale.
+    ParallelAnimation {
+        id: introAnim
+        running: false
+        NumberAnimation { target: window; property: "introMain"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutQuart }
+        SequentialAnimation {
+            PauseAnimation { duration: 100 }
+            NumberAnimation { target: window; property: "introTop"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutBack; easing.overshoot: 1.0 }
+        }
+        SequentialAnimation {
+            PauseAnimation { duration: 150 }
+            NumberAnimation { target: window; property: "introNotifs"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutQuart }
+        }
+        SequentialAnimation {
+            PauseAnimation { duration: 250 }
+            NumberAnimation { target: window; property: "introCore"; from: 0; to: 1.0; duration: 900; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
+        }
+        SequentialAnimation {
+            PauseAnimation { duration: 350 }
+            NumberAnimation { target: window; property: "introSliders"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutQuart }
+        }
+        SequentialAnimation {
+            PauseAnimation { duration: 450 }
+            NumberAnimation { target: window; property: "introActions"; from: 0; to: 1.0; duration: 800; easing.type: Easing.OutExpo }
+        }
+        SequentialAnimation {
+            PauseAnimation { duration: 550 }
+            NumberAnimation { target: window; property: "introProfiles"; from: 0; to: 1.0; duration: 850; easing.type: Easing.OutBack; easing.overshoot: 0.8 }
+        }
+    }
+
+    ParallelAnimation {
+        id: exitAnim
+        NumberAnimation { target: window; property: "introMain"; to: 0; duration: 400; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introTop"; to: 0; duration: 300; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introNotifs"; to: 0; duration: 300; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introCore"; to: 0; duration: 350; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introSliders"; to: 0; duration: 250; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introActions"; to: 0; duration: 200; easing.type: Easing.InQuart }
+        NumberAnimation { target: window; property: "introProfiles"; to: 0; duration: 150; easing.type: Easing.InQuart }
+    }
 
     function clearGroup(appName) {
         if (!notifModel) return;
@@ -393,11 +455,9 @@ Item {
 
     Item {
         anchors.fill: parent
-        scale: window.shown ? 1.0 : 0.96
-        opacity: window.shown ? 1.0 : 0.0
-
-        Behavior on opacity { NumberAnimation { duration: window.shown ? Motion.enterMs : Motion.exitMs; easing.type: window.shown ? Motion.enterEasing : Motion.exitEasing } }
-        Behavior on scale { NumberAnimation { duration: window.shown ? Motion.enterMs : Motion.exitMs; easing.type: window.shown ? Motion.enterEasing : Motion.exitEasing } }
+        scale: 0.92 + (0.08 * introMain)
+        opacity: introMain
+        transform: Translate { y: window.s(15) * (1 - introMain) }
 
         Rectangle {
             id: mainCardRect
@@ -419,20 +479,20 @@ Item {
 
             Rectangle {
                 width: parent.width * 0.8; height: width; radius: width / 2
-                x: (parent.width / 2 - width / 2) + window.s(150)
-                y: parent.height / 2 - height / 2
+                x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
+                y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(100)
                 opacity: 0.08
                 color: window.ambientPrimary
-                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                Behavior on color { ColorAnimation { duration: 1000 } }
             }
-
+            
             Rectangle {
                 width: parent.width * 0.9; height: width; radius: width / 2
-                x: parent.width / 2 - width / 2
-                y: (parent.height / 2 - height / 2) - window.s(100)
+                x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
+                y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
                 opacity: 0.06
                 color: window.ambientSecondary
-                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                Behavior on color { ColorAnimation { duration: 1000 } }
             }
 
             Item {
@@ -452,7 +512,7 @@ Item {
                             color: "transparent"
                             border.color: window.ambientSecondary
                             border.width: 1
-                            Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on border.color { ColorAnimation { duration: 1000 } }
                             opacity: 0.06 - (index * 0.02)
                         }
                     }
@@ -461,6 +521,10 @@ Item {
                 Item {
                     anchors.fill: parent
                     z: 1
+                    
+                    opacity: introCore
+                    transform: Translate { y: window.s(25) * (1 - introCore) }
+                    scale: 0.9 + (0.1 * introCore)
 
                     Rectangle {
                         anchors.centerIn: centralCore
@@ -469,8 +533,13 @@ Item {
                         radius: width / 2
                         color: centralCore.isDangerState ? window.red : window.ambientPrimary
                         opacity: centralCore.isDangerState ? 0.25 : 0.0
-                        z: 0
-                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        z: 0 
+                        Behavior on color { ColorAnimation { duration: 400 } }
+                        SequentialAnimation on scale {
+                            loops: Animation.Infinite; running: window.visible
+                            NumberAnimation { to: heroMa.containsMouse ? 1.15 : 1.08; duration: heroMa.containsMouse ? 800 : 2000; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.0; duration: heroMa.containsMouse ? 800 : 2000; easing.type: Easing.InOutSine }
+                        }
                     }
 
                     Rectangle {
@@ -483,6 +552,21 @@ Item {
                         z: 1
                         
                         property bool isDangerState: !window.isCharging && window.batCapacity < 15
+                        
+                        SequentialAnimation on scale {
+                            loops: Animation.Infinite
+                            running: window.visible
+                            NumberAnimation {
+                                to: heroMa.containsMouse ? 1.05 : (centralCore.isDangerState ? 1.04 : 1.01)
+                                duration: heroMa.containsMouse ? 1200 : (centralCore.isDangerState ? 600 : 2500)
+                                easing.type: Easing.InOutSine 
+                            }
+                            NumberAnimation { 
+                                to: 1.0
+                                duration: heroMa.containsMouse ? 1200 : (centralCore.isDangerState ? 600 : 2500)
+                                easing.type: Easing.InOutSine 
+                            }
+                        }
 
                         border.color: Qt.rgba(window.surface1.r, window.surface1.g, window.surface1.b, 0.40)
                         border.width: 1
@@ -494,12 +578,45 @@ Item {
                             radius: width / 2
                             color: window.maroon
                             opacity: centralCore.isDangerState ? 0.15 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on opacity { NumberAnimation { duration: 1000 } }
+                            SequentialAnimation on opacity {
+                                loops: Animation.Infinite; running: centralCore.isDangerState
+                                NumberAnimation { to: 0.25; duration: 600; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 0.15; duration: 600; easing.type: Easing.InOutSine }
+                            }
                         }
 
                         Item {
                             anchors.fill: parent
-
+                            
+                            property real textPulse: 0.0
+                            SequentialAnimation on textPulse {
+                                loops: Animation.Infinite; running: window.visible
+                                NumberAnimation { from: 0.0; to: 1.0; duration: 1200; easing.type: Easing.InOutSine }
+                                NumberAnimation { from: 1.0; to: 0.0; duration: 1200; easing.type: Easing.InOutSine }
+                            }
+                            
+                            property real pumpPhase: 0.0
+                            NumberAnimation on pumpPhase {
+                                running: heroMa.containsMouse && window.isCharging
+                                loops: Animation.Infinite
+                                from: 0.0; to: 1.0; duration: 1200
+                                easing.type: Easing.InOutSine 
+                                onStopped: batCanvas.requestPaint()
+                            }
+                            
+                            property real dischargePhase: 1.0
+                            NumberAnimation on dischargePhase {
+                                running: heroMa.containsMouse && !window.isCharging
+                                loops: Animation.Infinite
+                                from: 1.0; to: 0.0; duration: 1600
+                                easing.type: Easing.InOutSine
+                                onStopped: batCanvas.requestPaint()
+                            }
+                            
+                            onPumpPhaseChanged: { if(heroMa.containsMouse && window.isCharging) batCanvas.requestPaint() }
+                            onDischargePhaseChanged: { if(heroMa.containsMouse && !window.isCharging) batCanvas.requestPaint() }
+                            
                             Canvas {
                                 id: batCanvas
                                 anchors.fill: parent
@@ -532,6 +649,58 @@ Item {
                                     ctx.arc(centerX, centerY, radius, 0, endAngle);
                                     ctx.strokeStyle = fillGrad;
                                     ctx.stroke();
+                                    
+                                    if (heroMa.containsMouse && endAngle > 0.1) {
+                                        if (window.isCharging) {
+                                            var surgeAngle = parent.pumpPhase * (endAngle + 0.6) - 0.3;
+                                            if (surgeAngle > 0 && surgeAngle < endAngle) {
+                                                var sStart = Math.max(0, surgeAngle - 0.4);
+                                                var sEnd = Math.min(endAngle, surgeAngle + 0.4);
+                                                ctx.beginPath();
+                                                ctx.arc(centerX, centerY, radius, sStart, sEnd);
+                                                ctx.lineWidth = window.s(22);
+                                                ctx.strokeStyle = window.batColorStart.toString();
+                                                ctx.globalAlpha = 0.5 * Math.sin(parent.pumpPhase * Math.PI);
+                                                ctx.stroke();
+
+                                                sStart = Math.max(0, surgeAngle - 0.2);
+                                                sEnd = Math.min(endAngle, surgeAngle + 0.2);
+                                                ctx.beginPath();
+                                                ctx.arc(centerX, centerY, radius, sStart, sEnd);
+                                                ctx.lineWidth = window.s(28);
+                                                ctx.strokeStyle = window.batColorEnd.toString();
+                                                ctx.globalAlpha = 0.8 * Math.sin(parent.pumpPhase * Math.PI);
+                                                ctx.stroke();
+                                            }
+                                            
+                                            if (parent.pumpPhase > 0.7) {
+                                                var flarePhase = (parent.pumpPhase - 0.7) / 0.3;
+                                                var hitX = centerX + Math.cos(endAngle) * radius;
+                                                var hitY = centerY + Math.sin(endAngle) * radius;
+                                                ctx.beginPath();
+                                                ctx.arc(hitX, hitY, window.s(7) + (flarePhase * window.s(15)), 0, 2*Math.PI);
+                                                ctx.fillStyle = window.batColorEnd.toString();
+                                                ctx.globalAlpha = (1.0 - flarePhase) * 0.6;
+                                                ctx.fill();
+                                            }
+                                        } else {
+                                            var drainCenter = parent.dischargePhase * endAngle;
+                                            for (var d = 0; d < 2; d++) {
+                                                var dSpread = 0.2 + (d * 0.15);
+                                                var dStart = Math.max(0, drainCenter - dSpread);
+                                                var dEnd = Math.min(endAngle, drainCenter + dSpread);
+                                                
+                                                if (dStart < dEnd) {
+                                                    ctx.beginPath();
+                                                    ctx.arc(centerX, centerY, radius, dStart, dEnd);
+                                                    ctx.lineWidth = window.s(14) + (1 - d) * window.s(2);
+                                                    ctx.strokeStyle = window.batColorEnd.toString();
+                                                    ctx.globalAlpha = 0.2 * Math.sin(parent.dischargePhase * Math.PI);
+                                                    ctx.stroke();
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
@@ -548,7 +717,7 @@ Item {
                                         font.pixelSize: window.s(28)
                                         color: window.batColorStart
                                         text: SysData.batIcon(window.batCapacity, window.isCharging)
-                                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                        Behavior on color { ColorAnimation { duration: 400 } }
                                     }
                                     
                                     Text {
@@ -566,12 +735,12 @@ Item {
                                     font.weight: Font.Bold
                                     font.pixelSize: window.s(13)
                                     
-                                    color: window.isCharging
-                                            ? window.primary
-                                            : (centralCore.isDangerState ? window.red : window.subtext0)
-
+                                    color: window.isCharging 
+                                            ? Qt.tint(window.primary, Qt.rgba(1, 1, 1, parent.textPulse * 0.4)) 
+                                            : (centralCore.isDangerState ? Qt.tint(window.red, Qt.rgba(1, 1, 1, parent.textPulse * 0.3)) : window.subtext0)
+                                    
                                     text: (window.batStatus === "Not charging" && window.isCharging) ? "CHARGED" : window.batStatus.toUpperCase()
-                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                    Behavior on color { ColorAnimation { duration: 300 } }
                                 }
 
                                 RowLayout {
@@ -615,6 +784,15 @@ Item {
                                 }
                             }
                         }
+
+                        MouseArea {
+                            id: heroMa
+                            anchors.fill: centralCore 
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onEntered: batCanvas.requestPaint()
+                            onExited: batCanvas.requestPaint()
+                        }
                     }
 
                         ColumnLayout {
@@ -631,6 +809,9 @@ Item {
                                 color: Config.effectiveCardOpacity > 0 ? Qt.rgba(window.surface0.r, window.surface0.g, window.surface0.b, Config.effectiveCardOpacity) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.06)
                                 border.color: Qt.alpha(window.surface1, 0.3)
                                 border.width: Config.borderWidth
+
+                                opacity: introSliders
+                                transform: Translate { y: window.s(20) * (1.0 - introSliders) }
 
                                 ColumnLayout {
                                     anchors.fill: parent
@@ -650,7 +831,7 @@ Item {
                                                 font.family: "Iosevka Nerd Font"
                                                 font.pixelSize: window.s(22)
                                                 color: window.ambientPrimary
-                                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                                Behavior on color { ColorAnimation { duration: 200 } }
                                             }
                                         }
 
@@ -683,13 +864,13 @@ Item {
                                                     width: parent.width * (window.sysBrightness / 100)
                                                     radius: window.s(9)
                                                     opacity: briMa.containsMouse ? 1.0 : 0.85
-                                                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                                                    Behavior on width { enabled: !window.isDraggingBri; NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                                                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                                                    Behavior on width { enabled: !window.isDraggingBri; NumberAnimation { duration: 200; easing.type: Easing.OutQuint } }
 
                                                     gradient: Gradient {
                                                         orientation: Gradient.Horizontal
-                                                        GradientStop { position: 0.0; color: window.batColorStart; Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } } }
-                                                        GradientStop { position: 1.0; color: window.batColorEnd; Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } } }
+                                                        GradientStop { position: 0.0; color: window.batColorStart; Behavior on color { ColorAnimation { duration: 300 } } }
+                                                        GradientStop { position: 1.0; color: window.batColorEnd; Behavior on color { ColorAnimation { duration: 300 } } }
                                                     }
                                                 }
                                             }
@@ -723,8 +904,8 @@ Item {
                                             radius: window.s(16)
                                             color: volIconMa.containsMouse ? window.surface1 : "transparent"
                                             border.color: volIconMa.containsMouse ? window.profileStart : "transparent"
-                                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                                            Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                            Behavior on color { ColorAnimation { duration: 150 } }
+                                            Behavior on border.color { ColorAnimation { duration: 150 } }
 
                                             Text {
                                                 anchors.centerIn: parent
@@ -732,7 +913,7 @@ Item {
                                                 font.family: "Iosevka Nerd Font"
                                                 font.pixelSize: window.s(22)
                                                 color: window.sysMuted ? window.overlay0 : window.profileStart
-                                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                                Behavior on color { ColorAnimation { duration: 200 } }
                                             }
                                             MouseArea {
                                                 id: volIconMa
@@ -782,13 +963,13 @@ Item {
                                                     width: parent.width * (window.sysVolume / 100)
                                                     radius: window.s(9)
                                                     opacity: window.sysMuted ? 0.5 : (volMa.containsMouse ? 1.0 : 0.85)
-                                                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                                                    Behavior on width { enabled: !window.isDraggingVol; NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                                                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                                                    Behavior on width { enabled: !window.isDraggingVol; NumberAnimation { duration: 200; easing.type: Easing.OutQuint } }
 
                                                     gradient: Gradient {
                                                         orientation: Gradient.Horizontal
-                                                        GradientStop { position: 0.0; color: window.sysMuted ? window.surface2 : window.profileStart; Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } } }
-                                                        GradientStop { position: 1.0; color: window.sysMuted ? Qt.lighter(window.surface2, 1.15) : window.profileEnd; Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } } }
+                                                        GradientStop { position: 0.0; color: window.sysMuted ? window.surface2 : window.profileStart; Behavior on color { ColorAnimation { duration: 300 } } }
+                                                        GradientStop { position: 1.0; color: window.sysMuted ? Qt.lighter(window.surface2, 1.15) : window.profileEnd; Behavior on color { ColorAnimation { duration: 300 } } }
                                                     }
                                                 }
                                             }
@@ -839,17 +1020,20 @@ Item {
                                         // has actually been used in this popup instance.
                                         property bool isSelected: window.keyboardActive && window.selectedActionIndex === index
 
+                                        opacity: introActions
+                                        transform: Translate { y: window.s(30) * (1.0 - introActions) + (index * window.s(12) * (1.0 - introActions)) }
+                                        
                                         property color c1: window[baseColor] || window.surface1
                                         property color c2: Qt.lighter(c1, 1.2)
 
                                         color: actionMa.containsMouse || actionCapsule.isSelected ? Qt.rgba(window.text.r, window.text.g, window.text.b, 0.18) : Qt.rgba(window.text.r, window.text.g, window.text.b, 0.08)
                                         border.color: actionMa.containsMouse || actionCapsule.isSelected ? c1 : "transparent"
                                         border.width: actionMa.containsMouse || actionCapsule.isSelected ? Math.max(1, Config.borderWidth) : Config.borderWidth
-                                        Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                                        Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-
+                                        Behavior on color { ColorAnimation { duration: 200 } }
+                                        Behavior on border.color { ColorAnimation { duration: 200 } }
+                                        
                                         scale: actionMa.pressed ? (0.98 - (0.01 * weight)) : (actionMa.containsMouse || actionCapsule.isSelected ? 1.08 : 1.0)
-                                        Behavior on scale { NumberAnimation { duration: Motion.enterMs; easing.type: Motion.enterEasing } }
+                                        Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
 
                                         property real fillLevel: 0.0
                                         property bool triggered: false
@@ -869,17 +1053,22 @@ Item {
                                         Canvas {
                                             id: actionWaveCanvas
                                             anchors.fill: parent
-
-                                            // Paints once per state: fill progress (data) is the
-                                            // only repaint driver remaining.
+                                            
+                                            property real wavePhase: 0.0
+                                            NumberAnimation on wavePhase {
+                                                running: actionCapsule.fillLevel > 0.0 && actionCapsule.fillLevel < 1.0
+                                                loops: Animation.Infinite
+                                                from: 0; to: Math.PI * 2; duration: 800
+                                            }
+                                            onWavePhaseChanged: requestPaint()
                                             Connections { target: actionCapsule; function onFillLevelChanged() { actionWaveCanvas.requestPaint() } }
-
+                                            
                                             onPaint: {
                                                 var ctx = getContext("2d");
                                                 ctx.clearRect(0, 0, width, height);
                                                 if (actionCapsule.fillLevel <= 0.001) return;
-
-                                                var r = window.s(14);
+                                                
+                                                var r = window.s(14); 
                                                 var fillY = height * (1.0 - actionCapsule.fillLevel);
                                                 ctx.save();
                                                 ctx.beginPath();
@@ -893,13 +1082,22 @@ Item {
                                                 ctx.lineTo(0, r);
                                                 ctx.arcTo(0, 0, r, 0, r);
                                                 ctx.closePath();
-                                                ctx.clip();
-
+                                                ctx.clip(); 
+                                                
                                                 ctx.beginPath();
                                                 ctx.moveTo(0, fillY);
-                                                ctx.lineTo(width, fillY);
-                                                ctx.lineTo(width, height);
-                                                ctx.lineTo(0, height);
+                                                if (actionCapsule.fillLevel < 0.99) {
+                                                    var waveAmp = window.s(10) * Math.sin(actionCapsule.fillLevel * Math.PI); 
+                                                    var cp1y = fillY + Math.sin(wavePhase) * waveAmp;
+                                                    var cp2y = fillY + Math.cos(wavePhase + Math.PI) * waveAmp;
+                                                    ctx.bezierCurveTo(width * 0.33, cp2y, width * 0.66, cp1y, width, fillY);
+                                                    ctx.lineTo(width, height);
+                                                    ctx.lineTo(0, height);
+                                                } else {
+                                                    ctx.lineTo(width, 0);
+                                                    ctx.lineTo(width, height);
+                                                    ctx.lineTo(0, height);
+                                                }
                                                 ctx.closePath();
                                                 
                                                 var grad = ctx.createLinearGradient(0, 0, 0, height);
@@ -914,7 +1112,7 @@ Item {
                                         Rectangle {
                                             anchors.fill: parent; radius: window.s(14); color: "#ffffff"
                                             opacity: actionCapsule.flashOpacity
-                                            PropertyAnimation on opacity { id: cardFlashAnim; to: 0; duration: Motion.moveMs; easing.type: Motion.moveEasing }
+                                            PropertyAnimation on opacity { id: cardFlashAnim; to: 0; duration: 500; easing.type: Easing.OutExpo }
                                         }
 
                                         Text { 
@@ -923,7 +1121,7 @@ Item {
                                             font.pixelSize: window.s(24)
                                             color: actionMa.containsMouse || actionCapsule.isSelected ? window.text : window.subtext0
                                             text: icon
-                                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                            Behavior on color { ColorAnimation { duration: 150 } }
                                         }
 
                                         Item {
@@ -970,16 +1168,16 @@ Item {
 
                                         NumberAnimation {
                                             id: fillAnim; target: actionCapsule; property: "fillLevel"; to: 1.0
-                                            duration: Motion.holdMs; easing.type: Motion.holdEasing
+                                            duration: (550 * weight) * (1.0 - actionCapsule.fillLevel); easing.type: Easing.InSine
                                             onFinished: {
                                                 actionCapsule.triggered = true; actionCapsule.flashOpacity = 0.6; cardFlashAnim.start();
-                                                exitTimer.start();
+                                                exitAnim.start(); exitTimer.start();
                                             }
                                         }
-
+                                        
                                         NumberAnimation {
                                             id: drainAnim; target: actionCapsule; property: "fillLevel"; to: 0.0
-                                            duration: Motion.exitMs; easing.type: Motion.exitEasing
+                                            duration: 1500 * actionCapsule.fillLevel; easing.type: Easing.OutQuad
                                         }
 
                                         Timer {
@@ -1005,9 +1203,12 @@ Item {
                                 border.color: Qt.alpha(window.surface1, 0.3)
                                 border.width: Config.borderWidth
 
+                                opacity: introProfiles
+                                transform: Translate { y: window.s(20) * (1.0 - introProfiles) }
+                                
                                 Rectangle {
                                     id: sliderPill
-                                    width: (parent.width - window.s(2)) / 3
+                                    width: (parent.width - window.s(2)) / 3 
                                     height: parent.height - window.s(2)
                                     y: window.s(1)
                                     radius: window.s(10)
@@ -1018,14 +1219,14 @@ Item {
                                         return width + window.s(1);
                                     }
                                     opacity: window.powerProfile === "transitioning" ? 0.4 : 1.0
-                                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-
-                                    Behavior on x { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
-
+                                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                                    
+                                    Behavior on x { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+                                    
                                     gradient: Gradient {
                                         orientation: Gradient.Horizontal
-                                        GradientStop { position: 0.0; color: window.profileStart; Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } } }
-                                        GradientStop { position: 1.0; color: window.profileEnd; Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } } }
+                                        GradientStop { position: 0.0; color: window.profileStart; Behavior on color { ColorAnimation{duration:400} } }
+                                        GradientStop { position: 1.0; color: window.profileEnd; Behavior on color { ColorAnimation{duration:400} } }
                                     }
                                 }
 
@@ -1051,13 +1252,13 @@ Item {
                                                     font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(18)
                                                     color: window.powerProfile === name ? window.crust : (profileMa.containsMouse ? window.text : window.subtext0)
                                                     text: icon
-                                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                                    Behavior on color { ColorAnimation { duration: 200 } }
                                                 }
                                                 Text {
                                                     font.family: "JetBrains Mono"; font.weight: Font.Black; font.pixelSize: window.s(13)
                                                     color: window.powerProfile === name ? window.crust : (profileMa.containsMouse ? window.text : window.subtext0)
                                                     text: label
-                                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                                    Behavior on color { ColorAnimation { duration: 200 } }
                                                 }
                                             }
                                             

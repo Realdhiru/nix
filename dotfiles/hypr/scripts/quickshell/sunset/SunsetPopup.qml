@@ -129,7 +129,7 @@ Item {
         }
     }
 
-    property string stateFile: Quickshell.env("HOME") + "/.cache/quickshell/state.json"
+    property string stateFile: Caching.stateJsonFile
     property string shaderFile: Quickshell.env("HOME") + "/.cache/screen_shader.frag"
     property string satShaderFile: Quickshell.env("HOME") + "/.cache/screen_saturation.frag"
 

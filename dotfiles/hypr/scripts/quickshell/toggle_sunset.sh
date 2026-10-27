@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # QuickShell Sunset / Night Light Instant Toggle Utility
-STATE_DIR="$HOME/.cache/quickshell"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+STATE_DIR="$DESKTOP_STATE_DIR/quickshell"
 STATE_FILE="$STATE_DIR/state.json"
 SAVED_FILE="$STATE_DIR/sunset_saved.json"
 SHADER_FILE="$HOME/.cache/screen_shader.frag"

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
+export DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
 export QS_CACHE_DIR="$HOME/.cache/quickshell"
-export QS_STATE_DIR="$HOME/.local/state/quickshell"
+export QS_STATE_DIR="$DESKTOP_STATE_DIR/quickshell"
 export QS_RUN_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/quickshell"
 export QS_LOG_DIR="$QS_RUN_DIR/logs"
 
-mkdir -p "$QS_CACHE_DIR" "$QS_STATE_DIR" "$QS_RUN_DIR" "$QS_LOG_DIR"
+mkdir -p "$DESKTOP_STATE_DIR" "$QS_CACHE_DIR" "$QS_STATE_DIR" "$QS_RUN_DIR" "$QS_LOG_DIR"
 
 SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 QS_DIR="$SCRIPT_DIR/quickshell"

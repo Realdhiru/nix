@@ -30,7 +30,8 @@ case "${1:-}" in
 esac
 
 # If wallpaper is killed, do not spawn or restore awww-daemon unless explicitly stopping
-if [ "$STOP" -eq 0 ] && [ -f "$HOME/.cache/wallpaper_killed" ]; then
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+if [ "$STOP" -eq 0 ] && ([ -f "$DESKTOP_STATE_DIR/modes/wallpaper_killed" ] || [ -f "$HOME/.cache/wallpaper_killed" ]); then
   exit 0
 fi
 
@@ -143,8 +144,13 @@ restore_wallpapers() {
   while IFS='|' read -r mon path; do
     [ -n "$mon" ] && [ -n "$path" ] || continue
     [ -f "$path" ] || continue
+    local ext="${path##*.}"
+    ext="${ext,,}"
+    local filter="Bilinear"
+    [ "$ext" = "gif" ] && filter="Nearest"
     awww img --transition-type fade --transition-step 255 \
       --transition-duration 0.1 --transition-fps 60 \
+      --filter "$filter" \
       --outputs "$mon" "$path" >/dev/null 2>&1 || true
   done <<< "$WALLPAPERS"
 }

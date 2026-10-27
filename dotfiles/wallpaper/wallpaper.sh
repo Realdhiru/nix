@@ -25,12 +25,15 @@ THUMB_DIR="$CACHE_DIR/thumbs"
 COLOR_DIR="$CACHE_DIR/colors_markers"
 FLAT_DIR="$CACHE_DIR/flat"
 GIF_DIR="$CACHE_DIR/gifs"
-STATE_WALL_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/wallpaper"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+STATE_WALL_DIR="$DESKTOP_STATE_DIR/wallpaper"
+STATE_MODES_DIR="$DESKTOP_STATE_DIR/modes"
 CURRENT_TXT="$STATE_WALL_DIR/current_wallpaper.txt"
 LAST_TXT="$STATE_WALL_DIR/last_wallpaper.txt"
+WP_KILLED_FILE="$STATE_MODES_DIR/wallpaper_killed"
 DEFAULT_WALLPAPER="${DEFAULT_WALLPAPER:-}"
 
-mkdir -p "$CACHE_DIR" "$THUMB_DIR" "$COLOR_DIR" "$FLAT_DIR" "$GIF_DIR" "$STATE_WALL_DIR"
+mkdir -p "$CACHE_DIR" "$THUMB_DIR" "$COLOR_DIR" "$FLAT_DIR" "$GIF_DIR" "$STATE_WALL_DIR" "$STATE_MODES_DIR"
 
 atomic_write() {
     local target="$1"
@@ -110,7 +113,7 @@ cmd_kill() {
     fi
     date +%s%N > "$throttle_lock" 2>/dev/null || true
 
-    if [ -f "$HOME/.cache/wallpaper_killed" ]; then
+    if [ -f "$WP_KILLED_FILE" ]; then
         # TOGGLE BACK ON: Delegate to cmd_set so wallpaper renders on screen BEFORE transparency restores
         local target=""
         if [ -s "$LAST_TXT" ]; then
@@ -119,10 +122,11 @@ cmd_kill() {
         if [ -n "$target" ] && [ -f "$target" ]; then
             "$BACKEND/set.sh" "$target"
         else
-            rm -f "$HOME/.cache/wallpaper_killed"
+            rm -f "$WP_KILLED_FILE" "$HOME/.cache/wallpaper_killed"
             cmd_boot
             if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
                 hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+                hyprctl reload >/dev/null 2>&1 || true
             fi
             # Restore terminal translucency
             bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
@@ -134,7 +138,8 @@ cmd_kill() {
 
     # TOGGLE OFF:
     # 1. Immediately enforce 100% solid opacity across windows & popups (frame-0 instant feedback)
-    echo "1" > "$HOME/.cache/wallpaper_killed"
+    atomic_write "$WP_KILLED_FILE" "1"
+    rm -f "$HOME/.cache/wallpaper_killed"
     [ -x "$state_ctl" ] && bash "$state_ctl" set modes.wallpaperKilled true 2>/dev/null || true
     if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
         hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
@@ -186,7 +191,7 @@ cmd_set() {
 # SUBCOMMAND: boot
 # -----------------------------------------------------------------------------
 cmd_boot() {
-    if [ -f "$HOME/.cache/wallpaper_killed" ]; then
+    if [ -f "$WP_KILLED_FILE" ]; then
         exit 0
     fi
 

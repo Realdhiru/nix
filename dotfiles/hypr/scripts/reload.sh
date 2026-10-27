@@ -20,14 +20,15 @@ done
 if command -v hyprctl >/dev/null 2>&1; then
     hyprctl reload >/dev/null 2>&1
     # Re-apply persistent compositor flags
-    PROFILE="$(cat "$HOME/.cache/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
-    if [ -f "$HOME/.cache/wallpaper_killed" ] || [ -f "$HOME/.cache/gaming_mode" ] || [ "$PROFILE" = "power-saver" ]; then
+    DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+    PROFILE="$(cat "$DESKTOP_STATE_DIR/power/profile" 2>/dev/null || echo "")"
+    if [ -f "$DESKTOP_STATE_DIR/modes/wallpaper_killed" ] || [ -f "$DESKTOP_STATE_DIR/modes/gaming_mode" ] || [ "$PROFILE" = "power-saver" ]; then
         hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } } })" >/dev/null 2>&1 || true
-        if [ "$PROFILE" = "power-saver" ] || [ -f "$HOME/.cache/gaming_mode" ]; then
+        if [ "$PROFILE" = "power-saver" ] || [ -f "$DESKTOP_STATE_DIR/modes/gaming_mode" ]; then
             hyprctl eval "hl.config({ animations = { enabled = false } })" >/dev/null 2>&1 || true
         fi
     fi
-    if [ -f "$HOME/.cache/gaming_mode" ]; then
+    if [ -f "$DESKTOP_STATE_DIR/modes/gaming_mode" ]; then
         hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = true } })" >/dev/null 2>&1 || true
     elif [ "$PROFILE" = "power-saver" ]; then
         hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = false } })" >/dev/null 2>&1 || true

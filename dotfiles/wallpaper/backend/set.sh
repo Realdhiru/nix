@@ -43,18 +43,22 @@ EXT="${WALL##*.}"
 EXT="${EXT,,}"
 BASENAME=$(basename "$WALL")
 
-STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
-WALL_STATE_DIR="$STATE_DIR/quickshell/wallpaper"
-mkdir -p "$STATE_DIR/mpvpaper" "$CACHE_DIR" "$WALL_STATE_DIR"
+WALL_STATE_DIR="$DESKTOP_STATE_DIR/wallpaper"
+MODES_STATE_DIR="$DESKTOP_STATE_DIR/modes"
+POWER_STATE_DIR="$DESKTOP_STATE_DIR/power"
+mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/mpvpaper" "$CACHE_DIR" "$WALL_STATE_DIR" "$MODES_STATE_DIR" "$POWER_STATE_DIR"
 
 LOCKFILE="$CACHE_DIR/set_wallpaper.lock"
 exec 8>"$LOCKFILE"
 flock 8
 
 WAS_KILLED=0
-[ -f "$CACHE_DIR/wallpaper_killed" ] && WAS_KILLED=1
-rm -f "$CACHE_DIR/wallpaper_killed"
+if [ -f "$MODES_STATE_DIR/wallpaper_killed" ] || [ -f "$CACHE_DIR/wallpaper_killed" ]; then
+    WAS_KILLED=1
+fi
+rm -f "$MODES_STATE_DIR/wallpaper_killed" "$CACHE_DIR/wallpaper_killed"
 
 atomic_write() {
     local target="$1"
@@ -80,16 +84,40 @@ atomic_write "$CURRENT_TXT" "$WALL"
 [ ! -s "$LAST_TXT" ] && atomic_write "$LAST_TXT" "$WALL"
 [ -z "${FORCE_CYCLE:-}" ] && rm -f "$CACHE_DIR/target_wallpaper.txt"
 
-# 1. Video Wallpapers (Handled via systemd user template unit mpvpaper@<out>)
-if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then
-    # Resolve target outputs
-    RESOLVED_OUTPUTS=()
-    if [ -n "$TARGET_OUTPUTS" ] && [ "$TARGET_OUTPUTS" != "all" ]; then
-        IFS=',' read -ra RESOLVED_OUTPUTS <<< "$TARGET_OUTPUTS"
-    elif command -v hyprctl >/dev/null 2>&1; then
-        while IFS= read -r m; do
-            [ -n "$m" ] && RESOLVED_OUTPUTS+=("$m")
-        done < <(hyprctl monitors -j 2>/dev/null | jq -r '.[].name' 2>/dev/null || true)
+# Resolve target outputs once for both video and awww pipelines
+RESOLVED_OUTPUTS=()
+if [ -n "$TARGET_OUTPUTS" ] && [ "$TARGET_OUTPUTS" != "all" ]; then
+    IFS=',' read -ra RESOLVED_OUTPUTS <<< "$TARGET_OUTPUTS"
+elif command -v hyprctl >/dev/null 2>&1; then
+    while IFS= read -r m; do
+        [ -n "$m" ] && RESOLVED_OUTPUTS+=("$m")
+    done < <(hyprctl monitors -j 2>/dev/null | jq -r '.[].name' 2>/dev/null || true)
+fi
+OUT_JOINED=$(IFS=','; echo "${RESOLVED_OUTPUTS[*]}")
+
+# 1. Video & Animated Wallpapers (Handled via systemd user template unit mpvpaper@<out>)
+if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
+    WALL_TARGET="$WALL"
+    if [[ "$EXT" == "gif" ]]; then
+        GIF_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/converted_gifs"
+        target_mp4="$GIF_CACHE_DIR/${BASENAME%.*}.mp4"
+        if [ -s "$target_mp4" ]; then
+            WALL_TARGET="$target_mp4"
+        elif [ -s "$GIF_CACHE_DIR/$BASENAME.mp4" ]; then
+            WALL_TARGET="$GIF_CACHE_DIR/$BASENAME.mp4"
+        else
+            # Play GIF directly with mpvpaper instantly (0ms delay), convert to MP4 in background for future zero-power playback
+            (
+                mkdir -p "$GIF_CACHE_DIR"
+                if command -v ffmpeg >/dev/null 2>&1; then
+                    ffmpeg -hide_banner -loglevel error -y -i "$WALL" -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" -c:v libx264 -preset ultrafast -pix_fmt yuv420p -an "$target_mp4" 2>/dev/null || true
+                fi
+            ) &
+        fi
+    fi
+
+    if [ "${#RESOLVED_OUTPUTS[@]}" -eq 0 ]; then
+        RESOLVED_OUTPUTS=("eDP-1")
     fi
 
     for out in "${RESOLVED_OUTPUTS[@]}"; do
@@ -97,25 +125,35 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm)$ ]]; then
         # Write environment file atomically for mpvpaper@<out>.service
         ENV_FILE="$STATE_DIR/mpvpaper/${out}.env"
         TMP_ENV="${ENV_FILE}.tmp"
-        echo "WALLPAPER_VIDEO=\"$WALL\"" > "$TMP_ENV"
+        echo "WALLPAPER_VIDEO=\"$WALL_TARGET\"" > "$TMP_ENV"
         mv -f "$TMP_ENV" "$ENV_FILE"
 
         # Clear awww layer on this output and restart systemd-managed mpvpaper
         command -v awww >/dev/null 2>&1 && awww clear -o "$out" >/dev/null 2>&1 || true
         systemctl --user restart "mpvpaper@$out" 2>/dev/null || true
+
+        # Robust fallback: if systemd unit is not active, launch mpvpaper directly
+        if ! systemctl --user is-active --quiet "mpvpaper@$out" 2>/dev/null; then
+            pkill -f "mpvpaper.*$out" 2>/dev/null || true
+            if command -v mpvpaper >/dev/null 2>&1; then
+                mpvpaper -p -o "no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0" "$out" "$WALL_TARGET" 8>&- >/dev/null 2>&1 &
+                disown $! 2>/dev/null || true
+            fi
+        fi
     done
 else
-    # 2. Images & GIFs (Handled natively via awww)
+    # 2. Static Images (Handled natively via awww)
     # Stop mpvpaper on targeted outputs before pushing image to awww
     if [ -n "$TARGET_OUTPUTS" ] && [ "$TARGET_OUTPUTS" != "all" ]; then
-        IFS=',' read -ra OUT_LIST <<< "$TARGET_OUTPUTS"
-        for out in "${OUT_LIST[@]}"; do
+        for out in "${RESOLVED_OUTPUTS[@]}"; do
             [ -n "$out" ] || continue
             systemctl --user stop "mpvpaper@$out" 2>/dev/null || true
+            pkill -f "mpvpaper.*$out" 2>/dev/null || true
             rm -f "$STATE_DIR/mpvpaper/${out}.env"
         done
     else
         systemctl --user stop "mpvpaper@*" 2>/dev/null || true
+        pkill -f "mpvpaper" 2>/dev/null || true
         rm -rf "$STATE_DIR/mpvpaper"
     fi
 
@@ -134,10 +172,14 @@ else
             --transition-duration "$TRANS_DURATION"
             --transition-fps "$TRANS_FPS"
             --transition-bezier "$TRANS_BEZIER"
+            --filter Bilinear
         )
-        if [ -n "$TARGET_OUTPUTS" ] && [ "$TARGET_OUTPUTS" != "all" ]; then
+        if [ -n "$OUT_JOINED" ]; then
+            AWWW_ARGS+=(--outputs "$OUT_JOINED")
+        elif [ -n "$TARGET_OUTPUTS" ] && [ "$TARGET_OUTPUTS" != "all" ]; then
             AWWW_ARGS+=(--outputs "$TARGET_OUTPUTS")
         fi
+
         awww img "${AWWW_ARGS[@]}" "$WALL" > /dev/null 2>&1
     fi
 fi
@@ -151,9 +193,10 @@ if [ "$WAS_KILLED" -eq 1 ]; then
     STATE_CTL="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
     [ -x "$STATE_CTL" ] && bash "$STATE_CTL" set modes.wallpaperKilled false 2>/dev/null || true
     if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-        CURRENT_PROFILE="$(cat "$CACHE_DIR/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
-        if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$CACHE_DIR/gaming_mode" ]; then
+        CURRENT_PROFILE="$(cat "$POWER_STATE_DIR/profile" 2>/dev/null || echo "")"
+        if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$MODES_STATE_DIR/gaming_mode" ]; then
             hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+            hyprctl reload >/dev/null 2>&1 || true
         fi
         bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
     fi

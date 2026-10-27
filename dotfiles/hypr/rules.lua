@@ -1,4 +1,5 @@
 local home = os.getenv("HOME") or ""
+local desktop_state = os.getenv("DESKTOP_STATE_DIR") or ((os.getenv("XDG_STATE_HOME") or (home .. "/.local/state")) .. "/desktop")
 local is_opaque = false
 
 local function check_file(path)
@@ -12,7 +13,7 @@ local function check_file(path)
 end
 
 local function check_state_json()
-    local f = io.open(home .. "/.cache/quickshell/state.json", "r")
+    local f = io.open(desktop_state .. "/quickshell/state.json", "r")
     if not f then return false end
     local content = f:read("*a")
     f:close()
@@ -23,9 +24,9 @@ local function check_state_json()
     return false
 end
 
-local killed_ok, _ = check_file(home .. "/.cache/wallpaper_killed")
-local game_ok, _ = check_file(home .. "/.cache/gaming_mode")
-local prof_ok, prof_val = check_file(home .. "/.cache/qs_power_profile")
+local killed_ok, _ = check_file(desktop_state .. "/modes/wallpaper_killed")
+local game_ok, _ = check_file(desktop_state .. "/modes/gaming_mode")
+local prof_ok, prof_val = check_file(desktop_state .. "/power/profile")
 
 if check_state_json() or killed_ok or game_ok or (prof_ok and prof_val and prof_val:match("power%-saver")) then
     is_opaque = true
@@ -151,6 +152,17 @@ hl.window_rule({ match = { class = "^(brave-youtube\\.com__-youtube|youtube)$" }
 -- ======================================================
 
 hl.window_rule({ match = { class = "^(ONLYOFFICE)$" }, opacity = "1.0 override 1.0 override" })
+
+-- ======================================================
+-- Neo Browser (Xephyr :7 — dedicated nested X server)
+-- Opens in fullscreen mode matching physical display 2880x1620
+-- for 1:1 pixel-perfect HiDPI rendering with zero clipping.
+-- ======================================================
+
+hl.window_rule({
+    match = { class = "^Xephyr$" },
+    fullscreen = true,
+})
 
 -- ======================================================
 -- Quickshell

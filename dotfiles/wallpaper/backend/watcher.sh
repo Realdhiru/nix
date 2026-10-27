@@ -12,7 +12,9 @@ THUMB="$CACHE_DIR/thumbs"
 COLOR_DIR="$CACHE_DIR/colors_markers"
 FLAT_DIR="$CACHE_DIR/flat"
 GIF_DIR="$HOME/.cache/converted_gifs"
-STATE_WALL_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/wallpaper"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+STATE_WALL_DIR="$DESKTOP_STATE_DIR/wallpaper"
+STATE_MODES_DIR="$DESKTOP_STATE_DIR/modes"
 CURRENT_TXT="$STATE_WALL_DIR/current_wallpaper.txt"
 THUMB_SCRIPT="$SCRIPT_DIR/thumbnail.sh"
 
@@ -114,14 +116,14 @@ cleanup_residue() {
     fi
 
     # 5. Check if currently active wallpaper was deleted or points to previews
-    if [ ! -f "$HOME/.cache/wallpaper_killed" ] && [ -f "$CURRENT_TXT" ]; then
+    if [ ! -f "$STATE_MODES_DIR/wallpaper_killed" ] && [ ! -f "$HOME/.cache/wallpaper_killed" ] && [ -f "$CURRENT_TXT" ]; then
         local cur_path
         cur_path="$(cat "$CURRENT_TXT" 2>/dev/null || echo "")"
         if [ -n "$cur_path" ] && [ ! -f "$cur_path" ] && [[ "$cur_path" != *"/previews/"* ]]; then
             # Debounce check to avoid racing against active wallpaper switchers
             sleep 0.8
             cur_path="$(cat "$CURRENT_TXT" 2>/dev/null || echo "")"
-            if [ -n "$cur_path" ] && [ ! -f "$cur_path" ] && [ ! -f "$HOME/.cache/wallpaper_killed" ]; then
+            if [ -n "$cur_path" ] && [ ! -f "$cur_path" ] && [ ! -f "$STATE_MODES_DIR/wallpaper_killed" ] && [ ! -f "$HOME/.cache/wallpaper_killed" ]; then
                 "$SCRIPT_DIR/../wallpaper.sh" boot &
             fi
         fi

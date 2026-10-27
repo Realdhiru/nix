@@ -4,22 +4,24 @@
 set -uo pipefail
 
 TARGET_DIR="$HOME/Videos/Recordings"
-REC_CACHE_DIR="$HOME/.cache/quickshell/recording"
-PID_FILE="$REC_CACHE_DIR/rec_pid"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+REC_STATE_DIR="$DESKTOP_STATE_DIR/recording"
+PID_FILE="$REC_STATE_DIR/rec_pid"
 
-mkdir -p "$TARGET_DIR" "$REC_CACHE_DIR"
+mkdir -p "$TARGET_DIR" "$REC_STATE_DIR"
 
 # 1. Lifecycle Check: If active via strict PID tracking, terminate cleanly
-if [ -f "$PID_FILE" ]; then
+if [ -s "$PID_FILE" ]; then
     REC_PID=$(cat "$PID_FILE")
     if kill -0 "$REC_PID" 2>/dev/null; then
         # Send SIGINT to gracefully stop encoding and flush the MP4 footer
         kill -SIGINT "$REC_PID"
+        truncate -s 0 "$PID_FILE"
         notify-send -a "Recorder" -t 2000 -u low "Recording Saved"
         exit 0
     else
-        # Purge stale PID file if the recorder crashed previously
-        rm -f "$PID_FILE"
+        # Purge stale PID if the recorder crashed previously
+        truncate -s 0 "$PID_FILE"
     fi
 fi
 
@@ -50,11 +52,11 @@ fi
       -o "$TARGET_DIR/rec_$(date +%Y%m%d_%H%M).mp4" >/dev/null 2>&1 &
     
     REC_PID=$!
-    echo "$REC_PID" > "$PID_FILE"
+    echo "$REC_PID" > "$PID_FILE.tmp" && mv -f "$PID_FILE.tmp" "$PID_FILE"
     
     # Suspend subshell until the recorder exits (naturally or via SIGINT)
     wait "$REC_PID" 2>/dev/null
     
     # Atomic cleanup: Resets the Quickshell TopBar indicator instantly
-    rm -f "$PID_FILE"
+    truncate -s 0 "$PID_FILE"
 ) &

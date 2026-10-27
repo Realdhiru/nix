@@ -36,7 +36,7 @@ Item {
 
     // Dynamically resolve HOME instead of hardcoding the user profile
     readonly property string colorsFile: Quickshell.env("HOME") + "/.cache/theme/colors.json"
-    readonly property string stateFile: Quickshell.env("HOME") + "/.cache/quickshell/state.json"
+    readonly property string stateFile: Caching.stateJsonFile
 
     property string themeMode: "dark"
     property bool isLightMode: themeMode === "light"

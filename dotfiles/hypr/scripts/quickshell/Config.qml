@@ -479,34 +479,8 @@ Item {
     }
 
     FileView {
-        id: wpKilledWatcher
-        path: config.homeDir + "/.cache/wallpaper_killed"
-        watchChanges: true
-        onLoadedChanged: config.updateSolidMode()
-        onFileChanged: {
-            // Directory-watch fires fileChanged on create/delete, but the
-            // buffer is stale until re-read — without this, runtime kills
-            // never flip isSolidMode (same defect class as powerProfileWatcher,
-            // which already reloads here).
-            wpKilledWatcher.reload();
-            config.updateSolidMode();
-        }
-    }
-
-    FileView {
-        id: gamingModeWatcher
-        path: config.homeDir + "/.cache/gaming_mode"
-        watchChanges: true
-        onLoadedChanged: config.updateSolidMode()
-        onFileChanged: {
-            gamingModeWatcher.reload();
-            config.updateSolidMode();
-        }
-    }
-
-    FileView {
         id: powerProfileWatcher
-        path: config.homeDir + "/.cache/qs_power_profile"
+        path: Caching.powerProfileFile
         watchChanges: true
         onLoadedChanged: config.updateSolidMode()
         onTextChanged: config.updateSolidMode()
@@ -518,7 +492,7 @@ Item {
 
     FileView {
         id: stateJsonWatcher
-        path: config.homeDir + "/.cache/quickshell/state.json"
+        path: Caching.stateJsonFile
         watchChanges: true
         onLoadedChanged: config.updateSolidMode()
         onTextChanged: config.updateSolidMode()
@@ -529,11 +503,11 @@ Item {
     }
 
     function updateSolidMode() {
-        let wpKilled = wpKilledWatcher.loaded;
-        let gamingMode = gamingModeWatcher.loaded;
+        let wpKilled = false;
+        let gamingMode = false;
         let profile = (powerProfileWatcher.loaded ? (powerProfileWatcher.text() || "").trim() : "");
-        if (!wpKilled || !gamingMode) {
-            let stateText = stateJsonWatcher.loaded ? (stateJsonWatcher.text() || "") : "";
+        if (stateJsonWatcher.loaded) {
+            let stateText = stateJsonWatcher.text() || "";
             if (stateText.indexOf('"wallpaperKilled": true') !== -1 || stateText.indexOf('"wallpaperKilled":true') !== -1) {
                 wpKilled = true;
             }

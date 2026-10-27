@@ -1,4 +1,4 @@
-{ config, pkgs, inputs, user, ... }:
+{ config, pkgs, inputs, user, lib, ... }:
 
 {
   imports = [
@@ -7,10 +7,19 @@
     ./modules/home/theme.nix
   ];
 
+  options.desktop.stateDir = lib.mkOption {
+    type = lib.types.str;
+    default = "${config.xdg.stateHome}/desktop";
+    description = "Unified persistent state directory for desktop components";
+  };
+
   # Declarative Default Wallpaper (Flake store-path)
   home.sessionVariables.DEFAULT_WALLPAPER = "${./dotfiles/wallpaper/default.jpg}";
+  home.sessionVariables.DESKTOP_STATE_DIR = config.desktop.stateDir;
   xdg.configFile."environment.d/wallpaper.conf".text =
     "DEFAULT_WALLPAPER=${./dotfiles/wallpaper/default.jpg}\n";
+  xdg.configFile."environment.d/desktop_state.conf".text =
+    "DESKTOP_STATE_DIR=${config.desktop.stateDir}\n";
 
   # Host-specific declarative monitor override (Samsung 2.8K OLED panel)
   # Dynamic refresh-rate-by-power-source: derives target resolution and available
@@ -429,7 +438,7 @@
       After = [ "graphical-session.target" ];
     };
     Service = {
-      ExecStart = "${pkgs.awww}/bin/awww-daemon";
+      ExecStart = "${pkgs.awww}/bin/awww-daemon --no-cache --format argb";
       Restart = "on-failure";
     };
     Install = {
@@ -440,13 +449,13 @@
   # Per-output mpvpaper video wallpaper template service
   systemd.user.services."mpvpaper@" = {
     Unit = {
-      Description = "mpvpaper video wallpaper for %I";
+      Description = "mpvpaper video wallpaper for %i";
       PartOf = [ "graphical-session.target" ];
       After = [ "graphical-session.target" ];
     };
     Service = {
       EnvironmentFile = "%h/.local/state/mpvpaper/%i.env";
-      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p -o \"no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0\" %I \${WALLPAPER_VIDEO}";
+      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p -o \"no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0\" %i \${WALLPAPER_VIDEO}";
       Restart = "on-failure";
     };
   };

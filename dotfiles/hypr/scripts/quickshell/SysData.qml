@@ -61,7 +61,7 @@ Item {
 
     FileView {
         id: coffeeStateView
-        path: Quickshell.env("HOME") + "/.cache/quickshell/state.json"
+        path: Caching.stateJsonFile
         watchChanges: true
         onLoadedChanged: root.syncCoffeeState()
         onTextChanged: root.syncCoffeeState()
@@ -424,7 +424,7 @@ Item {
 
     FileView {
         id: profileCacheFile
-        path: Quickshell.env("HOME") + "/.cache/qs_power_profile"
+        path: Caching.powerProfileFile
         watchChanges: true
         onLoaded: {
             let t = profileCacheFile.text();
@@ -436,7 +436,7 @@ Item {
 
     Process {
         id: initProfileReader
-        command: ["bash", "-c", "cat $HOME/.cache/qs_power_profile 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo ''"]
+        command: ["bash", "-c", "cat " + Caching.powerProfileFile + " 2>/dev/null || echo ''"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
@@ -453,21 +453,20 @@ Item {
             if (root.saverVisualState !== "saver-applied" && root.saverVisualState !== "applying-saver") {
                 root.saverVisualState = "applying-saver";
                 let cmd = `
-                    rm -f /tmp/qs_saver_visuals_ok
                     # Pause mpvpaper if active
                     if [ -S /tmp/mpv-paper-socket ]; then
                         echo '{ "command": ["set_property", "pause", true] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
                     fi
 
                     # Stop awww-daemon to kill background wallpaper rendering and shut off OLED pixels
-                    if [ ! -f "$HOME/.cache/wallpaper_killed" ]; then
-                        touch "$HOME/.cache/wallpaper_killed"
-                        touch "$HOME/.cache/saver_killed_wp"
+                    if [ ! -f "` + Caching.wallpaperKilledFile + `" ]; then
+                        touch "` + Caching.wallpaperKilledFile + `"
+                        touch "` + Caching.desktopStateDir + `/modes/saver_killed_wp"
                         bash "$HOME/.config/hypr/scripts/quickshell/state_ctl.sh" set modes.wallpaperKilled true 2>/dev/null || true
                         ~/.config/wallpaper/backend/ensure_awww.sh --stop 2>/dev/null || true
                     fi
 
-                    hyprctl -j getoption decoration:blur:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_blur.conf 2>/dev/null
+                    hyprctl -j getoption decoration:blur:enabled | jq -r '.bool' > "` + Caching.desktopStateDir + `/quickshell/qs_pre_saver_blur.conf" 2>/dev/null
                     hyprctl -j getoption decoration:shadow:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null
                     hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
 
@@ -489,23 +488,23 @@ Item {
                     fi
 
                     # Restore wallpaper if it was killed specifically by power-saver
-                    if [ -f "$HOME/.cache/saver_killed_wp" ]; then
-                        rm -f "$HOME/.cache/saver_killed_wp" "$HOME/.cache/wallpaper_killed"
+                    if [ -f "` + Caching.desktopStateDir + `/modes/saver_killed_wp" ]; then
+                        rm -f "` + Caching.desktopStateDir + `/modes/saver_killed_wp" "` + Caching.wallpaperKilledFile + `"
                         bash "$HOME/.config/hypr/scripts/quickshell/state_ctl.sh" set modes.wallpaperKilled false 2>/dev/null || true
                         ~/.config/wallpaper/wallpaper.sh boot 2>/dev/null || true
                     fi
 
-                    PREV_BLUR=$(cat ~/.cache/qs_pre_saver_blur.conf 2>/dev/null || echo "true")
-                    PREV_SHADOW=$(cat ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null || echo "true")
-                    PREV_SHADER=$(cat ~/.cache/qs_pre_saver_shader.conf 2>/dev/null || echo "")
+                    PREV_BLUR=$(cat "` + Caching.desktopStateDir + `/quickshell/qs_pre_saver_blur.conf" 2>/dev/null || echo "true")
+                    PREV_SHADOW=$(cat "` + Caching.desktopStateDir + `/quickshell/qs_pre_saver_shadow.conf" 2>/dev/null || echo "true")
+                    PREV_SHADER=$(cat "` + Caching.desktopStateDir + `/quickshell/qs_pre_saver_shader.conf" 2>/dev/null || echo "")
 
                     [ "$PREV_BLUR" = "true" ] && BLUR_VAL="true" || BLUR_VAL="false"
                     [ "$PREV_SHADOW" = "true" ] && SHADOW_VAL="true" || SHADOW_VAL="false"
 
-                    if [ -f "$HOME/.cache/wallpaper_killed" ]; then
+                    if [ -f "` + Caching.wallpaperKilledFile + `" ]; then
                         hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
                         hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
-                    elif [ -f "$HOME/.cache/gaming_mode" ]; then
+                    elif [ -f "` + Caching.gamingModeFile + `" ]; then
                         hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = true }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = false } })" 2>/dev/null
                         hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
                     else
@@ -534,7 +533,7 @@ Item {
             root._manualOverride = (cached === "power-saver");
             root.requestedProfile = cached;
             root.powerProfile = cached;
-            Quickshell.execDetached(["sh", "-c", "echo '" + cached + "' > /tmp/qs_requested_profile; echo '" + cached + "' > /tmp/qs_power_profile; echo '" + cached + "' > $HOME/.cache/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile '" + cached + "'"]);
+            Quickshell.execDetached(["sh", "-c", "echo '" + cached + "' > " + Caching.powerProfileFile + ".tmp && mv -f " + Caching.powerProfileFile + ".tmp " + Caching.powerProfileFile + "; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile '" + cached + "'"]);
             root._applyVisualOverrides(cached);
             let tlpCmd = (cached === "performance") ? "performance" : (cached === "power-saver") ? "power-saver" : "balanced";
             Quickshell.execDetached(["bash", "-c", "$HOME/.config/hypr/scripts/power.sh profile " + tlpCmd]);
@@ -545,14 +544,14 @@ Item {
             root._manualOverride = false;
             root.requestedProfile = "performance";
             root.powerProfile = "performance";
-            Quickshell.execDetached(["sh", "-c", "echo 'performance' > $HOME/.cache/qs_power_profile; echo 'performance' > /tmp/qs_requested_profile; echo 'performance' > /tmp/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile 'performance'"]);
+            Quickshell.execDetached(["sh", "-c", "echo 'performance' > " + Caching.powerProfileFile + ".tmp && mv -f " + Caching.powerProfileFile + ".tmp " + Caching.powerProfileFile + "; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile 'performance'"]);
             root._applyVisualOverrides("performance");
             Quickshell.execDetached(["bash", "-c", "$HOME/.config/hypr/scripts/power.sh profile performance"]);
         } else {
             root._manualOverride = false;
             root.requestedProfile = "balanced";
             root.powerProfile = "balanced";
-            Quickshell.execDetached(["sh", "-c", "echo 'balanced' > $HOME/.cache/qs_power_profile; echo 'balanced' > /tmp/qs_requested_profile; echo 'balanced' > /tmp/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile 'balanced'"]);
+            Quickshell.execDetached(["sh", "-c", "echo 'balanced' > " + Caching.powerProfileFile + ".tmp && mv -f " + Caching.powerProfileFile + ".tmp " + Caching.powerProfileFile + "; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile 'balanced'"]);
             root._applyVisualOverrides("balanced");
             Quickshell.execDetached(["bash", "-c", "$HOME/.config/hypr/scripts/power.sh profile balanced"]);
         }
@@ -601,7 +600,7 @@ Item {
 
         root.requestedProfile = name;
         root.powerProfile = name;
-        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > /tmp/qs_requested_profile; echo '" + name + "' > /tmp/qs_power_profile; echo '" + name + "' > $HOME/.cache/qs_power_profile; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile '" + name + "'"]);
+        Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > " + Caching.powerProfileFile + ".tmp && mv -f " + Caching.powerProfileFile + ".tmp " + Caching.powerProfileFile + "; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile '" + name + "'"]);
 
         root._applyVisualOverrides(name);
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # QuickShell State Controller Utility
-# Manages reading and updating ~/.cache/quickshell/state.json cleanly
+# Manages reading and updating ${DESKTOP_STATE_DIR:-$HOME/.local/state/desktop}/quickshell/state.json cleanly
 
-STATE_DIR="$HOME/.cache/quickshell"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+STATE_DIR="$DESKTOP_STATE_DIR/quickshell"
 STATE_FILE="$STATE_DIR/state.json"
 
 mkdir -p "$STATE_DIR"

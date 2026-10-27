@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # QuickShell System-Wide State Restoration Script
-# Canonical State File: ~/.cache/quickshell/state.json
-
-STATE_DIR="$HOME/.cache/quickshell"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+STATE_DIR="$DESKTOP_STATE_DIR/quickshell"
 STATE_FILE="$STATE_DIR/state.json"
+MODES_DIR="$DESKTOP_STATE_DIR/modes"
+POWER_DIR="$DESKTOP_STATE_DIR/power"
+REC_DIR="$DESKTOP_STATE_DIR/recording"
 SHADER_FILE="$HOME/.cache/screen_shader.frag"
 
-mkdir -p "$STATE_DIR/recording"
-[ -f "$STATE_DIR/recording/rec_pid" ] || touch "$STATE_DIR/recording/rec_pid"
+mkdir -p "$STATE_DIR" "$MODES_DIR" "$POWER_DIR" "$REC_DIR"
 
 # NOTE: the old `hyprctl monitors -j > monitors.json` snapshot write was retired —
 # its only consumer (Main.qml monitorPhys* via FileView) now reads live per-screen
@@ -154,17 +155,19 @@ fi
 
 # 3. Gaming Mode & Flag Synchronization
 if [ "$GAMING" = "true" ]; then
-    touch "$HOME/.cache/gaming_mode"
+    touch "$MODES_DIR/gaming_mode"
 else
-    rm -f "$HOME/.cache/gaming_mode"
+    rm -f "$MODES_DIR/gaming_mode"
 fi
+rm -f "$HOME/.cache/gaming_mode"
 
 # 4. Wallpaper Killed Flag Synchronization
 if [ "$WP_KILLED" = "true" ]; then
-    touch "$HOME/.cache/wallpaper_killed"
+    touch "$MODES_DIR/wallpaper_killed"
 else
-    rm -f "$HOME/.cache/wallpaper_killed"
+    rm -f "$MODES_DIR/wallpaper_killed"
 fi
+rm -f "$HOME/.cache/wallpaper_killed"
 
 # 5. DND Synchronization
 mkdir -p "$STATE_DIR/dnd"
@@ -175,7 +178,8 @@ else
 fi
 
 # 6. Power Profile Synchronization
-echo "$POWER_PROF" > "$HOME/.cache/qs_power_profile"
+echo "$POWER_PROF" > "$POWER_DIR/profile.tmp" && mv -f "$POWER_DIR/profile.tmp" "$POWER_DIR/profile"
+rm -f "$HOME/.cache/qs_power_profile" /tmp/qs_power_profile /tmp/qs_requested_profile
 
 # 7. Coffee Mode (Idle Inhibit) Synchronization
 if [ "$COFFEE" = "true" ]; then

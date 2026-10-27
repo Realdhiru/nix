@@ -25,10 +25,11 @@ fi
 echo "$MODE" > "$MODE_FILE"
 
 # Detect power & compositor state for solid background fallback
-CURRENT_PROFILE="$(cat "$HOME/.cache/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "")"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+CURRENT_PROFILE="$(cat "$DESKTOP_STATE_DIR/power/profile" 2>/dev/null || echo "")"
 SOLID_BG=false
-if [ -f "$HOME/.cache/wallpaper_killed" ] || \
-   [ -f "$HOME/.cache/gaming_mode" ] || \
+if [ -f "$DESKTOP_STATE_DIR/modes/wallpaper_killed" ] || \
+   [ -f "$DESKTOP_STATE_DIR/modes/gaming_mode" ] || \
    [ "$CURRENT_PROFILE" = "power-saver" ]; then
     SOLID_BG=true
 fi

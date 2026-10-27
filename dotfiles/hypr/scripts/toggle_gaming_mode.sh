@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-STATE_FILE="$HOME/.cache/gaming_mode"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+STATE_FILE="$DESKTOP_STATE_DIR/modes/gaming_mode"
 STATE_CTL="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
 NOTIF_TITLE="Efficiency / Gaming Mode"
+
+mkdir -p "$DESKTOP_STATE_DIR/modes"
 
 IS_GAMING="false"
 if [ -f "$STATE_CTL" ]; then
@@ -12,15 +15,15 @@ fi
 
 if [ -f "$STATE_FILE" ] || [ "$IS_GAMING" = "true" ]; then
     # Disable Gaming Mode
-    rm -f "$STATE_FILE"
+    rm -f "$STATE_FILE" "$HOME/.cache/gaming_mode"
     [ -f "$STATE_CTL" ] && bash "$STATE_CTL" set modes.gaming false 2>/dev/null || true
 
     # Reset compositor gaming flags to defaults
     hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, general = { allow_tearing = false } })" >/dev/null 2>&1 || true
 
     # Only restore blur, shadow, and window opacity if not in power-saver and wallpaper not killed
-    CURRENT_PROFILE="$(cat "$HOME/.cache/qs_power_profile" 2>/dev/null || cat /tmp/qs_power_profile 2>/dev/null || echo "balanced")"
-    if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$HOME/.cache/wallpaper_killed" ]; then
+    CURRENT_PROFILE="$(cat "$DESKTOP_STATE_DIR/power/profile" 2>/dev/null || echo "balanced")"
+    if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$DESKTOP_STATE_DIR/modes/wallpaper_killed" ]; then
         hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true }, active_opacity = 1.0, inactive_opacity = 1.0 }, animations = { enabled = true } })" >/dev/null 2>&1 || true
         hyprctl reload >/dev/null 2>&1 || true
     fi
