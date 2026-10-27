@@ -839,14 +839,32 @@ Item {
                                             Layout.fillWidth: true
                                             height: window.s(18)
                                             
-                                            Timer {
-                                                id: briCmdThrottle
-                                                interval: 50
-                                                property int targetPct: -1
-                                                onTriggered: {
-                                                    if (targetPct >= 0) {
-                                                        Quickshell.execDetached(["brightnessctl", "set", targetPct + "%"]);
-                                                        targetPct = -1;
+                                            Process {
+                                                id: briProcess
+                                                running: false
+                                                property bool inFlight: false
+                                                property int pendingPct: -1
+
+                                                onExited: (code) => {
+                                                    inFlight = false;
+                                                    if (pendingPct >= 0) {
+                                                        let next = pendingPct;
+                                                        pendingPct = -1;
+                                                        applyBri(next);
+                                                    }
+                                                }
+
+                                                function applyBri(pct) {
+                                                    inFlight = true;
+                                                    command = ["brightnessctl", "set", pct + "%"];
+                                                    running = true;
+                                                }
+
+                                                function request(pct) {
+                                                    if (inFlight) {
+                                                        pendingPct = pct;
+                                                    } else {
+                                                        applyBri(pct);
                                                     }
                                                 }
                                             }
@@ -881,13 +899,16 @@ Item {
                                                 cursorShape: Qt.PointingHandCursor
                                                 onPressed: (mouse) => { briSyncDelay.stop(); window.isDraggingBri = true; updateBri(mouse.x); }
                                                 onPositionChanged: (mouse) => { if (pressed) updateBri(mouse.x); }
-                                                onReleased: { briSyncDelay.restart(); }
+                                                onReleased: (mouse) => {
+                                                    updateBri(mouse.x);
+                                                    briSyncDelay.restart();
+                                                }
+                                                onCanceled: { briSyncDelay.restart(); }
                                                 
                                                 function updateBri(mx) {
                                                     let pct = Math.max(0, Math.min(100, Math.round((mx / width) * 100)));
                                                     window.sysBrightness = pct; 
-                                                    briCmdThrottle.targetPct = pct;
-                                                    if (!briCmdThrottle.running) briCmdThrottle.start();
+                                                    briProcess.request(pct);
                                                 }
                                             }
                                         }
@@ -934,18 +955,36 @@ Item {
                                             Layout.fillWidth: true
                                             height: window.s(18)
                                             
-                                            Timer {
-                                                id: volCmdThrottle
-                                                interval: 50
-                                                property int targetPct: -1
-                                                onTriggered: {
-                                                    if (targetPct >= 0) {
-                                                        if (targetPct > 0 && window.sysMuted) {
-                                                            window.sysMuted = false;
-                                                            Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "0"]);
-                                                        }
-                                                        Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", targetPct + "%"]);
-                                                        targetPct = -1;
+                                            Process {
+                                                id: volProcess
+                                                running: false
+                                                property bool inFlight: false
+                                                property int pendingPct: -1
+
+                                                onExited: (code) => {
+                                                    inFlight = false;
+                                                    if (pendingPct >= 0) {
+                                                        let next = pendingPct;
+                                                        pendingPct = -1;
+                                                        applyVol(next);
+                                                    }
+                                                }
+
+                                                function applyVol(pct) {
+                                                    inFlight = true;
+                                                    if (pct > 0 && window.sysMuted) {
+                                                        window.sysMuted = false;
+                                                        Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "0"]);
+                                                    }
+                                                    command = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", pct + "%"];
+                                                    running = true;
+                                                }
+
+                                                function request(pct) {
+                                                    if (inFlight) {
+                                                        pendingPct = pct;
+                                                    } else {
+                                                        applyVol(pct);
                                                     }
                                                 }
                                             }
@@ -980,13 +1019,16 @@ Item {
                                                 cursorShape: Qt.PointingHandCursor
                                                 onPressed: (mouse) => { volSyncDelay.stop(); window.isDraggingVol = true; updateVol(mouse.x); }
                                                 onPositionChanged: (mouse) => { if (pressed) updateVol(mouse.x); }
-                                                onReleased: { volSyncDelay.restart(); }
+                                                onReleased: (mouse) => {
+                                                    updateVol(mouse.x);
+                                                    volSyncDelay.restart();
+                                                }
+                                                onCanceled: { volSyncDelay.restart(); }
                                                 
                                                 function updateVol(mx) {
                                                     let pct = Math.max(0, Math.min(100, Math.round((mx / width) * 100)));
                                                     window.sysVolume = pct;
-                                                    volCmdThrottle.targetPct = pct;
-                                                    if (!volCmdThrottle.running) volCmdThrottle.start();
+                                                    volProcess.request(pct);
                                                 }
                                             }
                                         }

@@ -133,11 +133,20 @@ Item {
     property string shaderFile: Quickshell.env("HOME") + "/.cache/screen_shader.frag"
     property string satShaderFile: Quickshell.env("HOME") + "/.cache/screen_saturation.frag"
 
-    Timer {
-        id: applyTimer
-        interval: 40
-        repeat: false
-        onTriggered: root.doApplyBackend()
+    property bool applyInFlight: false
+    property var pendingSunset: null
+
+    Process {
+        id: sunsetProcess
+        running: false
+        onExited: (code) => {
+            root.applyInFlight = false;
+            if (root.pendingSunset !== null) {
+                let next = root.pendingSunset;
+                root.pendingSunset = null;
+                root.doApplyBackend(next);
+            }
+        }
     }
 
     FileView {
@@ -170,7 +179,7 @@ Item {
         } catch(e) {}
     }
 
-    // Backend Synchronizer with debounced slider updates & auto-spawning daemon & cleanup on default
+    // Backend Synchronizer with single-flight pending pattern & zero-animation held updates
     function applyBackend(t, g, s, gr, crt) {
         if (t !== undefined) root.currentTemp = Math.round(t);
         if (g !== undefined) root.currentGamma = Math.round(g);
@@ -186,27 +195,49 @@ Item {
             return;
         }
 
-        applyTimer.restart();
+        let payload = {
+            temp: root.currentTemp,
+            gamma: root.currentGamma,
+            sat: root.currentSat,
+            grain: root.currentGrain,
+            crt: root.currentCrt
+        };
+
+        if (root.applyInFlight) {
+            root.pendingSunset = payload;
+        } else {
+            root.doApplyBackend(payload);
+        }
     }
 
-    function doApplyBackend() {
-        let isDefault = (root.currentTemp === 6500 && root.currentGamma === 100 && root.currentSat === 100 && root.currentGrain === 0 && root.currentCrt === 0);
+    function doApplyBackend(data) {
+        let p = data || {
+            temp: root.currentTemp,
+            gamma: root.currentGamma,
+            sat: root.currentSat,
+            grain: root.currentGrain,
+            crt: root.currentCrt
+        };
+
+        let isDefault = (p.temp === 6500 && p.gamma === 100 && p.sat === 100 && p.grain === 0 && p.crt === 0);
         if (isDefault) {
             root.resetAll();
             return;
         }
 
-        let satFloat = (root.currentSat / 100.0).toFixed(3);
-        let grainFloat = (root.currentGrain / 100.0 * 1.5).toFixed(3);
-        let crtFloat = (root.currentCrt / 100.0).toFixed(3);
+        root.applyInFlight = true;
 
-        let needsShader = (root.currentSat !== 100 || root.currentGrain > 0 || root.currentCrt > 0);
+        let satFloat = (p.sat / 100.0).toFixed(3);
+        let grainFloat = (p.grain / 100.0 * 1.5).toFixed(3);
+        let crtFloat = (p.crt / 100.0).toFixed(3);
+
+        let needsShader = (p.sat !== 100 || p.grain > 0 || p.crt > 0);
 
         let script = `
             # 1. Hardware CTM (hyprsunset managed via declarative systemd user service)
-            if [ "${root.currentTemp}" -ne 6500 ] || [ "${root.currentGamma}" -ne 100 ]; then
-                hyprctl hyprsunset temperature ${root.currentTemp} >/dev/null 2>&1 || true
-                hyprctl hyprsunset gamma ${root.currentGamma} >/dev/null 2>&1 || true
+            if [ "${p.temp}" -ne 6500 ] || [ "${p.gamma}" -ne 100 ]; then
+                hyprctl hyprsunset temperature ${p.temp} >/dev/null 2>&1 || true
+                hyprctl hyprsunset gamma ${p.gamma} >/dev/null 2>&1 || true
             else
                 hyprctl hyprsunset identity >/dev/null 2>&1 || true
             fi
@@ -273,14 +304,16 @@ EOF
             fi
 
             # 3. Save persistent state in canonical state.json
-            bash "${Quickshell.env("HOME")}/.config/hypr/scripts/quickshell/state_ctl.sh" sunset ${root.currentTemp} ${root.currentGamma} ${root.currentSat} ${root.currentGrain} ${root.currentCrt} true
+            bash "${Quickshell.env("HOME")}/.config/hypr/scripts/quickshell/state_ctl.sh" sunset ${p.temp} ${p.gamma} ${p.sat} ${p.grain} ${p.crt} true
         `;
 
-        Quickshell.execDetached(["bash", "-c", script]);
+        sunsetProcess.command = ["bash", "-c", script];
+        sunsetProcess.running = true;
     }
 
     function resetAll() {
-        applyTimer.stop();
+        root.pendingSunset = null;
+        root.applyInFlight = false;
         root.currentTemp = 6500;
         root.currentGamma = 100;
         root.currentSat = 100;
@@ -402,8 +435,7 @@ EOF
                                 root.selectedControl = 0;
                                 root.forceActiveFocus();
                             } else {
-                                applyTimer.stop();
-                                root.doApplyBackend();
+                                root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
                             }
                         }
                         onMoved: root.applyBackend(value, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt)
@@ -518,8 +550,7 @@ EOF
                                 root.selectedControl = 1;
                                 root.forceActiveFocus();
                             } else {
-                                applyTimer.stop();
-                                root.doApplyBackend();
+                                root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, value, root.currentSat, root.currentGrain, root.currentCrt)
@@ -634,8 +665,7 @@ EOF
                                 root.selectedControl = 2;
                                 root.forceActiveFocus();
                             } else {
-                                applyTimer.stop();
-                                root.doApplyBackend();
+                                root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, value, root.currentGrain, root.currentCrt)
@@ -750,8 +780,7 @@ EOF
                                 root.selectedControl = 3;
                                 root.forceActiveFocus();
                             } else {
-                                applyTimer.stop();
-                                root.doApplyBackend();
+                                root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, value, root.currentCrt)
@@ -866,8 +895,7 @@ EOF
                                 root.selectedControl = 4;
                                 root.forceActiveFocus();
                             } else {
-                                applyTimer.stop();
-                                root.doApplyBackend();
+                                root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, value)
