@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## 2026-10-27 — Wallpaper Instant Applying & Animation Optimization
+
+- **Documentation Consolidation**: Consolidated instructions into lean 20-line [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md), generic technical specs into [`docs/system.md`](file:///home/realdhiru/nix/docs/system.md), machine/personal facts into [`hosts/nixos/PERSONAL.md`](file:///home/realdhiru/nix/hosts/nixos/PERSONAL.md), and renumbered ADRs (ADR-001 through ADR-075) in [`docs/decisions.md`](file:///home/realdhiru/nix/docs/decisions.md).
+
+- **Instant GIF & Photo Wallpaper Applying ([`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), [`ensure_awww.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/ensure_awww.sh), [`rotate_display.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/rotate_display.sh))**:
+  - Eliminated the 32+ second stall on GIF wallpapers by switching filter from `Lanczos3` to `--filter Nearest` for `.gif` files, reducing cold apply time from 32.65s to 0.42s (77x speedup) and warm apply time to 0.18s (180x speedup).
+  - Switched static image scaling to `--filter Bilinear` (65ms vs 140ms under Lanczos3).
+  - Resolved connected monitor names upfront (`OUT_JOINED`) and strictly passed `--outputs "$OUT_JOINED"` to `awww img`, completely bypassing `update_disconnected_caches()` which previously loaded 867MB of raw uncompressed frame files from disk on every wallpaper push.
+- **Restoration of Original Decorative Animations ([`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml), [`appearance.lua`](file:///home/realdhiru/nix/dotfiles/hypr/appearance.lua), [`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml), [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml))**:
+  - Restored the rotating vinyl disc animation, intro cascades, and EQ slider wave pulses in `MusicPopup.qml` from snapshot `84a9175`.
+  - Restored Hyprland window and workspace animations and curves in `appearance.lua` (`menu_decel`, `popin 80%`, `slidefade 15%`) and restored snappy 110ms popup morphing in `Main.qml`.
+  - Restored battery ring breathing pulses and popup animations across `CalendarPopup.qml`, `FocusTimePopup.qml`, and quickactions.
+  - Removed artificial motion generator checks from `flake.nix` and purged unused motion generator files.
+- **Video Wallpaper Output Resolution Fix ([`home.nix`](file:///home/realdhiru/nix/home.nix), `~/.config/systemd/user/mpvpaper@.service.d/override.conf`)**:
+  - Fixed systemd template specifier `%I` in `mpvpaper@.service` to `%i`. Systemd specifier `%I` unescapes `-` into `/`, transforming display output `eDP-1` into `eDP/1` which caused `mpvpaper` to fail with `cannot find output`.
+  - Added drop-in unit override `override.conf` and updated declarative Nix definition in `home.nix`, restoring instant video wallpaper playback.
+- **Instant Hardware-Accelerated GIF Playback via `mpvpaper` & Background MP4 Cache ([`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), [`thumbnail.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/thumbnail.sh))**:
+  - Restored routing of animated `.gif` files into `mpvpaper` with auto-pause (`-p`) and Intel QuickSync hardware decoding (`--hwdec=auto-safe`).
+  - Implemented instant launch: plays GIF immediately in `mpvpaper` (0ms delay) while converting to `.mp4` into `~/.cache/converted_gifs` in the background for subsequent zero-CPU playback.
+  - Added automatic GIF `.mp4` pre-conversion in `thumbnail.sh`, ensuring wallpapers selected from QuickShell apply in < 0.15s.
+- **Wallpaper Kill Mode Transparency & Blur Restore Fix ([`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), [`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh))**:
+  - Re-added `hyprctl reload` to wallpaper un-kill paths in `set.sh` and `wallpaper.sh`.
+  - Clears the persistent runtime `1.0 override` window rule from Hyprland upon un-kill, immediately restoring transparent glass window opacities and blur.
+
 ## 2026-10-26 — WirePlumber Persistent Telemetry, Wallpaper Physics & Cycling Order Fixes
 
 - **WirePlumber Persistent Event-Driven Telemetry ([`services.nix`](file:///home/realdhiru/nix/modules/system/services.nix))**:

@@ -2,9 +2,18 @@
 
 Concise, permanent architectural invariants and technical rationale. Do not duplicate daily commit logs here (use `CHANGELOG.md`).
 
+
+### ADR-001: Hardware-Accelerated Video & GIF Wallpaper Architecture via mpvpaper
+- **Decision:**
+  1. Animated GIFs and videos (`mp4`, `mkv`, `mov`, `webm`, `gif`) are routed to `mpvpaper` with auto-pause (`-p`) and fixed-function hardware VA-API video decode (`--hwdec=auto-safe`).
+  2. In `home.nix`, systemd user template unit `mpvpaper@.service` strictly uses specifier `%i` (verbatim output name, preserving dashes). `%I` unescapes dashes to slashes (`eDP-1` $\rightarrow$ `eDP/1`), causing output discovery failure in Wayland.
+  3. GIFs play immediately with 0ms delay in `mpvpaper` while converting to `.mp4` into `~/.cache/converted_gifs/` asynchronously; `thumbnail.sh` also pre-converts GIFs in the background. Subsequent plays utilize the hardware-decoded MP4 with zero CPU draw.
+  4. Static images use `awww` with `--filter Bilinear` and transition `none`, applying in < 0.1s.
+- **Rationale:** Decoding multi-hundred-frame GIFs in software inside `awww` generated hundreds of megabytes of uncompressed frame rasters, causing 8–32s stalls and draining battery. Delegating GIFs to `mpvpaper` with hardware offload reduces apply time from 8s to <0.15s. Auto-pause (`-p`) halts decoding whenever active windows obscure the wallpaper, preserving deep C-states ($C8/C10$).
+
 ---
 
-### 0aaaaaa. WirePlumber Diagnostic Telemetry & Wallpaper Subsystem Carousel/Cycling Cohesion
+### ADR-002: WirePlumber Diagnostic Telemetry & Wallpaper Subsystem Carousel/Cycling Cohesion
 - **Decision:**
   1. WirePlumber diagnostic event logging is configured declaratively in NixOS (`modules/system/services.nix`) via `systemd.user.services.wireplumber.environment.WIREPLUMBER_DEBUG = "I,s-linking:D,s-default-nodes:D"`. All endpoint additions, linking decisions, and node fallbacks are captured in systemd journal.
   2. `WallpaperPicker.qml` carousel translation duration `highlightMoveDuration` is strictly bound to `Motion.moveMs` (220ms), with `scrollThreshold` tuned to `s(40)` and throttle at 50ms, eliminating coordinate desynchronization with delegate resizing.
@@ -14,7 +23,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 
 ---
 
-### 0aaaaa. Declarative Single-Source-of-Truth Monitor Modes, Layer Blur Narrowing & hyprsunset Hardening
+### ADR-003: Declarative Single-Source-of-Truth Monitor Modes, Layer Blur Narrowing & hyprsunset Hardening
 - **Decision:**
   1. Monitor refresh rate by power source (60Hz on battery / 120Hz on AC) is defined strictly in the NixOS flake via declarative `hypr-local/monitors.lua`. Target modes and frequencies are dynamically derived at runtime from hardware EDID detailed timings (`/sys/class/drm/card*-eDP-*/edid`) and `/sys/class/power_supply/AC*/online`. No parallel monitor logic, QML bash heredocs, or `~/.cache/hypr_power_monitor.conf` state files exist. Compositor reload (`SUPER+R`, `hyprctl reload`) evaluates this file idempotently and reliably preserves 60Hz on battery.
   2. Compositor layer blur is narrowed strictly to `^(quickshell|qs-master|qs-notif-toast)$`. The full-screen overlay surface `qs-floating-overlay` is excluded from GPU blur passes, eliminating unneeded compositor render costs.
@@ -23,49 +32,49 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 
 ---
 
-### 0aaaa. Wallpaper State Migration ($XDG_STATE_HOME) & D-Bus Notification Close Invariants
+### ADR-004: Wallpaper State Migration ($XDG_STATE_HOME) & D-Bus Notification Close Invariants
 - **Decision:** Wallpaper state is strictly maintained under `$XDG_STATE_HOME/quickshell/wallpaper/{current,last}_wallpaper.txt` using atomic writes (`tmp + mv -f` in the same directory). No sentinel values (`"none"`) are written to state files; `current_wallpaper.txt` always stores the authoritative valid wallpaper path, while disabled/killed state is tracked natively via Quickshell's `modes.wallpaperKilled`. UI state synchronization uses `FolderListModel` directory watching to detect atomic renames without losing inode tracking. Boot never falls back to random directory scans; it resolves declarative `$DEFAULT_WALLPAPER` (Nix store derivation) or exits 1 with a descriptive error. Notification teardown distinguishes between D-Bus `CloseNotification` (reason 3 `CloseRequested`), user dismissal (reason 2 `Dismissed`), and timeout expiration (reason 1 `Expired`).
 - **Rationale:** Writing state files to `~/.cache` without atomic renames caused zero-byte corruption when keybinds or processes toggled wallpaper state concurrently. Inotify watchers on file inodes lose event notifications on atomic `rename()` / `mv`, which was resolved by directory monitoring via `FolderListModel`. Reading empty files caused `cmd_boot` to invoke `find` and select arbitrary wallpapers. In FreeDesktop Notifications and Quickshell's `NotificationServer`, timeouts must call `expire()` so external clients receive reason 1 instead of reason 2.
 
 ---
 
-### 0aaa. Power Button Display Power Toggle & DPMS Wakeup Invariants
+### ADR-005: Power Button Display Power Toggle & DPMS Wakeup Invariants
 - **Decision:** Bind physical power button (`XF86PowerOff`) directly to `power.sh display toggle` with `{ locked = true }`. Set `services.logind.settings.Login.HandlePowerKey = "ignore"` (and run user inhibitor `inhibit-power-key`). Enable `key_press_enables_dpms = true` and `mouse_move_enables_dpms = true` in [`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua).
 - **Rationale:** Coffee mode (`SUPER + CTRL + U`) holds a systemd `idle:sleep` inhibitor so background AI agents and long batch compilations do not trigger automated `systemctl suspend` after 30 minutes of inactivity. However, inhibiting `idle` halts hypridle's automated DPMS timeout (120s). Previously, turning DPMS off manually when `key_press_enables_dpms` was `false` left the user permanently trapped with a black screen because hypridle could not trigger `on-resume` and Hyprland ignored key/mouse events. Binding the power button (`XF86PowerOff`) provides an intuitive hardware screen toggle, while `key_press_enables_dpms` and `mouse_move_enables_dpms` ensure any keyboard or trackpad interaction immediately restores the OLED panel ($0\text{W} \leftrightarrow 100\%$).
 
 ---
 
-### 0aa. Dynamic Island Notification Toast & Contrast Floor Token
+### ADR-006: Dynamic Island Notification Toast & Contrast Floor Token
 - **Decision:** When TopBar is in Sidebar mode, notifications display via a top-centered Dynamic Island morphing pill (`NotifToast.qml`) governed by a derived `Config.toastOpacity` token (`Math.max(0.70, config.effectivePopupOpacity)`). The Wayland LayerShell surface uses `exclusionMode: ExclusionMode.Ignore` and explicit `mask: Region { item: toastCard }`.
 - **Rationale:** Popups standard opacity (`0.14`) fails WCAG AA readability (measured contrast 1.05:1–1.36:1) against bright wallpapers. The `toastOpacity: 0.70` floor ensures $\ge 5.37:1$ contrast for body text without breaking dark mode theming or adding hardcoded colors. `ExclusionMode.Ignore` prevents Hyprland exclusive monitor margin offsets from displacing the toast down the screen.
 
 ---
 
-### 0a. Dynamic Multi-Monitor Layout Intent & Wallpaper Lifecycle Architecture
-- **Decision:** Layout state is managed via atomic single-intent persistence (`"extend"` or `"mirror"`) in `$XDG_STATE_HOME/hypr/layout.lua` evaluated dynamically by Hyprland's native Lua runtime (`hyprland.lua`). Wallpaper daemons are declared as systemd user services (`awww-daemon.service`, `mpvpaper@<out>.service`), with active video endpoints tracked via `%h/.local/state/mpvpaper/%i.env`.
-- **Rationale:** Hardcoded display configurations (e.g. `hypr_power_monitor.conf`, text-scraping jq scripts) broke across multi-monitor setups, docking changes, and hotplugging. Decoupling intent from monitor identifiers allows any dynamic set of outputs to mirror or extend deterministically. Home Manager systemd units prevent orphaned processes and allow clean transition handoffs between static images and video wallpapers.
+### ADR-007: Dynamic Multi-Monitor Layout Intent & Wallpaper Lifecycle Architecture
+- **Decision:** Layout state is managed via atomic single-intent persistence (`"extend"` or `"mirror"`) in `$XDG_STATE_HOME/hypr/layout.lua` evaluated dynamically by Hyprland's native Lua runtime (`hyprland.lua`). Wallpaper daemons are declared as systemd user services (`awww-daemon.service`, `mpvpaper@<out>.service`), with active video endpoints tracked via `%h/.local/state/mpvpaper/%i.env`. In `set.sh`, all target monitors are resolved upfront and strictly passed via `--outputs "$OUT_JOINED"`, with filter explicitly set to `--filter Nearest` for animated GIFs and `--filter Bilinear` for static images. In systemd, `mpvpaper@.service` must use `%i` (verbatim output name) instead of `%I` (unescaped instance name).
+- **Rationale:** Hardcoded display configurations (e.g. `hypr_power_monitor.conf`, text-scraping jq scripts) broke across multi-monitor setups, docking changes, and hotplugging. Decoupling intent from monitor identifiers allows any dynamic set of outputs to mirror or extend deterministically. Without `--outputs`, `awww img` invokes `update_disconnected_caches()` which reads every uncompressed frame cache file from disk, stalling wallpaper switches. Default `Lanczos3` scaling on multi-frame GIFs consumes 30+ seconds of CPU time across 100+ frames; `--filter Nearest` decodes and renders in <0.2s. Using `%I` in systemd unescaped `eDP-1` to `eDP/1`, causing `mpvpaper` to fail finding the Wayland display.
 
 
-### 0. HiDPI Toolkit Coordinate Synchronization & Popup Anchoring
+### ADR-008: HiDPI Toolkit Coordinate Synchronization & Popup Anchoring
 - **Decision:** Declare `GDK_SCALE = "2"`, `QT_AUTO_SCREEN_SCALE_FACTOR = "1"`, and `QT_ENABLE_HIGHDPI_SCALING = "1"` in [`env.lua`](file:///home/realdhiru/nix/dotfiles/hypr/env.lua). Add `--disable-features=DownloadBubble,DownloadBubbleV2` to the Brave launcher in [`home.nix`](file:///home/realdhiru/nix/home.nix).
 - **Rationale:** On a 2.0x display (2880×1620), omitting explicit toolkit scale hints causes GTK/Qt/Chromium subsurfaces to compute popup, menu, and dropdown anchor rects against raw physical buffer coordinates. When windows sit near monitor boundaries, `xdg_positioner` flips or clamps the misplaced coordinates off-screen. Disabling the Chromium Download Bubble eliminates the detached subsurface in frameless PWAs (`--app=...`) in favor of stable in-window download progress.
 
 ---
 
-### 1. User & Credential Parameterization (`user.nix`)
+### ADR-009: User & Credential Parameterization (`user.nix`)
 - **Decision:** [`user.nix`](file:///home/realdhiru/nix/user.nix) is the single source of truth for `username`, `name`, and `hostname`.
 - **Rationale:** Banished hardcoded `/home/username` across Nix modules, Lua scripts, and Wallust configs for portability. All modules consume `user.username`.
 
-### 1a. Understandable, Declarative System Ownership
+### ADR-010: Understandable, Declarative System Ownership
 - **Decision:** Prefer small, inspectable components and configuration in this repository over opaque frameworks or imperative machine-only setup. Declare packages and services in Nix; use the existing live-linked dotfile workflow where fast iteration is intentional.
 - **Rationale:** Reproducibility matters, but the system must also remain understandable and debuggable by its owner. Nix is not a guarantee of bit-identical results across hardware; keep host-specific state explicit and verify changes against the actual machine.
 
-### 1b. Documentation Scope
+### ADR-011: Documentation Scope
 - **Decision:** Keep this repository's docs focused on this machine's configuration, architecture choices, measured behavior, and operational runbooks. General Linux, Wayland, Nix, and NixOS learning material belongs in the separate Obsidian vault at `~/Projects/Vault/nix-brain/`.
 - **Rationale:** Separate system-of-record details from reusable teaching material to avoid maintaining duplicated explanations. Keep only the rationale needed to understand a local decision here.
 - **Application:** General flake, standalone packaging, and store-versus-live-link tutorials have been reduced to local input workflow, package ownership, and desktop iteration choices. Preserve the real local topology and observed behavior here.
 
-### 1c. Second-Brain Knowledge Base & Personal Biodata Standards
+### ADR-012: Second-Brain Knowledge Base & Personal Biodata Standards
 - **Decision:** Personal biodata and profile history in `~/Projects/Vault/personal/` must follow strict machine-readable tabular schemas (`| Tag | Fact | First Seen | Last Seen | Confidence | Frequency | Sources |`) with explicit provenance, zero duplicates, zero contradictory entries, and zero negative-knowledge boilerplate.
 - **Rules:**
   - Degree program is authoritative as **B.Tech in Information Technology (IT)** at KIET Group of Institutions, Ghaziabad. Informal mentions of CS/CSIT in chat exports are superseded.
@@ -74,7 +83,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - Internal OLED display resolution is empirically anchored to **2880×1620 @ 120Hz (16:9, Samsung Display Corp. 0x4180)**. Speculative 2880×1800 (16:10) labels are removed.
   - Negative placeholder rows ("no named people identified", "no friends on record") from automated AI memory exports are purged to maintain high signal-to-noise ratio.
 
-### 1d. Multi-Vault Ecosystem Authority
+### ADR-013: Multi-Vault Ecosystem Authority
 - **Decision:** All knowledge bases outside `~/nix/docs` live directly under `~/Projects/Vault/`, each serving an orthogonal domain under the high-density systems whitepaper standard:
   - **`nix-brain`**: Universal Linux kernel primitives, IPC, graphics/audio pipelines, and Nix functional language calculus.
   - **`network-brain`**: Computer networking, IP addressing, transport protocols, firewalls, threat modeling, cryptography, SSH, VPNs/mesh overlays, Linux/NixOS network administration, hands-on lab runbooks, and misconception debunking.
@@ -83,7 +92,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - **`procrastinate`**: Curated reading backlog and structured learning index for deep learning architectures, distributed computing, and emerging software paradigms.
 
 
-### 2. Power Management & Hardware Authority
+### ADR-014: Power Management & Hardware Authority
 - **Decision:** TLP 1.9.1 is the sole hardware authority for platform profiles, EPP, and ASPM.
 - **Rules:**
   - `asusd.service` is enabled strictly for 80% battery ceiling enforcement (`charge_control_end_threshold = 80`). `change_platform_profile_on_battery/on_ac` must remain `false`. In `asusd.ron`, `bat_profile` and `platform_profile_on_battery` must remain `Balanced` to prevent unwanted firmware throttling (`Quiet` / EPP `Power`) on battery.
@@ -93,11 +102,11 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - Balanced battery profile (`balance_performance`, Turbo `1`, Platform Profile `balanced`, ASPM `powersupersave`) is empirically locked.
   - **Automated AC/Battery Profile Switching**: Disconnecting AC power must unconditionally reset `_manualOverride` in [`SysData.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/SysData.qml) and switch hardware power profile to `balanced` (invoking `power.sh profile balanced` -> TLP, ACPI `/sys/firmware/acpi/platform_profile`, and `asusctl`). Cold boots or shell reloads while on battery must never restore a cached `performance` profile.
 
-### 3. QuickShell Architecture & IPC
+### ADR-015: QuickShell Architecture & IPC
 - **Decision:** Native C++ event-driven bindings only (`Quickshell.Hyprland`, `Quickshell.Services.Pipewire`, `FileView { watchChanges: true }`, `FileWatcher`).
 - **Rationale:** No periodic bash polling loops or subprocess chains in QML. Eliminates fork storms, process starvation, and CPU wakeups, delivering instantaneous frame-0 startup and zero idle CPU overhead.
 
-### 4. Fast Compiled Execution & Zero-Python Hot Paths
+### ADR-016: Fast Compiled Execution & Zero-Python Hot Paths
 - **Decision:** Python, Node.js, and heavy interpreted runtimes are strictly prohibited from hot interactive paths (keybind execution, status polling, wallpaper cycling, clipboard fetching, theme generation).
 - **Rationale:** Python startup introduces an unavoidable ~80–150ms interpreter bootstrap latency and continuous VM memory overhead. Interactive shell actions must complete in < 5ms.
 - **Rules:**
@@ -153,53 +162,44 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
     - Toggled instantaneously via `SUPER + ALT + Up` (top) and `SUPER + ALT + Down` (left) without process restarts or widget layout contamination. Auto-hide toggled via `CTRL + MOD + ALT`.
   - **Primary Lockscreen Architecture**: Session locking is powered by native GPU-accelerated `hyprlock` (`ext-session-lock-v1`) with dynamic dual-pass screenshot blur (`path = screenshot`, `blur_passes = 2`) and instant PAM authentication (<20ms), triggered via `power.sh lock` and `hypridle`. The legacy `Lock.qml` (and QtMultimedia video lockscreen) is superseded to eliminate frame capture overhead and PAM session desyncs.
 
-### 4. Canonical Persistent State Architecture (`~/.cache/quickshell/state.json`)
-- **Decision**: Single canonical JSON file (`~/.cache/quickshell/state.json`) owns all live user toggle states across the system (`sunset`, `modes`, `power`, `ui`).
-- **Rules**:
-  - [`restore_state.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh) automatically re-applies active shaders, `hyprsunset` hardware CTMs, Gaming Mode, DND, and power profiles on QuickShell boot/reload via [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml).
-  - Toggling off or resetting any feature restores its entry to neutral defaults in `state.json`. No orphaned flag files or stale state files are permitted.
-  - **Theme Singleton Attempt & Constraint**: Attempted `Theme.qml` `pragma Singleton` consolidation on 2026-09-27 — caused system-wide black/undefined color rendering across all widgets simultaneously, root cause suspected to be a load-order race unique to singleton lifecycle (`FileView` not resolved before first property access), not fully diagnosed before reverting. Reverted to per-widget `Theme {}` instantiation, confirmed working. Do not retry without first writing a minimal isolated test case for singleton + `FileView` load-order behavior in QML before touching the real widget suite again.
-  - **Display & Shader Architecture Split**: `hyprsunset` daemon owns Temperature + Gamma (hardware CTM/gamma LUT). Hyprland's single `decoration:screen_shader` slot owns Saturation + Paper Grain + CRT Curvature together in one unified GLSL file, since Hyprland only supports one active `screen_shader` at a time. These two systems are fully independent.
-
-
-### 5. Hardware Quirks Modularization (`hosts/nixos/hardware/`)
+### ADR-017: Hardware Quirks Modularization (`hosts/nixos/hardware/`)
 - **Isolation Boundary**: Machine-specific drivers, vendor daemons (`asusd`), and hardware quirks must reside strictly in host-level hardware modules (`hosts/<host>/hardware/`), never inside portable system modules (`modules/system/`).
 - **ASUS Vivobook OLED (`asus.nix`):**
   - Thunderbolt 4 / Type-C Power Stabilization: Intel Raptor Lake Thunderbolt controller (`00:0d.0`, `00:0d.3`) is denylisted from aggressive runtime PM sleep (`RUNTIME_PM_DENYLIST`) to prevent `USBSTS 0x401` resume crashes and Type-C peripheral disconnects. Flawed custom UCSI udev rules were permanently removed in favor of TLP's native multi-source AC evaluation (`tlp auto`).
 
-### 6. Rebuild Safety Pipeline (`modules/home/shell.nix`, `scripts/health-check.sh`)
+### ADR-018: Rebuild Safety Pipeline (`modules/home/shell.nix`, `scripts/health-check.sh`)
 - **Decision:** All system switches must route through `rebuild()`.
 - **Rationale:** Pre-records previous generation, stages/commits, performs health-gated validation (Hyprland alive + isolated alacritty GPU-hang probe), and executes automated rollback if critical checks fail. Bad generations are kept bootable in bootloader.
 - **Default Terminal Architecture:** Alacritty serves as the default system terminal across keybinds (`Super + T`), application launcher (`fuzzel.ini`), file manager actions (`pcmanfm-qt`), and health validation probes. Foot remains installed and configured as an auxiliary terminal accessible from application launchers with normalized font size and Wallust glass-blur transparency.
 
-### 7. Declarative Symlinks & Theming
+### ADR-019: Declarative Symlinks & Theming
 - **Decision:** Out-of-store symlinks (`mkOutOfStoreSymlink`) for `dotfiles/` to enable instant live reloading without rebuilds.
 - **Decision:** Decoupled **Wallust** theme engine (`dotfiles/wallust/`) using Lch colorspace and 16 ANSI color extraction. Completely replaces Matugen. Emits all dynamic palette outputs to `~/.cache/theme/` (QuickShell, Foot, Alacritty, Cava, GTK, Qt).
 - **Rule:** Wallust engine must remain strictly self-contained and portable; wallpaper handlers and QuickShell widgets communicate only via clean file contracts (`generate.sh <image>` and `~/.cache/theme/colors.json`).
 - **Dark Mode Lock Rule:** Global theme defaults permanently to dark mode (`saliencedark16`). Wallpaper switches never trigger automatic light mode. Light mode is strictly manual via `settings.json` (`"themeMode": "light"`).
 - **Single Theme Output Root:** `~/.cache/theme/` is the *only* runtime theme output. The legacy `~/.cache/matugen` compat tree has been removed — it had zero live consumers once GTK/Qt, terminal, and QuickShell all pointed at `~/.cache/theme`. New theme consumers must read `~/.cache/theme/` directly and must never reintroduce a second compat root.
 
-### 8. Application Packaging Authority: Standalone Flakes & Native Packaging (Distrobox Decommissioned)
+### ADR-020: Application Packaging Authority: Standalone Flakes & Native Packaging (Distrobox Decommissioned)
 - **Decision:** Purged Distrobox and Podman entirely. Standalone software and third-party packages must be packaged declaratively via custom Flakes, native Nix derivations (`pkgs/`), or Linux kernel `binfmt_misc` AppImage execution (`programs.appimage.enable = true`).
 - **Rationale:** Containerized execution (`deb-box` via Distrobox/Podman) introduced filesystem corruption risks, resource exhaustion, and MIME association conflicts with the host. Standalone Flakes provide true Nix immutability, zero container runtime overhead, and atomic rollback integration.
 - **System-Wide FHS Sandbox Process Lifecycle (`dieWithParent = false`):**
   - Applications packaged via `buildFHSEnv` / `buildFHSEnvChroot` (such as `onlyoffice-desktopeditors`, `lutris`, `bottles`, `chatgpt`, `appimage-run`, `protonup-qt`) are globally overlaid in [`flake.nix`](file:///home/realdhiru/nix/flake.nix) with `dieWithParent = false`. By default, Nixpkgs sets `dieWithParent = true` which injects Bubblewrap's `--die-with-parent` (`prctl(PR_SET_PDEATHSIG, SIGKILL)`). This caused any application opened from file managers (`pcmanfm-qt`), app finders, or terminals to immediately terminate when the parent window exited. Enforcing `dieWithParent = false` system-wide ensures all applications detach and reparent to `systemd --user` cleanly like native desktop binaries.
 
-### 9. Architectural Modularity & Subsystem Decoupling
+### ADR-021: Architectural Modularity & Subsystem Decoupling
 - **Decision:** Strict modular boundaries across system features. No mixed files or tight cross-dependencies.
 - **Subsystem Contracts:**
   - **Theming (`dotfiles/wallust/`)**: Portable standalone color engine. Contains extraction, PIL/Magick luminance math, template generation, neutral fallback mode (`./generate.sh --neutral`), and client reloads. Zero wallpaper or UI dependencies.
   - **Wallpaper (`dotfiles/wallpaper/`)**: Portable desktop background manager (`wallpaper.sh`). Encapsulates daemon lifecycles (`awww`, `mpvpaper`), fast thumbnail generation, directory inotify watching, and online DuckDuckGo search. Hands off to theme engine via clean one-line async execution (`$THEME_ENGINE "$WALLPAPER" &`).
   - **QuickShell Widgets**: QuickShell components (e.g. `wallpaper/`, `network/`, `music/`, `calendar/`) must remain self-contained with localized `Scaler.qml` and `Theme` adapters, eliminating `import "../"` parent breakages when copied to other QuickShell environments.
 
-### 10. System Tray Architecture & Frameless Liquid Glass Design
+### ADR-022: System Tray Architecture & Frameless Liquid Glass Design
 - **Decision:** System Tray moved from TopBar into Battery Popup. Frameless (zero-border) visual standard across QuickShell.
 - **Rationale:**
   - Status bar declutter: TopBar remains minimal, preserving space for dynamic workspace pills, CAVA audio visualizer with top-to-bottom vertical gradient, and clock/date.
   - Tray access consolidated: Quick access tray icons live directly alongside system controls (DND, volume, brightness, power profiles) in BatteryPopup header.
   - Zero-border design: Explicitly removed artificial hairline borders, rotating shape masks, and outer stroke containers across all widget popups (`MusicPopup`, `BatteryPopup`, `CalendarPopup`, `PopupCard`, `MonitorPopup`, `FocusTimePopup`, `NetworkPopup`, `ClipboardManager`). Default `borderWidth = 0` and `borderOpacity = 0.0` in `settings.json`.
 
-### 11. Terminal Dynamic ANSI Extraction & OLED Surface Authority
+### ADR-023: Terminal Dynamic ANSI Extraction & OLED Surface Authority
 - **Dynamic Wallpaper-Extracted ANSI Palette (`ansidark16` + `lchansi`):**
   - Configured Wallust with `--colorspace lchansi --palette ansidark16 --check-contrast` in [`dotfiles/wallust/wallust.toml`](file:///home/realdhiru/nix/dotfiles/wallust/wallust.toml) and [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh).
   - All terminal ANSI slots (`color0`-`color15`), foreground, background, and cursor in terminal templates ([`foot.ini`](file:///home/realdhiru/nix/dotfiles/wallust/templates/foot.ini), [`alacritty.toml`](file:///home/realdhiru/nix/dotfiles/wallust/templates/alacritty.toml)) are dynamically derived from the wallpaper while preserving standard ANSI hue roles (red, green, blue, etc.), preventing muddy cluster collisions.
@@ -209,15 +209,15 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Deterministic Neutral Theme Bypass:**
   - In [`dotfiles/wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh), `--neutral` bypasses Wallust salience clustering and ImageMagick histogram extraction, deterministically generating an OLED pitch-black palette without risk of false olive-green color spikes.
 
-### 12. Bootloader Generation Retention & EFI Partition Protection
+### ADR-024: Bootloader Generation Retention & EFI Partition Protection
 - **Decision:** Strict `boot.loader.systemd-boot.configurationLimit = 10` in [`modules/system/boot.nix`](file:///home/realdhiru/nix/modules/system/boot.nix).
 - **Rationale:** The physical EFI system partition is 511MB. Without an explicit retention limit, systemd-boot generates kernel/initrd pairs in `/boot/EFI/nixos/` indefinitely. Setting a hard limit of 10 keeps rollback entries safe while guaranteeing `/boot` disk usage remains below 200MB (~40% capacity).
 
-### 13. Declarative Default Browser & MIME Authority
+### ADR-025: Declarative Default Browser & MIME Authority
 - **Decision:** Permanent declarative browser authority in `home.nix` (`http`, `https`, `text/html` locked to `brave-browser.desktop`).
 - **Rationale:** Desktop applications and `.desktop` files must never inject or alter system-wide web protocols or default associations. Custom application schemes (e.g. `x-scheme-handler/codex`) are isolated declaratively.
 
-### 14. Nix Context Delivery (AGENTS.md as Router)
+### ADR-026: Nix Context Delivery (AGENTS.md as Router)
 - **Decision:** [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md) is an always-loaded **router**, not an archive. It carries only architecture facts an agent needs to navigate plus a pointer table from intent to file.
 - **Rationale:** Home-manager and editor tooling inject `AGENTS.md` into every session. Mirroring `README.md`/docs into it wastes context on every request. Detailed docs stay on disk and are read on demand.
 - **Rules:**
@@ -226,29 +226,29 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - `repomix-output.xml` (~1.5MB) must carry an explicit do-not-read instruction.
   - Newly added systemic rules are promoted here only after they are stable; day-to-day change history belongs in `CHANGELOG.md`, architectural rationale in this file.
 
-### 15. File Watcher Semantics & Atomic Write Policy (`Quickshell.Io.FileView` vs Raw `inotifywait`)
+### ADR-027: File Watcher Semantics & Atomic Write Policy (`Quickshell.Io.FileView` vs Raw `inotifywait`)
 - **Empirical Finding:** `Quickshell.Io.FileView` watches by **PATH**, not by inode. It automatically re-arms its watcher across atomic `mv` replacements as well as in-place `cat >` writes (`textChanged` and `fileChanged` fire 100% reliably on both write modes).
 - **Rule & Standardized Write Pattern:**
   - **QuickShell `FileView` Contracts (`colors.json`, `music_info.json`)**: Use atomic move (`.tmp` -> `mv`). Atomic move is 100% safe for `Quickshell.Io.FileView` path watchers and eliminates partial-read JSON parse errors during concurrent reads.
   - **Raw Bash / External Script Watchers (`inotifywait -e close_write ...`)**: Raw bash scripts using `inotifywait` on a single explicit file target (rather than watching an entire directory) attach to the underlying Linux inode. Executing `mv` replaces the inode, breaking single-file `inotifywait` handles. For legacy single-file script watchers, use in-place writes (`cat > target`).
 
-### 16. Projects Directory Deletion Protection Policy
+### ADR-028: Projects Directory Deletion Protection Policy
 - **Decision:** Files and directories inside `~/Projects/` are strictly protected from deletion.
 - **Rationale:** `~/Projects/` contains user backups, reference repositories, and uncommitted project workspaces. Agents must never issue `rm` or delete operations against `~/Projects/` or any of its subdirectories.
 
-### 17. OLED Typography & Antialiasing Invariants
+### ADR-029: OLED Typography & Antialiasing Invariants
 - **Decision:** On high-DPI OLED panels with non-standard subpixel layouts (Samsung OLED `eDP-1`), LCD RGB subpixel antialiasing produces red/blue chromatic fringing and edge ghosting.
 - **Rules:**
   - In WezTerm ([`dotfiles/wezterm.lua`](file:///home/realdhiru/nix/dotfiles/wezterm.lua)), FreeType load and render targets must be set to `"Normal"` to force clean grayscale antialiasing.
   - In QuickShell / Qt Quick widgets ([`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml)), high-contrast text must use `renderType: Text.NativeRendering` to avoid Qt distance-field texture filtering chromatic fringing.
 
-### 18. Wayland Layer-Shell Geometry & Scaling Invariants
+### ADR-030: Wayland Layer-Shell Geometry & Scaling Invariants
 - **Decision:** All QuickShell `PanelWindow` overlay surfaces operate strictly in compositor logical coordinates (`1440x810` on `2880x1620` @ scale 2.0).
 - **Rules:**
   - Never configure layer surfaces or popup positioning with raw physical pixel bounds (`2880x1620`). Sizing coordinates using physical dimensions places elements past the logical surface boundary, clipping them off-screen.
   - Sizing fallback in `Main.qml` must derive logical screen space from monitor physical dimensions divided by monitor scale (`Math.round(physWidth / scale)`), ensuring frame-0 and settled coordinates are identical with zero pixel displacement.
 
-### 19. QuickShell Light/Dark Glass Theme State Management
+### ADR-031: QuickShell Light/Dark Glass Theme State Management
 - **Decision:** Theme mode is controlled explicitly by the user via keybind (`SUPER + L`) rather than automatic wallpaper luminance classification.
 - **Rationale:** Automatic wallpaper luminance detection fails on complex illustrations (e.g. bright artwork with dark accents) and forces unintended theme flips. Persisting `ui.themeMode` in `~/.cache/quickshell/state.json` provides user control across reloads and cold boots.
 - **Rules:**
@@ -256,7 +256,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - `Theme.qml` reads `state.json` via native `FileView` watcher and exposes `isLightMode`.
   - Light mode increases `antiBleedOpacity` to `0.35` and `effectivePopupOpacity` to `0.55` in [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml) to guarantee high visual contrast over light background illustrations.
 
-### 20. Operational Verification Invariants & Anti-Patterns
+### ADR-032: Operational Verification Invariants & Anti-Patterns
 - **Screenshot Debugging Ban (Token & Latency Discipline):**
   - Capturing full-screen screenshots via `grim` to verify UI states burns excessive context tokens, inflates turnaround latency, and provides zero semantic insight into internal state machines.
   - Verification must rely on deterministic log assertions (`console.log`), direct file inspection via `FileView` / `jq`, and native IPC queries. Screenshots are strictly reserved for user-requested visual design evaluations.
@@ -267,7 +267,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - Power conservation must never degrade interactive responsiveness. Throttling CPU governors (EPP `power` / `quiet`) degrades application launch times (IDE, browser) and induces UI compositing stutter.
   - True mobile efficiency is achieved via rapid race-to-sleep (`balance_performance`, balanced platform profile, hardware ASPM `powersupersave`) paired with automated idle suspension.
 
-### 21. Coffee Mode & Persistent Idle Inhibition
+### ADR-033: Coffee Mode & Persistent Idle Inhibition
 - **Decision:** Coffee Mode (`SUPER + CTRL + U`) acts as an authoritative, persistent systemd inhibitor against idle blanking and system suspend.
 - **Architecture:**
   - In [`dotfiles/hypr/hypridle.conf`](file:///home/realdhiru/nix/dotfiles/hypr/hypridle.conf), idle timeouts enforce DPMS off at 120s, lock-session at 150s, and system suspend at 1800s (30 minutes). Inhibitor flags (`ignore_dbus_inhibit = false`, `ignore_systemd_inhibit = false`) ensure full compliance with systemd inhibitor locks.
@@ -275,98 +275,93 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - State is canonically persisted in `~/.cache/quickshell/state.json` under `modes.coffee`.
   - [`restore_state.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh) re-acquires the inhibitor on QuickShell reloads, Hyprland restarts, and cold boots whenever `modes.coffee == true`, ensuring Coffee Mode survives desktop lifecycle events until explicitly deactivated by the user.
 
-### 22. Minimal Notification Signal Architecture & Dynamic Island Delivery
+### ADR-034: Minimal Notification Signal Architecture & Dynamic Island Delivery
 - **Decision:** Desktop notifications (`notify-send`) across all scripts and services must adhere strictly to ultra-minimal signal length (1–3 words maximum, e.g. `"Coffee ON"`, `"Game Mode OFF"`, `"AC Connected"`). Every notification call must pass `-a "<Category/App>"`. In SideBar mode (`Config.topBarPosition === "left"`), QuickShell serves notifications via a centered **iPhone Dynamic Island** overlay window (`NotifToast.qml`) without external daemons.
 - **Rationale:** The TopBar ticker (`NotifTicker.qml`) and desktop popup overlays are tuned for concise, glanceable telemetry. Emitting conversational sentences or descriptive bodies clutters the UI layout, clips typography, and destroys the minimalist desktop aesthetic. Omitting `-a` causes libnotify to report `"notify-send"` or `"bash"` as the app. In SideBar mode, horizontal bar tickers cannot fit in vertical space; a centered Dynamic Island pill at the top edge (`anchors.top: true`, 8px margin) with Apple-style spring physics (`Easing.OutBack`), pitch OLED black styling, anti-bleed underlayer, and staggered content bloom delivers a cohesive notification experience with zero compositor buffer reallocations via dynamic `Region` masking.
 
-### 28. Battery Widget Minimalist Unification
+### ADR-035: Battery Widget Minimalist Unification
 - **Decision:** The battery widget (`BatteryPopup.qml`) is stripped of the redundant left-side notification panel and top utility pills (tray, battery time, DND). Card width is reduced to 480px (`WindowRegistry.js`). Remaining runtime (`Xh Ym LEFT / FULL`) is rendered directly inside the central circular battery ring.
 - **Rationale:** The battery widget was bloated by an 801px split layout displaying an unused notification history panel alongside duplicate status buttons already present in the status bar. Integrating the time remaining directly inside the battery ring centralizes power telemetry into a single, cohesive visual hierarchy.
 
-### 29. On-Demand KDE Connect Lifecycle Authority
+### ADR-036: On-Demand KDE Connect Lifecycle Authority
 - **Decision:** KDE Connect must be manually toggled via `kdeconnect_toggle.sh` (`Super + Shift + K`) rather than running continuously in the background on battery.
 - **Rationale:** On battery, idle `kdeconnectd` handles frequent LAN UDP broadcast packets, keeping the CPU and Wi-Fi interface out of low-power package C-states ($C8/C10$) and consuming ~80MB RAM. Launching `kdeconnect-indicator` on-demand triggers D-Bus activation for `kdeconnectd` and directly surfaces the native SNI tray applet with device battery, ping, and transfer menus in QuickShell's SystemTray. Toggling OFF terminates both processes cleanly.
 
-### 23. Deterministic Single-Pass Positioning & Zero Morphing (WallpaperPicker Proof of Concept)
+### ADR-037: Deterministic Single-Pass Positioning & Zero Morphing (WallpaperPicker Proof of Concept)
 - **Decision:** In full-screen popup overlays (`WallpaperPicker.qml`), container coordinates snap deterministically on frame 0 without physical size interpolation (`Behavior on x / width / height` banned). All deferred settle timers (`settleTimer`) and multi-pass repositioning chains are eliminated.
 - **Rationale:** Deferred positioning timers (e.g. 80ms) and multi-pass `forceLayout()` calls cause visible secondary refreshes, layout micro-jumps, and perceived UI lag right after opening. Snapping to final coordinates on frame 0 and executing a single positioning pass immediately upon `window.visible && view.width > 0` with `highlightMoveDuration: 0` guarantees rock-solid initial presentation while allowing smooth 350ms animated transitions for user-driven interactions thereafter.
 
-### 24. Single-Instance QuickShell IPC Reload & Visual Theme Swatches
+### ADR-038: Single-Instance QuickShell IPC Reload & Visual Theme Swatches
 - **Decision:** QuickShell updates must never be applied by launching a secondary `quickshell -p ...` background process. Reloads must execute via native D-Bus IPC (`quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload`) or `qs_manager.sh reload`.
 - **Theme Swatch Buttons:** Category filter tabs in `WallpaperPicker.qml` replace text labels with dual-tone color gradient swatches (`dark`, `emerald`, `gruvbox`, `light`, `nord`, `ocean`, `sakura`, `sunset`, `synthwave`) inside 44px liquid glass capsules, filtering the carousel via `categoryProxyModel` and subfolder filename markers.
 
-### 25. SideBar Dynamic Parity & Multi-Tier Control Pills
+### ADR-039: SideBar Dynamic Parity & Multi-Tier Control Pills
 - **Decision:** Vertical `SideBar.qml` mirrors TopBar functionality and aesthetics without compromising center-locked geometry:
   - **Dynamic Occupied-Only Workspaces**: Filters empty workspaces dynamically, rendering only `active` and `occupied` slots via Japanese Kanji numerals with vertical sliding highlight tracking (`activeHighlight`).
   - **Unified Multi-Tier Status Pills**: Replaced separate one-off pills with two-tiered split pills (WiFi + Bluetooth, Brightness/Sunset + Volume) sharing a unified 1px divider, preserving vertical bar density while supporting transient feedback and mouse wheel scrolling.
   - **Flat Rectangular CAVA Segments**: CAVA audio visualizer bars use flat rectangular geometry (`radius: barWindow.s(1)`) with moderate sensitivity (`sensitivity = 70`) matching TopBar visual standards.
 
-### 26. Dynamic Monitor Geometry & Resolution Pickers
+### ADR-040: Dynamic Monitor Geometry & Resolution Pickers
 - **Decision:** No monitor resolution literal may remain in QuickShell layout/simulation code. `Main.qml` offscreen-preload geometry reads live `masterWindow.screen` (fallback `Quickshell.screens[0]`); `MonitorPopup.qml` resolution/refresh pickers are generated from Hyprland `availableModes` (union with curated presets, deduped/sorted, distinct even-row padding, derived keyboard bounds). Lutris gamescope game/output res stays empty (native) globally and per-game.
 - **Ops:** When Hyprland IPC is wedged, `qs_manager.sh reload` can hang on its `hyprctl eval` step — diagnose IPC first (`hyprctl monitors -j`), and prefer direct `quickshell ipc ... call main forceReload` on a healthy session.
 
-### 27. ESC Handling, Preview Aspect, Per-Mode Rates
+### ADR-041: ESC Handling, Preview Aspect, Per-Mode Rates
 - **Decision:** No widget may register its own `Shortcut{sequence:"Escape"}` competing with `Main.qml`'s global one in the same window. ESC uses `Keys.onEscapePressed` bubbling (exit sub-state first, else fall through to the widgetStack hide handler). Monitor preview mock preserves true panel aspect via fit-box. Rate picker lists only EDID-advertised rates for the selected resolution; ListModel role writes are paired with an epoch counter where bindings read via `.get()`.
 - **Grid delegate hygiene:** never shadow Repeater's built-in `modelData` with an index binding (`window.list[index]`) — recycled delegates render stale tiles as phantom duplicates. Data pollers must not wipe+rebuild their model on every view activation (loses unapplied edits, flashes grid); populate-once with explicit refresh.
 
-### 28. FH4 FitGirl on NixOS — Install Solved, Boot Blocked in LootboxUWP64
-- **Install (done):** sandboxed unrar All-OK; direct Proton fails on NixOS stub-ld → installed via Lutris+umu; FitGirl defaults to `S:\Games` (override `/DIR=`); post-install verify gate (`QuickSFV.exe` case-mismatch + `dxwebsetup.exe` fail under Wine) triggers scripted silent uninstall — neutered by swapping gate binaries for no-op exes post-file-phase. 77 GB (base+Fortune+Lego) verified.
-- **Boot (blocked):** game needs UWP VC++ runtime (`MSVCP140_APP`/`VCRUNTIME140_APP`/`vccorlib140_app`/`CONCRT140_APP`) absent from Wine — side-by-side renamed desktop CRTs satisfy imports. Past that, `LootboxUWP64.dll` (Xbox/lootbox layer, hooked `combase!RoGetActivationFactory` per UwpMagic) recurses unboundedly (~60–90s, heap churn, 1000+ C++ exception episodes, zero network/D3D12/AppModel activity) → stack overflow in 1MB thread. Anti-debug tripwires present (`IsDebuggerPresent=0` vs `CheckRemoteDebuggerPresent=1` + `int1`). umu exit 53 / container deaths are symptoms, not cause. Proton dirs restored (`GE-Proton10-34` kept alongside 11-x); Lutris entry left on user's `.bat` combo + `PROTONPATH` pin (valid) + `RunAsAdmin`.
-- **Next:** binary-patch int1 probes, or real UWP CRTs, or Steam non-Steam path — all need a fresh decision; do not re-probe blind.
-
-### 28. Cached-Widget Refresh Contract, SNI Tray Constraints & UPower Battery Source
+### ADR-042: Cached-Widget Refresh Contract, SNI Tray Constraints & UPower Battery Source
 - **Decision:** Cached popups (`Main.qml` `widgetCache`) refresh in `showWidget()`, never in `onVisibleChanged`. `targetObj.visible` is set `true` once and never reset, so `onVisibleChanged` fires once per process; any `enabled: window.visible` / `running: window.visible` stays armed forever unless reset per-open. Clipboard paste declares MIME explicitly and serializes copy→close through a single `Process.onExited`.
 - **Decision:** System-tray icons are register-once SNI clients. A watcher restart (any QuickShell restart) empties the tray until the client apps restart — there is no re-scan. The KDE Connect icon requires `kdeconnect-indicator` (`kdeconnectd` exports no `StatusNotifierItem`); EasyEffects `--service-mode` and `blueman-applet` (GtkStatusIcon) can never appear. Tray renderers must not denylist `kdeconnect` while the indicator is autostarted.
 - **Decision:** Battery runtime telemetry comes from `Quickshell.Services.UPower` only (`UPower.displayDevice` on the system bus: `energy`, `energyCapacity`, `changeRate`, `timeToFull`). Extends rule 3's sysfs-inotify ban: no `FileView` on `/sys`, no coalescing `Timer` (polling by another name). `UPowerDevice.isLaptopBattery` matches both the synthetic `DisplayDevice` aggregate and the real pack — always source `displayDevice` (never null, no enumeration race). Hover readout is an in-bar glyph↔text swap; the bar surface is never widened for tooltips.
 
-### 29. Shared Media Backend, Solid-Mode Existence Watches & No Destructive Signals
+### ADR-043: Shared Media Backend, Solid-Mode Existence Watches & No Destructive Signals
 - **Decision:** All MPRIS/music/cava telemetry lives in root `MusicState.qml` (pragma Singleton). `TopBar.qml`/`SideBar.qml` are presentation-only and alias it (`property var musicData: MusicState.musicData`, …). No bar may own `playerctl --follow`, `music_info.sh`, json `FileView`, `cava`, or media timers — exactly one of each globally, independent of bar visibility. UI files are never merged for backend sharing.
 - **Decision:** Marker-file `FileView`s (`wallpaper_killed`, `gaming_mode`) must pair `watchChanges` with `onFileChanged: { reload(); updateSolidMode(); }`. Directory-watch fires the signal on create/delete but the buffer stays stale without an explicit reload (quickshell `fileview.cpp`: `onWatchedDirectoryChanged` only emits; `powerProfileWatcher` already had the correct pattern). Without this, runtime state flips never propagate.
 - **Decision:** Never `pkill -HUP wezterm-gui` (or any terminal) to "reload" config — SIGHUP terminates it and kills every pane. Wezterm hot-reloads on config mtime; `touch` the color/config files instead.
 
-### 30. Shared Coffee State, wpctl-Only Volume Writes & Reload Orphan Reaping
+### ADR-044: Shared Coffee State, wpctl-Only Volume Writes & Reload Orphan Reaping
 - **Decision:** Coffee mode state lives only in `SysData.coffeeActive` (synced from `state.json`); all trays read it, all writes go through `SysData.setCoffee()`. No widget may own a parallel coffee FileView.
 - **Decision:** All volume writes go through `wpctl` (`set-mute`/`set-volume` on `@DEFAULT_AUDIO_SINK@`, mirroring `osd.sh` incl. unmute-on-raise and 100% cap). Native `sink.audio.*` writes silently no-op on stale nodes with no detectable failure — Pipewire stays read-only for display. `toggle volume` targets nothing (no such widget); volume clicks open the battery popup.
 - **Decision:** Every QML-owned persistent `Process` gets explicit stops in `Component.onDestruction` — engine reload does not reliably SIGTERM children, orphaning one set per reload (observed 8× `playerctl --follow` at PPID 1). Verified: repeated `forceReload` holds exactly the live set, zero orphans.
 - **Decision:** Battery direction comes only from `UPower.onBattery`. `timeToFull` is 0 whenever UPower can't estimate — branching on it runs discharge math while charging ("25h on AC"). AC without active fill, and any estimate over 10h, displays `"AC"`; pill text clamps at 11:59.
 - **Decision:** After editing, verify non-ASCII string literals (nerd glyphs, CJK) with `hexdump` — tool output renders them invisibly and they can be silently dropped to `""`, producing blank-but-laid-out widgets.
 
-### 31. No Positioning Against Animating Geometry, Orphan Reaping & OOM Guard
+### ADR-045: No Positioning Against Animating Geometry, Orphan Reaping & OOM Guard
 - **Decision (revert lesson):** Never offset layout against live height animations (`childrenRect`/implicitHeight bindings driving anchors). The offset recomputes mid-animation and fights the layout's own tweens — jitter, shadows, drift. Workspace capsule stays locked at true center; optical balance is achieved by content design, not runtime shifting.
 - **Decision:** `qs_manager.sh` brutal paths (`reload`, quickshell toggle) reap only PPID-1 strays of quickshell-spawned followers (exact full-command patterns). Live children and clipboard owners are never matched.
 - **Decision:** `services.earlyoom` (`freeMemThreshold=5`, `freeSwapThreshold=100`, avoid compositor/shell) is the freeze guard: 23GB swap means the kernel OOM never fires in time under thrash; userspace must SIGTERM the hog at <5% available. macOS (compressed memory + Jetsam) and Windows (compression + app lifecycle kills) both ship such guards; desktop Linux/NixOS does not by default.
 
-### 32. Toggle-Effect Ordering, Native Model Signals, Boot-Critical Reads
+### ADR-046: Toggle-Effect Ordering, Native Model Signals, Boot-Critical Reads
 - **Decision:** Toggleable tray adornments (coffee) render LAST so their appearance never displaces stable icons. Same rule both trays.
 - **Decision:** Plain Hyprland binds cannot require "both Alts" (pressed Alt counts toward the mod mask) — deliberate chords add a real modifier (CTRL), documented inline. Never work around with submaps/timers.
 - **Decision:** Cold-start model sync uses the backend's own change signals (`Hyprland.workspaces/toplevels.valuesChanged`), never deferred timers. One-shot timers are polling with a nicer name when the event source exists.
 - **Decision:** Boot-critical `FileView`s (settings.json) use `blockLoading: true` so first-frame bindings see real values. Async-first-read leaves defaults live (wrong bar flashes) until load lands.
 
-### 33. Spread Layout, Persistent Tray Presence & Sequenced Handoffs
+### ADR-047: Spread Layout, Persistent Tray Presence & Sequenced Handoffs
 - **Decision:** Sidebar uses spread layout (top cluster top-pinned, bottom cluster bottom-pinned, CAVA floats in the void) — never offset against animating geometry, never center-lock mismatched clusters.
 - **Decision:** Toggleable tray adornments are always rendered (dimmed when off, click toggles both ways) — zero layout shift, standard tray UX. A true SNI coffee is impossible without an external daemon (quickshell `SystemTrayItem` is host-only, `isCreatable: false`); rejected to avoid a new resident process.
 - **Decision:** Bar position switches sequence (incoming reserves first, outgoing releases after grace) so edge motion reads correctly. All `FileView`-watched runtime flags (`rec_pid` included) pair `watchChanges` with `onFileChanged: reload()`.
 
-### 34. Mode-Specific Toggles, Full Template Substitution & Glyph Hygiene
+### ADR-048: Mode-Specific Toggles, Full Template Substitution & Glyph Hygiene
 - **Decision:** Mode indicators integrate into an existing host pill (coffee stacked inside battery, on only while active) — never inside shared trays/flows where toggling displaces stable icons. Sidebar carries no music UI at all (TopBar + MusicState own it).
 - **Decision:** Every theme template placeholder must be substituted in EVERY mode (`--neutral` included). Raw `{{...}}` in live Qt/GTK configs produces unreadable apps.
 - **Decision:** Non-ASCII literals (nerd glyphs) are byte-patched (`python3` `\uf0f4`) and hexdump-verified — never retyped through the editor.
 
-### 35. Lockscreen Fail-Fast, Single-Flight Spawn & Single Idle Authority
+### ADR-049: Lockscreen Fail-Fast, Single-Flight Spawn & Single Idle Authority
 - **Decision:** A lock that isn't confirmed within 5s is a failed lock: `Lock.qml` quits loudly (`Qt.exit(1)`) instead of idling invisible with PAM waiting. Silent stuck locks poisoned `is_locked` and swallowed every future attempt.
 - **Decision:** `cmd_lock` is single-flight (non-blocking flock) — concurrent triggers must serialize, never double-spawn. The flock mutex and fd 9 are explicitly released before `exec hyprlock` so the lock guard is never leaked to children. Strays are defined strictly (Lock.qml alive + session unlocked + older than 45s) and reaped before spawning. Lock-state checks match real quickshell binaries only, never cmdline mentions.
 - **Decision:** Hyprland's `hypridle` daemon is the sole authoritative idle manager. Duplicate QuickShell `Idle.qml` / `Dim.qml` components are deleted to eliminate competing DPMS calls and unrecoverable black screens.
 
-### 36. Multi-Monitor Responsive Bounds & Active Screen Tracking
+### ADR-050: Multi-Monitor Responsive Bounds & Active Screen Tracking
 - **Decision:** All QuickShell popup geometries must be responsively clamped against active screen bounds in [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js) (`maxAllowedW = mw * 0.96`, `maxAllowedH = mh * 0.94`) and edge-clamped (`x = Math.max(8, Math.min(x, mw - fw - 8))`). Prevents off-screen clipping across diverse monitor resolutions (e.g., 1080p, 1440p, 4K) or scaling factors.
 - **Decision:** Master overlay popup positioning in [`Main.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Main.qml) dynamically tracks Hyprland's focused monitor (`syncActiveScreen()`) upon widget trigger, ensuring popups open on whichever display is currently focused.
 - **Decision:** High-density popup lists (such as display resolutions in `MonitorPopup.qml`) must be wrapped in a bounded, momentum-scrolling `Flickable` with mouse-wheel and keyboard navigation, rather than expanding layouts that push critical action controls off-screen.
 
-### 37. Unified Theme Color SSOT & Global Media Color Indexing
+### ADR-051: Unified Theme Color SSOT & Global Media Color Indexing
 - **Decision:** `~/.cache/theme/colors.json` generated by [`wallust/generate.sh`](file:///home/realdhiru/nix/dotfiles/wallust/generate.sh) is the sole single source of truth for desktop color tokens, ANSI 16 palette, cursor, selection, and UI accents in both neutral and dynamic modes. Applications supporting JSON parsing (such as WezTerm via `wezterm.json_parse()`) read `colors.json` directly, eliminating redundant per-application template files.
 - **Terminal Visibility Mode:** `Super + L` preserves that generated palette and changes only Foot/Alacritty background opacity (`0.30` normally, `0.60` in QuickShell visibility mode). The toggle reloads both terminals, and later Wallust runs preserve the selected opacity.
 
-### 38. Open-Set Wallpaper Color Classification & Soft OKLCH Histogram Engine
+### ADR-052: Open-Set Wallpaper Color Classification & Soft OKLCH Histogram Engine
 - **Decision:** Wallpaper color classification uses a soft OKLCH histogram mass voting model combined with an open-set `ThemeRegistry` in Ottosson Oklab space (`classify.py`, `registry.py`, `sort.py`, `cli.py`, `eval.py`). Replaces brittle Cartesian vector means with continuous histogram mass distributions to eliminate complementary color cancellation and accent speck over-weighting.
 - **Rules:**
   - **Color Representation & Histogram Voting:** 48x48 BOX downsample -> linear RGB -> Oklab -> OKLCH ($L, C, h^\circ$). Continuous 18 circular hue bins ($20^\circ$ each) with linear interpolation between adjacent bins, weighted by pixel chroma $C$.
@@ -374,90 +369,90 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - **Open-Set Discovery Pipeline:** 7D descriptor: mean $(L, a, b)$ + prominent chromatic mode $(L, a, b)$ + mean $C$. Novel wallpapers outside theme acceptance radii accumulate in `ThemeRegistry.pending` for agglomerative promotion into new aesthetic categories.
   - **Sub-Millisecond Performance:** Post-decode classification executes in $<1\text{ms}$ ($0.33\text{ms}$ average) using vectorized NumPy array math without iterative clustering overhead.
 
-### 39. Proprietary Electron GUI Packaging via Local FHS Wrapper
+### ADR-053: Proprietary Electron GUI Packaging via Local FHS Wrapper
 - **Decision:** macOS-only nixpkgs packages (e.g. `pkgs.chatgpt`) must never be added to `systemPackages`. Linux-only GUI apps shipped only as `.deb`/`.rpm` (official ChatGPT/Codex desktop) are packaged via `fetchurl` (pinned sha256) → `dpkg-deb -x` → `buildFHSEnv` wrapping the raw bundled Chromium binary, plus a merge of the real `.desktop`/icon.
 - **Placement (superseding the original in-tree location):** The package now lives in a **standalone, publishable flake at `~/Projects/codex-flake`** (own git repo: `flake.nix`, `pkgs/chatgpt.nix`, `nixosModules.default`, `overlays.default`, README/LICENSE). `~/nix` consumes it as a flake input (`chatgpt.url = "path:..."`, `inputs.nixpkgs.follows = "nixpkgs"`) and pulls the overlay via `inputs.chatgpt.overlays.default`. This keeps a single source of truth and lets the package be shared/versioned independently of the personal config. On publish, the input URL switches to `github:Realdhiru/codex-flake`.
 - **Wayland (runtime note):** OpenAI's Linux build is a custom Chromium "owl" runtime (not stock Electron). `ELECTRON_OZONE_PLATFORM_HINT` is a no-op for that runtime; native Wayland is forced with the raw Chromium switch `--ozone-platform=wayland` via a small launcher script inside the derivation. `NIXOS_OZONE_WL=1` (Electron-specific) does not affect this app.
 - **Rationale:** No nixpkgs source package exists and upstream offers no AppImage; FHS env resolves all `Depends` libs without polluting system packages. A separate flake (vs. an in-tree `pkgs/*.nix`) makes it reusable by other NixOS users and independently maintained.
 
-### 40. Dynamic Window-Margin Popup Positioning & Inset Derivation
+### ADR-054: Dynamic Window-Margin Popup Positioning & Inset Derivation
 - **Decision:** QuickShell popup geometries in [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js) must never hardcode arbitrary margin values (e.g. `mr: 4`, `mx: 5`). Outer margins are dynamically derived from Hyprland's single source of truth: [`appearance.lua`](file:///home/realdhiru/nix/dotfiles/hypr/appearance.lua) (`gaps_out`).
 - **Architecture:**
   - [`Config.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/Config.qml) monitors `appearance.lua` with a native `FileView`, dynamically updating `Config.gapsOut` via live inotify without restarting daemons.
   - [`WindowRegistry.js`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/WindowRegistry.js) derives the usable workspace insets based on active bar state (`usableTop`, `usableBottom`, `usableLeft`, `usableRight`), ensuring all popups (`battery`, `network`, `music`, `calendar`, `monitors`) strictly respect and align with the outer boundaries of tiled Hyprland windows in both Top Bar and Left Bar modes.
 
-### 41. Fastfetch-Only Terminal Font Scaling
+### ADR-055: Fastfetch-Only Terminal Font Scaling
 - **Decision:** The Fastfetch launch binding may override Alacritty's font size per window, leaving normal terminal windows and the built-in NixOS logo unchanged. Lowering terminal font size scales the logo and information together; Fastfetch's built-in ASCII logo has no independent scale control.
 - **OpenCode runtime note:** OpenCode's `system` theme uses terminal colors, but the installed 1.18.34 TUI exposes no supported live palette re-query. Keep its selected `system` theme; palette refresh requires upstream support or restarting the TUI.
 
-### 42. Super + External Keyboard Knob Scrolling
+### ADR-056: Super + External Keyboard Knob Scrolling
 - **Decision:** The knob emits volume-up/down key events. Hyprland binds those events with Super held to `ydotool` wheel injection; without Super, the existing volume controls remain unchanged.
 - **Collision fix:** Injected wheel events initially matched the existing Super + mouse-wheel zoom binds. Those binds now exclude Hyprland's virtual pointer device (`ydotoold-virtual-device-1`), preserving zoom on physical pointers while allowing knob scroll events to reach the focused app.
 
-### Display Shader Ownership Split
+### ADR-057: Display Shader Ownership Split
 - **Decision:** `hyprsunset` owns temperature and gamma through the hardware CTM/LUT. Hyprland's single `decoration:screen_shader` slot owns saturation, paper grain, and CRT curvature together.
 - **Reason:** These are independent mechanisms, and Hyprland supports one active screen shader. New effects must preserve the ownership split rather than replacing an unrelated effect.
 
-### KDE Connect Input on Hyprland
+### ADR-058: KDE Connect Input on Hyprland
 - **Decision:** Keep the small `hypr-kdeconnect-portal` backend while the packaged Hyprland portal lacks RemoteDesktop with `ConnectToEIS`. Route only RemoteDesktop to it; retain Hyprland and GTK for other portal interfaces.
 - **Input paths:** Mousepad and presentation control use the RemoteDesktop portal. Drawing-tablet mode uses KDE Connect's digitizer and `/dev/uinput`, with KDE Connect's udev rules and the existing `uinput` group access.
 - **Removal lesson:** The per-user portal files already selected `hypr-kdeconnect`, but the backend package had been removed and the NixOS portal config lacked that route. Keep these aligned until upstream support is present in the active Nixpkgs version.
 
-### Native Touchpad Gesture Bindings
+### ADR-059: Native Touchpad Gesture Bindings
 - **Decision:** Use Hyprland's built-in Lua gestures for workspace swipes and Super-modified pinch zoom. Pinch zoom uses a two-finger `pinch` gesture callback table (`start`, `update`, `end`): spreading fingers zooms in continuously proportional to finger distance; pinching inward even slightly immediately triggers `zoom_out()` to smoothly snap back to $1.0\times$. Mouse-wheel zoom retains discrete step-in/reset behavior. No gesture daemon or external plugin is needed.
 - **Workspace behavior:** Enable `gestures.workspace_swipe_forever` so a single long swipe can continue past the adjacent workspace.
 
-### Saved Wi-Fi Internet Auto-Failover
+### ADR-060: Saved Wi-Fi Internet Auto-Failover
 - **Decision:** NetworkManager monitors upstream connectivity using periodic HTTP status checks (`settings.connectivity.uri`, 30s). When connectivity drops to `LIMITED` or `NONE`, a dispatcher script searches currently broadcasting SSIDs against previously saved 802.11 profiles and switches to the strongest saved network.
 - **Flapping prevention:** A 25-second cooldown timestamp is enforced in `/run/nm-wifi-failover/last_switch` to prevent rapid connection switching during transient drops.
 
-### Bar Layer Reservation and Window Gaps
+### ADR-061: Bar Layer Reservation and Window Gaps
 - **Decision:** TopBar and SideBar reserve their content dimensions (`barHeight`/`barThickness`) but exclude the visual edge margin. Hyprland's configured `gaps_out` supplies the gap around the bar footprint once, without overlapping the bar or adding a second margin.
 - **Popup geometry:** `WindowRegistry.js` derives usable bounds from the bar footprint plus `gaps_out`, matching tiled windows in both bar orientations.
 
-### Claude Desktop Packaging
+### ADR-062: Claude Desktop Packaging
 - **Decision:** Keep the official Linux `.deb` packaging in the separate public `Realdhiru/claude-desktop-nix` flake, with a pinned version/hash, FHS runtime, native Wayland launcher, and build-verified automated update PRs.
 - **System use:** Claude Desktop was removed from this system's inputs and packages at the user's request; the standalone repository remains published and maintained.
 - **Cowork:** The repo keeps QEMU, OVMF, and `virtiofsd` in an optional package variant to avoid that dependency closure for the default package.
 
-### Wallpaper Favorites Subsystem & Persistent Storage
+### ADR-063: Wallpaper Favorites Subsystem & Persistent Storage
 - **Decision:** Favorite wallpapers are tracked in `$HOME/.local/share/wallpaper_favorites.txt` as canonical filepaths, toggled via `wallpaper.sh fav` (`SUPER + SHIFT + \`), and displayed under a dedicated "Favorites" tab in [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml).
 - **Rationale:** Storing favorites in `$XDG_DATA_HOME` (`~/.local/share/`) prevents data loss during cache purges (`~/.cache/` cleans).
 - **IPC & Synchronization:** QuickShell integrates a native `FileView` watching the file via inotify (`watchChanges: true`), immediately updating `favoritesProxyModel` in real time with zero polling loops or subprocess forks.
 
-### Native PipeWire 10-Band Equalizer & EasyEffects Purge
+### ADR-064: Native PipeWire 10-Band Equalizer & EasyEffects Purge
 - **Decision:** Replace EasyEffects user-service daemon entirely with PipeWire's built-in `libpipewire-module-filter-chain` declared in [`home.nix`](file:///home/realdhiru/nix/home.nix) (`~/.config/pipewire/pipewire.conf.d/99-equalizer-sink.conf`).
 - **Rationale:** EasyEffects consumed ~150MB RSS, 46MB swap, 19 background threads, and frequent CPU wakeups just to apply static biquad audio filters. PipeWire's filter-chain runs directly inside the C audio server data-loop with 0MB additional memory and zero subshell forks.
 - **Routing & Device Handover:** The filter chain exposes a virtual sink `effect_input.eq10` with session/driver priority 2200 and a passive playback node `effect_output.eq10`. Applications route to the equalizer by default, while WirePlumber automatically forwards the passive playback stream to the highest-priority physical output. All external physical output nodes (Bluetooth `~bluez_output.*`, USB DAC `~alsa_output.*usb.*`, Wired Headphones `~alsa_output.*Headphones.*`, and Headsets `~alsa_output.*headset.*`) are configured with `priority.session = 2150` and `priority.driver = 2150` in `51-device-autoswitch.conf`. Because `effect_input.eq10` (2200) strictly outranks all physical sinks, applications never bypass the 10-band equalizer, and HDMI/external monitor audio remains fully functional via dynamic jack detection (`haveAvailableRoutes`).
 - **Multi-Output Audio Broadcast Mode (`SUPER + CTRL + V`):** Handled via [`toggle_multi_sink.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/toggle_multi_sink.sh). Unlinks internal laptop speakers and fans out the equalizer output (`effect_output.eq10`) across all active external outputs (Bluetooth + Wired) simultaneously via sub-2ms native `pw-link` graph connections. Includes automatic Bluetooth latency compensation: dynamically inspects `bluez_output.*` hardware buffer delay (`pw-cli enum-params <id> Latency maxNs`) and inserts a transient, zero-CPU `pw-loopback` delay service (`pw-wired-delay`) on the wired channel so physical earphones match Bluetooth earbuds without audio echo or drift. Unlinks and tears down the delay node cleanly upon toggling OFF. Detailed architectural blueprint and cross-distro portability guide documented in [`docs/multi_output_audio.md`](file:///home/realdhiru/nix/docs/multi_output_audio.md).
 - **Runtime Control & Zero-Python Hot Path:** Dynamic equalizer slider changes in QuickShell execute via instant POSIX commands (`pw-cli s <id> Props '{ "params": [ "eq_band_<idx>:Gain", <val> ] }'`). Python was permanently purged from the equalizer hot path.
 
-### Flake Self-Hosting for Upstream Fast-Moving Packages
+### ADR-065: Flake Self-Hosting for Upstream Fast-Moving Packages
 - **Decision:** Fast-moving binary applications (such as Zen Browser and ChatGPT / Codex) must be sourced from user-maintained flake repositories (`Realdhiru/zen-browser-flake`, `Realdhiru/codex-flake`) rather than third-party unpinned community flakes.
 - **Rationale:** Upstream binary releases frequently re-release tarballs with identical version tags, changing the fixed-output derivation hash and immediately breaking NixOS system rebuilds. Self-hosted flakes isolate system rebuilds from upstream hash thrashing and allow deterministic lockfile synchronization.
 
-### Intel GPU Ring Protection & Compositor Framebuffer Thrashing Safeguard
+### ADR-066: Intel GPU Ring Protection & Compositor Framebuffer Thrashing Safeguard
 - **Decision:** All wallpaper mode toggles, desktop glass/solid transitions, and daemon lifecycle scripts (`wallpaper.sh`, `ensure_awww.sh`, `watcher.sh`) must enforce serialization and minimum debounce pacing (>1.5s).
 - **Rationale:** Rapid destruction and re-allocation of 2.8K framebuffers with Kawase blur passes overwhelms the Intel `rcs0` execution ring. When the GuC reset times out, the Aquamarine DRM page-flip handler fails an assertion in `CHyprOpenGLImpl::begin` (`assertImpl -> abort -> SIGABRT`), causing Hyprland to crash and log out into safe mode. Visual operations must be paced to protect GPU ring-buffer stability.
 
-### Emoji & Nerd Font Glyph Fuzzy Picker & Tab Toggling
+### ADR-067: Emoji & Nerd Font Glyph Fuzzy Picker & Tab Toggling
 - **Decision:** Implement a unified desktop fuzzy picker for emojis and Nerd Font glyphs using `fuzzel --dmenu` integrated into [`fuzzel_menu.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/fuzzel_menu.sh), triggered via a single Hyprland keybind (`SUPER + .`).
 - **Rationale:** Zero-overhead, compiled C Wayland client (`fuzzel`) eliminates heavy Electron or Python-based character maps. Database lookups run via single-pass POSIX `awk`, filtering 3,773 Unicode 15.1 emojis and 10,386 Nerd Font v3 symbols in <3ms.
 - **In-Menu Tab Mode Switching:** Fuzzel configures `--override="key-bindings.execute-or-next=none"` and `--override="key-bindings.custom-1=Tab"`. Pressing `Tab` exits with code 10, allowing the caller shell loop in `fuzzel_menu.sh` to seamlessly hot-toggle between Emoji and Glyph modes without window dismissal or flickering.
 - **Data Architecture:** Canonical database files reside under `dotfiles/hypr/assets/` (`emoji.db` and `glyph.db`) and are mirrored in `~/Projects/` and `~/.config/hypr/assets/`. Selected characters are immediately copied to Wayland clipboard using `wl-copy --type text/plain;charset=utf-8` followed by concise notification cues.
 
-### Obsidian Native Integration & Dotfiles Knowledge Brain Vault
+### ADR-068: Obsidian Native Integration & Dotfiles Knowledge Brain Vault
 - **Decision:** Install Obsidian declaratively via `pkgs.obsidian` in `modules/system/packages.nix` without custom wrapper layers or redundant CLI flags. Maintain the system's central second-brain knowledge graph vault in `~/nix/docs`.
 - **Rationale:** Upstream Nixpkgs packages Obsidian with an Electron wrapper that automatically checks for `NIXOS_OZONE_WL` and `WAYLAND_DISPLAY`, appending `--ozone-platform=wayland --enable-wayland-ime=true --wayland-text-input-version=3`. Because `hosts/nixos/default.nix` sets `NIXOS_OZONE_WL = "1"`, Obsidian natively binds to Wayland with kinetic scrolling and IME support with zero wrapper maintenance.
 - **Glass Theming:** Scoped with opacity `0.65` in `dotfiles/hypr/rules.lua` matching the system-wide glass token hierarchy.
 
-### Declarative Wine Leftover Janitor (`gameclean`)
+### ADR-069: Declarative Wine Leftover Janitor (`gameclean`)
 - **Decision:** Wine/Proton/Lutris junk cleanup ships as a Nix-distributed binary (`pkgs/gameclean/gameclean.py` + `pkgs/gameclean.nix` derivation, registered via the flake overlay and exposed on system `PATH` by `modules/system/gaming.nix`) with its operational doc in `docs/gameclean.md` — not as an ad-hoc `~/.local/bin` script.
 - **Rationale:** Wine games scatter files across five locations (game dir, `~/Games/prefixes`, shared umu/Proton prefix, `~/.cache` caches, `~/.local/share/lutris/games/*.yml`), so manual uninstall cleanup is error-prone and drifts. Packaging in-repo makes the janitor reproducible, versioned, and available on every machine the flake deploys to.
 - **Safety Model:** Preview-only by default; `gameclean -y` deletes. Working titles are protected by building the referenced `prefix:`/`exe:` set from every Lutris `.yml` first — only true orphans (unreferenced prefixes, broken entries, umu `Temp`/shadercache, `~/.cache` game caches) are flagged.
 - **Zero-Python Hot-Path Scope:** `gameclean` is an interactive, manually invoked janitor — not a desktop hot path — so the Python ban (see above) does not apply; no polling daemons or keybind handlers invoke it.
 
-### Web Apps Hardware Video Acceleration & Window Glass Hierarchy
+### ADR-070: Web Apps Hardware Video Acceleration & Window Glass Hierarchy
 - **Decision:** All present and future Brave web apps and browser windows must receive native VA-API zero-copy hardware acceleration via user wrapper `~/.local/bin/brave` injecting `--use-gl=angle --use-angle=gl --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder,WaylandWindowDecorations --enable-zero-copy "$@"`.
 - **Rationale:** Nixpkgs' default Brave derivation uses `makeShellWrapper` which does not load `~/.config/brave-flags.conf`. Injecting flags via `~/.local/bin/brave` (preceding system paths in `$PATH`) ensures all browser instances and PWAs offload 4K VP9/AV1 decoding to Intel Iris Xe with zero dropped frames.
 - **Window Opacity Hierarchy:**
@@ -465,35 +460,31 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - Messaging & Communications (WhatsApp Web): kept solid (`1.0`) without translucency.
   - Text & Productivity PWAs (Notion, Claude, ChatGPT, To-Do, Monkeytype): styled with unified glass translucency (`0.57`).
 
-### QuickShell Timer Wake-Up Alarm Architecture
+### ADR-071: QuickShell Timer Wake-Up Alarm Architecture
 - **Decision:** The QuickShell timer alarm uses a high-decibel, high-penetration synthesized acoustic asset ([`alarm_beep.wav`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/sounds/alarm_beep.wav), 950Hz/1400Hz alternating tone at 2.5x gain) cycling every 1.0s via `pw-play` until explicitly dismissed.
 - **Dismissal Mechanism:** Dismissal is anchored strictly to clicking the prominent center button on the auto-revealed popup or allowing the 3-minute hard failsafe auto-silence timeout (`alarmSafetyTimeout`) to expire. Wayland layer-shell keyboard grabbing hooks and shortcut overrides were purged to prevent unwanted input stealing and compositor state bloat.
 
-### Input-Addressed Store Architecture with Flake Lock Pinning over CA-Derivations
+### ADR-072: Input-Addressed Store Architecture with Flake Lock Pinning over CA-Derivations
 - **Decision:** Retain the default Input-Addressed (IA / extensional) Nix store model backed by strictly pinned Flake inputs (`flake.lock`), rejecting experimental Content-Addressed (CA / intensional) derivations (`ca-derivations`).
 - **Rationale:** Academic and empirical literature (Dolstra 2005, Zwinger 2025, Lix RFD 815) proves that while CA prevents multi-tenant store poisoning, it introduces the severe "Two Glibcs Problem" (Equivalence Class Collisions) where binary outputs built against subtle variations in dependencies conflict and crash. Resolving this requires secondary binary hash rewriting, which mathematically relies on the axioms $P_{\text{suff}} \land P_{\text{enum}} \land P_{\text{len}}$. Because $P_{\text{enum}}$ fails on compressed binaries or embedded bytecode tables, hash rewriting risks corrupting outputs. On a single-tenant workstation, Flake lockfile pinning provides absolute build environment determinism without any risk of binary corruption.
 - **Related Theoretical Documentation:** Formally specified in [`Content-Addressing, Trust, and Equivalence Classes`](file:///home/realdhiru/Projects/Vault/nix-brain/03%20-%20Nix%20Fundamentals/Content-Addressing,%20Trust,%20and%20Equivalence%20Classes.md) and [`Formal Reference Tracking, Closure Invariants, and Store Path Calculus`](file:///home/realdhiru/Projects/Vault/nix-brain/03%20-%20Nix%20Fundamentals/Formal%20Reference%20Tracking%20and%20Closure%20Invariants.md).
 
-### Cross-Platform Systems & Alternative Operating System Boundaries
+### ADR-073: Cross-Platform Systems & Alternative Operating System Boundaries
 - **Decision:** Treat NixOS on bare-metal Linux as the primary reference tier; enforce structured cross-platform deployment models for non-NixOS Linux (Standalone Multi-User Daemon), macOS (`nix-darwin` with synthetic firmlinks), and Windows (WSL2 Hyper-V microVM via `nixos-wsl`). Native Win32 Nix is rejected.
 - **Rationale:** Native Win32 lacks core POSIX primitives essential to Nix calculus: NTFS default case-insensitivity, lack of unprivileged namespaces, backslash/drive path syntax breaking the 32-character invariant, and PE/COFF dynamic library search fallback ("DLL Hell"). WSL2 provides 100% native Linux kernel and ext4 semantics. On macOS, APFS sealed system volume requires `/etc/synthetic.conf` firmlinks, while binary linking transitions to Mach-O (`install_name_tool`, `@rpath`, Apple Silicon ad-hoc `codesign`).
 - **Related Theoretical Documentation:** Documented in [`Nix on Other Linux Distributions (Standalone Nix)`](file:///home/realdhiru/Projects/Vault/nix-brain/07%20-%20Cross-Platform%20&%20Alternative%20OS/Nix%20on%20Other%20Linux%20Distributions%20%28Standalone%20Nix%29.md), [`Nix on macOS and the nix-darwin Subsystem`](file:///home/realdhiru/Projects/Vault/nix-brain/07%20-%20Cross-Platform%20&%20Alternative%20OS/Nix%20on%20macOS%20and%20the%20nix-darwin%20Subsystem.md), and [`Nix on Windows and WSL Architecture`](file:///home/realdhiru/Projects/Vault/nix-brain/07%20-%20Cross-Platform%20&%20Alternative%20OS/Nix%20on%20Windows%20and%20WSL%20Architecture.md).
 
-### Native WebRTC Echo-Cancellation & Microphone Denoising Architecture
+### ADR-074: Native WebRTC Echo-Cancellation & Microphone Denoising Architecture
 - **Decision:** Implement native hardware microphone cleaning via `libpipewire-module-echo-cancel` with WebRTC DSP in PipeWire's processing graph (`xdg.configFile."pipewire/pipewire.conf.d/60-echo-cancel.conf"` in [`home.nix`](file:///home/realdhiru/nix/home.nix)).
 - **Rationale:** The laptop's raw PDM pins (`Mic1`) are uncalibrated and muted, while the physical stereo array (`Mic2`) captures background acoustic noise and speaker feedback. Rather than running CPU-heavy third-party Python/Electron apps or standalone daemons (NoiseTorch/EasyEffects), PipeWire's built-in WebRTC module processes audio directly inside the real-time audio thread:
   - `capture.props`: Taps `alsa_input...HiFi__Mic2__source` as a passive source (`node.passive = true`).
   - `monitor.mode = true`: Subscribes directly to `effect_input.eq10:monitor` to subtract speaker playback and acoustic bleed in real-time.
   - `source.props`: Exposes `echo_cancel_source` at session/driver priority `2100`, establishing it as the default, clean, echo-cancelled, and noise-suppressed input for all applications with zero daemon overhead.
 
-### QuickShell Shortcut Isolation & Model Reconciliation Invariant
+### ADR-075: QuickShell Shortcut Isolation & Model Reconciliation Invariant
 - **Decision:** All `Shortcut` definitions within popup modules or secondary overlays MUST declare explicit visibility bounds (`enabled: window.visible && ...`). Furthermore, dynamic `ListModel`s updated by background pollers or state triggers must NEVER call `listModel.clear()` immediately before calling `syncModel()` or `append()`.
 - **Rationale:** 
   - *Shortcut Leaking in Preloaded Components:* `Main.qml` preloads popup components into memory during startup with `visible: false`. In Qt Quick, a top-level `Shortcut` without an explicit `enabled` expression remains active application-wide regardless of item visibility or focus, intercepting keys (e.g. `Tab`, `Left`, `Right`) meant for active user applications.
   - *Repeater Destruction/Insertion Collision:* Calling `listModel.clear()` emits row removal signals, queuing asynchronous delegate destruction via `destroyObjectLater`. If `listModel.append()` or `syncModel()` immediately repopulates items within the exact same event loop cycle, Qt Quick's `QQuickRepeater::modelUpdated` and `initItem` attempt sibling stacking (`item->stackBefore(after)`). Looking up sibling positions in `parentPrivate->childItems` dereferences invalidated pointers, triggering a fatal `SIGSEGV` in Qt 6. In-place reconciliation via `syncModel()` (modifying existing items and appending only true additions) maintains model item stability with zero desync crashes.
 
 
-
-### QuickShell Central Motion Token Discipline (Music / Focus Time Popups)
-- **Decision:** All QuickShell popup motion MUST resolve through the `Motion.qml` singleton (`enterMs`/`exitMs`, `moveMs`, `fadeMs`, `holdMs` + easing pairs, `marqueeMsPerPx`/`marqueePauseMs`). Popup open = exactly ONE card fade+scale enter (0.96→1, `Motion.enterMs`) on the root card, close = the symmetric exit; the long-form scrolling marquee is the only permitted infinite loop. Per-element staggered intro cascades, decorative pulses (play pulse, EQ lightning canvas, heat sweeps), rotating-vinyl/`globalOrbitAngle` loops and press OverBack/OutElastic curves are banned.
-- **Rationale:** Staggered cascades (760–1300 ms, OutBack waves, per-element pauses up to 550 ms) multiplexed with `Main.qml`'s StackView `replaceEnter/replaceExit` (0.98→1 @ `Motion.enterMs`) caused double-fade jitter and unusable first-open feel; 8–120 s infinite orbit/flow loops kept OLED pixels continuously repainting with zero information gain, and the EQ lightning `Canvas` + 16 ms `requestPaint` Timer ran a per-frame 2D path pipeline for a 1.5 s decorative sweep. Tokens centralize curve/duration authority for cross-widget parity, keep frame budgets at enter/exit-time only (race-to-sleep), and make every future widget port mechanically greppable (`grep -E "duration: [0-9]|Easing\."`) — zero untemplated durations tolerated in refactored popups.

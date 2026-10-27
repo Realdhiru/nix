@@ -217,6 +217,18 @@
   - *Symptom:* Intermittent audio loss or dangling virtual sink forward links cannot be debugged from standard journal logs because WirePlumber runs at warning/notice log level (`W`) by default with zero linking decisions recorded.
   - *Root Cause:* WirePlumber 0.5 uses granular logging topics (`s-linking`, `s-default-nodes`) rather than simple global verbosity flags. Without setting `WIREPLUMBER_DEBUG`, session item linking, target resolution failures, and default device elections emit no journal entries.
   - *Mitigation:* Declare `systemd.user.services.wireplumber.environment.WIREPLUMBER_DEBUG = "I,s-linking:D,s-default-nodes:D"` in `modules/system/services.nix`. WirePlumber automatically emits timestamped linking decisions directly to the user journal without file I/O overhead.
-
-
-
+- **`awww` Scaling Filter Selection & Disconnected Disk Cache Scan (`--outputs` Invariant):**
+  - *Symptom:* Setting animated GIF wallpapers stalls the desktop for 30–40 seconds at 100% CPU, and applying even small static images takes hundreds of milliseconds or hangs.
+  - *Root Cause 1 (CPU Lanczos3 Multi-Frame Convolution):* `awww img` defaults to `--filter Lanczos3`. For an animated GIF with 90–350 frames at 2880×1620, `awww` runs intensive 3-lobed Sinc convolution in software across every individual frame sequentially. A 90-frame GIF takes 32.65 seconds of pure CPU time.
+  - *Root Cause 2 (Disconnected Cache Loading Trap):* When `awww img` is called without `--outputs <mon>`, it executes `update_disconnected_caches()` (in `common/src/ipc/mod.rs`), which opens `~/.cache/awww/<version>/` and synchronously `fs::read()`s *every* `*_crop_Argb` frame cache file on disk. If multi-frame GIF frame files accumulate (e.g. 867 MB), every single subsequent wallpaper push—including small static photos—synchronously loads 867 MB into memory, stalling execution.
+  - *Mitigation:* In `backend/set.sh`, always resolve active outputs (`OUT_JOINED`) and pass `--outputs "$OUT_JOINED"` to `awww img`. Pass `--filter Nearest` for `.gif` files (instant decode, 0.4s cold, 0.18s warm) and `--filter Bilinear` for static images (0.06s). Configure `awww-daemon` with `--no-cache --format argb` in systemd (`home.nix`) to prevent unbounded disk cache accumulation.
+- **Systemd Unit Template Instance Unescaping Trap (`%I` vs `%i`):**
+  - *Symptom:* `mpvpaper@eDP-1.service` repeatedly fails with `[-] :/ sorry about this but we can't seem to find any output` and exits with code 1 / `start-limit-hit`.
+  - *Root Cause:* In systemd unit templates, `%I` represents the unescaped instance name, where dashes `-` are unescaped to directory slashes `/` (i.e. `eDP-1` becomes `eDP/1`). `%i` represents the verbatim instance string. Passing `%I` to `mpvpaper` causes it to search for non-existent Wayland output `eDP/1`.
+  - *Mitigation:* Always use `%i` for hardware display outputs in systemd unit templates (e.g. `mpvpaper@.service`).
+- **Wallpaper Kill Mode Dynamic Opacity Override & Restoration:**
+  - *Symptom:* Un-killing the wallpaper previously attempted `hyprctl reload` to re-read `rules.lua` and flush temporary overrides.
+  - *Current Architecture:* Wallpaper un-kill now directly re-enables compositor decorations and blur dynamically via `hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })` and reloads terminal opacity without a full `hyprctl reload`, avoiding compositor state disruption and texture re-allocations.
+- **Wine/Proton UWP Runtime & Repack Post-Install Verification Traps:**
+  - *Symptom:* Repacked UWP games fail during installation post-checks or crash during boot with recursion / stack overflows.
+  - *Findings:* FitGirl post-install verification gates (`QuickSFV.exe` case-mismatches and `dxwebsetup.exe`) fail under Wine and trigger silent rollbacks; neutered by stubbing gate binaries post-file phase. Missing UWP VC++ desktop runtime DLLs (`MSVCP140_APP`, `VCRUNTIME140_APP`) can be satisfied via renamed desktop CRTs. However, game-specific UWP hooks (`LootboxUWP64.dll` hooking `combase!RoGetActivationFactory`) may recurse unboundedly in Wine without real UWP runtime implementations, producing thread stack overflows.
