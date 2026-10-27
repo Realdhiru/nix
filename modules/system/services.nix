@@ -81,6 +81,7 @@
   programs.ydotool.enable = true;
   services.udev.extraRules = ''
     KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0666", TAG+="uaccess", OPTIONS+="static_node=uinput"
+    ACTION=="change", SUBSYSTEM=="power_supply", ATTR{online}=="*", RUN+="${pkgs.systemd}/bin/systemctl --no-block --user -M ${user.username}@ start hypr-refresh-rate.service"
   '';
 
   # Power management.

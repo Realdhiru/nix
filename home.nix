@@ -29,16 +29,20 @@
     force = true;
     text = ''
       local function is_ac_online()
-          for _, path in ipairs({"/sys/class/power_supply/AC0/online", "/sys/class/power_supply/ADP1/online", "/sys/class/power_supply/AC/online"}) do
+          for _, path in ipairs({
+              "/sys/class/power_supply/AC0/online",
+              "/sys/class/power_supply/ADP1/online",
+              "/sys/class/power_supply/AC/online",
+              "/sys/class/power_supply/ucsi-source-psy-USBC000:001/online"
+          }) do
               local f = io.open(path, "r")
               if f then
                   local v = f:read("*l")
                   f:close()
                   if v and v:match("1") then return true end
-                  if v and v:match("0") then return false end
               end
           end
-          return true
+          return false
       end
 
       local function get_edid_modes(edid_bytes)
@@ -474,6 +478,23 @@
     };
     Install = {
       WantedBy = [ "graphical-session.target" ];
+    };
+  };
+
+  # Native event-driven refresh rate updater on AC plug/unplug events
+  systemd.user.services.hypr-refresh-rate = {
+    Unit = {
+      Description = "Apply declarative monitor refresh rate on power event";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.writeShellScript "apply-refresh-rate" ''
+        if command -v ${pkgs.hyprland}/bin/hyprctl >/dev/null 2>&1 && [ -n "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+          ${pkgs.hyprland}/bin/hyprctl eval "dofile(os.getenv('HOME') .. '/.config/hypr-local/monitors.lua')" >/dev/null 2>&1 || true
+        fi
+      ''}";
     };
   };
 
