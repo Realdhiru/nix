@@ -470,7 +470,7 @@
     Service = {
       ExecStart = "${pkgs.hyprsunset}/bin/hyprsunset -i";
       Restart = "on-failure";
-      RestartSec = "1s";
+      RestartSec = "3s";
     };
     Install = {
       WantedBy = [ "graphical-session.target" ];

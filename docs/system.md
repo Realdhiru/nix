@@ -20,6 +20,7 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 - **System Tray (SNI)**: Clients register once at startup and do not re-announce. `kdeconnectd` requires `kdeconnect-indicator` for SNI.
 - **Media Telemetry SSOT**: Media state lives strictly in root singleton `MusicState.qml`. Bar widgets alias it and never own separate playerctl processes, cava, or timers.
 - **Styling & Tokens**: Visual properties (colors, borders, radius, fonts, motion) must derive strictly from shared tokens (`Theme.colors.*`, `Motion.qml`). Text contrast floor >= 4.5:1 (WCAG AA). Anti-bleed foundation fill (`crust` at 0.16–0.18) layered behind frosted glass cards.
+- **Unified Glass Notification Styling (SSOT)**: Notification pills in both TopBar center and Sidebar overlay (`NotifToast.qml`) bind directly to `Config.effectivePopupOpacity`. Isolated or dark opacity floors are banned. When the user tweaks appearance opacities, all bars, cards, popups, and toast notifications morph simultaneously.
 - **Notifications**: Ultra-minimal format (1–3 words max, zero sentences, no secondary body unless critical dynamic telemetry). Explicit sender app name required (`notify-send -a "<App>"`).
 - **Reload Authority**: QuickShell reloaded only via IPC (`quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call main forceReload`) or `qs_manager.sh reload`.
 
@@ -75,6 +76,9 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
   - `0.70`: Terminal (Alacritty)
   - `1.00`: Solid mode override (gaming mode, wallpaper killed, power-saver, video playback)
 - **Compositor Layer Blur**: Narrowed strictly to namespaces `^(quickshell|qs-master|qs-notif-toast)$` with `ignore_alpha = 0.05`. Full-screen transparent overlay surfaces (`qs-floating-overlay`) are excluded from blur passes.
+- **Multi-Monitor Workspace Separation**:
+  - The native internal panel (`eDP-1`) owns workspaces 1–10 bound via `hl.workspace_rule`. Arrow shifting (`SUPER + CTRL + Left/Right`) uses monitor-relative cycling (`m-1`/`m+1`), preventing workspace traversal across displays.
+  - When an external monitor is connected and display mode is `extend`, workspaces 11–20 are bound to the external monitor. `SUPER + ALT + 1..0` (switch) and `SUPER + ALT + SHIFT + 1..0` (move) control external monitor workspaces via `workspace_action.sh`. When disconnected or not extended, the external keybind is a zero-latency no-op.
 - **HiDPI Toolkit Scaling**: `GDK_SCALE = "2"`, `QT_AUTO_SCREEN_SCALE_FACTOR = "1"`, `QT_ENABLE_HIGHDPI_SCALING = "1"` in `env.lua`. Chromium download bubbles disabled in favor of in-window progress to avoid detached subsurface coordinate misplacement.
 
 ## 7. Operational Discipline & Safety Rules
