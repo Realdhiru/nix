@@ -38,7 +38,7 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 
 ## 4. Audio & Media Pipeline
 - **Native PipeWire 10-Band Equalizer**: Filter chain (`libpipewire-module-filter-chain`) biquad equalizer sink (`effect_input.eq10`, Q = 1.414, virtual sink priority 2200). All audio applications stream through the EQ sink.
-- **Automatic Handover**: EQ sink passively forwards audio to the highest-priority physical endpoint automatically (external devices priority 2150; internal speakers priority 1000).
+- **Automatic Handover**: EQ sink passively forwards audio to the highest-priority physical endpoint automatically (external devices priority 2150; internal speakers priority 1000). Mute state synchronizes to the linked physical endpoint via `osd.sh` while maintaining unity gain on the filter chain.
 - **Bluetooth AAC stereo**: WirePlumber rule `bluetooth.autoswitch-to-headset-profile = false` prevents AVDTP codec renegotiation crashes, locking high-quality A2DP stereo.
 - **WebRTC Microphone Denoising**: `libpipewire-module-echo-cancel` with `monitor.mode = true` binds to the microphone array, cancels speaker playback acoustic bleed from `effect_input.eq10:monitor`, and publishes `echo_cancel_source` at priority 2100 with zero daemon overhead.
 - **Multi-Output Audio Broadcast**: `Super + Ctrl + V` (`toggle_multi_sink.sh` / `pw-broadcast`) dynamically broadcasts equalizer output across all connected external endpoints simultaneously via sub-2ms `pw-link` graph connections, auto-compensating Bluetooth buffer latency (340ms) on wired channels.
