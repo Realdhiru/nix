@@ -9,7 +9,7 @@ CACHE_DIR="$HOME/.cache"
 INDEX_FILE="$CACHE_DIR/quickshell/wallpaper_index.json"
 PATHS_FILE="$CACHE_DIR/quickshell/wallpaper_paths.txt"
 TARGET_TXT="$CACHE_DIR/target_wallpaper.txt"
-STATE_WALL_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/wallpaper"
+STATE_WALL_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/wallpaper"
 CURRENT_TXT="$STATE_WALL_DIR/current_wallpaper.txt"
 
 # Drop incoming repeat triggers while an application pass is in progress

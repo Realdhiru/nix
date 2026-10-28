@@ -38,7 +38,7 @@ function is_real_external(name)
     return true
 end
 
-local function sync_connected_monitors()
+local function sync_connected_monitors(intent_data)
     local mons = hl.get_monitors()
     for _, m in ipairs(mons) do
         connected_monitors[m.name] = {
@@ -50,6 +50,31 @@ local function sync_connected_monitors()
         }
         if is_internal_monitor(m.name) then
             known_internal_name = m.name
+        end
+        if m.mirrors then
+            for _, mirr in ipairs(m.mirrors) do
+                connected_monitors[mirr.name] = {
+                    name = mirr.name,
+                    description = mirr.description or "",
+                    width = mirr.width,
+                    height = mirr.height,
+                    scale = mirr.scale
+                }
+            end
+        end
+    end
+
+    if intent_data and intent_data.raw then
+        for name in intent_data.raw:gmatch('"name"%s*:%s*"([^"]+)"') do
+            if not connected_monitors[name] then
+                connected_monitors[name] = {
+                    name = name,
+                    description = "",
+                    width = 1920,
+                    height = 1080,
+                    scale = 1
+                }
+            end
         end
     end
 end
@@ -93,8 +118,8 @@ function get_monitor_intent()
 end
 
 function apply_layout(explicit_intent)
-    sync_connected_monitors()
     local intent_data = get_monitor_intent()
+    sync_connected_monitors(intent_data)
     local intent = explicit_intent or intent_data.layout
 
     local external_count = 0
@@ -115,15 +140,18 @@ function apply_layout(explicit_intent)
         internal = { name = known_internal_name, width = 2880, height = 1620, scale = 2 }
     end
 
+    local internal_cfg = get_display_intent(intent_data.raw, internal.description, internal.name)
+    local internal_pos = (internal_cfg and internal_cfg.placement and internal_cfg.placement ~= "auto") and internal_cfg.placement or "0x0"
+
     if intent == "mirror" then
-        hl.monitor({ output = internal.name, disabled = false })
+        hl.monitor({ output = internal.name, disabled = false, position = internal_pos })
         for name, m in pairs(connected_monitors) do
             if is_real_external(name) then
                 hl.monitor({ output = name, mirror = internal.name })
             end
         end
     elseif intent == "internal" then
-        hl.monitor({ output = internal.name, disabled = false })
+        hl.monitor({ output = internal.name, disabled = false, position = internal_pos })
         for name, m in pairs(connected_monitors) do
             if is_real_external(name) then
                 hl.monitor({ output = name, disabled = true })
@@ -131,7 +159,7 @@ function apply_layout(explicit_intent)
         end
     elseif intent == "external" then
         if external_count == 0 then
-            hl.monitor({ output = internal.name, disabled = false, position = "0x0" })
+            hl.monitor({ output = internal.name, disabled = false, position = internal_pos })
         else
             for name, m in pairs(connected_monitors) do
                 if is_real_external(name) then
@@ -148,8 +176,8 @@ function apply_layout(explicit_intent)
             hl.monitor({ output = internal.name, disabled = true })
         end
     else
-        -- Extend mode: internal panel is at 0x0. External placed beside internal panel.
-        hl.monitor({ output = internal.name, disabled = false })
+        -- Extend mode: internal panel is placed at internal_pos. External placed beside internal panel.
+        hl.monitor({ output = internal.name, disabled = false, position = internal_pos })
         local internal_logical_w = math.floor((internal.width or 2880) / (internal.scale or 2) + 0.5)
         for name, m in pairs(connected_monitors) do
             if is_real_external(name) then

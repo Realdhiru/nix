@@ -47,7 +47,7 @@ fi
 
 # Parse state JSON via jq
 TEMP=6500; GAMMA=100; SAT=100; GRAIN=0; CRT=0
-GAMING=false; WP_KILLED=false; DND=false; COFFEE=false; POWER_PROF="balanced"
+GAMING=false; WP_KILLED=false; DND=false; COFFEE=false; POWER_PROF="balanced"; SUNSET_ACTIVE=false
 
 if [ -f "$STATE_FILE" ]; then
     vals=$(jq -r '[
@@ -60,17 +60,18 @@ if [ -f "$STATE_FILE" ]; then
         (.modes.wallpaperKilled // false),
         (.modes.dnd // false),
         (.modes.coffee // false),
-        (.power.profile // "balanced")
+        (.power.profile // "balanced"),
+        (.sunset.active // false)
     ] | @tsv' "$STATE_FILE" 2>/dev/null || true)
 
     if [ -n "$vals" ]; then
-        read -r TEMP GAMMA SAT GRAIN CRT GAMING WP_KILLED DND COFFEE POWER_PROF <<< "$vals"
+        read -r TEMP GAMMA SAT GRAIN CRT GAMING WP_KILLED DND COFFEE POWER_PROF SUNSET_ACTIVE <<< "$vals"
     fi
 fi
 
 
 # 1. Hardware CTM Restoration (hyprsunset)
-if [ "$TEMP" -ne 6500 ] || [ "$GAMMA" -ne 100 ]; then
+if [ "$SUNSET_ACTIVE" = "true" ] && ([ "$TEMP" -ne 6500 ] || [ "$GAMMA" -ne 100 ]); then
     if ! pgrep -x hyprsunset >/dev/null 2>&1; then
         nohup hyprsunset -t "$TEMP" -g "$GAMMA" >/dev/null 2>&1 & disown
         sleep 0.08
@@ -86,7 +87,7 @@ fi
 
 # 2. Shader Restoration (Saturation / Paper Grain / CRT Curvature)
 NEEDS_SHADER=0
-if [ "$SAT" -ne 100 ] || [ "$GRAIN" -gt 0 ] || [ "$CRT" -gt 0 ]; then
+if [ "$SUNSET_ACTIVE" = "true" ] && ([ "$SAT" -ne 100 ] || [ "$GRAIN" -gt 0 ] || [ "$CRT" -gt 0 ]); then
     NEEDS_SHADER=1
 fi
 

@@ -315,18 +315,12 @@ Item {
 
             if (rawRate < 1.0) return 0;
 
-            if (root._smoothedDischargeRate <= 0.5) {
-                root._smoothedDischargeRate = rawRate;
-            } else {
-                root._smoothedDischargeRate = (root._smoothedDischargeRate * 0.50) + (rawRate * 0.50);
-            }
-            let rate = Math.max(1.0, root._smoothedDischargeRate);
+            let rate = Math.max(1.0, rawRate);
             let energyWh = (eNow > 0) ? (eNow / 1000000.0) : (d ? d.energy : 0);
             if (energyWh > 0) {
                 rem = (energyWh * 3600) / rate;
             }
         } else {
-            root._smoothedDischargeRate = 0.0;
             if (!d) return 0;
             let rawRate = Math.abs(d.changeRate);
             if (rawRate < 1 || d.timeToFull <= 0) return 0;

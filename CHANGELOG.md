@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-10-28 — QuickShell Widget Repairs, Layout Preservation & AC Refresh Trigger
+
+- Fixed NetworkPopup Highlight compilation error, SysData battery binding loop, unified wallpaper state paths under `$DESKTOP_STATE_DIR/wallpaper`, preserved internal panel layout position across compositor reloads, and resolved Hyprland instance signature dynamically in AC refresh rate service.
+
 ## 2026-10-27 — Wallpaper Instant Applying & Animation Optimization
 
 - **Audio Pipeline Audit & Declarative Migration Plan ([`docs/system.md`](file:///home/realdhiru/nix/docs/system.md))**:

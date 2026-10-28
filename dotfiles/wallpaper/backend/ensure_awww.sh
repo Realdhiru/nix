@@ -118,7 +118,7 @@ prune_frame_cache() {
   [ -d "$cache_root" ] || return 0
 
   keep_prefix=""
-  local state_wall_dir="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/wallpaper"
+  local state_wall_dir="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/wallpaper"
   if [ -f "$state_wall_dir/current_wallpaper.txt" ]; then
     keep_prefix="$(tr '/' '_' < "$state_wall_dir/current_wallpaper.txt")"
   fi

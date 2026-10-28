@@ -303,9 +303,9 @@ Item {
         awwwQueryProc.running = true;
     }
 
-    readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")) + "/quickshell/wallpaper"
-    readonly property string activeWallpaperFile: stateDir + "/current_wallpaper.txt"
-    readonly property string lastWallpaperFile: stateDir + "/last_wallpaper.txt"
+    readonly property string stateDir: Caching.wallpaperStateDir
+    readonly property string activeWallpaperFile: Caching.currentWallpaperFile
+    readonly property string lastWallpaperFile: Caching.lastWallpaperFile
     property string activeWallpaperPath: window.reloadActiveWallpaperPath()
     property string activeWallpaperName: {
         let p = window.activeWallpaperPath;

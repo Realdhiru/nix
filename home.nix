@@ -103,8 +103,8 @@
       end
 
       local target_mode = resolve_mode()
-      hl.monitor({ output = "desc:Samsung Display Corp. 0x4180", mode = target_mode, position = "auto", scale = 2, bitdepth = 10 })
-      hl.monitor({ output = "eDP-1", mode = target_mode, position = "auto", scale = 2, bitdepth = 10 })
+      hl.monitor({ output = "desc:Samsung Display Corp. 0x4180", mode = target_mode, position = "0x0", scale = 2, bitdepth = 10 })
+      hl.monitor({ output = "eDP-1", mode = target_mode, position = "0x0", scale = 2, bitdepth = 10 })
     '';
   };
 
@@ -487,9 +487,20 @@
     Service = {
       Type = "oneshot";
       ExecStart = "${pkgs.writeShellScript "apply-refresh-rate" ''
-        if command -v ${pkgs.hyprland}/bin/hyprctl >/dev/null 2>&1 && [ -n "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-          ${pkgs.hyprland}/bin/hyprctl eval "dofile(os.getenv('HOME') .. '/.config/hypr-local/monitors.lua')" >/dev/null 2>&1 || true
+        set -euo pipefail
+        if [ -z "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+          runtime_dir="''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+          SIG=$(find "$runtime_dir/hypr" -maxdepth 2 -name ".socket.sock" -printf '%T@ %h\n' 2>/dev/null | sort -nr | head -n 1 | awk '{print $2}' | xargs -r basename || true)
+          if [ -n "$SIG" ]; then
+            export HYPRLAND_INSTANCE_SIGNATURE="$SIG"
+          fi
         fi
+        if [ -z "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+          echo "hypr-refresh-rate: failed to find active HYPRLAND_INSTANCE_SIGNATURE in ''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr" >&2
+          exit 1
+        fi
+        echo "hypr-refresh-rate: applying monitors.lua with signature $HYPRLAND_INSTANCE_SIGNATURE"
+        ${pkgs.hyprland}/bin/hyprctl eval "dofile(os.getenv('HOME') .. '/.config/hypr-local/monitors.lua')"
       ''}";
     };
   };

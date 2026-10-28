@@ -47,12 +47,16 @@ reap_qs_orphans() {
     done
 }
 
+QS_LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/quickshell"
+QS_LOG_FILE="$QS_LOG_DIR/quickshell.log"
+
 if [[ "$ACTION" == "reload" ]]; then
     pkill -9 -f "quickshell" 2>/dev/null || true
     pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
     reap_qs_orphans
     sleep 0.3
-    hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('$QS_BIN -p $SHELL_QML_PATH'))" >/dev/null 2>&1 || (nohup "$QS_BIN" -p "$SHELL_QML_PATH" >/dev/null 2>&1 & disown)
+    mkdir -p "$QS_LOG_DIR"
+    hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('bash -c \"$QS_BIN -p $SHELL_QML_PATH > $QS_LOG_FILE 2>&1\"'))" >/dev/null 2>&1 || (nohup "$QS_BIN" -p "$SHELL_QML_PATH" > "$QS_LOG_FILE" 2>&1 & disown)
     exit 0
 fi
 
@@ -64,7 +68,8 @@ if [[ "$ACTION" == "toggle" && "$TARGET" == "quickshell" ]]; then
         notify-send -a "QuickShell" -u low "QuickShell OFF" 2>/dev/null || true
     else
         reap_qs_orphans
-        hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('$QS_BIN -p $SHELL_QML_PATH'))" >/dev/null 2>&1 || (nohup "$QS_BIN" -p "$SHELL_QML_PATH" >/dev/null 2>&1 & disown)
+        mkdir -p "$QS_LOG_DIR"
+        hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('bash -c \"$QS_BIN -p $SHELL_QML_PATH > $QS_LOG_FILE 2>&1\"'))" >/dev/null 2>&1 || (nohup "$QS_BIN" -p "$SHELL_QML_PATH" > "$QS_LOG_FILE" 2>&1 & disown)
         notify-send -a "QuickShell" -u low "QuickShell ON" 2>/dev/null || true
     fi
     exit 0
@@ -217,7 +222,7 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
         CURRENT_SRC=""
         # Authoritative source: state file written by set_wallpaper.sh on every
         # apply. Missing/empty file falls through to the process-query fallback.
-        STATE_WALL_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/wallpaper"
+        STATE_WALL_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/wallpaper"
         STATE_FILE="$STATE_WALL_DIR/current_wallpaper.txt"
         if [ -s "$STATE_FILE" ]; then
             read -r CURRENT_SRC < "$STATE_FILE" 2>/dev/null || CURRENT_SRC=""

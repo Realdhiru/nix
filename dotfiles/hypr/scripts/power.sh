@@ -114,7 +114,7 @@ cmd_lock() {
         export CURRENT_WALLPAPER="$lock_snap"
         export CURRENT_WALLPAPER_THUMB=""
     else
-        local state_wall_dir="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/wallpaper"
+        local state_wall_dir="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/wallpaper"
         local wp="$(head -n 1 "$state_wall_dir/current_wallpaper.txt" 2>/dev/null || true)"
         export CURRENT_WALLPAPER="$wp"
         export CURRENT_WALLPAPER_THUMB=""

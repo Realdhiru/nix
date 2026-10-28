@@ -106,7 +106,7 @@ fi
 # --restart) is unnecessary and only causes a visible reload flash. A plain
 # re-push (~0.2 s, warm cache) re-commits the surface instead. Videos run on
 # their own mpvpaper surface and need nothing.
-STATE_WALL_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/wallpaper"
+STATE_WALL_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/wallpaper"
 WALL="$(cat "$STATE_WALL_DIR/current_wallpaper.txt" 2>/dev/null || true)"
 if [ -n "$WALL" ] && [ -f "$WALL" ]; then
     EXT="${WALL##*.}"

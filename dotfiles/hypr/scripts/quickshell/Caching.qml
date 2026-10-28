@@ -20,6 +20,9 @@ QtObject {
     readonly property string recPidFile: desktopStateDir + "/recording/rec_pid"
     readonly property string wallpaperKilledFile: desktopStateDir + "/modes/wallpaper_killed"
     readonly property string gamingModeFile: desktopStateDir + "/modes/gaming_mode"
+    readonly property string wallpaperStateDir: desktopStateDir + "/wallpaper"
+    readonly property string currentWallpaperFile: desktopStateDir + "/wallpaper/current_wallpaper.txt"
+    readonly property string lastWallpaperFile: desktopStateDir + "/wallpaper/last_wallpaper.txt"
 
     // Ephemeral data in RAM (tmpfs) - Secure fallback matching caching.sh
     readonly property string runDir: (xdgRuntimeDir !== "" ? xdgRuntimeDir : ("/run/user/" + euid)) + "/quickshell"
