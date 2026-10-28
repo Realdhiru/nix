@@ -111,7 +111,6 @@ hl.window_rule({ match = { class = "^(pcmanfm-qt)$", title = "^(Search Files)$" 
 
 hl.window_rule({ match = { title = "^(.*[Pp][Ii][Cc][Tt][Uu][Rr][Ee].*)$" }, float = true, pin = true, size = { "25%", "25%" }, move = { "73%", "72%" }, opacity = "1.0 override 1.0 override" })
 hl.window_rule({ match = { title = "^(Picture-in-Picture|Picture in picture)$" }, float = true, pin = true, size = { "25%", "25%" }, move = { "73%", "72%" }, opacity = "1.0 override 1.0 override" })
-hl.window_rule({ match = { class = "^(brave-browser|brave-.*)$" }, min_size = { 320, 220 } })
 
 -- ======================================================
 -- System Dialogs, Portals & Authentication
