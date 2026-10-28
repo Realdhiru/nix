@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-10-28 — Battery Telemetry Single Source of Truth & Fast MacBook-Style Convergence
+
+- Unified battery remaining runtime across Sidebar and Battery Popup by removing duplicate `sysPoller` in `BatteryPopup.qml` and establishing pure reactive bindings to `SysData.batHours` / `SysData.batMins` / `SysData.batRuntimeText`.
+- Implemented fast-settle battery convergence sequence (5 samples spaced 500ms apart) triggered instantly on AC connect/disconnect, udev power supply events, and power profile switches to capture hardware fuel-gauge current within 2.5s without 30s delay.
+- Applied MacBook-style Exponential Moving Average filter ($\alpha = 0.35$) on discharge rate to eliminate momentary load spikes while reacting swiftly to sustained usage changes.
+- Connected BatteryPopup visibility lifecycle to `SysData.subscribe()` / `unsubscribe()`, enabling high-frequency 2s telemetry while open and passive event-driven mode when closed.
+
+
 ## 2026-10-28 — External Monitor Workspace Separation, Center Monitor Widget, FocusTime State Fix & Wallpaper Speedups
 
 - Separated external monitor workspace management: native display uses workspaces 1-10 with monitor-relative arrow shifting (`m+1`/`m-1`), while `SUPER + ALT + 1..0` and `SUPER + ALT + SHIFT + 1..0` manage external display workspaces 11-20 only when an external monitor is connected and extended (`workspace_action.sh`).

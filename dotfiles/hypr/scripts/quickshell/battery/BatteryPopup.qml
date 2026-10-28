@@ -23,8 +23,17 @@ Item {
 
     onVisibleChanged: {
         if (visible) {
+            SysData.subscribe();
             window.syncBrightness();
+        } else {
+            SysData.unsubscribe();
         }
+    }
+
+
+
+    Component.onDestruction: {
+        if (visible) SysData.unsubscribe();
     }
     
     Connections {
@@ -99,8 +108,8 @@ Item {
     readonly property string batStatus: SysData.batStatus
     readonly property string powerProfile: SysData.powerProfile
     
-    property int upHours: SysData.batHours
-    property int upMins: SysData.batMins
+    readonly property int upHours: SysData.batHours
+    readonly property int upMins: SysData.batMins
 
     property real sysVolume: 0
     property bool sysMuted: false
@@ -217,6 +226,7 @@ Item {
         function onBatCapacityChanged() { window.animCapacity = SysData.batCapacity; }
     }
     Component.onCompleted: {
+        if (visible) SysData.subscribe();
         window.animCapacity = SysData.batCapacity;
         let curBri = parseInt((briView.text() || "").trim());
         let maxBri = parseInt((maxBriView.text() || "").trim()) || 400;
@@ -252,62 +262,7 @@ Item {
     }
 
 
-    Process {
-        id: sysPoller
-        command: [
-            "bash", "-c",
-            `
-            cap=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1 || echo '0')
-            stat=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1 || echo 'Unknown')
-            
-            prof=$(cat "\${DESKTOP_STATE_DIR:-$HOME/.local/state/desktop}/power/profile" 2>/dev/null)
-            if [ -z "$prof" ]; then
-                epp=$(cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference 2>/dev/null || echo 'balance_performance')
-                case "$epp" in
-                    performance) prof='performance' ;;
-                    power) prof='power-saver' ;;
-                    *) prof='balanced' ;;
-                esac
-            fi
 
-            en=$(cat /sys/class/power_supply/BAT*/energy_now 2>/dev/null | head -n1 || cat /sys/class/power_supply/BAT*/charge_now 2>/dev/null | head -n1 || echo '0')
-            ef=$(cat /sys/class/power_supply/BAT*/energy_full 2>/dev/null | head -n1 || cat /sys/class/power_supply/BAT*/charge_full 2>/dev/null | head -n1 || echo '1')
-            pw=$(cat /sys/class/power_supply/BAT*/power_now 2>/dev/null | head -n1 || cat /sys/class/power_supply/BAT*/current_now 2>/dev/null | head -n1 || echo '0')
-
-            if [ "$pw" -gt 500000 ] 2>/dev/null; then
-                if [ "$stat" = 'Charging' ]; then
-                    rem=$(( (ef - en) * 3600 / pw ))
-                else
-                    rem=$(( en * 3600 / pw ))
-                fi
-                if [ "$rem" -gt 356400 ]; then rem=356400; fi
-            else
-                rem=0
-            fi
-
-            vol="0 on"
-            bri=$(brightnessctl -m 2>/dev/null | awk -F, '{print substr($4, 1, length($4)-1)}' || echo '0')
-
-            echo "$cap"
-            echo "$stat"
-            echo "$prof"
-            echo "$rem"
-            echo "$vol"
-            echo "$bri"
-            `
-        ]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let lines = this.text.trim().split("\n");
-                if (lines.length >= 6) {
-                    let remSeconds = parseInt(lines[3]) || 0;
-                    window.upHours = Math.floor(remSeconds / 3600);
-                    window.upMins = Math.floor((remSeconds % 3600) / 60);
-                }
-            }
-        }
-    }
 
     FileView {
         id: briView
@@ -372,17 +327,7 @@ Item {
         }
     }
 
-    // Popup-local telemetry refresh (cap/profile/time-remaining/vol/bri).
-    // Gated to visibility: this popup stays cached in Main.qml's
-    // widgetCache after close, so a bare running:true kept spawning bash
-    // every 1.5s forever while hidden.
-    Timer {
-        interval: 8000; running: window.visible; repeat: true; triggeredOnStart: true;
-        onTriggered: {
-            sysPoller.running = false;
-            sysPoller.running = true;
-        }
-    }
+
 
     property real globalOrbitAngle: 0
     NumberAnimation on globalOrbitAngle {
@@ -1309,7 +1254,6 @@ Item {
                                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
                                                     window.setPowerProfile(name);
-                                                    Qt.callLater(() => { sysPoller.running = false; sysPoller.running = true; });
                                                 }
                                             }
                                         }

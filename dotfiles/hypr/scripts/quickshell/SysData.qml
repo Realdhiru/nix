@@ -81,6 +81,9 @@ Item {
             fetchTimer.restart();
             fetchProc.running = false;
             fetchProc.running = true;
+            batEnergyNowView.reload();
+            batPowerNowView.reload();
+            root._syncSysfsBattery();
         }
     }
 
@@ -101,6 +104,9 @@ Item {
         onTriggered: {
             fetchProc.running = false;
             fetchProc.running = true;
+            batEnergyNowView.reload();
+            batPowerNowView.reload();
+            root._syncSysfsBattery();
         }
     }
 
@@ -159,6 +165,11 @@ Item {
     }
 
     FileView {
+        id: batEnergyFullView
+        path: Config.batteryDevice + "/energy_full"
+    }
+
+    FileView {
         id: batPowerNowView
         path: Config.batteryDevice + "/power_now"
     }
@@ -166,6 +177,41 @@ Item {
     FileView {
         id: acOnlineView
         path: Config.acDevice + "/online"
+    }
+
+    Timer {
+        id: batterySettleTimer
+        interval: 500
+        repeat: true
+        property int burstCount: 0
+        onTriggered: {
+            burstCount++;
+            batEnergyNowView.reload();
+            batPowerNowView.reload();
+            batEnergyFullView.reload();
+            batCapView.reload();
+            batStatView.reload();
+            acOnlineView.reload();
+            root._syncSysfsBattery();
+            if (burstCount >= 5) {
+                stop();
+                burstCount = 0;
+            }
+        }
+    }
+
+    function _triggerBatteryBurst() {
+        root._smoothedDischargeRate = 0.0;
+        batterySettleTimer.burstCount = 0;
+        batterySettleTimer.interval = 500;
+        batterySettleTimer.restart();
+        batEnergyNowView.reload();
+        batPowerNowView.reload();
+        batEnergyFullView.reload();
+        batCapView.reload();
+        batStatView.reload();
+        acOnlineView.reload();
+        root._syncSysfsBattery();
     }
 
     Process {
@@ -176,10 +222,7 @@ Item {
             splitMarker: "\n"
             onRead: (line) => {
                 console.log("SYSDATA_UDEV_EVENT: " + line);
-                batCapView.reload();
-                batStatView.reload();
-                acOnlineView.reload();
-                root._syncSysfsBattery();
+                root._triggerBatteryBurst();
             }
         }
     }
@@ -194,6 +237,9 @@ Item {
             batCapView.reload();
             batStatView.reload();
             acOnlineView.reload();
+            batEnergyNowView.reload();
+            batPowerNowView.reload();
+            batEnergyFullView.reload();
             root._syncSysfsBattery();
         }
     }
@@ -201,6 +247,7 @@ Item {
     function _syncSysfsBattery() {
         batEnergyNowView.reload();
         batPowerNowView.reload();
+        batEnergyFullView.reload();
         let capTxt = batCapView.text ? (typeof batCapView.text === "function" ? batCapView.text() : batCapView.text).trim() : "";
         let statTxt = batStatView.text ? (typeof batStatView.text === "function" ? batStatView.text() : batStatView.text).trim() : "";
         let acTxt = acOnlineView.text ? (typeof acOnlineView.text === "function" ? acOnlineView.text() : acOnlineView.text).trim() : "";
@@ -216,7 +263,31 @@ Item {
         if (acOnlineView.loaded && acTxt.length > 0) {
             root.acOnline = (acTxt === "1");
         }
-        console.log("SYSDATA_BATTERY_SYNC: cap=" + root.batCapacity + "% status=" + root.batStatus + " acOnline=" + root.acOnline);
+
+        // Exponential Moving Average filter (alpha = 0.35) for smooth MacBook-like convergence
+        let onBat = !root.acOnline || (root.batStatus === "Discharging");
+        if (onBat) {
+            let pNowTxt = batPowerNowView.text ? (typeof batPowerNowView.text === "function" ? batPowerNowView.text() : batPowerNowView.text).trim() : "";
+            let pNow = parseInt(pNowTxt) || 0;
+            let rawRate = 0.0;
+            if (pNow > 500000) {
+                rawRate = pNow / 1000000.0;
+            } else if (UPower.displayDevice) {
+                rawRate = Math.abs(UPower.displayDevice.changeRate);
+            }
+
+            if (rawRate >= 1.0) {
+                if (root._smoothedDischargeRate <= 0.5) {
+                    root._smoothedDischargeRate = rawRate;
+                } else {
+                    root._smoothedDischargeRate = 0.35 * rawRate + 0.65 * root._smoothedDischargeRate;
+                }
+            }
+        } else {
+            root._smoothedDischargeRate = 0.0;
+        }
+
+        console.log("SYSDATA_BATTERY_SYNC: cap=" + root.batCapacity + "% status=" + root.batStatus + " acOnline=" + root.acOnline + " rate=" + root._smoothedDischargeRate.toFixed(2) + "W");
 
         if (root.hasBattery) {
             if (root.batStatus === "Discharging" && root.batCapacity <= 20) {
@@ -295,7 +366,7 @@ Item {
     readonly property int batRuntimeSeconds: {
         if (!root.hasBattery) return 0;
         let d = UPower.displayDevice;
-        let onBat = UPower.onBattery || (root.batStatus === "Discharging");
+        let onBat = !root.acOnline || (root.batStatus === "Discharging") || (d && d.onBattery);
         let rem = 0;
 
         if (onBat) {
@@ -313,18 +384,30 @@ Item {
                 rawRate = Math.abs(d.changeRate);
             }
 
-            if (rawRate < 1.0) return 0;
+            let rate = (root._smoothedDischargeRate >= 1.0) ? root._smoothedDischargeRate : rawRate;
+            if (rate < 1.0) return 0;
 
-            let rate = Math.max(1.0, rawRate);
             let energyWh = (eNow > 0) ? (eNow / 1000000.0) : (d ? d.energy : 0);
             if (energyWh > 0) {
                 rem = (energyWh * 3600) / rate;
             }
         } else {
-            if (!d) return 0;
-            let rawRate = Math.abs(d.changeRate);
-            if (rawRate < 1 || d.timeToFull <= 0) return 0;
-            rem = ((d.energyCapacity - d.energy) * 3600) / rawRate;
+            // Charging math: use direct sysfs energy delta and power_now if available
+            let pNowTxt = batPowerNowView.text ? (typeof batPowerNowView.text === "function" ? batPowerNowView.text() : batPowerNowView.text).trim() : "";
+            let eNowTxt = batEnergyNowView.text ? (typeof batEnergyNowView.text === "function" ? batEnergyNowView.text() : batEnergyNowView.text).trim() : "";
+            let eFullTxt = batEnergyFullView.text ? (typeof batEnergyFullView.text === "function" ? batEnergyFullView.text() : batEnergyFullView.text).trim() : "";
+            let pNow = parseInt(pNowTxt) || 0;
+            let eNow = parseInt(eNowTxt) || 0;
+            let eFull = parseInt(eFullTxt) || 0;
+
+            if (pNow > 500000 && eFull > eNow && eNow > 0) {
+                rem = ((eFull - eNow) * 3600) / (pNow / 1000000.0);
+            } else if (d) {
+                let rawRate = Math.abs(d.changeRate);
+                if (rawRate >= 1.0 && d.timeToFull > 0) {
+                    rem = ((d.energyCapacity - d.energy) * 3600) / rawRate;
+                }
+            }
             if (rem > 36000) return 0;
         }
         if (rem > 43199) rem = 43199;
@@ -336,11 +419,9 @@ Item {
 
     readonly property string batRuntimeText: {
         if (!root.hasBattery) return "";
-        let d = UPower.displayDevice;
-        if (!d) return "";
         let rem = root.batRuntimeSeconds;
-        let charging = !UPower.onBattery;
-        if (!UPower.onBattery && rem <= 0) return "AC";
+        let charging = root.acOnline || (root.batStatus === "Charging");
+        if (charging && rem <= 0) return "AC";
         return root._fmtRuntime(rem, charging);
     }
 
@@ -598,9 +679,8 @@ Item {
 
         root._applyVisualOverrides(name);
 
-        // Instantaneous battery recalculation on profile switch: reset EMA smoothing and sync sysfs
-        root._smoothedDischargeRate = 0.0;
-        root._syncSysfsBattery();
+        // Instantaneous battery recalculation and fast converge burst on profile switch
+        root._triggerBatteryBurst();
 
         let tlpCmd = (name === "performance") ? "performance" : (name === "power-saver") ? "power-saver" : "balanced";
         Quickshell.execDetached(["bash", "-c", "$HOME/.config/hypr/scripts/power.sh profile " + tlpCmd]);
