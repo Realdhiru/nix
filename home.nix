@@ -382,7 +382,7 @@
       Description = "Focus time tracking daemon (Hyprland active window)";
     };
     Service = {
-      ExecStart = "${pkgs.python3}/bin/python3 %h/.config/hypr/scripts/quickshell/focustime/focus_daemon.py";
+      ExecStart = "%h/.config/hypr/scripts/quickshell/focustime/focus_daemon";
       Restart = "always";
       RestartSec = 3;
       Environment = [

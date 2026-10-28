@@ -37,10 +37,10 @@ Item {
     property bool _lowBatteryNotified: false
 
     // --- Coffee mode (idle inhibit) — single shared source ---
-    // Canonical state lives in ~/.cache/quickshell/state.json
-    // (modes.coffee), written by power.sh inhibit. Both the battery popup
+    // Canonical state lives in $DESKTOP_STATE_DIR/modes/modes.json
+    // written by mode_ctl.sh / power.sh inhibit. Both the battery popup
     // tray and the sidebar tray read root.coffeeActive; all writes go
-    // through setCoffee() so the two trays can never disagree.
+    // through mode_ctl so the two trays can never disagree.
     property bool coffeeActive: false
 
     function syncCoffeeState() {
@@ -81,9 +81,6 @@ Item {
             fetchTimer.restart();
             fetchProc.running = false;
             fetchProc.running = true;
-            batEnergyNowView.reload();
-            batPowerNowView.reload();
-            root._syncSysfsBattery();
         }
     }
 
@@ -104,9 +101,6 @@ Item {
         onTriggered: {
             fetchProc.running = false;
             fetchProc.running = true;
-            batEnergyNowView.reload();
-            batPowerNowView.reload();
-            root._syncSysfsBattery();
         }
     }
 
@@ -149,135 +143,40 @@ Item {
     // Event-driven via udevadm monitor and 30s failsafe timer syncing sysfs.
     // =========================================================================
 
-    FileView {
-        id: batCapView
-        path: Config.batteryDevice + "/capacity"
-    }
+    // =========================================================================
+    // ALWAYS-ON BATTERY + AC WATCHER (Native UPower signals & properties)
+    // Zero sysfs reads, zero poll timers, zero subshells. Driven by UPower D-Bus.
+    // =========================================================================
 
-    FileView {
-        id: batStatView
-        path: Config.batteryDevice + "/status"
-    }
-
-    FileView {
-        id: batEnergyNowView
-        path: Config.batteryDevice + "/energy_now"
-    }
-
-    FileView {
-        id: batEnergyFullView
-        path: Config.batteryDevice + "/energy_full"
-    }
-
-    FileView {
-        id: batPowerNowView
-        path: Config.batteryDevice + "/power_now"
-    }
-
-    FileView {
-        id: acOnlineView
-        path: Config.acDevice + "/online"
-    }
-
-    Timer {
-        id: batterySettleTimer
-        interval: 500
-        repeat: true
-        property int burstCount: 0
-        onTriggered: {
-            burstCount++;
-            batEnergyNowView.reload();
-            batPowerNowView.reload();
-            batEnergyFullView.reload();
-            batCapView.reload();
-            batStatView.reload();
-            acOnlineView.reload();
-            root._syncSysfsBattery();
-            if (burstCount >= 5) {
-                stop();
-                burstCount = 0;
-            }
+    function _updateBatteryTelemetry() {
+        let d = UPower.displayDevice;
+        if (!d || !d.isPresent) {
+            root.hasBattery = false;
+            return;
         }
-    }
+        root.hasBattery = true;
+        root.batCapacity = Math.round(d.percentage);
 
-    function _triggerBatteryBurst() {
-        root._smoothedDischargeRate = 0.0;
-        batterySettleTimer.burstCount = 0;
-        batterySettleTimer.interval = 500;
-        batterySettleTimer.restart();
-        batEnergyNowView.reload();
-        batPowerNowView.reload();
-        batEnergyFullView.reload();
-        batCapView.reload();
-        batStatView.reload();
-        acOnlineView.reload();
-        root._syncSysfsBattery();
-    }
-
-    Process {
-        id: udevBatteryWatcher
-        command: ["udevadm", "monitor", "--subsystem-match=power_supply"]
-        running: true
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: (line) => {
-                console.log("SYSDATA_UDEV_EVENT: " + line);
-                root._triggerBatteryBurst();
-            }
-        }
-    }
-
-    Timer {
-        id: batteryFailsafeTimer
-        interval: 30000
-        running: true
-        repeat: true
-        onTriggered: {
-            console.log("SYSDATA_FAILSAFE_TIMER: 30s tick sync");
-            batCapView.reload();
-            batStatView.reload();
-            acOnlineView.reload();
-            batEnergyNowView.reload();
-            batPowerNowView.reload();
-            batEnergyFullView.reload();
-            root._syncSysfsBattery();
-        }
-    }
-
-    function _syncSysfsBattery() {
-        batEnergyNowView.reload();
-        batPowerNowView.reload();
-        batEnergyFullView.reload();
-        let capTxt = batCapView.text ? (typeof batCapView.text === "function" ? batCapView.text() : batCapView.text).trim() : "";
-        let statTxt = batStatView.text ? (typeof batStatView.text === "function" ? batStatView.text() : batStatView.text).trim() : "";
-        let acTxt = acOnlineView.text ? (typeof acOnlineView.text === "function" ? acOnlineView.text() : acOnlineView.text).trim() : "";
-
-        root.hasBattery = batCapView.loaded && capTxt.length > 0;
-        if (root.hasBattery) {
-            let cap = parseInt(capTxt);
-            if (!isNaN(cap)) root.batCapacity = cap;
-            root.batStatus = statTxt || "Unknown";
-        }
+        let state = d.state;
+        let stat = "Unknown";
+        if (state === 1) stat = "Charging";
+        else if (state === 2) stat = "Discharging";
+        else if (state === 3) stat = "Empty";
+        else if (state === 4) stat = "Fully charged";
+        else if (state === 5) stat = "Pending charge";
+        else if (state === 6) stat = "Pending discharge";
+        else stat = UPower.onBattery ? "Discharging" : "Charging";
+        root.batStatus = stat;
 
         let wasOnline = root.acOnline;
-        if (acOnlineView.loaded && acTxt.length > 0) {
-            root.acOnline = (acTxt === "1");
-        }
+        root.acOnline = !UPower.onBattery;
 
-        // Exponential Moving Average filter (alpha = 0.35) for smooth MacBook-like convergence
-        let onBat = !root.acOnline || (root.batStatus === "Discharging");
+        // EMA filter applied on each UPower signal (alpha = 0.35)
+        let onBat = UPower.onBattery || (stat === "Discharging");
         if (onBat) {
-            let pNowTxt = batPowerNowView.text ? (typeof batPowerNowView.text === "function" ? batPowerNowView.text() : batPowerNowView.text).trim() : "";
-            let pNow = parseInt(pNowTxt) || 0;
-            let rawRate = 0.0;
-            if (pNow > 500000) {
-                rawRate = pNow / 1000000.0;
-            } else if (UPower.displayDevice) {
-                rawRate = Math.abs(UPower.displayDevice.changeRate);
-            }
-
-            if (rawRate >= 1.0) {
-                if (root._smoothedDischargeRate <= 0.5) {
+            let rawRate = Math.abs(d.changeRate);
+            if (rawRate >= 0.5) {
+                if (root._smoothedDischargeRate <= 0.1) {
                     root._smoothedDischargeRate = rawRate;
                 } else {
                     root._smoothedDischargeRate = 0.35 * rawRate + 0.65 * root._smoothedDischargeRate;
@@ -287,23 +186,43 @@ Item {
             root._smoothedDischargeRate = 0.0;
         }
 
-        console.log("SYSDATA_BATTERY_SYNC: cap=" + root.batCapacity + "% status=" + root.batStatus + " acOnline=" + root.acOnline + " rate=" + root._smoothedDischargeRate.toFixed(2) + "W");
-
-        if (root.hasBattery) {
-            if (root.batStatus === "Discharging" && root.batCapacity <= 20) {
-                if (!root._lowBatteryNotified) {
-                    root._lowBatteryNotified = true;
-                    Quickshell.execDetached([
-                        "notify-send", "-u", "critical", "-a", "Battery", "-i", "battery-empty",
-                        "Battery Low (" + root.batCapacity + "%)"
-                    ]);
-                }
-            } else {
-                root._lowBatteryNotified = false;
+        if (stat === "Discharging" && root.batCapacity <= 20) {
+            if (!root._lowBatteryNotified) {
+                root._lowBatteryNotified = true;
+                Quickshell.execDetached([
+                    "notify-send", "-u", "critical", "-a", "Battery", "-i", "battery-empty",
+                    "Battery Low (" + root.batCapacity + "%)"
+                ]);
             }
+        } else {
+            root._lowBatteryNotified = false;
         }
 
         root._handleAcTransition(wasOnline, root.acOnline);
+    }
+
+    Connections {
+        target: UPower.displayDevice
+        function onEnergyChanged() { root._updateBatteryTelemetry(); }
+        function onChangeRateChanged() { root._updateBatteryTelemetry(); }
+        function onTimeToFullChanged() { root._updateBatteryTelemetry(); }
+        function onTimeToEmptyChanged() { root._updateBatteryTelemetry(); }
+        function onPercentageChanged() { root._updateBatteryTelemetry(); }
+        function onStateChanged() { root._updateBatteryTelemetry(); }
+    }
+
+    Connections {
+        target: UPower
+        function onOnBatteryChanged() {
+            root._smoothedDischargeRate = 0.0;
+            root._updateBatteryTelemetry();
+        }
+    }
+
+    onPowerProfileChanged: {
+        // Fast convergence on profile change within 1-2s
+        root._smoothedDischargeRate = 0.0;
+        root._updateBatteryTelemetry();
     }
 
     // =========================================================================
@@ -366,46 +285,27 @@ Item {
     readonly property int batRuntimeSeconds: {
         if (!root.hasBattery) return 0;
         let d = UPower.displayDevice;
+        if (!d) return 0;
         let onBat = !root.acOnline || (root.batStatus === "Discharging") || (d && d.onBattery);
         let rem = 0;
 
         if (onBat) {
-            // Check direct sysfs power_now (uW) and energy_now (uWh) first for instantaneous telemetry
-            let pNowTxt = batPowerNowView.text ? (typeof batPowerNowView.text === "function" ? batPowerNowView.text() : batPowerNowView.text).trim() : "";
-            let eNowTxt = batEnergyNowView.text ? (typeof batEnergyNowView.text === "function" ? batEnergyNowView.text() : batEnergyNowView.text).trim() : "";
-            let pNow = parseInt(pNowTxt) || 0;
-            let eNow = parseInt(eNowTxt) || 0;
-
-            let rawRate = 0;
-            if (pNow > 500000 && eNow > 0) {
-                // power_now is in microwatts -> convert to Watts
-                rawRate = pNow / 1000000.0;
-            } else if (d) {
-                rawRate = Math.abs(d.changeRate);
-            }
-
-            let rate = (root._smoothedDischargeRate >= 1.0) ? root._smoothedDischargeRate : rawRate;
-            if (rate < 1.0) return 0;
-
-            let energyWh = (eNow > 0) ? (eNow / 1000000.0) : (d ? d.energy : 0);
-            if (energyWh > 0) {
-                rem = (energyWh * 3600) / rate;
+            let rawRate = Math.abs(d.changeRate);
+            let rate = (root._smoothedDischargeRate >= 0.5) ? root._smoothedDischargeRate : rawRate;
+            if (rate >= 0.5 && d.energy > 0) {
+                rem = (d.energy * 3600) / rate;
+            } else if (d.timeToEmpty > 0) {
+                rem = d.timeToEmpty;
             }
         } else {
-            // Charging math: use direct sysfs energy delta and power_now if available
-            let pNowTxt = batPowerNowView.text ? (typeof batPowerNowView.text === "function" ? batPowerNowView.text() : batPowerNowView.text).trim() : "";
-            let eNowTxt = batEnergyNowView.text ? (typeof batEnergyNowView.text === "function" ? batEnergyNowView.text() : batEnergyNowView.text).trim() : "";
-            let eFullTxt = batEnergyFullView.text ? (typeof batEnergyFullView.text === "function" ? batEnergyFullView.text() : batEnergyFullView.text).trim() : "";
-            let pNow = parseInt(pNowTxt) || 0;
-            let eNow = parseInt(eNowTxt) || 0;
-            let eFull = parseInt(eFullTxt) || 0;
-
-            if (pNow > 500000 && eFull > eNow && eNow > 0) {
-                rem = ((eFull - eNow) * 3600) / (pNow / 1000000.0);
-            } else if (d) {
+            // Charging math
+            if (d.timeToFull > 0) {
+                rem = d.timeToFull;
+            } else {
                 let rawRate = Math.abs(d.changeRate);
-                if (rawRate >= 1.0 && d.timeToFull > 0) {
-                    rem = ((d.energyCapacity - d.energy) * 3600) / rawRate;
+                let cap = d.energyCapacity > 0 ? d.energyCapacity : d.energy;
+                if (rawRate >= 0.5 && cap > d.energy) {
+                    rem = ((cap - d.energy) * 3600) / rawRate;
                 }
             }
             if (rem > 36000) return 0;
@@ -453,7 +353,7 @@ Item {
     }
 
     Component.onCompleted: {
-        root._syncSysfsBattery();
+        root._updateBatteryTelemetry();
         root.syncCoffeeState();
     }
 
@@ -525,72 +425,14 @@ Item {
 
     function _applyVisualOverrides(targetProfile) {
         if (targetProfile === "power-saver") {
-            if (root.saverVisualState !== "saver-applied" && root.saverVisualState !== "applying-saver") {
-                root.saverVisualState = "applying-saver";
-                let cmd = `
-                    # Pause mpvpaper if active
-                    if [ -S /tmp/mpv-paper-socket ]; then
-                        echo '{ "command": ["set_property", "pause", true] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
-                    fi
-
-                    # Stop awww-daemon to kill background wallpaper rendering and shut off OLED pixels
-                    if [ ! -f "` + Caching.wallpaperKilledFile + `" ]; then
-                        touch "` + Caching.wallpaperKilledFile + `"
-                        touch "` + Caching.desktopStateDir + `/modes/saver_killed_wp"
-                        bash "$HOME/.config/hypr/scripts/quickshell/state_ctl.sh" set modes.wallpaperKilled true 2>/dev/null || true
-                        ~/.config/wallpaper/backend/ensure_awww.sh --stop 2>/dev/null || true
-                    fi
-
-                    hyprctl -j getoption decoration:blur:enabled | jq -r '.bool' > "` + Caching.desktopStateDir + `/quickshell/qs_pre_saver_blur.conf" 2>/dev/null
-                    hyprctl -j getoption decoration:shadow:enabled | jq -r '.bool' > ~/.cache/qs_pre_saver_shadow.conf 2>/dev/null
-                    hyprctl -j getoption decoration:screen_shader | jq -r '.str' > ~/.cache/qs_pre_saver_shader.conf 2>/dev/null
-
-                    # Full solid opacity + zero blur/shadow/animations + direct scanout 2 + VRR 1
-                    hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = false }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '' }, animations = { enabled = false } })" 2>/dev/null
-                    hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null && touch /tmp/qs_saver_visuals_ok
-                    bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
-                `;
-                Quickshell.execDetached(["bash", "-c", cmd]);
+            if (root.saverVisualState !== "saver-applied") {
                 root.saverVisualState = "saver-applied";
+                Quickshell.execDetached(["bash", "-c", "bash $HOME/.config/hypr/scripts/mode_ctl.sh set power-saver true 2>/dev/null || true"]);
             }
         } else {
-            if (root.saverVisualState === "saver-applied" || root.saverVisualState === "applying-saver") {
-                root.saverVisualState = "restoring";
-                let cmd = `
-                    rm -f /tmp/qs_normal_visuals_ok
-                    if [ -S /tmp/mpv-paper-socket ]; then
-                        echo '{ "command": ["set_property", "pause", false] }' | socat - /tmp/mpv-paper-socket 2>/dev/null || true
-                    fi
-
-                    # Restore wallpaper if it was killed specifically by power-saver
-                    if [ -f "` + Caching.desktopStateDir + `/modes/saver_killed_wp" ]; then
-                        rm -f "` + Caching.desktopStateDir + `/modes/saver_killed_wp" "` + Caching.wallpaperKilledFile + `"
-                        bash "$HOME/.config/hypr/scripts/quickshell/state_ctl.sh" set modes.wallpaperKilled false 2>/dev/null || true
-                        ~/.config/wallpaper/wallpaper.sh boot 2>/dev/null || true
-                    fi
-
-                    PREV_BLUR=$(cat "` + Caching.desktopStateDir + `/quickshell/qs_pre_saver_blur.conf" 2>/dev/null || echo "true")
-                    PREV_SHADOW=$(cat "` + Caching.desktopStateDir + `/quickshell/qs_pre_saver_shadow.conf" 2>/dev/null || echo "true")
-                    PREV_SHADER=$(cat "` + Caching.desktopStateDir + `/quickshell/qs_pre_saver_shader.conf" 2>/dev/null || echo "")
-
-                    [ "$PREV_BLUR" = "true" ] && BLUR_VAL="true" || BLUR_VAL="false"
-                    [ "$PREV_SHADOW" = "true" ] && SHADOW_VAL="true" || SHADOW_VAL="false"
-
-                    if [ -f "` + Caching.wallpaperKilledFile + `" ]; then
-                        hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
-                        hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
-                    elif [ -f "` + Caching.gamingModeFile + `" ]; then
-                        hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = true }, decoration = { blur = { enabled = false }, shadow = { enabled = false }, active_opacity = 1.0, inactive_opacity = 1.0, screen_shader = '$PREV_SHADER' }, animations = { enabled = false } })" 2>/dev/null
-                        hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" 2>/dev/null
-                    else
-                        hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, general = { allow_tearing = false }, decoration = { blur = { enabled = $BLUR_VAL }, shadow = { enabled = $SHADOW_VAL }, screen_shader = '$PREV_SHADER' }, animations = { enabled = true } })" 2>/dev/null
-                        hyprctl reload >/dev/null 2>&1 || true
-                    fi
-                    bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
-                    touch /tmp/qs_normal_visuals_ok
-                `;
-                Quickshell.execDetached(["bash", "-c", cmd]);
+            if (root.saverVisualState === "saver-applied") {
                 root.saverVisualState = "normal";
+                Quickshell.execDetached(["bash", "-c", "bash $HOME/.config/hypr/scripts/mode_ctl.sh set power-saver false 2>/dev/null || true"]);
             }
         }
     }

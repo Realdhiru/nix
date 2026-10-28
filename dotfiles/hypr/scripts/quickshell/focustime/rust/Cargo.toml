@@ -1,0 +1,20 @@
+[package]
+name = "focustime"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "focus_daemon"
+path = "src/daemon.rs"
+
+[[bin]]
+name = "get_stats"
+path = "src/stats.rs"
+
+[dependencies]
+chrono = "0.4.45"
+rusqlite = { version = "0.41.0", features = ["bundled"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+signal-hook = "0.3.17"
+

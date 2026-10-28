@@ -31,9 +31,10 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 - **Systemd Service Architecture**:
   - `awww-daemon.service`: Launched with `--no-cache --format argb` to prevent unbounded raw frame disk cache accumulation.
   - `mpvpaper@<out>.service`: Per-output templated unit consuming `%h/.local/state/mpvpaper/%i.env` with `%i` (verbatim output name, preserving dashes).
-- **Wallpaper Kill & Unkill**:
-  - Kill mode enforces solid black background, turns off window blur and shadows, and enforces solid window opacities (`1.0 override`).
-  - Unkill restores transparent window glass, re-enables blur, and restores the previous wallpaper without full compositor reload (`hyprctl reload` no longer used).
+- **Wallpaper Kill & Modes Engine**:
+  - Managed by `mode_ctl.sh` as the order-independent Single Source of Truth (`$DESKTOP_STATE_DIR/modes/modes.json`).
+  - Wallpaper kill turns off wallpaper surfaces and compositor blur/shadow, and sets solid window opacity (`opacity_solid = true`).
+  - Restoring recovers transparent window glass and active wallpaper dynamically without `hyprctl reload`.
 
 ## 4. Audio & Media Pipeline
 - **Native PipeWire 10-Band Equalizer**: Filter chain (`libpipewire-module-filter-chain`) biquad equalizer sink (`effect_input.eq10`, Q = 1.414, virtual sink priority 2200). All audio applications stream through the EQ sink.
@@ -76,9 +77,10 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
   - `0.70`: Terminal (Alacritty)
   - `1.00`: Solid mode override (gaming mode, wallpaper killed, power-saver, video playback)
 - **Compositor Layer Blur**: Narrowed strictly to namespaces `^(quickshell|qs-master|qs-notif-toast)$` with `ignore_alpha = 0.05`. Full-screen transparent overlay surfaces (`qs-floating-overlay`) are excluded from blur passes.
-- **Multi-Monitor Workspace Separation**:
-  - The native internal panel (`eDP-1`) owns workspaces 1–10 bound via `hl.workspace_rule`. Arrow shifting (`SUPER + CTRL + Left/Right`) uses monitor-relative cycling (`m-1`/`m+1`), preventing workspace traversal across displays.
-  - When an external monitor is connected and display mode is `extend`, workspaces 11–20 are bound to the external monitor. `SUPER + ALT + 1..0` (switch) and `SUPER + ALT + SHIFT + 1..0` (move) control external monitor workspaces via `workspace_action.sh`. When disconnected or not extended, the external keybind is a zero-latency no-op.
+- **Multi-Monitor Workspace Separation (macOS Spaces Model)**:
+  - Each monitor dynamically owns a dedicated 10-workspace block derived at runtime from monitor order in Lua (`keybinds.lua`).
+  - `SUPER + 1..0` focuses the Nth workspace of the currently focused monitor; `SUPER + SHIFT + 1..0` moves the active window to the Nth workspace of that monitor.
+  - `SUPER + CTRL + Left/Right` shifts relative to the focused monitor (`m-1`/`m+1`). Single-monitor or mirrored setups use a single unified 1..10 workspace block.
 - **HiDPI Toolkit Scaling**: `GDK_SCALE = "2"`, `QT_AUTO_SCREEN_SCALE_FACTOR = "1"`, `QT_ENABLE_HIGHDPI_SCALING = "1"` in `env.lua`. Chromium download bubbles disabled in favor of in-window progress to avoid detached subsurface coordinate misplacement.
 
 ## 7. Operational Discipline & Safety Rules

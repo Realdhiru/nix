@@ -7,6 +7,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pam
+import Quickshell.Services.UPower
 import "../"
 
 ShellRoot {
@@ -55,20 +56,7 @@ ShellRoot {
 
     property string queuedPassword: ""
 
-    signal batteryUpdated()
-
-    Process {
-        id: udevLockBatteryWatcher
-        command: ["udevadm", "monitor", "--subsystem-match=power_supply"]
-        running: true
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: (line) => root.batteryUpdated()
-        }
-    }
-
     function performQuit() {
-        udevLockBatteryWatcher.running = false;
         Qt.quit();
     }
 
@@ -283,65 +271,35 @@ ShellRoot {
                 }
 
                 function syncLockBattery() {
-                    let c = safeFileText(batCapView);
-                    if (c.length > 0) {
-                        let p = parseInt(c);
-                        if (!isNaN(p)) {
-                            screenRoot.batPct = "" + p;
-                            screenRoot.hasBattery = true;
-                        }
+                    let d = UPower.displayDevice;
+                    if (!d || !d.isPresent) {
+                        screenRoot.hasBattery = false;
+                        return;
                     }
-                    let s = safeFileText(batStatView);
-                    if (s.length > 0) screenRoot.batStatus = s;
-
-                    let ac = safeFileText(acOnlineView);
-                    if (ac.length > 0) screenRoot.acOnline = (ac === "1");
-
-                    console.log("LOCK_BATTERY_PILL: visible=" + screenRoot.hasBattery + " pct=" + screenRoot.batPct + "% status=" + screenRoot.batStatus + " acOnline=" + screenRoot.acOnline);
-                }
-
-                FileView {
-                    id: batCapView
-                    path: "/sys/class/power_supply/BAT0/capacity"
-                    onLoadedChanged: screenRoot.syncLockBattery()
-                    onTextChanged: screenRoot.syncLockBattery()
-                }
-
-                FileView {
-                    id: batStatView
-                    path: "/sys/class/power_supply/BAT0/status"
-                    onLoadedChanged: screenRoot.syncLockBattery()
-                    onTextChanged: screenRoot.syncLockBattery()
-                }
-
-                FileView {
-                    id: acOnlineView
-                    path: "/sys/class/power_supply/AC0/online"
-                    onLoadedChanged: screenRoot.syncLockBattery()
-                    onTextChanged: screenRoot.syncLockBattery()
+                    screenRoot.hasBattery = true;
+                    screenRoot.batPct = "" + Math.round(d.percentage);
+                    let state = d.state;
+                    let stat = "Unknown";
+                    if (state === 1) stat = "Charging";
+                    else if (state === 2) stat = "Discharging";
+                    else if (state === 3) stat = "Empty";
+                    else if (state === 4) stat = "Fully charged";
+                    else if (state === 5) stat = "Pending charge";
+                    else if (state === 6) stat = "Pending discharge";
+                    else stat = UPower.onBattery ? "Discharging" : "Charging";
+                    screenRoot.batStatus = stat;
+                    screenRoot.acOnline = !UPower.onBattery;
                 }
 
                 Connections {
-                    target: root
-                    function onBatteryUpdated() {
-                        batCapView.reload();
-                        batStatView.reload();
-                        acOnlineView.reload();
-                        screenRoot.syncLockBattery();
-                    }
+                    target: UPower.displayDevice
+                    function onPercentageChanged() { screenRoot.syncLockBattery(); }
+                    function onStateChanged() { screenRoot.syncLockBattery(); }
                 }
 
-                Timer {
-                    id: lockBatteryFailsafeTimer
-                    interval: 30000
-                    running: true
-                    repeat: true
-                    onTriggered: {
-                        batCapView.reload();
-                        batStatView.reload();
-                        acOnlineView.reload();
-                        screenRoot.syncLockBattery();
-                    }
+                Connections {
+                    target: UPower
+                    function onOnBatteryChanged() { screenRoot.syncLockBattery(); }
                 }
 
                 FileView {
@@ -596,7 +554,7 @@ ShellRoot {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     let runDir = Caching.getRunDir("music");
-                                    let cmd = "playerctl play-pause && sleep 0.05 && bash " + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/music/music_info.sh > '" + runDir + "/music_info.json.tmp' && mv '" + runDir + "/music_info.json.tmp' '" + runDir + "/music_info.json'";
+                                    let cmd = "playerctl play-pause && bash " + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/music/music_info.sh > '" + runDir + "/music_info.json.tmp' && mv '" + runDir + "/music_info.json.tmp' '" + runDir + "/music_info.json'";
                                     Quickshell.execDetached(["bash", "-c", cmd]);
                                 }
                             }

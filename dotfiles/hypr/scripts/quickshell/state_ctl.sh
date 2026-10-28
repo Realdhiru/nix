@@ -1,15 +1,23 @@
 #!/usr/bin/env bash
 # QuickShell State Controller Utility
 # Manages reading and updating ${DESKTOP_STATE_DIR:-$HOME/.local/state/desktop}/quickshell/state.json cleanly
+# Enforces flock synchronization and atomic temp+rename writes to prevent corruption.
+
+set -euo pipefail
 
 DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
 STATE_DIR="$DESKTOP_STATE_DIR/quickshell"
 STATE_FILE="$STATE_DIR/state.json"
+LOCK_FILE="$STATE_DIR/.state.lock"
 
 mkdir -p "$STATE_DIR"
 
-if [ ! -s "$STATE_FILE" ]; then
-    cat <<'EOF' > "$STATE_FILE"
+exec 201>"$LOCK_FILE"
+flock 201
+
+# Initialize or repair state.json if absent or corrupted
+if [ ! -s "$STATE_FILE" ] || ! jq empty "$STATE_FILE" 2>/dev/null; then
+    cat <<'EOF' > "$STATE_FILE.tmp.$$"
 {
   "version": 1,
   "sunset": {
@@ -35,26 +43,26 @@ if [ ! -s "$STATE_FILE" ]; then
   }
 }
 EOF
+    mv -f "$STATE_FILE.tmp.$$" "$STATE_FILE"
 fi
 
-ACTION="$1"
+ACTION="${1:-}"
 
 case "$ACTION" in
     get)
-        # Usage: state_ctl.sh get sunset.temp
-        KEY="$2"
+        KEY="${2:-}"
+        [ -z "$KEY" ] && exit 0
         jq -r ".$KEY | if . != null then . else empty end" "$STATE_FILE" 2>/dev/null || true
         ;;
 
     set)
-        # Usage: state_ctl.sh set modes.dnd true
-        KEY="$2"
-        VAL="$3"
-        # Parse path array
+        KEY="${2:-}"
+        VAL="${3:-}"
+        [ -z "$KEY" ] && exit 0
+
         IFS='.' read -r -a PATH_PARTS <<< "$KEY"
         PATH_JSON=$(printf '%s\n' "${PATH_PARTS[@]}" | jq -R . | jq -s .)
         
-        # Determine value type (boolean, number, or string)
         if [ "$VAL" = "true" ] || [ "$VAL" = "false" ]; then
             VAL_ARG="--argjson v $VAL"
         elif [[ "$VAL" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
@@ -63,11 +71,15 @@ case "$ACTION" in
             VAL_ARG="--arg v $VAL"
         fi
 
-        jq --argjson p "$PATH_JSON" $VAL_ARG 'setpath($p; $v)' "$STATE_FILE" > "$STATE_FILE.tmp" 2>/dev/null && mv "$STATE_FILE.tmp" "$STATE_FILE"
+        TMP="$STATE_FILE.tmp.$$$RANDOM"
+        if jq --argjson p "$PATH_JSON" $VAL_ARG 'setpath($p; $v)' "$STATE_FILE" > "$TMP" 2>/dev/null && jq empty "$TMP" 2>/dev/null; then
+            mv -f "$TMP" "$STATE_FILE"
+        else
+            rm -f "$TMP"
+        fi
         ;;
 
     sunset)
-        # Usage: state_ctl.sh sunset 6500 100 100 0 0 false
         TEMP="${2:-6500}"
         GAMMA="${3:-100}"
         SAT="${4:-100}"
@@ -76,14 +88,19 @@ case "$ACTION" in
         ACTIVE="${7:-false}"
         [ "$ACTIVE" != "true" ] && ACTIVE="false"
 
-        jq --argjson temp "$TEMP" \
+        TMP="$STATE_FILE.tmp.$$$RANDOM"
+        if jq --argjson temp "$TEMP" \
            --argjson gamma "$GAMMA" \
            --argjson sat "$SAT" \
            --argjson grain "$GRAIN" \
            --argjson crt "$CRT" \
            --argjson active "$ACTIVE" \
            '.sunset = {temp: $temp, gamma: $gamma, sat: $sat, grain: $grain, crt: $crt, active: $active}' \
-           "$STATE_FILE" > "$STATE_FILE.tmp" 2>/dev/null && mv "$STATE_FILE.tmp" "$STATE_FILE"
+           "$STATE_FILE" > "$TMP" 2>/dev/null && jq empty "$TMP" 2>/dev/null; then
+            mv -f "$TMP" "$STATE_FILE"
+        else
+            rm -f "$TMP"
+        fi
         ;;
 
     *)
@@ -91,3 +108,5 @@ case "$ACTION" in
         exit 1
         ;;
 esac
+
+flock -u 201

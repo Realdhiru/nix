@@ -19,25 +19,17 @@ Item {
 
     // Dynamic Hardware Sysfs Discovery (Multi-Hardware / Multi-Vendor Portability)
     property string backlightDevice: "/sys/class/backlight/intel_backlight"
-    property string batteryDevice: "/sys/class/power_supply/BAT0"
-    property string acDevice: "/sys/class/power_supply/AC0"
 
     Process {
         id: hwDiscoveryProc
         running: true
-        command: ["bash", "-c", "ls -d /sys/class/backlight/* 2>/dev/null | head -n1; ls -d /sys/class/power_supply/BAT* 2>/dev/null | head -n1; ls -d /sys/class/power_supply/AC* /sys/class/power_supply/ADP* 2>/dev/null | head -n1"]
+        command: ["bash", "-c", "ls -d /sys/class/backlight/* 2>/dev/null | head -n1"]
         stdout: StdioCollector {
             onStreamFinished: {
                 if (!this.text) return;
                 let lines = this.text.trim().split("\n");
                 if (lines[0] && lines[0].startsWith("/sys/class/backlight/")) {
                     config.backlightDevice = lines[0].trim();
-                }
-                if (lines[1] && lines[1].startsWith("/sys/class/power_supply/")) {
-                    config.batteryDevice = lines[1].trim();
-                }
-                if (lines[2] && lines[2].startsWith("/sys/class/power_supply/")) {
-                    config.acDevice = lines[2].trim();
                 }
             }
         }
@@ -475,35 +467,13 @@ Item {
     }
 
     FileView {
-        id: wpKilledWatcher
-        path: Caching.wallpaperKilledFile
-        watchChanges: true
-        onLoadedChanged: config.updateSolidMode()
-        onFileChanged: {
-            wpKilledWatcher.reload();
-            config.updateSolidMode();
-        }
-    }
-
-    FileView {
-        id: gamingModeWatcher
-        path: Caching.gamingModeFile
-        watchChanges: true
-        onLoadedChanged: config.updateSolidMode()
-        onFileChanged: {
-            gamingModeWatcher.reload();
-            config.updateSolidMode();
-        }
-    }
-
-    FileView {
-        id: powerProfileWatcher
-        path: Caching.powerProfileFile
+        id: modesJsonWatcher
+        path: Caching.modesJsonFile
         watchChanges: true
         onLoadedChanged: config.updateSolidMode()
         onTextChanged: config.updateSolidMode()
         onFileChanged: {
-            powerProfileWatcher.reload();
+            modesJsonWatcher.reload();
             config.updateSolidMode();
         }
     }
@@ -521,22 +491,26 @@ Item {
     }
 
     function updateSolidMode() {
-        let wpKilled = wpKilledWatcher.loaded;
-        let gamingMode = gamingModeWatcher.loaded;
-        let profile = (powerProfileWatcher.loaded ? (powerProfileWatcher.text() || "").trim() : "");
-        if (stateJsonWatcher.loaded) {
-            let stateText = stateJsonWatcher.text() || "";
-            if (stateText.indexOf('"wallpaperKilled": true') !== -1 || stateText.indexOf('"wallpaperKilled":true') !== -1) {
-                wpKilled = true;
-            }
-            if (stateText.indexOf('"gaming": true') !== -1 || stateText.indexOf('"gaming":true') !== -1) {
-                gamingMode = true;
-            }
-            if (!profile && stateText.indexOf('"profile": "power-saver"') !== -1) {
-                profile = "power-saver";
+        if (modesJsonWatcher.loaded) {
+            let txt = modesJsonWatcher.text() || "";
+            if (txt.indexOf('"opacity_solid": true') !== -1 || txt.indexOf('"opacity_solid":true') !== -1) {
+                config.isSolidMode = true;
+                return;
+            } else if (txt.indexOf('"opacity_solid": false') !== -1 || txt.indexOf('"opacity_solid":false') !== -1) {
+                config.isSolidMode = false;
+                return;
             }
         }
-        config.isSolidMode = wpKilled || gamingMode || (profile === "power-saver");
+        if (stateJsonWatcher.loaded) {
+            let stateText = stateJsonWatcher.text() || "";
+            if (stateText.indexOf('"wallpaperKilled": true') !== -1 || stateText.indexOf('"wallpaperKilled":true') !== -1 ||
+                stateText.indexOf('"gaming": true') !== -1 || stateText.indexOf('"gaming":true') !== -1 ||
+                stateText.indexOf('"profile": "power-saver"') !== -1) {
+                config.isSolidMode = true;
+                return;
+            }
+        }
+        config.isSolidMode = false;
     }
 
     function applySettingsObject(cleanedSettings) {

@@ -2,35 +2,31 @@ local home = os.getenv("HOME") or ""
 local desktop_state = os.getenv("DESKTOP_STATE_DIR") or ((os.getenv("XDG_STATE_HOME") or (home .. "/.local/state")) .. "/desktop")
 local is_opaque = false
 
-local function check_file(path)
-    local f = io.open(path, "r")
+local function is_solid_mode()
+    local f = io.open(desktop_state .. "/modes/modes.json", "r")
     if f then
         local content = f:read("*a")
         f:close()
-        return true, content
+        if content and content:match('"opacity_solid"%s*:%s*true') then
+            return true
+        end
     end
-    return false, nil
-end
-
-local function check_state_json()
-    local f = io.open(desktop_state .. "/quickshell/state.json", "r")
-    if not f then return false end
-    local content = f:read("*a")
-    f:close()
-    if not content then return false end
-    if content:match('"gaming"%s*:%s*true') or content:match('"wallpaperKilled"%s*:%s*true') or content:match('"profile"%s*:%s*"power%-saver"') then
-        return true
+    -- Fallback for quickshell state.json
+    local f_state = io.open(desktop_state .. "/quickshell/state.json", "r")
+    if f_state then
+        local content = f_state:read("*a")
+        f_state:close()
+        if content and (content:match('"gaming"%s*:%s*true') or content:match('"wallpaperKilled"%s*:%s*true') or content:match('"profile"%s*:%s*"power%-saver"')) then
+            return true
+        end
     end
     return false
 end
 
-local game_ok, _ = check_file(desktop_state .. "/modes/gaming_mode")
-local wp_ok, _ = check_file(desktop_state .. "/modes/wallpaper_killed")
-local prof_ok, prof_val = check_file(desktop_state .. "/power/profile")
-
-if check_state_json() or game_ok or wp_ok or (prof_ok and prof_val and prof_val:match("power%-saver")) then
+if is_solid_mode() then
     is_opaque = true
 end
+
 
 -- Opacity options: "0.0" (transparent) to "1.0" (opaque). Glass range: "0.50" to "0.70"
 if not is_opaque then

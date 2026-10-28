@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-10-28 — Desktop Repair Pass & Rule Enforcement (`desktop-v2`)
+
+- **Revert Rule Violations**: Removed all `hyprctl reload` invocations from `set.sh`, `wallpaper.sh`, `SysData.qml`, and `toggle_gaming_mode.sh`, making solid mode an order-independent state read by `rules.lua` without compositor flushing.
+- **Pure Event Battery Telemetry**: Removed `batterySettleTimer`, the 500ms bursts, the 2s telemetry timer, and all direct sysfs reads from QML, binding purely to native UPower D-Bus signals with EMA filtering.
+- **Single-Flight Wallpaper Cycling**: Removed the 0.35s wallust debounce delay and focustime symlink shim, enforcing non-blocking single-flight locking for wallpaper cycling while keeping wallust decoupled off the hot path.
+- **FocusTime Rust Rewrite**: Replaced `focus_daemon.py` and `get_stats.py` with native Rust compiled binaries (`focus_daemon` and `get_stats`) matching the SQLite schema and JSON serialization verbatim.
+- **Modes Engine SSOT**: Implemented `mode_ctl.sh` and `$DESKTOP_STATE_DIR/modes/modes.json` as sole order-independent state authority for `wallpaper-kill`, `gaming`, `power-saver`, `coffee`, and `dnd`, purging legacy marker files and duplicate watchers.
+- **Modes State Machine Self-Test**: Added `scripts/selftest-modes.sh` with GPU pacing (1.6s) testing all pairwise permutations against baseline compositor flags with 100% assertions passed.
+- **State File Corruption Protection**: Added flock file locking and atomic temporary-write plus validation rename in `state_ctl.sh`.
+- **macOS Workspace Model**: Migrated workspace bindings in `keybinds.lua` to dynamic runtime monitor-derived blocks in Lua (`SUPER + 1..0` and `SUPER + SHIFT + 1..0`), eliminating `workspace_action.sh`, constants 11–20, and `SUPER+ALT`.
+- **Flake Check Regression Guards**: Added `checks.x86_64-linux.regression-guards` enforcing rules against unauthorized `hyprctl reload`, QML `sleep`, Python/Node shebangs, QML `pkill`/`systemctl`, and sysfs battery reads.
+
 ## 2026-10-28 — Universal Mode Toggle & Deapply Fixes (Gaming, Wallpaper Kill & Power-Saver)
 
 - Synchronized `rules.lua` with `wallpaper_killed` and `wallpaperKilled` state so windows enforce 1.0 opacity under all solid modes and cleanly restore transparent per-app rules on deapplication.

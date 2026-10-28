@@ -18,6 +18,7 @@ QtObject {
     readonly property string stateJsonFile: desktopStateDir + "/quickshell/state.json"
     readonly property string powerProfileFile: desktopStateDir + "/power/profile"
     readonly property string recPidFile: desktopStateDir + "/recording/rec_pid"
+    readonly property string modesJsonFile: desktopStateDir + "/modes/modes.json"
     readonly property string wallpaperKilledFile: desktopStateDir + "/modes/wallpaper_killed"
     readonly property string gamingModeFile: desktopStateDir + "/modes/gaming_mode"
     readonly property string wallpaperStateDir: desktopStateDir + "/wallpaper"

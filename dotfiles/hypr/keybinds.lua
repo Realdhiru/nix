@@ -206,43 +206,56 @@ hl.bind(mainMod .. " + SHIFT + Down", hl.dsp.window.resize({ x = 0, y = 30, rela
     { repeating = true, description = "resize window down" })
 
 -- ======================================================
--- Workspaces
+-- Workspaces (macOS Spaces model)
 -- ======================================================
+
+local function get_focused_monitor_workspace_base()
+    local mons = hl.get_monitors()
+    local active_mons = {}
+    for _, m in ipairs(mons) do
+        local is_mirror = (m.mirrorOf and m.mirrorOf ~= "none" and m.mirrorOf ~= "")
+        if not m.disabled and not is_mirror then
+            table.insert(active_mons, m)
+        end
+    end
+
+    if #active_mons <= 1 then
+        return 0
+    end
+
+    table.sort(active_mons, function(a, b)
+        if (a.x or 0) ~= (b.x or 0) then
+            return (a.x or 0) < (b.x or 0)
+        end
+        return (a.name or "") < (b.name or "")
+    end)
+
+    local focused_index = 1
+    for idx, m in ipairs(active_mons) do
+        if m.focused then
+            focused_index = idx
+            break
+        end
+    end
+
+    return (focused_index - 1) * 10
+end
 
 hl.bind(mainMod .. " + CTRL + Right", hl.dsp.focus({ workspace = "m+1" }), { description = "workspace next on monitor" })
 hl.bind(mainMod .. " + CTRL + Left", hl.dsp.focus({ workspace = "m-1" }), { description = "workspace previous on monitor" })
 hl.bind(mainMod .. " + CTRL + Down", hl.dsp.focus({ workspace = "empty" }), { description = "nearest empty workspace" })
 
--- Switch (Internal / Focused Monitor)
-hl.bind(mainMod .. " + 1", hl.dsp.focus({ workspace = 1 }))
-hl.bind(mainMod .. " + 2", hl.dsp.focus({ workspace = 2 }))
-hl.bind(mainMod .. " + 3", hl.dsp.focus({ workspace = 3 }))
-hl.bind(mainMod .. " + 4", hl.dsp.focus({ workspace = 4 }))
-hl.bind(mainMod .. " + 5", hl.dsp.focus({ workspace = 5 }))
-hl.bind(mainMod .. " + 6", hl.dsp.focus({ workspace = 6 }))
-hl.bind(mainMod .. " + 7", hl.dsp.focus({ workspace = 7 }))
-hl.bind(mainMod .. " + 8", hl.dsp.focus({ workspace = 8 }))
-hl.bind(mainMod .. " + 9", hl.dsp.focus({ workspace = 9 }))
-hl.bind(mainMod .. " + 0", hl.dsp.focus({ workspace = 10 }))
-
--- Move (Internal / Focused Monitor)
-hl.bind(mainMod .. " + SHIFT + 1", hl.dsp.window.move({ workspace = 1 }))
-hl.bind(mainMod .. " + SHIFT + 2", hl.dsp.window.move({ workspace = 2 }))
-hl.bind(mainMod .. " + SHIFT + 3", hl.dsp.window.move({ workspace = 3 }))
-hl.bind(mainMod .. " + SHIFT + 4", hl.dsp.window.move({ workspace = 4 }))
-hl.bind(mainMod .. " + SHIFT + 5", hl.dsp.window.move({ workspace = 5 }))
-hl.bind(mainMod .. " + SHIFT + 6", hl.dsp.window.move({ workspace = 6 }))
-hl.bind(mainMod .. " + SHIFT + 7", hl.dsp.window.move({ workspace = 7 }))
-hl.bind(mainMod .. " + SHIFT + 8", hl.dsp.window.move({ workspace = 8 }))
-hl.bind(mainMod .. " + SHIFT + 9", hl.dsp.window.move({ workspace = 9 }))
-hl.bind(mainMod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = 10 }))
-
--- External Monitor Workspaces (SUPER + ALT + 1..0)
--- Active only when external display is connected and in extend mode
 for i = 1, 10 do
     local key = (i == 10) and "0" or tostring(i)
-    hl.bind(mainMod .. " + ALT + " .. key, hl.dsp.exec_cmd(scripts .. "workspace_action.sh switch " .. key))
-    hl.bind(mainMod .. " + ALT + SHIFT + " .. key, hl.dsp.exec_cmd(scripts .. "workspace_action.sh move " .. key))
+    hl.bind(mainMod .. " + " .. key, function()
+        local base = get_focused_monitor_workspace_base()
+        hl.dispatch(hl.dsp.focus({ workspace = base + i }))
+    end, { description = "focus workspace " .. i .. " on active monitor" })
+
+    hl.bind(mainMod .. " + SHIFT + " .. key, function()
+        local base = get_focused_monitor_workspace_base()
+        hl.dispatch(hl.dsp.window.move({ workspace = base + i }))
+    end, { description = "move window to workspace " .. i .. " on active monitor" })
 end
 
 -- ======================================================

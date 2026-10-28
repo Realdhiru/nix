@@ -113,8 +113,15 @@ cmd_kill() {
     fi
     date +%s%N > "$throttle_lock" 2>/dev/null || true
 
-    if [ -f "$WP_KILLED_FILE" ]; then
-        # TOGGLE BACK ON: Delegate to cmd_set so wallpaper renders on screen BEFORE transparency restores
+    local mode_ctl="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
+    [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
+
+    local is_killed
+    is_killed=$(bash "$mode_ctl" is-active wallpaper-kill 2>/dev/null && echo "true" || echo "false")
+
+    if [ "$is_killed" = "true" ]; then
+        # TOGGLE BACK ON:
+        bash "$mode_ctl" set wallpaper-kill false
         local target=""
         if [ -s "$LAST_TXT" ]; then
             target="$(cat "$LAST_TXT" 2>/dev/null || true)"
@@ -122,38 +129,14 @@ cmd_kill() {
         if [ -n "$target" ] && [ -f "$target" ]; then
             "$BACKEND/set.sh" "$target"
         else
-            rm -f "$WP_KILLED_FILE" "$HOME/.cache/wallpaper_killed"
             cmd_boot
-            local cur_prof
-            cur_prof="$(cat "$DESKTOP_STATE_DIR/power/profile" 2>/dev/null || echo "")"
-            if [ "$cur_prof" != "power-saver" ] && [ ! -f "$STATE_MODES_DIR/gaming_mode" ]; then
-                if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-                    hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
-                    hyprctl reload >/dev/null 2>&1 || true
-                fi
-            fi
-            # Restore terminal translucency
-            bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
         fi
-        [ -x "$state_ctl" ] && bash "$state_ctl" set modes.wallpaperKilled false 2>/dev/null || true
         notify-send -a "Wallpaper" -u low "ON"
         return 0
     fi
 
     # TOGGLE OFF:
-    # 1. Immediately disable compositor blur & shadow and enforce solid windows
-    atomic_write "$WP_KILLED_FILE" "1"
-    rm -f "$HOME/.cache/wallpaper_killed"
-    [ -x "$state_ctl" ] && bash "$state_ctl" set modes.wallpaperKilled true 2>/dev/null || true
-    if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-        hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
-        hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" >/dev/null 2>&1 || true
-    fi
-    # Set terminal solid opacity immediately
-    bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
-    notify-send -a "Wallpaper" -u low "OFF"
-
-    # 2. Preserve wallpaper target file in LAST_TXT
+    # 1. Preserve current wallpaper before killing
     if [ -s "$CURRENT_TXT" ]; then
         local prev_cur
         prev_cur="$(cat "$CURRENT_TXT" 2>/dev/null || true)"
@@ -162,21 +145,13 @@ cmd_kill() {
         fi
     fi
 
-    # 3. Clean daemon teardown (fast check without artificial 100ms sleep)
+    # 2. Engage wallpaper-kill mode
+    bash "$mode_ctl" set wallpaper-kill true
     "$BACKEND/ensure_awww.sh" --stop 2>/dev/null || true
-    local pids
-    pids=$(pidof .mpvpaper-wrapped 2>/dev/null || true)
-    if [ -n "$pids" ]; then
-        for pid in $pids; do kill -15 "$pid" 2>/dev/null || true; done
-        for i in {1..5}; do pidof .mpvpaper-wrapped >/dev/null 2>&1 || break; sleep 0.01; done
-        pids=$(pidof .mpvpaper-wrapped 2>/dev/null || true)
-        if [ -n "$pids" ]; then
-            for pid in $pids; do kill -9 "$pid" 2>/dev/null || true; done
-        fi
-    fi
-    rm -f /tmp/mpv-paper-socket "$HOME/.cache/mpvpaper.pid"
+    pkill -STOP -f "mpvpaper" 2>/dev/null || true
+    notify-send -a "Wallpaper" -u low "OFF"
 
-    # 4. Decoupled neutral theme trigger
+    # 3. Decoupled neutral theme trigger
     THEME_ENGINE="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
     [ ! -x "$THEME_ENGINE" ] && THEME_ENGINE="$HOME/nix/dotfiles/wallust/generate.sh"
     if [ -x "$THEME_ENGINE" ]; then
@@ -195,7 +170,9 @@ cmd_set() {
 # SUBCOMMAND: boot
 # -----------------------------------------------------------------------------
 cmd_boot() {
-    if [ -f "$WP_KILLED_FILE" ]; then
+    local mode_ctl="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
+    [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
+    if bash "$mode_ctl" is-active wallpaper-kill 2>/dev/null; then
         exit 0
     fi
 

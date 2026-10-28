@@ -70,10 +70,16 @@ mkdir -p "$STATE_DIR/mpvpaper" "$CACHE_DIR" "$WALL_STATE_DIR" "$MODES_STATE_DIR"
 
 LOCKFILE="$CACHE_DIR/set_wallpaper.lock"
 exec 8>"$LOCKFILE"
-flock 8
+if [ -n "${FORCE_CYCLE:-}" ]; then
+    flock -n 8 || exit 0
+else
+    flock 8
+fi
 
 WAS_KILLED=0
-if [ -f "$MODES_STATE_DIR/wallpaper_killed" ] || [ -f "$CACHE_DIR/wallpaper_killed" ]; then
+MODE_CTL="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
+[ -f "$MODE_CTL" ] || MODE_CTL="$HOME/.config/hypr/scripts/mode_ctl.sh"
+if [ -x "$MODE_CTL" ] && bash "$MODE_CTL" is-active wallpaper-kill 2>/dev/null; then
     WAS_KILLED=1
 fi
 rm -f "$MODES_STATE_DIR/wallpaper_killed" "$CACHE_DIR/wallpaper_killed"
@@ -223,16 +229,7 @@ exec 8>&- 2>/dev/null || true
 
 # Restore compositor visual transparency after wallpaper is active
 if [ "$WAS_KILLED" -eq 1 ]; then
-    STATE_CTL="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
-    [ -x "$STATE_CTL" ] && bash "$STATE_CTL" set modes.wallpaperKilled false 2>/dev/null || true
-    if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-        CURRENT_PROFILE="$(cat "$POWER_STATE_DIR/profile" 2>/dev/null || echo "")"
-        if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$MODES_STATE_DIR/gaming_mode" ]; then
-            hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
-            hyprctl reload >/dev/null 2>&1 || true
-        fi
-        bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
-    fi
+    [ -x "$MODE_CTL" ] && bash "$MODE_CTL" set wallpaper-kill false 2>/dev/null || true
 fi
 
 # 3. Clean Decoupled Theme Handoff (wallust)
@@ -259,10 +256,6 @@ if [ "$should_run_wallust" -eq 1 ]; then
     fi
 
     (
-        if [ -n "${FORCE_CYCLE:-}" ]; then
-            # Debounce rapid cycling so intermediate wallpapers do not retheme
-            sleep 0.35
-        fi
         THUMB_DIR="$CACHE_DIR/quickshell/wallpaper_picker/thumbs"
         SEED=""
         if [ -f "$THUMB_DIR/$BASENAME.jpg" ]; then

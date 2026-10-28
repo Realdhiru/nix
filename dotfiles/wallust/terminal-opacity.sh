@@ -8,12 +8,15 @@ apply_terminal_opacity() {
     local alacritty_colors="$HOME/.cache/theme/alacritty-colors.toml"
     local power_profile="$(cat "$desktop_state/power/profile" 2>/dev/null || echo "")"
 
-    # Check for Solid Mode triggers: wallpaper killed, gaming mode, or power-saver profile
-    if [ -f "$desktop_state/modes/wallpaper_killed" ] || [ -f "$desktop_state/modes/gaming_mode" ] || [ "$power_profile" = "power-saver" ]; then
+    # Check modes.json computed opacity_solid as single source of truth
+    local modes_json="$desktop_state/modes/modes.json"
+    if [ -f "$modes_json" ] && [ "$(jq -r '.computed.opacity_solid // false' "$modes_json" 2>/dev/null || true)" = "true" ]; then
         opacity="1.0"
     elif [ -f "$state_file" ] && [ "$(jq -r '.modes.wallpaperKilled // false' "$state_file" 2>/dev/null || true)" = "true" ]; then
         opacity="1.0"
     elif [ -f "$state_file" ] && [ "$(jq -r '.modes.gaming // false' "$state_file" 2>/dev/null || true)" = "true" ]; then
+        opacity="1.0"
+    elif [ -f "$desktop_state/modes/wallpaper_killed" ] || [ -f "$desktop_state/modes/gaming_mode" ] || [ "$power_profile" = "power-saver" ]; then
         opacity="1.0"
     elif [ -f "$state_file" ] && [ "$(jq -r '.ui.themeMode // "dark"' "$state_file" 2>/dev/null || true)" = "light" ]; then
         opacity="0.60"

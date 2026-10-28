@@ -290,27 +290,14 @@ cmd_inhibit() {
             ;;
     esac
 
+    local mode_ctl="$SCRIPT_DIR/mode_ctl.sh"
+    [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
+
     if [ "$do_enable" = true ]; then
-        systemctl --user stop coffee-mode 2>/dev/null || true
-        pkill -f "idle-inhibit-toggle" 2>/dev/null || true
-        rm -f "$STATE_FILE"
-
-        systemd-run --user --unit=coffee-mode systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity >/dev/null 2>&1
-
-        if [ -x "$state_ctl" ]; then
-            "$state_ctl" set modes.coffee true 2>/dev/null || true
-        fi
-
+        bash "$mode_ctl" set coffee true 2>/dev/null || true
         notify-send -a "Power" -r 9991 -t 1200 -u low -i "appointment-soon" "Coffee ON"
     else
-        systemctl --user stop coffee-mode 2>/dev/null || true
-        pkill -f "idle-inhibit-toggle" 2>/dev/null || true
-        rm -f "$STATE_FILE"
-
-        if [ -x "$state_ctl" ]; then
-            "$state_ctl" set modes.coffee false 2>/dev/null || true
-        fi
-
+        bash "$mode_ctl" set coffee false 2>/dev/null || true
         notify-send -a "Power" -r 9991 -t 1200 -u low -i "appointment-missed" "Coffee OFF"
     fi
 }
@@ -354,6 +341,15 @@ cmd_profile() {
     # 3. Dynamic vendor hardware CLI hook (dynamically probed; non-ASUS machines skip seamlessly)
     if command -v asusctl >/dev/null 2>&1; then
         asusctl profile set "$asus_prof" >/dev/null 2>&1 || true
+    fi
+
+    # 4. Modes Engine SSOT sync
+    local mode_ctl="$SCRIPT_DIR/mode_ctl.sh"
+    [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
+    if [ "$prof" = "power-saver" ] || [ "$prof" = "quiet" ]; then
+        bash "$mode_ctl" set power-saver true 2>/dev/null || true
+    else
+        bash "$mode_ctl" set power-saver false 2>/dev/null || true
     fi
 }
 

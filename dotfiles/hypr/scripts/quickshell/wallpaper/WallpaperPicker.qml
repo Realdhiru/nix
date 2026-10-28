@@ -1203,8 +1203,6 @@ Item {
                     kill -9 \$p 2>/dev/null || true
                 fi
             done
-            pkill -f "[g]et_ddg_links.py" || true
-            sleep 0.2
             rm -rf "${rawSearchDir}"/* || true
             rm -f "${rawSearchDir}/../search_map.txt" || true
             echo 'run' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control

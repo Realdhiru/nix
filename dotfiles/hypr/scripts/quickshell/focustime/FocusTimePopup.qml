@@ -273,7 +273,7 @@ Item {
         if (window.selectedAppClass === "" && getIsoDate(window.activeDate) === getIsoDate(new Date())) {
             window.parseLiveState();
         } else {
-            let cmd = ["python3", window.scriptsDir + "/get_stats.py", getIsoDate(window.activeDate)];
+            let cmd = [window.scriptsDir + "/get_stats", getIsoDate(window.activeDate)];
             if (window.selectedAppClass !== "") {
                 cmd.push("--app");
                 cmd.push(window.selectedAppClass);
@@ -308,7 +308,7 @@ Item {
                 window.updateFromData(data);
             } else if ((Date.now() - window.liveStaleFallbackAt) > 15000) {
                 window.liveStaleFallbackAt = Date.now();
-                let cmd = ["python3", window.scriptsDir + "/get_stats.py", getIsoDate(new Date())];
+                let cmd = [window.scriptsDir + "/get_stats", getIsoDate(new Date())];
                 cmd.push("--db-dir");
                 cmd.push(Caching.getStateDir("focustime"));
                 statsPoller.command = cmd;

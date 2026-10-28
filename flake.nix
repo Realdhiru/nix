@@ -151,6 +151,108 @@
           mkdir -p "$out"
           exit "$fail"
         '';
+        regression-guards = pkgs.runCommandLocal "regression-guards" { } ''
+          cp -r ${./dotfiles} dotfiles
+          cp -r ${./scripts} scripts
+          fail=0
+
+          echo "Guard 1: hyprctl reload outside reload.sh"
+          while IFS= read -r line; do
+            file=$(printf '%s\n' "$line" | cut -d: -f1)
+            case "$file" in
+              dotfiles/hypr/scripts/reload.sh) ;;
+              *)
+                echo "FAIL: Unauthorized hyprctl reload found in $file"
+                fail=1
+                ;;
+            esac
+          done < <(grep -rn "hyprctl reload" dotfiles/ 2>/dev/null || true)
+
+          echo "Guard 2: sleep in QML files and unauthorized scripts"
+          while IFS= read -r f; do
+            if grep -nE 'sleep[[:space:]]+[0-9]' "$f" 2>/dev/null; then
+              echo "FAIL: Unauthorized sleep found in QML file $f"
+              fail=1
+            fi
+          done < <(find dotfiles/hypr/scripts/quickshell -name '*.qml')
+
+          # Allowed scripts with sleep (hardware/external daemon settle delays or systemd-inhibit sleep infinity):
+          # dotfiles/hypr/scripts/exit.sh
+          # dotfiles/hypr/scripts/fix_audio.sh
+          # dotfiles/hypr/scripts/fuzzel_menu.sh
+          # dotfiles/hypr/scripts/qs_manager.sh
+          # dotfiles/hypr/scripts/quickshell/music/music_info.sh
+          # dotfiles/hypr/scripts/quickshell/music/player_control.sh
+          # dotfiles/hypr/scripts/quickshell/network/bluetooth_panel_logic.sh
+          # dotfiles/hypr/scripts/quickshell/network/bt_agent.sh
+          # dotfiles/hypr/scripts/quickshell/restore_state.sh
+          # dotfiles/hypr/scripts/quickshell/wallpaper/ddg_search.sh
+          # dotfiles/hypr/scripts/reload.sh
+          # dotfiles/hypr/scripts/rotate_display.sh
+          # dotfiles/wallpaper/backend/ddg_search.sh
+          # dotfiles/wallpaper/backend/ensure_awww.sh
+          # dotfiles/wallpaper/backend/set.sh
+          # dotfiles/wallpaper/backend/watcher.sh
+          # scripts/selftest-modes.sh
+          while IFS= read -r line; do
+            f=$(printf '%s\n' "$line" | cut -d: -f1)
+            case "$f" in
+              dotfiles/hypr/scripts/exit.sh|\
+              dotfiles/hypr/scripts/fix_audio.sh|\
+              dotfiles/hypr/scripts/fuzzel_menu.sh|\
+              dotfiles/hypr/scripts/qs_manager.sh|\
+              dotfiles/hypr/scripts/quickshell/music/music_info.sh|\
+              dotfiles/hypr/scripts/quickshell/music/player_control.sh|\
+              dotfiles/hypr/scripts/quickshell/network/bluetooth_panel_logic.sh|\
+              dotfiles/hypr/scripts/quickshell/network/bt_agent.sh|\
+              dotfiles/hypr/scripts/quickshell/restore_state.sh|\
+              dotfiles/hypr/scripts/quickshell/wallpaper/ddg_search.sh|\
+              dotfiles/hypr/scripts/reload.sh|\
+              dotfiles/hypr/scripts/rotate_display.sh|\
+              dotfiles/wallpaper/backend/ddg_search.sh|\
+              dotfiles/wallpaper/backend/ensure_awww.sh|\
+              dotfiles/wallpaper/backend/set.sh|\
+              dotfiles/wallpaper/backend/watcher.sh|\
+              scripts/health-check.sh|\
+              scripts/selftest-modes.sh) ;;
+              *)
+                echo "FAIL: Unauthorized sleep found in $f"
+                fail=1
+                ;;
+            esac
+          done < <(grep -rnE 'sleep[[:space:]]+[0-9]' dotfiles/ scripts/ 2>/dev/null || true)
+
+          echo "Guard 3: Python or Node shebangs in owned codebase"
+          if grep -rnE '^#![[:space:]]*/usr/bin/(env[[:space:]]+)?(python|node)' dotfiles/ scripts/ 2>/dev/null; then
+            echo "FAIL: Python or Node shebang found in owned codebase"
+            fail=1
+          fi
+
+          echo "Guard 4: pkill or systemctl start/stop in QML"
+          while IFS= read -r f; do
+            if grep -nE '(pkill|systemctl[[:space:]]+(start|stop))' "$f" 2>/dev/null; then
+              echo "FAIL: pkill or systemctl start/stop found in $f"
+              fail=1
+            fi
+          done < <(find dotfiles/hypr/scripts/quickshell -name '*.qml')
+
+          echo "Guard 5: sysfs battery reads in QML"
+          while IFS= read -r f; do
+            if grep -n 'sys/class/power_supply' "$f" 2>/dev/null; then
+              echo "FAIL: sysfs battery read found in $f"
+              fail=1
+            fi
+          done < <(find dotfiles/hypr/scripts/quickshell -name '*.qml')
+
+          echo "Guard 6: state paths under ~/.cache"
+          if grep -rnE '~/\.cache/(quickshell/state\.json|modes/|power/profile)' dotfiles/ 2>/dev/null; then
+            echo "FAIL: persistent state path under ~/.cache found"
+            fail=1
+          fi
+
+          mkdir -p "$out"
+          exit "$fail"
+        '';
       };
     };
   };
