@@ -155,7 +155,8 @@ Item {
             return;
         }
         root.hasBattery = true;
-        root.batCapacity = Math.round(d.percentage);
+        let pct = d.percentage <= 1.0 ? Math.round(d.percentage * 100) : Math.round(d.percentage);
+        root.batCapacity = Math.max(0, Math.min(100, pct));
 
         let state = d.state;
         let stat = "Unknown";
@@ -203,6 +204,8 @@ Item {
 
     Connections {
         target: UPower.displayDevice
+        function onReadyChanged() { root._updateBatteryTelemetry(); }
+        function onIsPresentChanged() { root._updateBatteryTelemetry(); }
         function onEnergyChanged() { root._updateBatteryTelemetry(); }
         function onChangeRateChanged() { root._updateBatteryTelemetry(); }
         function onTimeToFullChanged() { root._updateBatteryTelemetry(); }
