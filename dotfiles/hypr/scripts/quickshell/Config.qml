@@ -475,6 +475,28 @@ Item {
     }
 
     FileView {
+        id: wpKilledWatcher
+        path: Caching.wallpaperKilledFile
+        watchChanges: true
+        onLoadedChanged: config.updateSolidMode()
+        onFileChanged: {
+            wpKilledWatcher.reload();
+            config.updateSolidMode();
+        }
+    }
+
+    FileView {
+        id: gamingModeWatcher
+        path: Caching.gamingModeFile
+        watchChanges: true
+        onLoadedChanged: config.updateSolidMode()
+        onFileChanged: {
+            gamingModeWatcher.reload();
+            config.updateSolidMode();
+        }
+    }
+
+    FileView {
         id: powerProfileWatcher
         path: Caching.powerProfileFile
         watchChanges: true
@@ -499,8 +521,8 @@ Item {
     }
 
     function updateSolidMode() {
-        let wpKilled = false;
-        let gamingMode = false;
+        let wpKilled = wpKilledWatcher.loaded;
+        let gamingMode = gamingModeWatcher.loaded;
         let profile = (powerProfileWatcher.loaded ? (powerProfileWatcher.text() || "").trim() : "");
         if (stateJsonWatcher.loaded) {
             let stateText = stateJsonWatcher.text() || "";

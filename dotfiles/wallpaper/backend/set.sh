@@ -229,6 +229,7 @@ if [ "$WAS_KILLED" -eq 1 ]; then
         CURRENT_PROFILE="$(cat "$POWER_STATE_DIR/profile" 2>/dev/null || echo "")"
         if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$MODES_STATE_DIR/gaming_mode" ]; then
             hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+            hyprctl reload >/dev/null 2>&1 || true
         fi
         bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
     fi

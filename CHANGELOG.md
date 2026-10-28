@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-10-28 — Universal Mode Toggle & Deapply Fixes (Gaming, Wallpaper Kill & Power-Saver)
+
+- Synchronized `rules.lua` with `wallpaper_killed` and `wallpaperKilled` state so windows enforce 1.0 opacity under all solid modes and cleanly restore transparent per-app rules on deapplication.
+- Updated `toggle_gaming_mode.sh` and `wallpaper.sh` to deterministically preserve or restore compositor flags (`blur`, `shadow`, `animations`, `direct_scanout`, `vrr`, `tearing`) when deapplying, even across overlapping mode states.
+- Enhanced `Config.qml` with direct `wpKilledWatcher` and `gamingModeWatcher` marker-file watchers for instantaneous frame-0 solid mode updates.
+
+
 ## 2026-10-28 — Battery Telemetry Single Source of Truth & Fast MacBook-Style Convergence
 
 - Unified battery remaining runtime across Sidebar and Battery Popup by removing duplicate `sysPoller` in `BatteryPopup.qml` and establishing pure reactive bindings to `SysData.batHours` / `SysData.batMins` / `SysData.batRuntimeText`.

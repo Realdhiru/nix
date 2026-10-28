@@ -124,8 +124,13 @@ cmd_kill() {
         else
             rm -f "$WP_KILLED_FILE" "$HOME/.cache/wallpaper_killed"
             cmd_boot
-            if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-                hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+            local cur_prof
+            cur_prof="$(cat "$DESKTOP_STATE_DIR/power/profile" 2>/dev/null || echo "")"
+            if [ "$cur_prof" != "power-saver" ] && [ ! -f "$STATE_MODES_DIR/gaming_mode" ]; then
+                if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+                    hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+                    hyprctl reload >/dev/null 2>&1 || true
+                fi
             fi
             # Restore terminal translucency
             bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true
@@ -136,12 +141,13 @@ cmd_kill() {
     fi
 
     # TOGGLE OFF:
-    # 1. Immediately disable compositor blur & shadow (frame-0 instant feedback without wildcard rules)
+    # 1. Immediately disable compositor blur & shadow and enforce solid windows
     atomic_write "$WP_KILLED_FILE" "1"
     rm -f "$HOME/.cache/wallpaper_killed"
     [ -x "$state_ctl" ] && bash "$state_ctl" set modes.wallpaperKilled true 2>/dev/null || true
     if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
         hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+        hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" >/dev/null 2>&1 || true
     fi
     # Set terminal solid opacity immediately
     bash "$HOME/nix/dotfiles/wallust/terminal-opacity.sh" --reload 2>/dev/null || true

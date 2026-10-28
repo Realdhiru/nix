@@ -21,9 +21,17 @@ if [ -f "$STATE_FILE" ] || [ "$IS_GAMING" = "true" ]; then
     # Reset compositor gaming flags to defaults
     hyprctl eval "hl.config({ render = { direct_scanout = 0 }, misc = { vrr = 0 }, general = { allow_tearing = false } })" >/dev/null 2>&1 || true
 
-    # Only restore blur, shadow, and window opacity if not in power-saver and wallpaper not killed
     CURRENT_PROFILE="$(cat "$DESKTOP_STATE_DIR/power/profile" 2>/dev/null || echo "balanced")"
-    if [ "$CURRENT_PROFILE" != "power-saver" ] && [ ! -f "$DESKTOP_STATE_DIR/modes/wallpaper_killed" ]; then
+    if [ "$CURRENT_PROFILE" = "power-saver" ]; then
+        # Maintain power-saver visual flags
+        hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = false }, decoration = { blur = { enabled = false }, shadow = { enabled = false } }, animations = { enabled = false } })" >/dev/null 2>&1 || true
+        hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" >/dev/null 2>&1 || true
+    elif [ -f "$DESKTOP_STATE_DIR/modes/wallpaper_killed" ]; then
+        # Maintain wallpaper-killed visual flags (solid opacity, no blur/shadow, but animations ON)
+        hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } }, animations = { enabled = true } })" >/dev/null 2>&1 || true
+        hyprctl eval "hl.window_rule({ match = { class = '.*' }, opacity = '1.0 override 1.0 override' })" >/dev/null 2>&1 || true
+    else
+        # Full normal desktop: restore blur, shadow, animations, and reload window rules
         hyprctl eval "hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true }, active_opacity = 1.0, inactive_opacity = 1.0 }, animations = { enabled = true } })" >/dev/null 2>&1 || true
         hyprctl reload >/dev/null 2>&1 || true
     fi
