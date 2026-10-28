@@ -116,21 +116,21 @@ cleanup_residue() {
     fi
 
     # 5. Check if currently active wallpaper was deleted or points to previews
-    if [ ! -f "$STATE_MODES_DIR/wallpaper_killed" ] && [ ! -f "$HOME/.cache/wallpaper_killed" ] && [ -f "$CURRENT_TXT" ]; then
+    if [ ! -f "$STATE_MODES_DIR/wallpaper_killed" ] && [ -f "$CURRENT_TXT" ]; then
         local cur_path
         cur_path="$(cat "$CURRENT_TXT" 2>/dev/null || echo "")"
         if [ -n "$cur_path" ] && [ ! -f "$cur_path" ] && [[ "$cur_path" != *"/previews/"* ]]; then
             # Debounce check to avoid racing against active wallpaper switchers
             sleep 0.8
             cur_path="$(cat "$CURRENT_TXT" 2>/dev/null || echo "")"
-            if [ -n "$cur_path" ] && [ ! -f "$cur_path" ] && [ ! -f "$STATE_MODES_DIR/wallpaper_killed" ] && [ ! -f "$HOME/.cache/wallpaper_killed" ]; then
+            if [ -n "$cur_path" ] && [ ! -f "$cur_path" ] && [ ! -f "$STATE_MODES_DIR/wallpaper_killed" ]; then
                 "$SCRIPT_DIR/../wallpaper.sh" boot &
             fi
         fi
     fi
 
-    # 6. Clean last and previous wallpaper caches if deleted
-    for f in "$STATE_WALL_DIR/last_wallpaper.txt" "$HOME/.cache/previous_wallpaper.txt"; do
+    # 6. Clean last wallpaper cache if deleted
+    for f in "$STATE_WALL_DIR/last_wallpaper.txt"; do
         if [ -f "$f" ]; then
             local p
             p="$(cat "$f" 2>/dev/null || echo "")"

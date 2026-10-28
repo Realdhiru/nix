@@ -160,7 +160,6 @@ if [ "$GAMING" = "true" ]; then
 else
     rm -f "$MODES_DIR/gaming_mode"
 fi
-rm -f "$HOME/.cache/gaming_mode"
 
 # 4. Wallpaper Killed Flag Synchronization
 if [ "$WP_KILLED" = "true" ]; then
@@ -168,7 +167,6 @@ if [ "$WP_KILLED" = "true" ]; then
 else
     rm -f "$MODES_DIR/wallpaper_killed"
 fi
-rm -f "$HOME/.cache/wallpaper_killed"
 
 # 5. DND Synchronization
 mkdir -p "$STATE_DIR/dnd"

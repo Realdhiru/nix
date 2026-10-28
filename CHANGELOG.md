@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-10-28 — Desktop Repair Pass v3 (`desktop-v3`)
+
+- **Notification Latency & Coffee Toggle**: Parallelized mode script notifications before slow work and streamlined `mode_ctl.sh` execution to eliminate coffee toggle delay; unified notification tokens across TopBar and SideBar.
+- **Battery Telemetry Unification**: Unified battery capacity, icon, status, runtime, and power draw across TopBar, SideBar, and BatteryPopup via `SysData` SSOT properties; resolved orphan burst call.
+- **Full Mode Matrix Permutations**: Extended `scripts/selftest-modes.sh` to test all 10 pairs and 10 triples in both forward and reverse off-orders with 100% baseline assertions passed.
+- **AC Trigger & Rule Path**: Verified dynamic refresh-rate-by-power-source rule path via Lua function (60Hz on battery / 120Hz on AC) and created `scripts/test-ac-trigger.sh`.
+- **Flake Check Regression Guards**: Expanded `regression-guards` in `flake.nix` to catch settling bursts/retries, symlink shims, hardcoded system paths, and `.cache` state writes; added persistent rules to `AGENTS.md`.
+
 ## 2026-10-28 — Desktop Repair Pass & Rule Enforcement (`desktop-v2`)
 
 - **Revert Rule Violations**: Removed all `hyprctl reload` invocations from `set.sh`, `wallpaper.sh`, `SysData.qml`, and `toggle_gaming_mode.sh`, making solid mode an order-independent state read by `rules.lua` without compositor flushing.

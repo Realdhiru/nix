@@ -98,7 +98,8 @@ cmd_clean() {
 # -----------------------------------------------------------------------------
 cmd_kill() {
     local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
-    local throttle_lock="$HOME/.cache/wallpaper_kill_throttle"
+    mkdir -p "$STATE_WALL_DIR"
+    local throttle_lock="$STATE_WALL_DIR/wallpaper_kill_throttle"
 
     # Throttle rapid keybind spam (protects Intel GPU ring buffer from sub-180ms debounce chattering)
     if [ -f "$throttle_lock" ]; then

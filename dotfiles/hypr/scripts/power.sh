@@ -18,8 +18,8 @@ CMD="${1:-lock}"
 shift || true
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOCK_QML="$HOME/.config/hypr/scripts/quickshell/Lock.qml"
-STATE_FILE="$HOME/.cache/idle_inhibit.pid"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+STATE_FILE="$DESKTOP_STATE_DIR/power/idle_inhibit.pid"
 
 is_locked() {
     # Check for active hyprlock
@@ -214,7 +214,7 @@ cmd_lid() {
             fi
 
             # 5. Apply TLP power-saver (caps package power <10W while keeping balanced fan profile)
-            sudo /run/current-system/sw/bin/tlp power-saver >/dev/null 2>&1 &
+            sudo tlp power-saver >/dev/null 2>&1 &
             ;;
         open)
             # 1. Immediate DPMS wake
@@ -242,7 +242,7 @@ cmd_lid() {
                 fi
 
                 # Restore TLP profile
-                sudo /run/current-system/sw/bin/tlp start >/dev/null 2>&1 || true
+                sudo tlp start >/dev/null 2>&1 || true
             ) >/dev/null 2>&1 &
             ;;
         *)
@@ -328,8 +328,8 @@ cmd_profile() {
     esac
 
     # 1. Universal TLP hardware authority
-    if [ -x /run/current-system/sw/bin/tlp ]; then
-        sudo /run/current-system/sw/bin/tlp "$tlp_cmd" >/dev/null 2>&1 || true
+    if command -v tlp >/dev/null 2>&1; then
+        sudo tlp "$tlp_cmd" >/dev/null 2>&1 || true
     fi
 
     # 2. Universal Linux Kernel ACPI Platform Profile (/sys/firmware/acpi/platform_profile)

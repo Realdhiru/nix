@@ -38,8 +38,15 @@ In standard `hyprland.conf`, you cannot evaluate conditions based on filesystem 
 ```lua
 -- Dynamically determine if windows should be opaque:
 local function is_solid_mode()
-    local state = read_cache_file("state.json")
-    return state.gaming or state.wallpaper_killed or state.profile == "power-saver"
+    local f = io.open(desktop_state .. "/modes/modes.json", "r")
+    if f then
+        local content = f:read("*a")
+        f:close()
+        if content and content:match('"opacity_solid"%s*:%s*true') then
+            return true
+        end
+    end
+    return false
 end
 
 if is_solid_mode() then

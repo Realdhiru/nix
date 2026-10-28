@@ -214,7 +214,9 @@
               dotfiles/wallpaper/backend/set.sh|\
               dotfiles/wallpaper/backend/watcher.sh|\
               scripts/health-check.sh|\
-              scripts/selftest-modes.sh) ;;
+              scripts/measure-notif-latency.sh|\
+              scripts/selftest-modes.sh|\
+              scripts/test-ac-trigger.sh) ;;
               *)
                 echo "FAIL: Unauthorized sleep found in $f"
                 fail=1
@@ -244,8 +246,33 @@
             fi
           done < <(find dotfiles/hypr/scripts/quickshell -name '*.qml')
 
-          echo "Guard 6: state paths under ~/.cache"
-          if grep -rnE '~/\.cache/(quickshell/state\.json|modes/|power/profile)' dotfiles/ 2>/dev/null; then
+          echo "Guard 6: bursts or retries for state settling"
+          while IFS= read -r line; do
+            echo "FAIL: State settling burst/retry found: $line"
+            fail=1
+          done < <(grep -rnE '(batterySettleTimer|_triggerBatteryBurst|settleTimer)' dotfiles/ scripts/ 2>/dev/null || true)
+
+          echo "Guard 7: symlink shims in desktop scripts"
+          while IFS= read -r line; do
+            f=$(printf '%s\n' "$line" | cut -d: -f1)
+            case "$f" in
+              dotfiles/wallpaper/backend/thumbnail.sh|\
+              scripts/health-check.sh) ;;
+              *)
+                echo "FAIL: Symlink shim found in $f: $line"
+                fail=1
+                ;;
+            esac
+          done < <(grep -rnE 'ln -s' dotfiles/ scripts/ 2>/dev/null || true)
+
+          echo "Guard 8: hardcoded /run/current-system/sw/bin/* paths in dotfiles"
+          while IFS= read -r line; do
+            echo "FAIL: Hardcoded system path found in dotfiles: $line"
+            fail=1
+          done < <(grep -rnE '/run/current-system/sw/bin' dotfiles/ 2>/dev/null || true)
+
+          echo "Guard 9: persistent state paths under ~/.cache"
+          if grep -rnE '(\~|\$HOME)/\.cache/(quickshell/state\.json|modes/|power/profile|idle_inhibit|wallpaper_kill_throttle|gaming_mode|wallpaper_killed)' dotfiles/ 2>/dev/null; then
             echo "FAIL: persistent state path under ~/.cache found"
             fail=1
           fi

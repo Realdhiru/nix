@@ -15,9 +15,7 @@ mkdir -p "$MODES_DIR"
 exec 200>"$LOCK_FILE"
 flock 200
 
-# Cleanup legacy marker files
-rm -f "$MODES_DIR/gaming_mode" "$MODES_DIR/wallpaper_killed" "$MODES_DIR/saver_killed_wp" \
-      "$HOME/.cache/gaming_mode" "$HOME/.cache/wallpaper_killed" 2>/dev/null || true
+rm -f "$MODES_DIR/gaming_mode" "$MODES_DIR/wallpaper_killed" "$MODES_DIR/saver_killed_wp" 2>/dev/null || true
 
 # Initialize modes.json if absent or corrupted
 if [ ! -s "$MODES_JSON" ] || ! jq empty "$MODES_JSON" 2>/dev/null; then

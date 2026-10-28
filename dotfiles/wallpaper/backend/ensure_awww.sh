@@ -31,7 +31,7 @@ esac
 
 # If wallpaper is killed, do not spawn or restore awww-daemon unless explicitly stopping
 DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
-if [ "$STOP" -eq 0 ] && ([ -f "$DESKTOP_STATE_DIR/modes/wallpaper_killed" ] || [ -f "$HOME/.cache/wallpaper_killed" ]); then
+if [ "$STOP" -eq 0 ] && [ -f "$DESKTOP_STATE_DIR/modes/wallpaper_killed" ]; then
   exit 0
 fi
 
