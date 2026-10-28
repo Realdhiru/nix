@@ -48,7 +48,7 @@ Item {
         if (!t) { root.coffeeActive = false; return; }
         try {
             let d = JSON.parse(t);
-            root.coffeeActive = !!(d.modes && d.modes.coffee);
+            root.coffeeActive = !!(d.active && d.active.coffee);
         } catch(e) {
             root.coffeeActive = false;
         }
@@ -61,7 +61,7 @@ Item {
 
     FileView {
         id: coffeeStateView
-        path: Caching.stateJsonFile
+        path: Caching.modesJsonFile
         watchChanges: true
         onLoadedChanged: root.syncCoffeeState()
         onTextChanged: root.syncCoffeeState()
@@ -325,6 +325,13 @@ Item {
         return root._fmtRuntime(rem, charging);
     }
 
+    readonly property real batPowerWatts: {
+        if (!root.hasBattery) return 0.0;
+        let d = UPower.displayDevice;
+        if (!d) return 0.0;
+        return Math.round(Math.abs(d.changeRate) * 10) / 10;
+    }
+
     // Event-driven direct sysfs reader for ACPI platform_profile (replaces power_state_watcher.sh & subshell leaks)
     Process {
         id: platformProfileProc
@@ -520,9 +527,6 @@ Item {
         Quickshell.execDetached(["sh", "-c", "echo '" + name + "' > " + Caching.powerProfileFile + ".tmp && mv -f " + Caching.powerProfileFile + ".tmp " + Caching.powerProfileFile + "; bash $HOME/.config/hypr/scripts/quickshell/state_ctl.sh set power.profile '" + name + "'"]);
 
         root._applyVisualOverrides(name);
-
-        // Instantaneous battery recalculation and fast converge burst on profile switch
-        root._triggerBatteryBurst();
 
         let tlpCmd = (name === "performance") ? "performance" : (name === "power-saver") ? "power-saver" : "balanced";
         Quickshell.execDetached(["bash", "-c", "$HOME/.config/hypr/scripts/power.sh profile " + tlpCmd]);

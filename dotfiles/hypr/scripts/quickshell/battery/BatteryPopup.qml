@@ -674,25 +674,60 @@ Item {
                                     }
                                 }
 
-                                Text {
+                                RowLayout {
                                     Layout.alignment: Qt.AlignHCenter
-                                    font.family: "JetBrains Mono"
-                                    font.weight: Font.Bold
-                                    font.pixelSize: window.s(13)
-                                    
-                                    color: window.isCharging 
-                                            ? Qt.tint(window.primary, Qt.rgba(1, 1, 1, parent.textPulse * 0.4)) 
-                                            : (centralCore.isDangerState ? Qt.tint(window.red, Qt.rgba(1, 1, 1, parent.textPulse * 0.3)) : window.subtext0)
-                                    
-                                    text: (window.batStatus === "Not charging" && window.isCharging) ? "CHARGED" : window.batStatus.toUpperCase()
-                                    Behavior on color { ColorAnimation { duration: 300 } }
+                                    spacing: window.s(8)
+
+                                    Text {
+                                        font.family: "JetBrains Mono"
+                                        font.weight: Font.Bold
+                                        font.pixelSize: window.s(13)
+                                        
+                                        color: window.isCharging 
+                                                ? Qt.tint(window.primary, Qt.rgba(1, 1, 1, parent.textPulse * 0.4)) 
+                                                : (centralCore.isDangerState ? Qt.tint(window.red, Qt.rgba(1, 1, 1, parent.textPulse * 0.3)) : window.subtext0)
+                                        
+                                        text: (window.batStatus === "Not charging" && window.isCharging) ? "CHARGED" : window.batStatus.toUpperCase()
+                                        Behavior on color { ColorAnimation { duration: 300 } }
+                                    }
+
+                                    Rectangle {
+                                        visible: SysData.coffeeActive
+                                        radius: window.s(4)
+                                        color: Qt.rgba(window.peach.r, window.peach.g, window.peach.b, 0.2)
+                                        border.color: window.peach
+                                        border.width: 1
+                                        implicitWidth: coffeeRow.implicitWidth + window.s(8)
+                                        implicitHeight: window.s(18)
+
+                                        Row {
+                                            id: coffeeRow
+                                            anchors.centerIn: parent
+                                            spacing: window.s(3)
+                                            Text {
+                                                text: "󰛊"
+                                                font.family: "Iosevka Nerd Font"
+                                                font.pixelSize: window.s(11)
+                                                color: window.peach
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                            Text {
+                                                text: "COFFEE"
+                                                font.family: "JetBrains Mono"
+                                                font.weight: Font.Black
+                                                font.pixelSize: window.s(9)
+                                                color: window.peach
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                        }
+                                    }
                                 }
 
                                 RowLayout {
                                     Layout.alignment: Qt.AlignHCenter
                                     Layout.topMargin: window.s(4)
                                     spacing: window.s(6)
-                                    visible: (window.upHours > 0 || window.upMins > 0)
+                                    visible: (window.upHours > 0 || window.upMins > 0) || SysData.batPowerWatts > 0
 
                                     Rectangle {
                                         radius: window.s(6)
@@ -708,6 +743,7 @@ Item {
                                             spacing: window.s(4)
 
                                             Text {
+                                                visible: (window.upHours > 0 || window.upMins > 0)
                                                 text: (window.upHours > 0 ? (window.upHours + "h " + window.upMins + "m") : (window.upMins + "m"))
                                                 font.pixelSize: window.s(10)
                                                 font.family: "JetBrains Mono"
@@ -717,7 +753,18 @@ Item {
                                             }
 
                                             Text {
+                                                visible: (window.upHours > 0 || window.upMins > 0)
                                                 text: (window.batStatus === "Charging" || window.isCharging) ? "FULL" : "LEFT"
+                                                font.pixelSize: window.s(9)
+                                                font.family: "JetBrains Mono"
+                                                font.weight: Font.Bold
+                                                color: window.subtext0
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+
+                                            Text {
+                                                visible: SysData.batPowerWatts > 0
+                                                text: ((window.upHours > 0 || window.upMins > 0) ? "• " : "") + SysData.batPowerWatts + "W"
                                                 font.pixelSize: window.s(9)
                                                 font.family: "JetBrains Mono"
                                                 font.weight: Font.Bold
