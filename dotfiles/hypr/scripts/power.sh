@@ -363,11 +363,13 @@ cmd_display() {
     case "$action" in
         off)
             touch "$marker" 2>/dev/null || true
+            brightnessctl -sd asus::kbd_backlight set 0 >/dev/null 2>&1 || true
             hyprctl eval "hl.dispatch(hl.dsp.dpms({action='off'}))" >/dev/null 2>&1 || true
             ;;
         on)
             rm -f "$marker" 2>/dev/null || true
             hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))" >/dev/null 2>&1 || true
+            brightnessctl -rd asus::kbd_backlight >/dev/null 2>&1 || true
             ;;
         toggle)
             local status

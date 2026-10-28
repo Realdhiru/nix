@@ -277,7 +277,8 @@ ShellRoot {
                         return;
                     }
                     screenRoot.hasBattery = true;
-                    screenRoot.batPct = "" + Math.round(d.percentage);
+                    let pct = d.percentage <= 1.0 ? Math.round(d.percentage * 100) : Math.round(d.percentage);
+                    screenRoot.batPct = "" + Math.max(0, Math.min(100, pct));
                     let state = d.state;
                     let stat = "Unknown";
                     if (state === 1) stat = "Charging";
@@ -293,6 +294,8 @@ ShellRoot {
 
                 Connections {
                     target: UPower.displayDevice
+                    function onReadyChanged() { screenRoot.syncLockBattery(); }
+                    function onIsPresentChanged() { screenRoot.syncLockBattery(); }
                     function onPercentageChanged() { screenRoot.syncLockBattery(); }
                     function onStateChanged() { screenRoot.syncLockBattery(); }
                 }
@@ -740,6 +743,12 @@ ShellRoot {
                                         oldText = "";
                                         passModel.clear();
                                         lockUI.failed = false;
+                                        event.accepted = true;
+                                    } else if (event.key === Qt.Key_Space && text.length === 0) {
+                                        // Ignore leading Space used to wake display so it does not corrupt password
+                                        event.accepted = true;
+                                    } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && text.length === 0) {
+                                        // Ignore Enter on empty to prevent spurious failed shake/flash
                                         event.accepted = true;
                                     }
                                 }
