@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-10-28 — Desktop Repair Pass v4 (`desktop-v4`)
+
+- **Brave Window Rules**: Removed `min_size` constraint from `rules.lua` while keeping picture-in-picture opaque, allowing Brave windows to shrink smoothly without artificial size floors.
+- **Mode Exclusivity Matrix**: Unified mode conflicts (`power-saver` vs `gaming`/`wallpaper-kill`) in a single conflict matrix inside `mode_ctl.sh`, blocking conflicting activations with a standardized notification and preserving state baselines across order-independent toggles.
+- **Network Widget Device List & Motion**: Restored full decorative animation suite in `NetworkPopup.qml` with scene-graph strand pulses and strict popup-visibility gating; stabilized WiFi and Bluetooth device lists using keyed in-place updates, no re-sorting while visible, and displaced ListView transitions.
+- **Audio Physical Sink Mute & Bluetooth Broadcast Restoration**: Synchronized endpoint mute state to physical hardware sinks (`wpctl set-mute`) in `osd.sh` while keeping 10-band EQ at unity gain; recorded pre-broadcast active links and ensured single Bluetooth output audio routing persists cleanly when broadcast mode is toggled off.
+- **KDE Connect Lifecycle & Single-Flight Lock**: Hardened `kdeconnect_toggle.sh` with non-blocking `flock` and immediate notifications, ensuring clean synchronous teardown of daemons/services and idempotent on-demand starts.
+- **Theme Palette Revival & Qt Menu Contrast**: Restored dynamic Wallust color generation upon wallpaper unkill revival in `mode_ctl.sh`, linked `qt6ct` plugins into `quickshellWrapped`, and added explicit high-contrast disabled and separator styles in `qt-style.qss`.
+
 ## 2026-10-28 — Desktop Repair Pass v3 (`desktop-v3`)
 
 - **Notification Latency & Coffee Toggle**: Parallelized mode script notifications before slow work and streamlined `mode_ctl.sh` execution to eliminate coffee toggle delay; unified notification tokens across TopBar and SideBar.
