@@ -6,34 +6,34 @@
     --background-secondary-alt: #17171C;
     --background-modifier-border: #212126;
     --background-modifier-border-hover: #303034;
-    --background-modifier-border-focus: #243BE6;
+    --background-modifier-border-focus: #6E779B;
     --background-modifier-form-field: #0D0D12;
     
     --text-normal: #F4F4F6;
-    --text-muted: #CECED5;
-    --text-faint: #ADAEB8;
-    --text-accent: #243BE6;
-    --text-accent-hover: #CECED5;
+    --text-muted: #CECFD5;
+    --text-faint: #ADAFB8;
+    --text-accent: #6E779B;
+    --text-accent-hover: #CECFD5;
     
     --interactive-normal: #0D0D12;
     --interactive-hover: #17171C;
-    --interactive-accent: #243BE6;
-    --interactive-accent-hover: #CECED5;
+    --interactive-accent: #6E779B;
+    --interactive-accent-hover: #CECFD5;
     
-    --text-selection: #243BE655;
+    --text-selection: #6E779B55;
     
     /* Headings & Links */
-    --link-color: #243BE6;
-    --link-color-hover: #CECED5;
-    --h1-color: #243BE6;
-    --h2-color: #BF5F61;
-    --h3-color: #914245;
-    --h4-color: #4EA4D5;
-    --h5-color: #243BE6;
-    --h6-color: #CECED5;
+    --link-color: #6E779B;
+    --link-color-hover: #CECFD5;
+    --h1-color: #6E779B;
+    --h2-color: #7F5660;
+    --h3-color: #836F80;
+    --h4-color: #707487;
+    --h5-color: #6E779B;
+    --h6-color: #CECFD5;
 
     /* Graph View Elements */
-    --graph-node: #243BE6;
+    --graph-node: #6E779B;
     --graph-node-focused: #F4F4F6;
     --graph-line: #212126;
 }
@@ -48,15 +48,15 @@
     --color-base-40: #303034;
     --color-base-50: #3F3F43;
     --color-base-60: #4F4F52;
-    --color-base-70: #ADAEB8;
+    --color-base-70: #ADAFB8;
     --color-base-100: #F4F4F6;
     
-    --color-red: #866F85;
-    --color-orange: #4EA4D5;
-    --color-yellow: #4482A5;
-    --color-green: #4674BF;
-    --color-cyan: #BF5F61;
-    --color-blue: #914245;
-    --color-purple: #243BE6;
-    --color-pink: #E22DA7;
+    --color-red: #474A58;
+    --color-orange: #707487;
+    --color-yellow: #626674;
+    --color-green: #60525D;
+    --color-cyan: #7F5660;
+    --color-blue: #836F80;
+    --color-purple: #6E779B;
+    --color-pink: #717895;
 }
