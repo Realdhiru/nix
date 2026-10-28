@@ -141,7 +141,7 @@ hl.window_rule({ match = { class = "^(steam)$", title = "^(Steam Settings)$" }, 
 -- ======================================================
 
 hl.window_rule({ match = { class = "^(mpv)$" }, idle_inhibit = "focus" })
-hl.window_rule({ match = { class = "^(brave-youtube\\.com__-youtube|youtube)$" }, idle_inhibit = "focus", opacity = "1.0 override 1.0 override" })
+hl.window_rule({ match = { class = "^(brave-youtube\\.com__-youtube|youtube)$" }, idle_inhibit = "focus", opacity = "1.0 override 1.0 override", min_size = { 426, 240 } })
 
 -- ======================================================
 -- Office Suites (Solid Opacity to prevent XWayland/CEF buffer drops)
