@@ -9,10 +9,11 @@ set -uo pipefail
 TARGET_OUTPUTS=""
 WALL=""
 TRANS_TYPE="${AWWW_TRANSITION:-fade}"
-TRANS_DURATION="${AWWW_TRANSITION_DURATION:-0.3}"
+TRANS_DURATION="${AWWW_TRANSITION_DURATION:-0.15}"
 TRANS_FPS="${AWWW_TRANSITION_FPS:-120}"
 TRANS_BEZIER="${AWWW_TRANSITION_BEZIER:-.1,.9,.2,1}"
 
+POS_ARGS=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -o|--outputs)
@@ -24,16 +25,32 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
-            if [ -z "$WALL" ]; then
-                WALL="$1"
-            fi
+            POS_ARGS+=("$1")
             shift
             ;;
     esac
 done
 
+if [ "${#POS_ARGS[@]}" -gt 0 ]; then
+    WALL="${POS_ARGS[0]}"
+fi
+if [ "${#POS_ARGS[@]}" -gt 1 ]; then
+    TRANS_TYPE="${POS_ARGS[1]}"
+fi
+if [ "${#POS_ARGS[@]}" -gt 2 ]; then
+    TRANS_DURATION="${POS_ARGS[2]}"
+fi
+if [ "${#POS_ARGS[@]}" -gt 3 ]; then
+    TRANS_FPS="${POS_ARGS[3]}"
+fi
+
+if [ -n "${FORCE_CYCLE:-}" ]; then
+    TRANS_TYPE="none"
+    TRANS_DURATION="0.0"
+fi
+
 if [ -z "$WALL" ]; then
-    echo "Usage: $0 [--outputs <name>] <path-to-wallpaper>" >&2
+    echo "Usage: $0 [--outputs <name>] <path-to-wallpaper> [trans_type] [duration] [fps]" >&2
     exit 1
 fi
 
@@ -157,15 +174,22 @@ else
     fi
 
     if command -v awww >/dev/null 2>&1; then
-        AWWW_ARGS=(
-            --resize crop
-            --transition-type "$TRANS_TYPE"
-            --transition-step 255
-            --transition-duration "$TRANS_DURATION"
-            --transition-fps "$TRANS_FPS"
-            --transition-bezier "$TRANS_BEZIER"
-            --filter Bilinear
-        )
+        if [ "$TRANS_TYPE" = "none" ] || [ "$TRANS_DURATION" = "0.0" ] || [ "$TRANS_DURATION" = "0" ]; then
+            AWWW_ARGS=(
+                --resize crop
+                --transition-type none
+            )
+        else
+            AWWW_ARGS=(
+                --resize crop
+                --transition-type "$TRANS_TYPE"
+                --transition-step 255
+                --transition-duration "$TRANS_DURATION"
+                --transition-fps "$TRANS_FPS"
+                --transition-bezier "$TRANS_BEZIER"
+                --filter Bilinear
+            )
+        fi
         if [ -n "$OUT_JOINED" ]; then
             AWWW_ARGS+=(--outputs "$OUT_JOINED")
         elif [ -n "$TARGET_OUTPUTS" ] && [ "$TARGET_OUTPUTS" != "all" ]; then
@@ -176,18 +200,20 @@ else
         awww img "${AWWW_ARGS[@]}" "$WALL" > /dev/null 2>&1
     fi
 
-    # Now that awww surface has mapped, stop mpvpaper on targeted outputs
-    if [ -n "$TARGET_OUTPUTS" ] && [ "$TARGET_OUTPUTS" != "all" ]; then
-        for out in "${RESOLVED_OUTPUTS[@]}"; do
-            [ -n "$out" ] || continue
-            systemctl --user stop "mpvpaper@$out" 2>/dev/null || true
-            pkill -f "mpvpaper.*$out" 2>/dev/null || true
-            rm -f "$STATE_DIR/mpvpaper/${out}.env"
-        done
-    else
-        systemctl --user stop "mpvpaper@*" 2>/dev/null || true
-        pkill -f "mpvpaper" 2>/dev/null || true
-        rm -rf "$STATE_DIR/mpvpaper"
+    # Now that awww surface has mapped, stop mpvpaper on targeted outputs ONLY if it was actually running
+    if pidof .mpvpaper-wrapped >/dev/null 2>&1 || pgrep -f mpvpaper >/dev/null 2>&1; then
+        if [ -n "$TARGET_OUTPUTS" ] && [ "$TARGET_OUTPUTS" != "all" ]; then
+            for out in "${RESOLVED_OUTPUTS[@]}"; do
+                [ -n "$out" ] || continue
+                systemctl --user stop --no-block "mpvpaper@$out" 2>/dev/null || true
+                pkill -f "mpvpaper.*$out" 2>/dev/null || true
+                rm -f "$STATE_DIR/mpvpaper/${out}.env"
+            done
+        else
+            systemctl --user stop --no-block "mpvpaper@*" 2>/dev/null || true
+            pkill -f "mpvpaper" 2>/dev/null || true
+            rm -rf "$STATE_DIR/mpvpaper"
+        fi
     fi
 fi
 
@@ -232,6 +258,10 @@ if [ "$should_run_wallust" -eq 1 ]; then
     fi
 
     (
+        if [ -n "${FORCE_CYCLE:-}" ]; then
+            # Debounce rapid cycling so intermediate wallpapers do not retheme
+            sleep 0.35
+        fi
         THUMB_DIR="$CACHE_DIR/quickshell/wallpaper_picker/thumbs"
         SEED=""
         if [ -f "$THUMB_DIR/$BASENAME.jpg" ]; then

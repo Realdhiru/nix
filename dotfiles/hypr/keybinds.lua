@@ -209,11 +209,11 @@ hl.bind(mainMod .. " + SHIFT + Down", hl.dsp.window.resize({ x = 0, y = 30, rela
 -- Workspaces
 -- ======================================================
 
-hl.bind(mainMod .. " + CTRL + Right", hl.dsp.focus({ workspace = "r+1" }), { description = "workspace next" })
-hl.bind(mainMod .. " + CTRL + Left", hl.dsp.focus({ workspace = "r-1" }), { description = "workspace previous" })
+hl.bind(mainMod .. " + CTRL + Right", hl.dsp.focus({ workspace = "m+1" }), { description = "workspace next on monitor" })
+hl.bind(mainMod .. " + CTRL + Left", hl.dsp.focus({ workspace = "m-1" }), { description = "workspace previous on monitor" })
 hl.bind(mainMod .. " + CTRL + Down", hl.dsp.focus({ workspace = "empty" }), { description = "nearest empty workspace" })
 
--- Switch
+-- Switch (Internal / Focused Monitor)
 hl.bind(mainMod .. " + 1", hl.dsp.focus({ workspace = 1 }))
 hl.bind(mainMod .. " + 2", hl.dsp.focus({ workspace = 2 }))
 hl.bind(mainMod .. " + 3", hl.dsp.focus({ workspace = 3 }))
@@ -225,7 +225,7 @@ hl.bind(mainMod .. " + 8", hl.dsp.focus({ workspace = 8 }))
 hl.bind(mainMod .. " + 9", hl.dsp.focus({ workspace = 9 }))
 hl.bind(mainMod .. " + 0", hl.dsp.focus({ workspace = 10 }))
 
--- Move
+-- Move (Internal / Focused Monitor)
 hl.bind(mainMod .. " + SHIFT + 1", hl.dsp.window.move({ workspace = 1 }))
 hl.bind(mainMod .. " + SHIFT + 2", hl.dsp.window.move({ workspace = 2 }))
 hl.bind(mainMod .. " + SHIFT + 3", hl.dsp.window.move({ workspace = 3 }))
@@ -236,6 +236,14 @@ hl.bind(mainMod .. " + SHIFT + 7", hl.dsp.window.move({ workspace = 7 }))
 hl.bind(mainMod .. " + SHIFT + 8", hl.dsp.window.move({ workspace = 8 }))
 hl.bind(mainMod .. " + SHIFT + 9", hl.dsp.window.move({ workspace = 9 }))
 hl.bind(mainMod .. " + SHIFT + 0", hl.dsp.window.move({ workspace = 10 }))
+
+-- External Monitor Workspaces (SUPER + ALT + 1..0)
+-- Active only when external display is connected and in extend mode
+for i = 1, 10 do
+    local key = (i == 10) and "0" or tostring(i)
+    hl.bind(mainMod .. " + ALT + " .. key, hl.dsp.exec_cmd(scripts .. "workspace_action.sh switch " .. key))
+    hl.bind(mainMod .. " + ALT + SHIFT + " .. key, hl.dsp.exec_cmd(scripts .. "workspace_action.sh move " .. key))
+end
 
 -- ======================================================
 -- Cursor Zoom (Centered, Stabilized Sensitivity, Balanced Revert)

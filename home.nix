@@ -386,7 +386,7 @@
       Restart = "always";
       RestartSec = 3;
       Environment = [
-        "QS_STATE_FOCUSTIME=%h/.local/state/quickshell/focustime"
+        "QS_STATE_FOCUSTIME=%h/.local/state/desktop/focustime"
         "QS_RUN_FOCUSTIME=%t/quickshell/focustime"
         "PATH=/run/current-system/sw/bin"
       ];

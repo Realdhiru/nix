@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-10-28 — External Monitor Workspace Separation, Center Monitor Widget, FocusTime State Fix & Wallpaper Speedups
+
+- Separated external monitor workspace management: native display uses workspaces 1-10 with monitor-relative arrow shifting (`m+1`/`m-1`), while `SUPER + ALT + 1..0` and `SUPER + ALT + SHIFT + 1..0` manage external display workspaces 11-20 only when an external monitor is connected and extended (`workspace_action.sh`).
+- Centered the monitor popup widget (`WindowRegistry.js`) matching the `focustime` center anchor.
+- Resolved empty Focus Time statistics and history by standardizing database location under `$DESKTOP_STATE_DIR/focustime`, migrating existing history, and aligning daemon/fetcher configs.
+- Accelerated wallpaper applying and removed timed scroll delays: stripped the 300ms cadence timer in `cycle_wallpaper.sh`, added instant `none` transition parsing in `set.sh`, eliminated unnecessary synchronous systemd calls, and debounced intermediate wallust theme generations during rapid cycling.
+
 ## 2026-10-28 — QuickShell Widget Repairs, Layout Preservation & AC Refresh Trigger
 
 - Fixed NetworkPopup Highlight compilation error, SysData battery binding loop, unified wallpaper state paths under `$DESKTOP_STATE_DIR/wallpaper`, preserved internal panel layout position across compositor reloads, and resolved Hyprland instance signature dynamically in AC refresh rate service.

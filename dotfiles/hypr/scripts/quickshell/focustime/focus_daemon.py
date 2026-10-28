@@ -32,21 +32,24 @@ hyprland_connected = False
 _state_lock = threading.Lock()
 
 # Use standardized dynamic paths securely
-DB_DIR = os.environ.get("QS_STATE_FOCUSTIME", os.path.expanduser("~/.local/state/quickshell/focustime"))
+DB_DIR = os.environ.get("QS_STATE_FOCUSTIME", os.path.expanduser("~/.local/state/desktop/focustime"))
 os.makedirs(DB_DIR, exist_ok=True)
 DB_PATH = os.path.join(DB_DIR, "focustime.db")
 
-# Database Migration Fallback
+# Database Migration Fallbacks
+LEGACY_QS_DIR = os.path.expanduser("~/.local/state/quickshell/focustime")
 OLD_DB_DIR = os.path.expanduser("~/.local/share/focustime")
-OLD_DB_BASE = os.path.join(OLD_DB_DIR, "focustime.db")
 
-if not os.path.exists(DB_PATH) and os.path.exists(OLD_DB_BASE):
-    try:
-        # Move the main db and any shm/wal/journal files safely
-        for old_file in glob.glob(OLD_DB_BASE + "*"):
-            shutil.move(old_file, DB_DIR)
-    except Exception:
-        pass
+if not os.path.exists(DB_PATH):
+    for candidate_dir in [LEGACY_QS_DIR, OLD_DB_DIR]:
+        candidate_base = os.path.join(candidate_dir, "focustime.db")
+        if os.path.exists(candidate_base):
+            try:
+                for old_file in glob.glob(candidate_base + "*"):
+                    shutil.move(old_file, DB_DIR)
+                break
+            except Exception:
+                pass
 
 RUN_DIR = os.environ.get("QS_RUN_FOCUSTIME", "/tmp/quickshell/focustime")
 os.makedirs(RUN_DIR, exist_ok=True)

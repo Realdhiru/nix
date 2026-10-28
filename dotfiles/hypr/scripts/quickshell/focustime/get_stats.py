@@ -97,21 +97,24 @@ def main():
     target_date_str = args.date
     app_filter = args.app
     
-    db_dir = args.db_dir if args.db_dir else os.environ.get("QS_STATE_FOCUSTIME", os.path.expanduser("~/.local/state/quickshell/focustime"))
+    db_dir = args.db_dir if args.db_dir else os.environ.get("QS_STATE_FOCUSTIME", os.path.expanduser("~/.local/state/desktop/focustime"))
     db_path = os.path.join(db_dir, "focustime.db")
 
-    # Database Migration Fallback
+    # Database Migration Fallbacks
+    legacy_qs_dir = os.path.expanduser("~/.local/state/quickshell/focustime")
     old_db_dir = os.path.expanduser("~/.local/share/focustime")
-    old_db_base = os.path.join(old_db_dir, "focustime.db")
     
-    if not os.path.exists(db_path) and os.path.exists(old_db_base):
+    if not os.path.exists(db_path):
         os.makedirs(db_dir, exist_ok=True)
-        try:
-            # Move the main db and any shm/wal/journal files safely
-            for old_file in glob.glob(old_db_base + "*"):
-                shutil.move(old_file, db_dir)
-        except Exception:
-            pass
+        for candidate_dir in [legacy_qs_dir, old_db_dir]:
+            candidate_base = os.path.join(candidate_dir, "focustime.db")
+            if os.path.exists(candidate_base):
+                try:
+                    for old_file in glob.glob(candidate_base + "*"):
+                        shutil.move(old_file, db_dir)
+                    break
+                except Exception:
+                    pass
 
     try:
         target_date = date.fromisoformat(target_date_str)

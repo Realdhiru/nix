@@ -190,9 +190,17 @@ function apply_layout(explicit_intent)
                     mon_opts.transform = disp_cfg.transform
                 end
                 hl.monitor(mon_opts)
+                for ws = 11, 20 do
+                    hl.workspace_rule({ workspace = tostring(ws), monitor = name })
+                end
             end
         end
     end
+end
+
+-- Bind primary workspaces 1-10 to the internal panel
+for ws = 1, 10 do
+    hl.workspace_rule({ workspace = tostring(ws), monitor = known_internal_name })
 end
 
 -- Apply on startup

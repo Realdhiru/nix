@@ -19,18 +19,6 @@ if ! flock -n 9; then
     exit 0
 fi
 
-# Enforce consistent 0.3s cadence across all wallpapers while holding the bind
-TS_FILE="$CACHE_DIR/last_cycle_timestamp.txt"
-INTERVAL_NS=300000000
-NOW=$(date +%s%N)
-if [ -f "$TS_FILE" ]; then
-    LAST=$(cat "$TS_FILE" 2>/dev/null || echo 0)
-    DIFF=$((NOW - LAST))
-    if [ "$DIFF" -gt 0 ] && [ "$DIFF" -lt "$INTERVAL_NS" ]; then
-        exit 0
-    fi
-fi
-echo "$NOW" > "$TS_FILE"
 
 # Ensure pre-sorted paths cache exists and is fresh
 if [ -f "$INDEX_FILE" ] && { [ ! -s "$PATHS_FILE" ] || [ "$INDEX_FILE" -nt "$PATHS_FILE" ]; }; then
