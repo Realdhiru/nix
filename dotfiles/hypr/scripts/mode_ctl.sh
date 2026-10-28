@@ -224,6 +224,11 @@ recompute_and_apply() {
                 wp_path="$(cat "$last_wp" 2>/dev/null || true)"
                 if [ -n "$wp_path" ] && [ -f "$wp_path" ]; then
                     command -v awww >/dev/null 2>&1 && awww img "$wp_path" --filter Bilinear >/dev/null 2>&1 || true
+                    local theme_engine="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
+                    [ ! -x "$theme_engine" ] && theme_engine="$HOME/nix/dotfiles/wallust/generate.sh"
+                    if [ -x "$theme_engine" ]; then
+                        "$theme_engine" "$wp_path" >/dev/null 2>&1 &
+                    fi
                 fi
             fi
         fi

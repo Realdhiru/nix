@@ -6,6 +6,7 @@ let
   # for live video wallpapers, so wrap the binary to add its QML dir and
   # multimedia plugin path (libffmpegmediaplugin.so) to the search paths.
   qtmultimedia = pkgs.qt6Packages.qtmultimedia;
+  qt6ct = pkgs.qt6Packages.qt6ct;
   quickshellWrapped = pkgs.symlinkJoin {
     name = "quickshell-wrapped";
     paths = [ pkgs.quickshell ];
@@ -13,7 +14,7 @@ let
     postBuild = ''
       wrapProgram $out/bin/quickshell \
         --prefix NIXPKGS_QT6_QML_IMPORT_PATH ':' "${qtmultimedia}/lib/qt-6/qml" \
-        --prefix QT_PLUGIN_PATH ':' "${qtmultimedia}/lib/qt-6/plugins"
+        --prefix QT_PLUGIN_PATH ':' "${qtmultimedia}/lib/qt-6/plugins:${qt6ct}/lib/qt-6/plugins"
     '';
   };
 in
