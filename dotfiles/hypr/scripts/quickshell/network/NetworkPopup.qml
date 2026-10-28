@@ -164,6 +164,7 @@ Item {
         powerAnimBlocker.restart();
         window.syncModeFromState();
 
+        introState = 1.0;
         if (window.activeMode === "wifi") {
             savedNetworksFetcher.running = true;
             Quickshell.execDetached(["bash", "-c", "nmcli device wifi rescan 2>/dev/null || true"]);
@@ -319,7 +320,7 @@ Item {
     property var coreVisualIndices: [0, 0, 0, 0, 0]
     property int activeCoreCount: 0
     property real smoothedActiveCoreCount: activeCoreCount
-    Behavior on smoothedActiveCoreCount { NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing } }
+    Behavior on smoothedActiveCoreCount { NumberAnimation { duration: 1000; easing.type: Easing.InOutExpo } }
 
     function syncCores() {
         let list = [];
@@ -419,17 +420,93 @@ Item {
 
     property var infoList: []
 
+    ListModel { id: deviceListModel }
+
+    function getItemKey(item) {
+        if (!item) return "";
+        return item.bssid || item.mac || item.id || item.ssid || "";
+    }
+
+    function syncDeviceModel(dataArray) {
+        if (!dataArray || dataArray.length === 0) {
+            deviceListModel.clear();
+            return;
+        }
+
+        let maxCount = Math.min(dataArray.length, 50);
+        let desired = dataArray.slice(0, maxCount);
+        let desiredKeys = {};
+        for (let i = 0; i < desired.length; i++) {
+            let k = getItemKey(desired[i]);
+            if (k) desiredKeys[k] = desired[i];
+        }
+
+        // 1. Remove elements from deviceListModel that are no longer present
+        for (let i = deviceListModel.count - 1; i >= 0; i--) {
+            let currentKey = deviceListModel.get(i).devKey;
+            if (!desiredKeys[currentKey]) {
+                deviceListModel.remove(i);
+            }
+        }
+
+        // 2. Build index lookup for existing items
+        let currentMap = {};
+        for (let i = 0; i < deviceListModel.count; i++) {
+            currentMap[deviceListModel.get(i).devKey] = i;
+        }
+
+        // 3. Update existing items in place, ignore updates that don't change row
+        let props = ["ssid", "mac", "name", "icon", "security", "signal", "action", "isActionable", "cmdStr"];
+        for (let i = 0; i < desired.length; i++) {
+            let d = desired[i];
+            let k = getItemKey(d);
+            if (!k) continue;
+
+            if (currentMap[k] !== undefined) {
+                let idx = currentMap[k];
+                let item = deviceListModel.get(idx);
+                for (let p = 0; p < props.length; p++) {
+                    let prop = props[p];
+                    let val = (prop === "isActionable" || prop === "isInfoNode") ? (!!d[prop]) : (d[prop] !== undefined ? String(d[prop]) : "");
+                    if (item[prop] !== val) {
+                        deviceListModel.setProperty(idx, prop, val);
+                    }
+                }
+            } else {
+                deviceListModel.append({
+                    devKey: k,
+                    id: d.id || k,
+                    ssid: d.ssid || "",
+                    mac: d.mac || "",
+                    name: d.name || d.ssid || k,
+                    icon: d.icon || (window.activeMode === "wifi" ? "󰤨" : "󰂯"),
+                    security: d.security || "",
+                    signal: d.signal || "",
+                    action: d.action || "",
+                    isInfoNode: false,
+                    isActionable: d.isActionable !== undefined ? d.isActionable : false,
+                    cmdStr: d.cmdStr || "",
+                    parentIndex: -1
+                });
+                currentMap[k] = deviceListModel.count - 1;
+            }
+        }
+    }
+
     function refreshOrbitModel(force = false) {
         if (window.isListLocked && !force) return;
-        let dataArray = [];
         if (window.currentConn && window.showInfoView) {
-            dataArray = window.nextInfoList !== null ? window.nextInfoList : window.infoList;
-        } else if (window.activeMode === "wifi") {
-            dataArray = window.nextWifiList !== null ? window.nextWifiList : window.wifiList;
-        } else if (window.activeMode === "bt") {
-            dataArray = window.nextBtList !== null ? window.nextBtList : window.btList;
+            let dataArray = window.nextInfoList !== null ? window.nextInfoList : window.infoList;
+            window.syncModel(orbitListModel, dataArray);
+        } else {
+            let dataArray = [];
+            if (window.activeMode === "wifi") {
+                dataArray = window.nextWifiList !== null ? window.nextWifiList : window.wifiList;
+            } else if (window.activeMode === "bt") {
+                dataArray = window.nextBtList !== null ? window.nextBtList : window.btList;
+            }
+            window.syncDeviceModel(dataArray);
         }
-        window.syncModel(orbitListModel, dataArray);
     }
 
     ListModel { id: orbitListModel }
@@ -564,7 +641,7 @@ Item {
     readonly property bool isLogicMultiState: window.activeMode === "bt" && window.activeCoreCount > 1
 
     property real multiTransitionState: (isLogicMultiState && window.currentPower) ? 1.0 : 0.0
-    Behavior on multiTransitionState { NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing } }
+    Behavior on multiTransitionState { NumberAnimation { duration: 1200; easing.type: Easing.InOutExpo } }
 
     function updateInfoNodes() {
         let nodes = [];
@@ -707,7 +784,21 @@ Item {
                 window.strongestWifiSsid = bestSsid;
             } else { window.strongestWifiSsid = ""; }
 
-            newNetworks.sort((a, b) => a.id.localeCompare(b.id));
+            if (!window.visible || !window.isPopupActive) {
+                newNetworks.sort((a, b) => a.id.localeCompare(b.id));
+            } else {
+                let currentKeys = {};
+                for (let i = 0; i < deviceListModel.count; i++) {
+                    currentKeys[deviceListModel.get(i).devKey] = i;
+                }
+                newNetworks.sort((a, b) => {
+                    let keyA = getItemKey(a);
+                    let keyB = getItemKey(b);
+                    let idxA = currentKeys[keyA] !== undefined ? currentKeys[keyA] : 9999;
+                    let idxB = currentKeys[keyB] !== undefined ? currentKeys[keyB] : 9999;
+                    return (idxA - idxB) || a.id.localeCompare(b.id);
+                });
+            }
 
             if (isNowWifiConn && window.activeMode === "wifi") {
                 newNetworks.unshift({ id: "action_settings", ssid: "Current Device", mac: "", name: "Current Device", icon: "󰒓", security: "", action: "View Info", isInfoNode: false, isActionable: true, cmdStr: "TOGGLE_VIEW", parentIndex: -1 });
@@ -832,7 +923,21 @@ Item {
             }
 
             let newDevices = data.devices ? data.devices : [];
-            newDevices.sort((a, b) => a.id.localeCompare(b.id));
+            if (!window.visible || !window.isPopupActive) {
+                newDevices.sort((a, b) => a.id.localeCompare(b.id));
+            } else {
+                let currentKeys = {};
+                for (let i = 0; i < deviceListModel.count; i++) {
+                    currentKeys[deviceListModel.get(i).devKey] = i;
+                }
+                newDevices.sort((a, b) => {
+                    let keyA = getItemKey(a);
+                    let keyB = getItemKey(b);
+                    let idxA = currentKeys[keyA] !== undefined ? currentKeys[keyA] : 9999;
+                    let idxB = currentKeys[keyB] !== undefined ? currentKeys[keyB] : 9999;
+                    return (idxA - idxB) || a.id.localeCompare(b.id);
+                });
+            }
 
             if (isNowBtConn && window.activeMode === "bt") {
                 newDevices.unshift({ id: "action_settings", ssid: "", mac: "action_settings", name: "Current Device", icon: "󰒓", action: "View Info", isInfoNode: false, isActionable: true, cmdStr: "TOGGLE_VIEW", parentIndex: -1 });
@@ -935,6 +1040,14 @@ Item {
         }
     }
 
+    property real globalOrbitAngle: 0
+    NumberAnimation on globalOrbitAngle {
+        from: 0; to: Math.PI * 2; duration: 200000; loops: Animation.Infinite; running: window.visible && window.isPopupActive && window.currentPower
+    }
+
+    property real introState: 0.0
+    Behavior on introState { NumberAnimation { duration: 1500; easing.type: Easing.OutCubic } }
+
     component LoadingDots : Row {
         spacing: window.s(5)
         property color dotCol: window.text
@@ -945,10 +1058,10 @@ Item {
                 SequentialAnimation on y {
                     loops: Animation.Infinite
                     running: window.visible
-                    PauseAnimation { duration: index * Motion.fadeMs }
-                    NumberAnimation { from: 0; to: window.s(-6); duration: Motion.moveMs; easing.type: Motion.moveEasing }
-                    NumberAnimation { from: window.s(-6); to: 0; duration: Motion.moveMs; easing.type: Motion.exitEasing }
-                    PauseAnimation { duration: (2 - index) * Motion.fadeMs }
+                    PauseAnimation { duration: index * 100 }
+                    NumberAnimation { from: 0; to: window.s(-6); duration: 250; easing.type: Easing.OutSine }
+                    NumberAnimation { from: window.s(-6); to: 0; duration: 250; easing.type: Easing.InSine }
+                    PauseAnimation { duration: (2 - index) * 100 }
                 }
             }
         }
@@ -977,26 +1090,25 @@ Item {
                 z: -1
             }
 
-
             Rectangle {
                 width: parent.width * 0.8; height: width; radius: width / 2
-                x: (parent.width / 2 - width / 2)
-                y: (parent.height / 2 - height / 2)
+                x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
+                y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(100)
                 opacity: window.currentPower ? 0.08 : 0.02
                 color: window.currentConn ? window.activeColor : window.surface2
-                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                Behavior on color { ColorAnimation { duration: 1000 } }
+                Behavior on opacity { NumberAnimation { duration: 1000 } }
                 visible: opacity > 0.01
             }
 
             Rectangle {
                 width: parent.width * 0.9; height: width; radius: width / 2
-                x: (parent.width / 2 - width / 2)
-                y: (parent.height / 2 - height / 2)
+                x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
+                y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
                 opacity: window.currentPower ? 0.06 : 0.01
                 color: window.currentConn ? window.activeGradientSecondary : window.surface1
-                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                Behavior on color { ColorAnimation { duration: 1000 } }
+                Behavior on opacity { NumberAnimation { duration: 1000 } }
                 visible: opacity > 0.01
             }
 
@@ -1007,13 +1119,15 @@ Item {
                 opacity: window.currentPower ? 1.0 : 0.0
                 scale: window.currentPower ? 1.0 : 1.05
                 visible: opacity > 0.01
-                Behavior on opacity { NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing } }
-                Behavior on scale { NumberAnimation { duration: Motion.heroMs; easing.type: Motion.heroEasing } }
+                Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.InOutQuad } }
+                Behavior on scale { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
 
                 Repeater {
                     model: 3
                     Rectangle {
-                        anchors.centerIn: parent
+                        property Item targetCore: coreRepeater.itemAt(0)
+                        x: targetCore ? (targetCore.x + targetCore.width / 2 - width / 2) : (parent.width / 2 - width / 2)
+                        y: targetCore ? (targetCore.y + targetCore.height / 2 - height / 2) : (parent.height / 2 - height / 2)
                         width: window.s(280) + (index * window.s(170))
                         height: width
                         radius: width / 2
@@ -1022,11 +1136,11 @@ Item {
                         border.color: Object.keys(window.disconnectingDevices).length > 0 ? window.red : window.activeColor
                         border.width: Object.keys(window.disconnectingDevices).length > 0 ? window.s(2) : 1
 
-                        Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
-                        Behavior on border.width { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on border.color { ColorAnimation { duration: 150 } }
+                        Behavior on border.width { NumberAnimation { duration: 150 } }
 
                         opacity: Object.keys(window.disconnectingDevices).length > 0 ? 0.2 : (window.currentConn ? 0.08 - (index * 0.02) : 0.03)
-                        Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
                     }
                 }
             }
@@ -1180,15 +1294,21 @@ Item {
 
                         property real myBaseAngle: (window.coreVisualIndices[index] / Math.max(1, window.activeCoreCount)) * Math.PI * 2
                         property real animatedBaseAngle: myBaseAngle
-                        Behavior on animatedBaseAngle { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
+                        Behavior on animatedBaseAngle { NumberAnimation { duration: 800; easing.type: Easing.InOutCubic } }
 
-                        property real coreOrbitAngle: animatedBaseAngle
+                        property real coreOrbitAngle: window.globalOrbitAngle * 1.5 + animatedBaseAngle
 
                         property real myOrbitRadiusX: window.s(180) + (window.activeCoreCount > 2 ? window.s(20) : 0)
                         property real myOrbitRadiusY: window.s(110) + (window.activeCoreCount > 2 ? window.s(15) : 0)
 
-                        x: window.activeMode === "eth" ? (orbitContainer.width / 2 - width / 2) : ((orbitContainer.width / 2 - width / 2) + (Math.cos(coreOrbitAngle) * myOrbitRadiusX * multiShift * activeTransition))
-                        y: window.activeMode === "eth" ? (orbitContainer.height / 2 - height / 2) : ((orbitContainer.height / 2 - height / 2) + (Math.sin(coreOrbitAngle) * myOrbitRadiusY * multiShift * activeTransition))
+                        property real targetCenterX: (window.showInfoView || window.activeMode === "eth") ? (orbitContainer.width / 2) : (orbitContainer.width * 0.25)
+                        property real targetCenterY: orbitContainer.height / 2
+
+                        x: window.activeMode === "eth" ? (targetCenterX - width / 2) : ((targetCenterX - width / 2) + (Math.cos(coreOrbitAngle) * myOrbitRadiusX * multiShift * activeTransition))
+                        y: window.activeMode === "eth" ? (targetCenterY - height / 2) : ((targetCenterY - height / 2) + (Math.sin(coreOrbitAngle) * myOrbitRadiusY * multiShift * activeTransition))
+
+                        Behavior on x { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
+                        Behavior on y { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
 
                         opacity: activeTransition
                         scale: 0.8 + 0.2 * activeTransition
@@ -1219,6 +1339,16 @@ Item {
                             id: centralCore
                             anchors.fill: parent
                             radius: width / 2
+
+                            property real bumpScale: 1.0
+                            SequentialAnimation on bumpScale {
+                                id: coreBumpAnim
+                                running: false
+                                NumberAnimation { to: 1.06; duration: 300; easing.type: Easing.OutCubic }
+                                NumberAnimation { to: 1.0; duration: 400; easing.type: Easing.OutQuad }
+                            }
+                            scale: (!coreMa.pressed ? bumpScale : 0.96)
+                            Behavior on scale { NumberAnimation { duration: 200 } }
 
                             property real disconnectFill: 0.0
                             property bool disconnectTriggered: false
@@ -1257,7 +1387,7 @@ Item {
                                 radius: parent.radius
                                 color: "#ffffff"
                                 opacity: centralCore.flashOpacity
-                                PropertyAnimation on opacity { id: coreFlashAnim; to: 0; duration: Motion.moveMs; easing.type: Motion.moveEasing }
+                                PropertyAnimation on opacity { id: coreFlashAnim; to: 0; duration: 500; easing.type: Easing.OutExpo }
                             }
 
                             Canvas {
@@ -1271,15 +1401,12 @@ Item {
 
                                 Connections { target: centralCore; function onDisconnectFillChanged() { coreWave.requestPaint() } }
 
-                                // Time-based hold wave: baseline-period (flow) phase loop
-                                // repaints the canvas while the disconnect fill runs.
                                 property real wavePhase: 0.0
                                 NumberAnimation on wavePhase {
-                                    running: centralCore.disconnectFill > 0.0 && centralCore.disconnectFill < 1.0 && window.isPopupActive
+                                    running: centralCore.disconnectFill > 0.0 && centralCore.disconnectFill < 1.0 && window.visible && window.isPopupActive
                                     loops: Animation.Infinite
                                     from: 0; to: Math.PI * 2
-                                    duration: Motion.flowMs
-                                    easing.type: Motion.flowEasing
+                                    duration: 1000
                                 }
                                 onWavePhaseChanged: requestPaint()
 
@@ -1334,9 +1461,9 @@ Item {
                                 Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                 SequentialAnimation on scale {
-                                    loops: Animation.Infinite; running: (window.currentConn || showPassword) && window.isPopupActive
-                                    NumberAnimation { to: 1.1; duration: Motion.ambientMs; easing.type: Motion.ambientEasing }
-                                    NumberAnimation { to: 1.0; duration: Motion.ambientMs; easing.type: Motion.ambientEasing }
+                                    loops: Animation.Infinite; running: (window.currentConn || showPassword) && window.visible && window.isPopupActive
+                                    NumberAnimation { to: 1.1; duration: 2000; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0; duration: 2000; easing.type: Easing.InOutSine }
                                 }
                             }
 
@@ -1356,15 +1483,15 @@ Item {
 
                                 SequentialAnimation on pulseOp {
                                     loops: Animation.Infinite
-                                    running: (window.currentConn || showPassword) && window.showInfoView && window.currentPower && !isMyDisconnecting && window.isPopupActive
-                                    NumberAnimation { to: 0.30; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
-                                    NumberAnimation { to: 0.15; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
+                                    running: (window.currentConn || showPassword) && window.showInfoView && window.currentPower && !isMyDisconnecting && window.visible && window.isPopupActive
+                                    NumberAnimation { to: 0.30; duration: 1000; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 0.15; duration: 1000; easing.type: Easing.InOutSine }
                                 }
                                 SequentialAnimation on pulseSc {
                                     loops: Animation.Infinite
-                                    running: (window.currentConn || showPassword) && window.showInfoView && window.currentPower && !isMyDisconnecting && window.isPopupActive
-                                    NumberAnimation { to: 1.04; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
-                                    NumberAnimation { to: 1.02; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
+                                    running: (window.currentConn || showPassword) && window.showInfoView && window.currentPower && !isMyDisconnecting && window.visible && window.isPopupActive
+                                    NumberAnimation { to: 1.04; duration: 1000; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.02; duration: 1000; easing.type: Easing.InOutSine }
                                 }
                             }
 
@@ -1372,7 +1499,7 @@ Item {
                                 anchors.fill: parent
                                 opacity: showScanning ? 1.0 : 0.0
                                 visible: opacity > 0.01
-                                Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                                Behavior on opacity { NumberAnimation { duration: 400 } }
 
                                 Repeater {
                                     model: 3
@@ -1383,14 +1510,14 @@ Item {
                                         border.color: window.activeColor; border.width: window.s(2)
 
                                         SequentialAnimation on scale {
-                                            running: showScanning && window.isPopupActive; loops: Animation.Infinite
-                                            PauseAnimation { duration: index * Motion.ambientMs / 4 }
-                                            NumberAnimation { from: 1.0; to: 2.5; duration: Motion.ambientMs; easing.type: Motion.ambientEasing }
+                                            running: showScanning && window.visible && window.isPopupActive; loops: Animation.Infinite
+                                            PauseAnimation { duration: index * 400 }
+                                            NumberAnimation { from: 1.0; to: 2.5; duration: 2000; easing.type: Easing.OutSine }
                                         }
                                         SequentialAnimation on opacity {
-                                            running: showScanning && window.isPopupActive; loops: Animation.Infinite
-                                            PauseAnimation { duration: index * Motion.ambientMs / 4 }
-                                            NumberAnimation { from: 0.8; to: 0.0; duration: Motion.ambientMs; easing.type: Motion.ambientEasing }
+                                            running: showScanning && window.visible && window.isPopupActive; loops: Animation.Infinite
+                                            PauseAnimation { duration: index * 400 }
+                                            NumberAnimation { from: 0.8; to: 0.0; duration: 2000; easing.type: Easing.OutSine }
                                         }
                                     }
                                 }
@@ -1402,9 +1529,9 @@ Item {
                                     text: window.activeMode === "wifi" ? "󰤨" : (window.activeMode === "eth" ? "󰈀" : "󰂯")
 
                                     SequentialAnimation on opacity {
-                                        running: showScanning && window.isPopupActive; loops: Animation.Infinite
-                                        NumberAnimation { to: 0.5; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
-                                        NumberAnimation { to: 1.0; duration: Motion.ambientMs / 2; easing.type: Motion.ambientEasing }
+                                        running: showScanning && window.visible && window.isPopupActive; loops: Animation.Infinite
+                                        NumberAnimation { to: 0.5; duration: 1000; easing.type: Easing.InOutSine }
+                                        NumberAnimation { to: 1.0; duration: 1000; easing.type: Easing.InOutSine }
                                     }
                                 }
                             }
@@ -1636,9 +1763,9 @@ Item {
 
                 Item {
                     anchors.fill: parent
-                    opacity: window.currentPower ? 1.0 : 0.0
+                    opacity: (window.showInfoView && window.currentPower) ? 1.0 : 0.0
                     visible: opacity > 0.01
-                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                    Behavior on opacity { NumberAnimation { duration: 300 } }
 
                     Repeater {
                         id: orbitRepeater
@@ -2244,6 +2371,187 @@ Item {
                                             floatCard.triggered = false;
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                ListView {
+                    id: deviceListView
+                    visible: !window.showInfoView && window.currentPower && (window.activeMode === "wifi" || window.activeMode === "bt") && opacity > 0.01
+                    opacity: (!window.showInfoView && window.currentPower && (window.activeMode === "wifi" || window.activeMode === "bt")) ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+                    x: orbitContainer.width * 0.48
+                    y: window.s(20)
+                    width: orbitContainer.width * 0.49
+                    height: orbitContainer.height - window.s(40)
+
+                    clip: true
+                    spacing: window.s(6)
+                    boundsBehavior: Flickable.StopAtBounds
+                    model: deviceListModel
+
+                    displaced: Transition {
+                        NumberAnimation { properties: "y"; duration: 300; easing.type: Easing.OutCubic }
+                    }
+                    move: Transition {
+                        NumberAnimation { properties: "y"; duration: 300; easing.type: Easing.OutCubic }
+                    }
+                    add: Transition {
+                        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
+                    }
+                    remove: Transition {
+                        NumberAnimation { property: "opacity"; to: 0; duration: 200 }
+                    }
+
+                    delegate: Rectangle {
+                        id: deviceRow
+                        width: ListView.view ? ListView.view.width : window.s(400)
+                        height: window.s(52)
+                        radius: window.s(12)
+
+                        property string devId: model.id
+                        property string devSsid: model.ssid
+                        property string devMac: model.mac
+                        property string devName: model.name
+                        property string devSec: model.security
+                        property string devSignal: model.signal
+                        property string devIcon: model.icon
+
+                        property bool isMyBusy: window.connectingId === devId || !!window.busyTasks[devId]
+                        property bool isFailed: window.failedId === devId
+
+                        property bool isCurrentlyConnected: {
+                            if (window.activeMode === "wifi") return (window.wifiConnected && window.wifiConnected.ssid === devSsid);
+                            if (window.activeMode === "bt") {
+                                for (let i = 0; i < window.btConnected.length; i++) {
+                                    if (window.btConnected[i].mac === devMac || window.btConnected[i].mac === devId) return true;
+                                }
+                            }
+                            return false;
+                        }
+
+                        color: devRowMa.pressed ? window.surface2 : (devRowMa.containsMouse ? window.surface1 : window.surface0)
+                        border.color: isCurrentlyConnected ? window.activeColor : (devRowMa.containsMouse ? window.surface2 : "transparent")
+                        border.width: isCurrentlyConnected ? window.s(1.5) : 1
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: window.s(14)
+                            anchors.rightMargin: window.s(14)
+                            spacing: window.s(12)
+
+                            Text {
+                                font.family: "Iosevka Nerd Font"
+                                font.pixelSize: window.s(22)
+                                color: isCurrentlyConnected ? window.activeColor : (devRowMa.containsMouse ? window.text : window.subtext0)
+                                text: devIcon ? devIcon : (window.activeMode === "wifi" ? "󰤨" : "󰂯")
+                                Layout.alignment: Qt.AlignVCenter
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignVCenter
+                                spacing: window.s(2)
+
+                                Text {
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Bold
+                                    font.pixelSize: window.s(13)
+                                    color: isCurrentlyConnected ? window.activeColor : window.text
+                                    text: devName
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+
+                                RowLayout {
+                                    spacing: window.s(6)
+                                    visible: devSec !== "" || devSignal !== ""
+                                    Text {
+                                        font.family: "JetBrains Mono"
+                                        font.pixelSize: window.s(10)
+                                        color: window.overlay0
+                                        text: devSec !== "" ? devSec : (window.activeMode === "wifi" ? "Open" : "Bluetooth")
+                                        visible: text !== ""
+                                    }
+                                    Text {
+                                        font.family: "JetBrains Mono"
+                                        font.pixelSize: window.s(10)
+                                        color: window.overlay0
+                                        text: "• " + devSignal + "%"
+                                        visible: devSignal !== ""
+                                    }
+                                }
+                            }
+
+                            Item {
+                                Layout.preferredWidth: window.s(70)
+                                Layout.preferredHeight: window.s(30)
+                                Layout.alignment: Qt.AlignVCenter
+
+                                LoadingDots {
+                                    anchors.centerIn: parent
+                                    visible: isMyBusy
+                                    dotCol: window.activeColor
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    visible: !isMyBusy && isCurrentlyConnected
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Bold
+                                    font.pixelSize: window.s(11)
+                                    color: window.activeColor
+                                    text: "Connected"
+                                }
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: window.s(64)
+                                    height: window.s(26)
+                                    radius: window.s(8)
+                                    visible: !isMyBusy && !isCurrentlyConnected && devRowMa.containsMouse
+                                    color: window.activeColor
+                                    opacity: 0.9
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        font.family: "JetBrains Mono"
+                                        font.weight: Font.Bold
+                                        font.pixelSize: window.s(11)
+                                        color: window.crust
+                                        text: "Connect"
+                                    }
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: devRowMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: isCurrentlyConnected ? Qt.ArrowCursor : Qt.PointingHandCursor
+                            onClicked: {
+                                if (isCurrentlyConnected || isMyBusy) return;
+                                window.playSfx("switch.wav");
+
+                                let sec = typeof devSec !== "undefined" && devSec ? devSec.trim().toLowerCase() : "";
+                                let isSecure = sec !== "" && sec !== "open" && sec !== "--" && sec !== "none";
+                                let isSaved = false;
+                                for (let i = 0; i < window.savedWifiNetworks.length; i++) {
+                                    if (window.savedWifiNetworks[i] === devSsid) { isSaved = true; break; }
+                                }
+
+                                if (window.activeMode === "wifi" && isSecure && !isSaved) {
+                                    window.pendingWifiSsid = devSsid;
+                                    window.pendingWifiId = devId;
+                                } else {
+                                    window.connectDevice(window.activeMode, devId, window.activeMode === "wifi" ? devSsid : (window.activeMode === "eth" ? devId : devMac), "");
                                 }
                             }
                         }

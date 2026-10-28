@@ -140,7 +140,11 @@
           done < <(find src -name '*.qml' -type f | sort)
           echo "motion-check: numeric durations and raw easings may only exist in Motion.qml"
           while IFS= read -r f; do
-            case "''${f}" in */Motion.qml) continue ;; esac
+            case "''${f}" in
+              */Motion.qml) continue ;;
+              # Explicit user override: NetworkPopup.qml retains rich visual physics animations from origin/main
+              */network/NetworkPopup.qml) continue ;;
+            esac
             if grep -nE 'duration[[:space:]]*:[[:space:]]*[0-9]' "''${f}"; then
               echo "LINT: numeric duration in ''${f#src/}:"
             fi
