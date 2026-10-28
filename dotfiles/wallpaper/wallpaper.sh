@@ -116,11 +116,14 @@ cmd_kill() {
     local mode_ctl="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
     [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
 
-    local is_killed
-    is_killed=$(bash "$mode_ctl" is-active wallpaper-kill 2>/dev/null && echo "true" || echo "false")
+    local is_killed="false"
+    if [ -s "$STATE_MODES_DIR/modes.json" ]; then
+        is_killed=$(jq -r '.active["wallpaper-kill"] // false' "$STATE_MODES_DIR/modes.json" 2>/dev/null || echo "false")
+    fi
 
     if [ "$is_killed" = "true" ]; then
         # TOGGLE BACK ON:
+        notify-send -a "Wallpaper" -u low "ON"
         bash "$mode_ctl" set wallpaper-kill false
         local target=""
         if [ -s "$LAST_TXT" ]; then
@@ -131,11 +134,11 @@ cmd_kill() {
         else
             cmd_boot
         fi
-        notify-send -a "Wallpaper" -u low "ON"
         return 0
     fi
 
     # TOGGLE OFF:
+    notify-send -a "Wallpaper" -u low "OFF"
     # 1. Preserve current wallpaper before killing
     if [ -s "$CURRENT_TXT" ]; then
         local prev_cur
@@ -149,7 +152,6 @@ cmd_kill() {
     bash "$mode_ctl" set wallpaper-kill true
     "$BACKEND/ensure_awww.sh" --stop 2>/dev/null || true
     pkill -STOP -f "mpvpaper" 2>/dev/null || true
-    notify-send -a "Wallpaper" -u low "OFF"
 
     # 3. Decoupled neutral theme trigger
     THEME_ENGINE="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"

@@ -49,6 +49,24 @@ fi
 recompute_and_apply() {
     local tmp_json="$MODES_JSON.tmp.$$"
     
+    # Extract current computed values prior to recompute to avoid redundant subsystem work
+    local old_wp="true" old_blur="true" old_shadow="true" old_anim="true" old_solid="false" old_direct="0" old_tearing="0" old_coffee="false" old_dnd="false"
+    if [ -f "$MODES_JSON" ]; then
+        read -r old_wp old_blur old_shadow old_anim old_solid old_direct old_tearing old_coffee old_dnd < <(
+            jq -r '[
+                .computed.wallpaper // true,
+                .computed.blur // true,
+                .computed.shadow // true,
+                .computed.animations // true,
+                .computed.opacity_solid // false,
+                .computed.direct_scanout // 0,
+                .computed.tearing // 0,
+                .computed.idle_inhibit // false,
+                .computed.dnd // false
+            ] | @tsv' "$MODES_JSON" 2>/dev/null || echo "true true true true false 0 0 false false"
+        )
+    fi
+
     # Order-independent pure state calculation
     jq '
       .active as $a |
@@ -78,74 +96,88 @@ recompute_and_apply() {
         return 1
     fi
 
-    # Extract computed values for application
+    # Extract new computed values in a single pass
     local wp_val blur_val shadow_val anim_val solid_val direct_val tearing_val coffee_val dnd_val
-    wp_val=$(jq -r '.computed.wallpaper' "$MODES_JSON")
-    blur_val=$(jq -r '.computed.blur' "$MODES_JSON")
-    shadow_val=$(jq -r '.computed.shadow' "$MODES_JSON")
-    anim_val=$(jq -r '.computed.animations' "$MODES_JSON")
-    solid_val=$(jq -r '.computed.opacity_solid' "$MODES_JSON")
-    direct_val=$(jq -r '.computed.direct_scanout' "$MODES_JSON")
-    tearing_val=$(jq -r '.computed.tearing' "$MODES_JSON")
-    coffee_val=$(jq -r '.computed.idle_inhibit' "$MODES_JSON")
-    dnd_val=$(jq -r '.computed.dnd' "$MODES_JSON")
+    read -r wp_val blur_val shadow_val anim_val solid_val direct_val tearing_val coffee_val dnd_val < <(
+        jq -r '[
+            .computed.wallpaper,
+            .computed.blur,
+            .computed.shadow,
+            .computed.animations,
+            .computed.opacity_solid,
+            .computed.direct_scanout,
+            .computed.tearing,
+            .computed.idle_inhibit,
+            .computed.dnd
+        ] | @tsv' "$MODES_JSON"
+    )
 
-    # 1. Apply Compositor rules without reload
-    local vrr_val=0
-    local tearing_bool="false"
-    if [ "$direct_val" -gt 0 ]; then
-        vrr_val=1
-    fi
-    if [ "$tearing_val" -gt 0 ] || [ "$tearing_val" = "true" ]; then
-        tearing_bool="true"
+    # 1. Apply Compositor rules without reload only if compositor parameters changed
+    if [ "$blur_val" != "$old_blur" ] || [ "$shadow_val" != "$old_shadow" ] || \
+       [ "$anim_val" != "$old_anim" ] || [ "$direct_val" != "$old_direct" ] || \
+       [ "$tearing_val" != "$old_tearing" ]; then
+        local vrr_val=0
+        local tearing_bool="false"
+        if [ "$direct_val" -gt 0 ]; then
+            vrr_val=1
+        fi
+        if [ "$tearing_val" -gt 0 ] || [ "$tearing_val" = "true" ]; then
+            tearing_bool="true"
+        fi
+
+        if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+            hyprctl eval "hl.config({
+                decoration = { blur = { enabled = $blur_val }, shadow = { enabled = $shadow_val } },
+                animations = { enabled = $anim_val },
+                render = { direct_scanout = $direct_val },
+                misc = { vrr = $vrr_val },
+                general = { allow_tearing = $tearing_bool }
+            })" >/dev/null 2>&1 || true
+        fi
     fi
 
-    if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-        hyprctl eval "hl.config({
-            decoration = { blur = { enabled = $blur_val }, shadow = { enabled = $shadow_val } },
-            animations = { enabled = $anim_val },
-            render = { direct_scanout = $direct_val },
-            misc = { vrr = $vrr_val },
-            general = { allow_tearing = $tearing_bool }
-        })" >/dev/null 2>&1 || true
-    fi
-
-    # 2. Wallpaper surface management
-    if [ "$wp_val" = "false" ]; then
-        pkill -STOP -f "mpvpaper" 2>/dev/null || true
-        command -v awww >/dev/null 2>&1 && awww clear >/dev/null 2>&1 || true
-    else
-        pkill -CONT -f "mpvpaper" 2>/dev/null || true
-        # If awww was cleared, ensure active wallpaper is reapplied
-        local last_wp="$DESKTOP_STATE_DIR/wallpaper/current_wallpaper.txt"
-        [ ! -s "$last_wp" ] && last_wp="$DESKTOP_STATE_DIR/wallpaper/last_wallpaper.txt"
-        if [ -s "$last_wp" ]; then
-            local wp_path
-            wp_path="$(cat "$last_wp" 2>/dev/null || true)"
-            if [ -n "$wp_path" ] && [ -f "$wp_path" ]; then
-                command -v awww >/dev/null 2>&1 && awww img "$wp_path" --filter Bilinear >/dev/null 2>&1 || true
+    # 2. Wallpaper surface management only if wallpaper state changed
+    if [ "$wp_val" != "$old_wp" ]; then
+        if [ "$wp_val" = "false" ]; then
+            pkill -STOP -f "mpvpaper" 2>/dev/null || true
+            command -v awww >/dev/null 2>&1 && awww clear >/dev/null 2>&1 || true
+        else
+            pkill -CONT -f "mpvpaper" 2>/dev/null || true
+            local last_wp="$DESKTOP_STATE_DIR/wallpaper/current_wallpaper.txt"
+            [ ! -s "$last_wp" ] && last_wp="$DESKTOP_STATE_DIR/wallpaper/last_wallpaper.txt"
+            if [ -s "$last_wp" ]; then
+                local wp_path
+                wp_path="$(cat "$last_wp" 2>/dev/null || true)"
+                if [ -n "$wp_path" ] && [ -f "$wp_path" ]; then
+                    command -v awww >/dev/null 2>&1 && awww img "$wp_path" --filter Bilinear >/dev/null 2>&1 || true
+                fi
             fi
         fi
     fi
 
-    # 3. Terminal opacity update
-    local term_op="$HOME/nix/dotfiles/wallust/terminal-opacity.sh"
-    [ -x "$term_op" ] && bash "$term_op" --reload >/dev/null 2>&1 || true
-
-    # 4. Idle inhibition (coffee)
-    if [ "$coffee_val" = "true" ]; then
-        systemctl --user start coffee-mode 2>/dev/null || true
-    else
-        systemctl --user stop coffee-mode 2>/dev/null || true
+    # 3. Terminal opacity update only if opacity_solid changed
+    if [ "$solid_val" != "$old_solid" ]; then
+        local term_op="$HOME/nix/dotfiles/wallust/terminal-opacity.sh"
+        [ -x "$term_op" ] && bash "$term_op" --reload >/dev/null 2>&1 || true
     fi
 
-    # 5. Optional backwards compatibility with state.json
+    # 4. Idle inhibition (coffee) only if coffee changed
+    if [ "$coffee_val" != "$old_coffee" ]; then
+        if [ "$coffee_val" = "true" ]; then
+            systemctl --user start coffee-mode 2>/dev/null || true
+        else
+            systemctl --user stop coffee-mode 2>/dev/null || true
+        fi
+    fi
+
+    # 5. Optional backwards compatibility with state.json (batched single atomic update)
     local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
     if [ -x "$state_ctl" ]; then
-        bash "$state_ctl" set modes.gaming "$([ "$solid_val" = "true" ] && echo "$anim_val" | grep -q false && echo "true" || echo "false")" 2>/dev/null || true
-        bash "$state_ctl" set modes.wallpaperKilled "$([ "$wp_val" = "false" ] && echo "true" || echo "false")" 2>/dev/null || true
-        bash "$state_ctl" set modes.coffee "$coffee_val" 2>/dev/null || true
-        bash "$state_ctl" set modes.dnd "$dnd_val" 2>/dev/null || true
+        local is_game_active="false"
+        [ "$solid_val" = "true" ] && [ "$anim_val" = "false" ] && is_game_active="true"
+        local is_wp_killed="false"
+        [ "$wp_val" = "false" ] && is_wp_killed="true"
+        bash "$state_ctl" modes "$is_game_active" "$is_wp_killed" "$coffee_val" "$dnd_val" 2>/dev/null || true
     fi
 }
 

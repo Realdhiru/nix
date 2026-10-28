@@ -18,6 +18,7 @@ Variants {
 
             onIsIslandActiveChanged: {
                 if (isIslandActive) {
+                    console.log("[NOTIF_BENCH] TOAST_FRAME ts=" + Date.now());
                     exitTimer.stop();
                     windowVisible = true;
                 } else {
@@ -75,6 +76,9 @@ Variants {
                 : "transparent"
 
             property var n: NotifTicker.tickerNotif
+            onNChanged: {
+                if (n && (Config.topBarPosition === "left" || !Config.topBarVisible)) console.log("[NOTIF_BENCH] TOAST_FRAME ts=" + Date.now());
+            }
             property var actionArray: {
                 try { return n && n.actionsJson ? JSON.parse(n.actionsJson) : []; }
                 catch (e) { return []; }

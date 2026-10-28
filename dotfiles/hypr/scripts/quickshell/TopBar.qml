@@ -767,6 +767,9 @@ Variants {
                             id: centerBox
                             property bool isHovered: centerMouse.containsMouse
                             property bool notifActive: NotifTicker.tickerVisible
+                            onNotifActiveChanged: {
+                                if (notifActive) console.log("[NOTIF_BENCH] TOPBAR_FRAME ts=" + Date.now());
+                            }
                             color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
                             radius: barWindow.s(14)
                             border.width: Config.borderWidth
@@ -783,15 +786,20 @@ Variants {
                             }
 
                         height: barWindow.barHeight
-                        Behavior on height { NumberAnimation { duration: barWindow.isStartupReady ? 260 : 0; easing.type: Easing.OutExpo } }
+                        Behavior on height { NumberAnimation { duration: barWindow.isStartupReady ? Motion.moveMs : 0; easing.type: Motion.moveEasing } }
                         width: (centerBox.notifActive ? notifLayout.implicitWidth : centerLayout.implicitWidth) + barWindow.s(36)
-                        Behavior on width { NumberAnimation { duration: barWindow.isStartupReady ? 260 : 0; easing.type: Easing.OutExpo } }
+                        Behavior on width {
+                            NumberAnimation {
+                                duration: barWindow.isStartupReady ? (centerBox.notifActive ? Motion.enterMs : Motion.exitMs) : 0
+                                easing.type: centerBox.notifActive ? Motion.enterEasing : Motion.exitEasing
+                            }
+                        }
                         clip: true
                         opacity: 1
 
                         scale: isHovered ? 1.03 : 1.0
-                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutExpo } }
-                        Behavior on color { ColorAnimation { duration: 250 } }
+                        Behavior on scale { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                        Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
 
                         MouseArea {
                             id: centerMouse
@@ -818,7 +826,12 @@ Variants {
                             anchors.centerIn: parent
                             spacing: barWindow.s(12)
                             opacity: !centerBox.notifActive ? 1.0 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: !centerBox.notifActive ? Motion.enterMs : Motion.exitMs
+                                    easing.type: !centerBox.notifActive ? Motion.enterEasing : Motion.exitEasing
+                                }
+                            }
 
                             RowLayout {
                                 spacing: 0
@@ -885,14 +898,27 @@ Variants {
                             anchors.centerIn: parent
                             spacing: barWindow.s(10)
                             opacity: centerBox.notifActive ? 1.0 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: centerBox.notifActive ? Motion.enterMs : Motion.exitMs
+                                    easing.type: centerBox.notifActive ? Motion.enterEasing : Motion.exitEasing
+                                }
+                            }
 
                             transform: Translate {
                                 x: centerBox.notifActive ? 0 : barWindow.s(-24)
-                                Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                                Behavior on x {
+                                    NumberAnimation {
+                                        duration: centerBox.notifActive ? Motion.enterMs : Motion.exitMs
+                                        easing.type: centerBox.notifActive ? Motion.enterEasing : Motion.exitEasing
+                                    }
+                                }
                             }
 
                             property var n: NotifTicker.tickerNotif
+                            onNChanged: {
+                                if (n) console.log("[NOTIF_BENCH] TOPBAR_FRAME ts=" + Date.now());
+                            }
                             property var actionArray: {
                                 try { return n && n.actionsJson ? JSON.parse(n.actionsJson) : []; }
                                 catch (e) { return []; }

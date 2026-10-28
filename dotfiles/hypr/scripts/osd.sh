@@ -44,8 +44,9 @@ brightness_step() {
 
 case "${1:-}" in
     vol-up)
-        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
+        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 &
         wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+
+        wait
         read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
         icon="audio-volume-high"
         (( pct < 30 )) && icon="audio-volume-low"
@@ -53,8 +54,9 @@ case "${1:-}" in
         notify_osd 9990 "$icon" "Volume" "${pct}%"
         ;;
     vol-down)
-        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
+        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 &
         wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+        wait
         read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
         icon="audio-volume-high"
         (( pct < 30 )) && icon="audio-volume-low"

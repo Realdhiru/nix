@@ -128,6 +128,7 @@ Item {
         imageSupported: true
 
         onNotification: (n) => {
+            console.log("[NOTIF_BENCH] RECEIVED uid=" + n.id + " ts=" + Date.now());
             n.tracked = true;
 
             let extractedActions = [];

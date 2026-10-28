@@ -257,11 +257,13 @@ cmd_lid() {
 # -----------------------------------------------------------------------------
 cmd_inhibit() {
     local target="${1:-toggle}"
-    local state_ctl="$SCRIPT_DIR/quickshell/state_ctl.sh"
+    local mode_ctl="$SCRIPT_DIR/mode_ctl.sh"
+    [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
 
-    local is_running=false
-    if systemctl --user is-active --quiet coffee-mode 2>/dev/null || systemd-inhibit --list 2>/dev/null | grep -q "idle-inhibit-toggle"; then
-        is_running=true
+    local modes_json="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/modes/modes.json"
+    local is_running="false"
+    if [ -s "$modes_json" ]; then
+        is_running=$(jq -r '.active.coffee // false' "$modes_json" 2>/dev/null || echo "false")
     fi
 
     local do_enable=false
@@ -273,7 +275,7 @@ cmd_inhibit() {
             do_enable=false
             ;;
         status)
-            if [ "$is_running" = true ]; then
+            if [ "$is_running" = "true" ]; then
                 echo "active"
                 exit 0
             else
@@ -282,7 +284,7 @@ cmd_inhibit() {
             fi
             ;;
         toggle|*)
-            if [ "$is_running" = true ]; then
+            if [ "$is_running" = "true" ]; then
                 do_enable=false
             else
                 do_enable=true
@@ -290,16 +292,14 @@ cmd_inhibit() {
             ;;
     esac
 
-    local mode_ctl="$SCRIPT_DIR/mode_ctl.sh"
-    [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
-
+    # Dispatch notification immediately (<10ms) before executing mode switch
     if [ "$do_enable" = true ]; then
-        bash "$mode_ctl" set coffee true 2>/dev/null || true
         notify-send -a "Power" -r 9991 -t 1200 -u low -i "appointment-soon" "Coffee ON"
     else
-        bash "$mode_ctl" set coffee false 2>/dev/null || true
         notify-send -a "Power" -r 9991 -t 1200 -u low -i "appointment-missed" "Coffee OFF"
     fi
+
+    bash "$mode_ctl" set coffee "$do_enable" 2>/dev/null || true
 }
 
 cmd_profile() {
