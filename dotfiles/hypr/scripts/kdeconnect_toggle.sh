@@ -16,14 +16,19 @@ if pgrep -f "kdeconnect-indicator" >/dev/null 2>&1 || pgrep -f "kdeconnectd" >/d
     pkill -f "kdeconnectd" 2>/dev/null || true
     pkill -f "kdeconnect-app" 2>/dev/null || true
     systemctl --user stop "dbus-*.org.kde.kdeconnect*.service" 2>/dev/null || true
+    flock -u 200 || true
+    exec 200>&- || true
 else
     # Notify immediately first
     notify-send -a "KDE Connect" -u low -t 1500 "ON"
-    # Currently stopped -> Start indicator and daemon
+    # Close lock FD prior to spawning children so children do not inherit the lock!
+    flock -u 200 || true
+    exec 200>&- || true
+    # Start indicator and daemon
     # kdeconnect-indicator provides the SNI tray icon and triggers D-Bus activation for kdeconnectd
     if command -v kdeconnect-indicator >/dev/null 2>&1; then
-        kdeconnect-indicator >/dev/null 2>&1 & disown
+        nohup kdeconnect-indicator >/dev/null 2>&1 &
     elif command -v kdeconnectd >/dev/null 2>&1; then
-        kdeconnectd >/dev/null 2>&1 & disown
+        nohup kdeconnectd >/dev/null 2>&1 &
     fi
 fi
