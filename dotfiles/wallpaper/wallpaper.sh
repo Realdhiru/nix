@@ -139,6 +139,9 @@ cmd_kill() {
     fi
 
     # TOGGLE OFF:
+    if ! bash "$mode_ctl" can-enable wallpaper-kill; then
+        return 0
+    fi
     notify-send -a "Wallpaper" -u low "OFF"
     # 1. Preserve current wallpaper before killing
     if [ -s "$CURRENT_TXT" ]; then

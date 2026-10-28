@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Mode Controller (mode_ctl.sh)
 # Single Source of Truth (SSOT) writer for modes.json
-# Strictly follows order-independent state machine architecture.
+# Strictly follows order-independent state machine architecture with mode exclusivity.
 
 set -euo pipefail
 
@@ -28,6 +28,15 @@ if [ ! -s "$MODES_JSON" ] || ! jq empty "$MODES_JSON" 2>/dev/null; then
     "coffee": false,
     "dnd": false
   },
+  "baseline": {
+    "wallpaper": true,
+    "blur": true,
+    "shadow": true,
+    "animations": true,
+    "opacity_solid": false,
+    "direct_scanout": 0,
+    "tearing": 0
+  },
   "computed": {
     "wallpaper": true,
     "blur": true,
@@ -43,6 +52,72 @@ if [ ! -s "$MODES_JSON" ] || ! jq empty "$MODES_JSON" 2>/dev/null; then
 EOF
     mv -f "$MODES_JSON.tmp.$$" "$MODES_JSON"
 fi
+
+# ==============================================================================
+# Conflict Table (Exclusivity Matrix)
+# power-saver conflicts with gaming and wallpaper-kill (and vice versa)
+# coffee and dnd are completely independent.
+# ==============================================================================
+get_conflicts() {
+    local target_mode="$1"
+    case "$target_mode" in
+        power-saver) echo "gaming wallpaper-kill" ;;
+        gaming) echo "power-saver wallpaper-kill" ;;
+        wallpaper-kill) echo "power-saver gaming" ;;
+        *) echo "" ;;
+    esac
+}
+
+check_conflict() {
+    local target_mode="$1"
+    local conflicts
+    conflicts=$(get_conflicts "$target_mode")
+    for c in $conflicts; do
+        local is_on
+        is_on=$(jq -r --arg c "$c" '.active[$c] // false' "$MODES_JSON" 2>/dev/null || echo "false")
+        if [ "$is_on" = "true" ]; then
+            echo "$c"
+            return 0
+        fi
+    done
+    return 1
+}
+
+capture_baseline_if_clean() {
+    local any_exclusive
+    any_exclusive=$(jq -r '
+        ((.active["wallpaper-kill"] // false) or
+         (.active["gaming"] // false) or
+         (.active["power-saver"] // false))
+    ' "$MODES_JSON" 2>/dev/null || echo "false")
+
+    if [ "$any_exclusive" = "false" ]; then
+        if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+            local b_blur b_shadow b_anim b_direct b_tear
+            b_blur=$(hyprctl getoption decoration:blur:enabled -j 2>/dev/null | jq -r '.bool // true')
+            b_shadow=$(hyprctl getoption decoration:shadow:enabled -j 2>/dev/null | jq -r '.bool // true')
+            b_anim=$(hyprctl getoption animations:enabled -j 2>/dev/null | jq -r '.bool // true')
+            b_direct=$(hyprctl getoption render:direct_scanout -j 2>/dev/null | jq -r '.int // 0')
+            b_tear=$(hyprctl getoption general:allow_tearing -j 2>/dev/null | jq -r '.bool // false')
+
+            local tmp="$MODES_JSON.tmp.$$"
+            jq --argjson blur "$b_blur" \
+               --argjson shadow "$b_shadow" \
+               --argjson anim "$b_anim" \
+               --argjson direct "$b_direct" \
+               --argjson tear "$b_tear" \
+               '.baseline = {
+                   "wallpaper": (.baseline.wallpaper // true),
+                   "blur": $blur,
+                   "shadow": $shadow,
+                   "animations": $anim,
+                   "opacity_solid": (.baseline.opacity_solid // false),
+                   "direct_scanout": $direct,
+                   "tearing": (if ($tear == true or $tear == 1) then 1 else 0 end)
+               }' "$MODES_JSON" > "$tmp" 2>/dev/null && mv -f "$tmp" "$MODES_JSON" || rm -f "$tmp"
+        fi
+    fi
+}
 
 recompute_and_apply() {
     local tmp_json="$MODES_JSON.tmp.$$"
@@ -65,7 +140,7 @@ recompute_and_apply() {
         )
     fi
 
-    # Order-independent pure state calculation
+    # Pure state calculation preserving prior baseline when modes are disabled
     jq '
       .active as $a |
       ($a["wallpaper-kill"] // false) as $wp_kill |
@@ -73,15 +148,16 @@ recompute_and_apply() {
       ($a["power-saver"] // false) as $saver |
       ($a["coffee"] // false) as $coffee |
       ($a["dnd"] // false) as $dnd |
+      (.baseline // {}) as $b |
       
       .computed = {
-        "wallpaper": ((($wp_kill or $saver) | not)),
-        "blur": ((($wp_kill or $gaming or $saver) | not)),
-        "shadow": ((($wp_kill or $gaming or $saver) | not)),
-        "animations": ((($gaming or $saver) | not)),
-        "opacity_solid": ($wp_kill or $gaming or $saver),
-        "direct_scanout": (if ($gaming or $saver) then 2 else 0 end),
-        "tearing": (if $gaming then 1 else 0 end),
+        "wallpaper": (if ($wp_kill or $saver) then false else ($b.wallpaper // true) end),
+        "blur": (if ($wp_kill or $gaming or $saver) then false else ($b.blur // true) end),
+        "shadow": (if ($wp_kill or $gaming or $saver) then false else ($b.shadow // true) end),
+        "animations": (if ($gaming or $saver) then false else ($b.animations // true) end),
+        "opacity_solid": (if ($wp_kill or $gaming or $saver) then true else ($b.opacity_solid // false) end),
+        "direct_scanout": (if ($gaming or $saver) then 2 else ($b.direct_scanout // 0) end),
+        "tearing": (if $gaming then 1 else ($b.tearing // 0) end),
         "idle_inhibit": ($coffee == true),
         "dnd": ($dnd == true)
       }
@@ -195,11 +271,33 @@ case "$ACTION" in
         [ "$val" = "true" ] && exit 0 || exit 1
         ;;
 
+    can-enable)
+        MODE="${2:-}"
+        [ -z "$MODE" ] && exit 1
+        active_conflict=$(check_conflict "$MODE" || true)
+        if [ -n "$active_conflict" ]; then
+            notify-send -a "Mode" "${MODE} blocked: ${active_conflict} on"
+            echo "${MODE} blocked: ${active_conflict} on" >&2
+            exit 1
+        fi
+        exit 0
+        ;;
+
     set)
         MODE="${2:-}"
         TARGET_VAL="${3:-false}"
         [ -z "$MODE" ] && { echo "Usage: $0 set <mode> <true|false>"; exit 1; }
         [ "$TARGET_VAL" != "true" ] && TARGET_VAL="false"
+
+        if [ "$TARGET_VAL" = "true" ]; then
+            active_conflict=$(check_conflict "$MODE" || true)
+            if [ -n "$active_conflict" ]; then
+                notify-send -a "Mode" "${MODE} blocked: ${active_conflict} on"
+                echo "${MODE} blocked: ${active_conflict} on" >&2
+                exit 0
+            fi
+            capture_baseline_if_clean
+        fi
 
         tmp_json="$MODES_JSON.tmp.$$"
         jq --arg m "$MODE" --argjson v "$TARGET_VAL" '.active[$m] = $v' "$MODES_JSON" > "$tmp_json"
@@ -217,8 +315,23 @@ case "$ACTION" in
         MODE="${2:-}"
         [ -z "$MODE" ] && { echo "Usage: $0 toggle <mode>"; exit 1; }
 
+        current_val=$(jq -r --arg m "$MODE" '.active[$m] // false' "$MODES_JSON" 2>/dev/null || echo "false")
+        if [ "$current_val" = "true" ]; then
+            TARGET_VAL="false"
+        else
+            TARGET_VAL="true"
+            active_conflict=$(check_conflict "$MODE" || true)
+            if [ -n "$active_conflict" ]; then
+                notify-send -a "Mode" "${MODE} blocked: ${active_conflict} on"
+                echo "${MODE} blocked: ${active_conflict} on" >&2
+                echo "false"
+                exit 0
+            fi
+            capture_baseline_if_clean
+        fi
+
         tmp_json="$MODES_JSON.tmp.$$"
-        jq --arg m "$MODE" '.active[$m] = (if .active[$m] == true then false else true end)' "$MODES_JSON" > "$tmp_json"
+        jq --arg m "$MODE" --argjson v "$TARGET_VAL" '.active[$m] = $v' "$MODES_JSON" > "$tmp_json"
         if jq empty "$tmp_json" 2>/dev/null; then
             mv -f "$tmp_json" "$MODES_JSON"
         else
@@ -240,7 +353,7 @@ case "$ACTION" in
         ;;
 
     *)
-        echo "Usage: $0 {get|is-active|set|toggle|apply|status} [mode] [value]"
+        echo "Usage: $0 {get|is-active|can-enable|set|toggle|apply|status} [mode] [value]"
         exit 1
         ;;
 esac
