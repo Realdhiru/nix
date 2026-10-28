@@ -3,7 +3,7 @@
 # Mode Exclusivity and Baseline Restoration Self-Test Suite
 # Strictly tests:
 # 1. Mode conflicts (power-saver <-> gaming <-> wallpaper-kill): blocked attempts, notifications, no state change.
-# 2. Independent mode concurrency (coffee & dnd).
+# 2. Independent mode concurrency (coffee).
 # 3. Exact return to baseline for every single mode and allowed multi-mode set.
 
 set -euo pipefail
@@ -19,7 +19,7 @@ PACE="${PACE:-0.15}"
 echo "=== Mode Exclusivity and Baseline Restoration Self-Test Suite ==="
 
 # Reset all modes to clean baseline first
-for m in "wallpaper-kill" "gaming" "power-saver" "coffee" "dnd"; do
+for m in "wallpaper-kill" "gaming" "power-saver" "coffee"; do
     bash "$MODE_CTL" set "$m" false >/dev/null 2>&1 || true
 done
 sleep 0.5
@@ -75,7 +75,7 @@ assert_baseline() {
 # 2. Test individual modes and restore-to-baseline
 echo ""
 echo "[2] Testing Individual Modes & Baseline Restoration..."
-for m in "wallpaper-kill" "gaming" "power-saver" "coffee" "dnd"; do
+for m in "wallpaper-kill" "gaming" "power-saver" "coffee"; do
     echo "Testing single mode: $m..."
     bash "$MODE_CTL" set "$m" true
     sleep "$PACE"
@@ -146,43 +146,28 @@ for pair in "${CONFLICT_PAIRS[@]}"; do
     assert_baseline "Deapplied $mode_b (after blocked $mode_a attempts)"
 done
 
-# 4. Test Independent Modes Concurrency (coffee & dnd)
+# 4. Test Independent Modes Concurrency (coffee)
 echo ""
-echo "[4] Testing Independent Modes Concurrency (coffee & dnd)..."
+echo "[4] Testing Independent Modes Concurrency (coffee)..."
 
-# Test coffee + dnd alone
-echo "Testing coffee + dnd..."
-bash "$MODE_CTL" set "coffee" true
-bash "$MODE_CTL" set "dnd" true
-sleep "$PACE"
-[ "$(bash "$MODE_CTL" get "coffee")" = "true" ] || { echo "FAIL: coffee should be active"; exit 1; }
-[ "$(bash "$MODE_CTL" get "dnd")" = "true" ] || { echo "FAIL: dnd should be active"; exit 1; }
-bash "$MODE_CTL" set "coffee" false
-bash "$MODE_CTL" set "dnd" false
-sleep "$PACE"
-assert_baseline "coffee + dnd turned off"
-
-# Test exclusive mode + coffee + dnd
+# Test exclusive mode + coffee
 for ex in "gaming" "power-saver" "wallpaper-kill"; do
-    echo "Testing $ex + coffee + dnd..."
+    echo "Testing $ex + coffee..."
     bash "$MODE_CTL" set "$ex" true
     bash "$MODE_CTL" set "coffee" true
-    bash "$MODE_CTL" set "dnd" true
     sleep "$PACE"
     [ "$(bash "$MODE_CTL" get "$ex")" = "true" ] || { echo "FAIL: $ex should be active"; exit 1; }
     [ "$(bash "$MODE_CTL" get "coffee")" = "true" ] || { echo "FAIL: coffee should be active"; exit 1; }
-    [ "$(bash "$MODE_CTL" get "dnd")" = "true" ] || { echo "FAIL: dnd should be active"; exit 1; }
 
     # Disabling all restores baseline
     bash "$MODE_CTL" set "$ex" false
     bash "$MODE_CTL" set "coffee" false
-    bash "$MODE_CTL" set "dnd" false
     sleep "$PACE"
-    assert_baseline "$ex + coffee + dnd turned off"
+    assert_baseline "$ex + coffee turned off"
 done
 
 echo ""
 echo "=== Summary ==="
 echo "All 3 conflict pairs exhaustively verified: blocked attempts triggered no state change and emitted blocked notification."
-echo "All independent mode combinations verified: coffee and dnd operate concurrently without interference."
+echo "Independent mode verified: coffee operates concurrently without interference."
 echo "Baseline restoration verified: 100% assertions passed across all transitions."

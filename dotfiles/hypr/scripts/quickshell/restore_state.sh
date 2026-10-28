@@ -31,7 +31,6 @@ if [ ! -s "$STATE_FILE" ]; then
   "modes": {
     "gaming": false,
     "wallpaperKilled": false,
-    "dnd": false,
     "coffee": false
   },
   "power": {
@@ -47,7 +46,7 @@ fi
 
 # Parse state JSON via jq
 TEMP=6500; GAMMA=100; SAT=100; GRAIN=0; CRT=0
-GAMING=false; WP_KILLED=false; DND=false; COFFEE=false; POWER_PROF="balanced"; SUNSET_ACTIVE=false
+GAMING=false; WP_KILLED=false; COFFEE=false; POWER_PROF="balanced"; SUNSET_ACTIVE=false
 
 if [ -f "$STATE_FILE" ]; then
     vals=$(jq -r '[
@@ -58,14 +57,13 @@ if [ -f "$STATE_FILE" ]; then
         (.sunset.crt // 0),
         (.modes.gaming // false),
         (.modes.wallpaperKilled // false),
-        (.modes.dnd // false),
         (.modes.coffee // false),
         (.power.profile // "balanced"),
         (.sunset.active // false)
     ] | @tsv' "$STATE_FILE" 2>/dev/null || true)
 
     if [ -n "$vals" ]; then
-        read -r TEMP GAMMA SAT GRAIN CRT GAMING WP_KILLED DND COFFEE POWER_PROF SUNSET_ACTIVE <<< "$vals"
+        read -r TEMP GAMMA SAT GRAIN CRT GAMING WP_KILLED COFFEE POWER_PROF SUNSET_ACTIVE <<< "$vals"
     fi
 fi
 
@@ -168,13 +166,7 @@ else
     rm -f "$MODES_DIR/wallpaper_killed"
 fi
 
-# 5. DND Synchronization
-mkdir -p "$STATE_DIR/dnd"
-if [ "$DND" = "true" ]; then
-    echo "1" > "$STATE_DIR/dnd/state"
-else
-    echo "0" > "$STATE_DIR/dnd/state"
-fi
+
 
 # 6. Power Profile Synchronization
 echo "$POWER_PROF" > "$POWER_DIR/profile.tmp" && mv -f "$POWER_DIR/profile.tmp" "$POWER_DIR/profile"

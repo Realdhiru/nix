@@ -31,7 +31,6 @@ if [ ! -s "$STATE_FILE" ] || ! jq empty "$STATE_FILE" 2>/dev/null; then
   "modes": {
     "gaming": false,
     "wallpaperKilled": false,
-    "dnd": false,
     "coffee": false
   },
   "power": {
@@ -107,10 +106,9 @@ case "$ACTION" in
         GAMING="${2:-false}"
         WP_KILLED="${3:-false}"
         COFFEE="${4:-false}"
-        DND="${5:-false}"
         TMP="$STATE_FILE.tmp.$$$RANDOM"
-        if jq --argjson g "$GAMING" --argjson w "$WP_KILLED" --argjson c "$COFFEE" --argjson d "$DND" \
-           '.modes = {gaming: $g, wallpaperKilled: $w, coffee: $c, dnd: $d}' \
+        if jq --argjson g "$GAMING" --argjson w "$WP_KILLED" --argjson c "$COFFEE" \
+           '.modes = {gaming: $g, wallpaperKilled: $w, coffee: $c}' \
            "$STATE_FILE" > "$TMP" 2>/dev/null && jq empty "$TMP" 2>/dev/null; then
             mv -f "$TMP" "$STATE_FILE"
         else

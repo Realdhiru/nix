@@ -116,7 +116,6 @@ Item {
     property real sysBrightness: 0
     
     property string currentUserName: Quickshell.env("USER") || ""
-    property bool dndEnabled: false
     // Coffee state lives in SysData (single source); this popup only reads
     // SysData.coffeeActive and writes via SysData.setCoffee().
 
@@ -248,17 +247,6 @@ Item {
     // need to change.
     function setPowerProfile(name, isManual) {
         SysData.setPowerProfile(name, isManual);
-    }
-
-    Process {
-        id: dndInit
-        running: true
-        command: ["bash", "-c", "bash '" + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh' get modes.dnd"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                window.dndEnabled = (this.text.trim() === "true" || this.text.trim() === "1");
-            }
-        }
     }
 
 

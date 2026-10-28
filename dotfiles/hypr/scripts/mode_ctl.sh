@@ -25,8 +25,7 @@ if [ ! -s "$MODES_JSON" ] || ! jq empty "$MODES_JSON" 2>/dev/null; then
     "wallpaper-kill": false,
     "gaming": false,
     "power-saver": false,
-    "coffee": false,
-    "dnd": false
+    "coffee": false
   },
   "baseline": {
     "wallpaper": true,
@@ -45,8 +44,7 @@ if [ ! -s "$MODES_JSON" ] || ! jq empty "$MODES_JSON" 2>/dev/null; then
     "opacity_solid": false,
     "direct_scanout": 0,
     "tearing": 0,
-    "idle_inhibit": false,
-    "dnd": false
+    "idle_inhibit": false
   }
 }
 EOF
@@ -56,7 +54,7 @@ fi
 # ==============================================================================
 # Conflict Table (Exclusivity Matrix)
 # power-saver conflicts with gaming and wallpaper-kill (and vice versa)
-# coffee and dnd are completely independent.
+# coffee is completely independent.
 # ==============================================================================
 get_conflicts() {
     local target_mode="$1"
@@ -123,9 +121,9 @@ recompute_and_apply() {
     local tmp_json="$MODES_JSON.tmp.$$"
     
     # Extract current computed values prior to recompute to avoid redundant subsystem work
-    local old_wp="true" old_blur="true" old_shadow="true" old_anim="true" old_solid="false" old_direct="0" old_tearing="0" old_coffee="false" old_dnd="false"
+    local old_wp="true" old_blur="true" old_shadow="true" old_anim="true" old_solid="false" old_direct="0" old_tearing="0" old_coffee="false"
     if [ -f "$MODES_JSON" ]; then
-        read -r old_wp old_blur old_shadow old_anim old_solid old_direct old_tearing old_coffee old_dnd < <(
+        read -r old_wp old_blur old_shadow old_anim old_solid old_direct old_tearing old_coffee < <(
             jq -r '[
                 .computed.wallpaper // true,
                 .computed.blur // true,
@@ -134,9 +132,8 @@ recompute_and_apply() {
                 .computed.opacity_solid // false,
                 .computed.direct_scanout // 0,
                 .computed.tearing // 0,
-                .computed.idle_inhibit // false,
-                .computed.dnd // false
-            ] | @tsv' "$MODES_JSON" 2>/dev/null || echo "true true true true false 0 0 false false"
+                .computed.idle_inhibit // false
+            ] | @tsv' "$MODES_JSON" 2>/dev/null || echo "true true true true false 0 0 false"
         )
     fi
 
@@ -147,7 +144,6 @@ recompute_and_apply() {
       ($a["gaming"] // false) as $gaming |
       ($a["power-saver"] // false) as $saver |
       ($a["coffee"] // false) as $coffee |
-      ($a["dnd"] // false) as $dnd |
       (.baseline // {}) as $b |
       
       .computed = {
@@ -158,8 +154,7 @@ recompute_and_apply() {
         "opacity_solid": (if ($wp_kill or $gaming or $saver) then true else ($b.opacity_solid // false) end),
         "direct_scanout": (if ($gaming or $saver) then 2 else ($b.direct_scanout // 0) end),
         "tearing": (if $gaming then 1 else ($b.tearing // 0) end),
-        "idle_inhibit": ($coffee == true),
-        "dnd": ($dnd == true)
+        "idle_inhibit": ($coffee == true)
       }
     ' "$MODES_JSON" > "$tmp_json"
 
@@ -171,8 +166,8 @@ recompute_and_apply() {
     fi
 
     # Extract new computed values in a single pass
-    local wp_val blur_val shadow_val anim_val solid_val direct_val tearing_val coffee_val dnd_val
-    read -r wp_val blur_val shadow_val anim_val solid_val direct_val tearing_val coffee_val dnd_val < <(
+    local wp_val blur_val shadow_val anim_val solid_val direct_val tearing_val coffee_val
+    read -r wp_val blur_val shadow_val anim_val solid_val direct_val tearing_val coffee_val < <(
         jq -r '[
             .computed.wallpaper,
             .computed.blur,
@@ -181,8 +176,7 @@ recompute_and_apply() {
             .computed.opacity_solid,
             .computed.direct_scanout,
             .computed.tearing,
-            .computed.idle_inhibit,
-            .computed.dnd
+            .computed.idle_inhibit
         ] | @tsv' "$MODES_JSON"
     )
 
@@ -256,7 +250,7 @@ recompute_and_apply() {
         [ "$solid_val" = "true" ] && [ "$anim_val" = "false" ] && is_game_active="true"
         local is_wp_killed="false"
         [ "$wp_val" = "false" ] && is_wp_killed="true"
-        bash "$state_ctl" modes "$is_game_active" "$is_wp_killed" "$coffee_val" "$dnd_val" 2>/dev/null || true
+        bash "$state_ctl" modes "$is_game_active" "$is_wp_killed" "$coffee_val" 2>/dev/null || true
     fi
 }
 
