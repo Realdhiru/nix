@@ -28,11 +28,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792788966,
-        "narHash": "sha256-iLB7kqJmgBFH1KnnWpcInLu9J3JTKHLL4mTztXG70Do=",
+        "lastModified": 1793159225,
+        "narHash": "sha256-IEqBjun9Xvlk9gprSbUE1o5ajnfFwVPv1TeMC0M2ZfE=",
         "owner": "Realdhiru",
         "repo": "codex-flake",
-        "rev": "e271c1a1e39e7728591a20b467df7452e1508639",
+        "rev": "3fed8df88c84cd1a15b963189b79d0b38cfca7a5",
         "type": "github"
       },
       "original": {

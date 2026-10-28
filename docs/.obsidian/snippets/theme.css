@@ -1,62 +1,62 @@
 /* Dynamic Wallust Palette for Obsidian */
 .theme-dark, .theme-light {
-    --background-primary: #030308;
-    --background-primary-alt: #0D0D12;
-    --background-secondary: #030308;
-    --background-secondary-alt: #17171C;
-    --background-modifier-border: #212126;
+    --background-primary: #020308;
+    --background-primary-alt: #0C0D12;
+    --background-secondary: #020308;
+    --background-secondary-alt: #16171C;
+    --background-modifier-border: #202126;
     --background-modifier-border-hover: #303034;
-    --background-modifier-border-focus: #6E779B;
-    --background-modifier-form-field: #0D0D12;
+    --background-modifier-border-focus: #6762A7;
+    --background-modifier-form-field: #0C0D12;
     
     --text-normal: #F4F4F6;
-    --text-muted: #CECFD5;
-    --text-faint: #ADAFB8;
-    --text-accent: #6E779B;
-    --text-accent-hover: #CECFD5;
+    --text-muted: #CECED5;
+    --text-faint: #AEADB8;
+    --text-accent: #6762A7;
+    --text-accent-hover: #CECED5;
     
-    --interactive-normal: #0D0D12;
-    --interactive-hover: #17171C;
-    --interactive-accent: #6E779B;
-    --interactive-accent-hover: #CECFD5;
+    --interactive-normal: #0C0D12;
+    --interactive-hover: #16171C;
+    --interactive-accent: #6762A7;
+    --interactive-accent-hover: #CECED5;
     
-    --text-selection: #6E779B55;
+    --text-selection: #6762A755;
     
     /* Headings & Links */
-    --link-color: #6E779B;
-    --link-color-hover: #CECFD5;
-    --h1-color: #6E779B;
-    --h2-color: #7F5660;
-    --h3-color: #836F80;
-    --h4-color: #707487;
-    --h5-color: #6E779B;
-    --h6-color: #CECFD5;
+    --link-color: #6762A7;
+    --link-color-hover: #CECED5;
+    --h1-color: #6762A7;
+    --h2-color: #BF554B;
+    --h3-color: #9D6781;
+    --h4-color: #954B4A;
+    --h5-color: #6762A7;
+    --h6-color: #CECED5;
 
     /* Graph View Elements */
-    --graph-node: #6E779B;
+    --graph-node: #6762A7;
     --graph-node-focused: #F4F4F6;
-    --graph-line: #212126;
+    --graph-line: #202126;
 }
 
 .theme-dark {
-    --color-base-00: #030307;
-    --color-base-10: #030308;
-    --color-base-20: #030308;
-    --color-base-25: #0D0D12;
-    --color-base-30: #17171C;
-    --color-base-35: #212126;
+    --color-base-00: #020307;
+    --color-base-10: #020308;
+    --color-base-20: #020308;
+    --color-base-25: #0C0D12;
+    --color-base-30: #16171C;
+    --color-base-35: #202126;
     --color-base-40: #303034;
     --color-base-50: #3F3F43;
-    --color-base-60: #4F4F52;
-    --color-base-70: #ADAFB8;
+    --color-base-60: #4E4F52;
+    --color-base-70: #AEADB8;
     --color-base-100: #F4F4F6;
     
-    --color-red: #474A58;
-    --color-orange: #707487;
-    --color-yellow: #626674;
-    --color-green: #60525D;
-    --color-cyan: #7F5660;
-    --color-blue: #836F80;
-    --color-purple: #6E779B;
-    --color-pink: #717895;
+    --color-red: #5C7D8A;
+    --color-orange: #954B4A;
+    --color-yellow: #7E4746;
+    --color-green: #7D739E;
+    --color-cyan: #BF554B;
+    --color-blue: #9D6781;
+    --color-purple: #6762A7;
+    --color-pink: #74B6FF;
 }
