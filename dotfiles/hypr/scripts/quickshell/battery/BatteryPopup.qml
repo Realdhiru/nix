@@ -708,6 +708,12 @@ Item {
                                                 anchors.verticalCenter: parent.verticalCenter
                                             }
                                         }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: SysData.setCoffee(false)
+                                        }
                                     }
                                 }
 

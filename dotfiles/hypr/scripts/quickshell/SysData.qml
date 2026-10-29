@@ -44,7 +44,8 @@ Item {
     property bool coffeeActive: false
 
     function syncCoffeeState() {
-        let t = (coffeeStateView.text() || "").trim();
+        let raw = (typeof coffeeStateView.text === "function") ? coffeeStateView.text() : coffeeStateView.text;
+        let t = (raw || "").trim();
         if (!t) { root.coffeeActive = false; return; }
         try {
             let d = JSON.parse(t);
@@ -393,7 +394,8 @@ Item {
     }
 
     function _updateTransformFromConf() {
-        let content = monitorConfView.text();
+        let raw = (typeof monitorConfView.text === "function") ? monitorConfView.text() : monitorConfView.text;
+        let content = (raw || "").trim();
         if (!content) return;
         let match = content.match(/transform,(\d+)/);
         if (match) {
@@ -412,9 +414,10 @@ Item {
         path: Caching.powerProfileFile
         watchChanges: true
         onLoaded: {
-            let t = profileCacheFile.text();
-            if (t && t.trim().length > 0) {
-                root._reconcileStartupProfile(root.acOnline, t.trim());
+            let raw = (typeof profileCacheFile.text === "function") ? profileCacheFile.text() : profileCacheFile.text;
+            let t = (raw || "").trim();
+            if (t.length > 0) {
+                root._reconcileStartupProfile(root.acOnline, t);
             }
         }
     }
@@ -434,17 +437,9 @@ Item {
     }
 
     function _applyVisualOverrides(targetProfile) {
-        if (targetProfile === "power-saver") {
-            if (root.saverVisualState !== "saver-applied") {
-                root.saverVisualState = "saver-applied";
-                Quickshell.execDetached(["bash", "-c", "bash $HOME/.config/hypr/scripts/mode_ctl.sh set power-saver true 2>/dev/null || true"]);
-            }
-        } else {
-            if (root.saverVisualState === "saver-applied") {
-                root.saverVisualState = "normal";
-                Quickshell.execDetached(["bash", "-c", "bash $HOME/.config/hypr/scripts/mode_ctl.sh set power-saver false 2>/dev/null || true"]);
-            }
-        }
+        // power.sh profile handles mode_ctl.sh sync directly.
+        // We track saverVisualState cleanly without race conditions.
+        root.saverVisualState = (targetProfile === "power-saver") ? "saver-applied" : "normal";
     }
 
     function _reconcileStartupProfile(isOnline, explicitCached) {

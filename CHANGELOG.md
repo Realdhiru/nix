@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-10-29 — Desktop Mode Preemption, Blur Restoration & Telemetry Repair Pass (`desktop-v5`)
+
+- **Atomic Mode Preemption**: Conflicting exclusive modes (`wallpaper-kill`, `gaming`, `power-saver`) now preempt automatically in a single atomic jq pass and apply without redundant compositor flickering.
+- **Hyprland Blur Restoration**: Replaced naive boolean hyprctl eval with full configuration restoration (`size = 8, passes = 1, vibrancy = 0.1696`), and fixed boolean extraction fallback so toggling wallpaper-kill off fully restores blur.
+- **Coffee Mode Transient Service & UI**: Added `systemctl --user reset-failed` to prevent transient unit collisions in `mode_ctl.sh`, guarded FileView text accessors in `SysData.qml`, and added click-to-disable MouseArea to the COFFEE pill in `BatteryPopup.qml`.
+- **Power Profile & Battery Widget State Sync**: Removed parallel out-of-order execution loops between QuickShell and `mode_ctl.sh`, cleanly delegating profile state through `power.sh profile`.
+- **KDE Connect Lifecycle & Route Discovery**: Narrowed process matching to avoid touching portal processes, and filtered router gateway addresses from link-local IPv6 discovery.
+
 ## 2026-10-28 — Desktop Repair Pass v4 (`desktop-v4`)
 
 - **Brave Window Rules**: Removed `min_size` constraint from `rules.lua` while keeping picture-in-picture opaque, allowing Brave windows to shrink smoothly without artificial size floors.

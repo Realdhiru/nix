@@ -90,30 +90,16 @@ capture_baseline_if_clean() {
     ' "$MODES_JSON" 2>/dev/null || echo "false")
 
     if [ "$any_exclusive" = "false" ]; then
-        if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-            local b_blur b_shadow b_anim b_direct b_tear
-            b_blur=$(hyprctl getoption decoration:blur:enabled -j 2>/dev/null | jq -r '.bool // true')
-            b_shadow=$(hyprctl getoption decoration:shadow:enabled -j 2>/dev/null | jq -r '.bool // true')
-            b_anim=$(hyprctl getoption animations:enabled -j 2>/dev/null | jq -r '.bool // true')
-            b_direct=$(hyprctl getoption render:direct_scanout -j 2>/dev/null | jq -r '.int // 0')
-            b_tear=$(hyprctl getoption general:allow_tearing -j 2>/dev/null | jq -r '.bool // false')
-
-            local tmp="$MODES_JSON.tmp.$$"
-            jq --argjson blur "$b_blur" \
-               --argjson shadow "$b_shadow" \
-               --argjson anim "$b_anim" \
-               --argjson direct "$b_direct" \
-               --argjson tear "$b_tear" \
-               '.baseline = {
-                   "wallpaper": (.baseline.wallpaper // true),
-                   "blur": $blur,
-                   "shadow": $shadow,
-                   "animations": $anim,
-                   "opacity_solid": (.baseline.opacity_solid // false),
-                   "direct_scanout": $direct,
-                   "tearing": (if ($tear == true or $tear == 1) then 1 else 0 end)
-               }' "$MODES_JSON" > "$tmp" 2>/dev/null && mv -f "$tmp" "$MODES_JSON" || rm -f "$tmp"
-        fi
+        local tmp="$MODES_JSON.tmp.$$"
+        jq '.baseline = {
+            "wallpaper": true,
+            "blur": true,
+            "shadow": true,
+            "animations": true,
+            "opacity_solid": false,
+            "direct_scanout": 0,
+            "tearing": 0
+        }' "$MODES_JSON" > "$tmp" 2>/dev/null && mv -f "$tmp" "$MODES_JSON" || rm -f "$tmp"
     fi
 }
 
@@ -125,14 +111,14 @@ recompute_and_apply() {
     if [ -f "$MODES_JSON" ]; then
         read -r old_wp old_blur old_shadow old_anim old_solid old_direct old_tearing old_coffee < <(
             jq -r '[
-                .computed.wallpaper // true,
-                .computed.blur // true,
-                .computed.shadow // true,
-                .computed.animations // true,
-                .computed.opacity_solid // false,
-                .computed.direct_scanout // 0,
-                .computed.tearing // 0,
-                .computed.idle_inhibit // false
+                (if .computed.wallpaper == null then true else .computed.wallpaper end),
+                (if .computed.blur == null then true else .computed.blur end),
+                (if .computed.shadow == null then true else .computed.shadow end),
+                (if .computed.animations == null then true else .computed.animations end),
+                (if .computed.opacity_solid == null then false else .computed.opacity_solid end),
+                (if .computed.direct_scanout == null then 0 else .computed.direct_scanout end),
+                (if .computed.tearing == null then 0 else .computed.tearing end),
+                (if .computed.idle_inhibit == null then false else .computed.idle_inhibit end)
             ] | @tsv' "$MODES_JSON" 2>/dev/null || echo "true true true true false 0 0 false"
         )
     fi
@@ -186,9 +172,8 @@ recompute_and_apply() {
         ] | @tsv' "$MODES_JSON"
     )
 
-    # 1. Apply Compositor rules without reload only if compositor parameters changed.
-    # Also force-apply when restoring from exclusive mode (was_exclusive=true) because
-    # both old and new JSON have blur/shadow=true so diff alone misses the restore.
+    # 1. Apply Compositor rules without reload.
+    # Evaluates full blur/shadow configuration to guarantee exact appearance restoration.
     if [ "$was_exclusive" = "true" ] || \
        [ "$blur_val" != "$old_blur" ] || [ "$shadow_val" != "$old_shadow" ] || \
        [ "$anim_val" != "$old_anim" ] || [ "$direct_val" != "$old_direct" ] || \
@@ -203,13 +188,29 @@ recompute_and_apply() {
         fi
 
         if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-            hyprctl eval "hl.config({
-                decoration = { blur = { enabled = $blur_val }, shadow = { enabled = $shadow_val } },
-                animations = { enabled = $anim_val },
-                render = { direct_scanout = $direct_val },
-                misc = { vrr = $vrr_val },
-                general = { allow_tearing = $tearing_bool }
-            })" >/dev/null 2>&1 || true
+            if [ "$blur_val" = "true" ]; then
+                hyprctl eval "hl.config({
+                    decoration = {
+                        blur = { enabled = true, size = 8, passes = 1, vibrancy = 0.1696 },
+                        shadow = { enabled = $shadow_val, range = 4, render_power = 3 }
+                    },
+                    animations = { enabled = $anim_val },
+                    render = { direct_scanout = $direct_val },
+                    misc = { vrr = $vrr_val },
+                    general = { allow_tearing = $tearing_bool }
+                })" >/dev/null 2>&1 || true
+            else
+                hyprctl eval "hl.config({
+                    decoration = {
+                        blur = { enabled = false },
+                        shadow = { enabled = $shadow_val }
+                    },
+                    animations = { enabled = $anim_val },
+                    render = { direct_scanout = $direct_val },
+                    misc = { vrr = $vrr_val },
+                    general = { allow_tearing = $tearing_bool }
+                })" >/dev/null 2>&1 || true
+            fi
         fi
     fi
 
@@ -240,7 +241,10 @@ recompute_and_apply() {
     # 3. Terminal opacity update only if opacity_solid changed
     if [ "$solid_val" != "$old_solid" ]; then
         local term_op="$HOME/nix/dotfiles/wallust/terminal-opacity.sh"
-        [ -x "$term_op" ] && bash "$term_op" --reload >/dev/null 2>&1 || true
+        [ ! -f "$term_op" ] && term_op="$HOME/.config/wallust/terminal-opacity.sh"
+        if [ -f "$term_op" ]; then
+            bash "$term_op" --reload >/dev/null 2>&1 || true
+        fi
     fi
 
     # 4. Idle inhibition (coffee) only if coffee changed.
@@ -248,6 +252,7 @@ recompute_and_apply() {
     if [ "$coffee_val" != "$old_coffee" ]; then
         if [ "$coffee_val" = "true" ]; then
             if ! systemctl --user is-active --quiet coffee-mode 2>/dev/null; then
+                systemctl --user reset-failed coffee-mode 2>/dev/null || true
                 systemd-run --user --unit=coffee-mode \
                     systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle \
                     --why="Coffee mode (idle inhibit)" --mode=block \
@@ -255,6 +260,7 @@ recompute_and_apply() {
             fi
         else
             systemctl --user stop coffee-mode 2>/dev/null || true
+            systemctl --user reset-failed coffee-mode 2>/dev/null || true
         fi
     fi
 
@@ -286,14 +292,7 @@ case "$ACTION" in
         ;;
 
     can-enable)
-        MODE="${2:-}"
-        [ -z "$MODE" ] && exit 1
-        active_conflict=$(check_conflict "$MODE" || true)
-        if [ -n "$active_conflict" ]; then
-            notify-send -a "Mode" "${MODE} blocked: ${active_conflict} on"
-            echo "${MODE} blocked: ${active_conflict} on" >&2
-            exit 1
-        fi
+        # Always allow enabling via automatic preemption
         exit 0
         ;;
 
@@ -303,21 +302,20 @@ case "$ACTION" in
         [ -z "$MODE" ] && { echo "Usage: $0 set <mode> <true|false>"; exit 1; }
         [ "$TARGET_VAL" != "true" ] && TARGET_VAL="false"
 
-        if [ "$TARGET_VAL" = "true" ]; then
-            active_conflict=$(check_conflict "$MODE" || true)
-            if [ -n "$active_conflict" ]; then
-                # Auto-disable the conflicting mode first, then apply the requested one
-                for c in $active_conflict; do
-                    tmp_c="$MODES_JSON.tmp.$$c"
-                    jq --arg m "$c" '.active[$m] = false' "$MODES_JSON" > "$tmp_c" 2>/dev/null && mv -f "$tmp_c" "$MODES_JSON" || rm -f "$tmp_c"
-                done
-                recompute_and_apply
-            fi
-            capture_baseline_if_clean
-        fi
+        capture_baseline_if_clean
 
         tmp_json="$MODES_JSON.tmp.$$"
-        jq --arg m "$MODE" --argjson v "$TARGET_VAL" '.active[$m] = $v' "$MODES_JSON" > "$tmp_json"
+        if [ "$TARGET_VAL" = "true" ]; then
+            conflicts=$(get_conflicts "$MODE")
+            # Atomically disable conflicting modes and enable the target mode in a single pass
+            jq --arg m "$MODE" --arg c "$conflicts" '
+                reduce ($c | split(" ") | .[]) as $conflict (.; if $conflict != "" then .active[$conflict] = false else . end) |
+                .active[$m] = true
+            ' "$MODES_JSON" > "$tmp_json"
+        else
+            jq --arg m "$MODE" '.active[$m] = false' "$MODES_JSON" > "$tmp_json"
+        fi
+
         if jq empty "$tmp_json" 2>/dev/null; then
             mv -f "$tmp_json" "$MODES_JSON"
         else
@@ -337,20 +335,21 @@ case "$ACTION" in
             TARGET_VAL="false"
         else
             TARGET_VAL="true"
-            active_conflict=$(check_conflict "$MODE" || true)
-            if [ -n "$active_conflict" ]; then
-                # Auto-disable the conflicting mode first, then fall through to apply
-                for c in $active_conflict; do
-                    tmp_c="$MODES_JSON.tmp.$$c"
-                    jq --arg m "$c" '.active[$m] = false' "$MODES_JSON" > "$tmp_c" 2>/dev/null && mv -f "$tmp_c" "$MODES_JSON" || rm -f "$tmp_c"
-                done
-                recompute_and_apply
-            fi
-            capture_baseline_if_clean
         fi
 
+        capture_baseline_if_clean
+
         tmp_json="$MODES_JSON.tmp.$$"
-        jq --arg m "$MODE" --argjson v "$TARGET_VAL" '.active[$m] = $v' "$MODES_JSON" > "$tmp_json"
+        if [ "$TARGET_VAL" = "true" ]; then
+            conflicts=$(get_conflicts "$MODE")
+            jq --arg m "$MODE" --arg c "$conflicts" '
+                reduce ($c | split(" ") | .[]) as $conflict (.; if $conflict != "" then .active[$conflict] = false else . end) |
+                .active[$m] = true
+            ' "$MODES_JSON" > "$tmp_json"
+        else
+            jq --arg m "$MODE" '.active[$m] = false' "$MODES_JSON" > "$tmp_json"
+        fi
+
         if jq empty "$tmp_json" 2>/dev/null; then
             mv -f "$tmp_json" "$MODES_JSON"
         else

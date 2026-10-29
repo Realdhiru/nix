@@ -8,13 +8,13 @@ LOCK_FILE="/run/user/${UID}/kdeconnect_toggle.lock"
 exec 200>"$LOCK_FILE"
 flock -n 200 || exit 0
 
-if pgrep -f "kdeconnect-indicator" >/dev/null 2>&1 || pgrep -f "kdeconnectd" >/dev/null 2>&1; then
+if pgrep -f '(^|/)kdeconnect-indicator( |$)' >/dev/null 2>&1 || pgrep -f '(^|/)kdeconnectd( |$)' >/dev/null 2>&1; then
     # Notify immediately first
     notify-send -a "KDE Connect" -u low -t 1500 "OFF"
-    # Stop indicator, daemon, and UI cleanly
-    pkill -f "kdeconnect-indicator" 2>/dev/null || true
-    pkill -f "kdeconnectd" 2>/dev/null || true
-    pkill -f "kdeconnect-app" 2>/dev/null || true
+    # Stop indicator, daemon, and UI cleanly (never kill hypr-kdeconnect-portal)
+    pkill -f '(^|/)kdeconnect-indicator( |$)' 2>/dev/null || true
+    pkill -f '(^|/)kdeconnectd( |$)' 2>/dev/null || true
+    pkill -f '(^|/)kdeconnect-app( |$)' 2>/dev/null || true
     systemctl --user stop "dbus-*.org.kde.kdeconnect*.service" 2>/dev/null || true
     flock -u 200 || true
     exec 200>&- || true
@@ -31,12 +31,12 @@ else
     elif command -v kdeconnectd >/dev/null 2>&1; then
         nohup kdeconnectd >/dev/null 2>&1 &
     fi
-    # After daemon starts, inject phone link-local IPv6 into customDevices and refresh
+    # After daemon starts, check neighbour table for non-router link-local IPv6, refresh discovery
     (
-        sleep 1
-        # Get link-local IPv6 from neighbour table (stable, MAC-derived)
         IFACE=$(ip route show default 2>/dev/null | awk '/^default/ {print $5}' | head -1)
+        # Exclude router / gateway MACs
         LLADDR=$(ip -6 neigh show dev "${IFACE:-wlo1}" 2>/dev/null \
+            | grep -v "router" \
             | awk '$5=="REACHABLE"||$5=="STALE"||$5=="DELAY"||$5=="PROBE" {if ($1~/^fe80::/) print $1}' \
             | head -1)
         if [ -n "$LLADDR" ]; then
