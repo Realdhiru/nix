@@ -223,6 +223,11 @@ recompute_and_apply() {
         if [ "$wp_val" = "false" ]; then
             pkill -STOP -f "mpvpaper" 2>/dev/null || true
             command -v awww >/dev/null 2>&1 && awww clear >/dev/null 2>&1 || true
+            local theme_engine="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
+            [ ! -x "$theme_engine" ] && theme_engine="$HOME/nix/dotfiles/wallust/generate.sh"
+            if [ -x "$theme_engine" ]; then
+                "$theme_engine" --neutral >/dev/null 2>&1 &
+            fi
         else
             pkill -CONT -f "mpvpaper" 2>/dev/null || true
             local last_wp="$DESKTOP_STATE_DIR/wallpaper/current_wallpaper.txt"
@@ -242,8 +247,11 @@ recompute_and_apply() {
         fi
     fi
 
-    # 3. Terminal opacity update only if opacity_solid changed
+    # 3. Window & terminal opacity update only if opacity_solid changed
     if [ "$solid_val" != "$old_solid" ]; then
+        if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+            hyprctl eval "dofile(os.getenv('HOME') .. '/.config/hypr/rules.lua')" >/dev/null 2>&1 || true
+        fi
         local term_op="$HOME/nix/dotfiles/wallust/terminal-opacity.sh"
         [ ! -f "$term_op" ] && term_op="$HOME/.config/wallust/terminal-opacity.sh"
         if [ -f "$term_op" ]; then

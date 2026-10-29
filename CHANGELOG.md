@@ -2,6 +2,7 @@
 
 ## 2026-10-29 — Desktop Mode Preemption, Blur Restoration & Telemetry Repair Pass (`desktop-v5`)
 
+- **Wallpaper Kill Mode Neutral Theme & Solid Window Opacity**: Wired `generate.sh --neutral` into `mode_ctl.sh` upon disabling wallpaper surface so wallpaper-derived colors reset to pure neutral dark, and dynamically reloaded Hyprland window rules (`rules.lua`) on `opacity_solid` transitions so all glass windows snap immediately to full 1.0 opaque.
 - **Boot Startup Lag Elimination**: Removed eager wallpaper thumbnail batch processing (`wallpaper_thumbnail.sh`) from `WallpaperPicker.qml` `Component.onCompleted`, eliminating the boot-time storm of 15 maxed CPU cores running ImageMagick and ffmpeg during initial QuickShell preloading.
 - **Battery Widget Runtime Text Contrast**: Raised remaining runtime label color in `BatteryPopup.qml` to `window.text` (`#F6F5F4`), delivering high text contrast (17.8:1) against dark backgrounds.
 - **Atomic Mode Preemption**: Conflicting exclusive modes (`wallpaper-kill`, `gaming`, `power-saver`) now preempt automatically in a single atomic jq pass and apply without redundant compositor flickering.
