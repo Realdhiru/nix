@@ -2383,7 +2383,6 @@ Item {
 
         view.forceActiveFocus();
         window.processMarkers();
-        Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/wallpaper_thumbnail.sh"]);
     }
 
     Component.onDestruction: {

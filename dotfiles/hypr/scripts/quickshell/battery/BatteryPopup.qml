@@ -742,7 +742,7 @@ Item {
                                                 font.pixelSize: window.s(10)
                                                 font.family: "JetBrains Mono"
                                                 font.weight: Font.Black
-                                                color: window.batColorStart
+                                                color: window.text
                                                 anchors.verticalCenter: parent.verticalCenter
                                             }
 
