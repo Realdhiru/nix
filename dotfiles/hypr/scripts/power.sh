@@ -343,13 +343,24 @@ cmd_profile() {
         asusctl profile set "$asus_prof" >/dev/null 2>&1 || true
     fi
 
-    # 4. Modes Engine SSOT sync
-    local mode_ctl="$SCRIPT_DIR/mode_ctl.sh"
-    [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
-    if [ "$prof" = "power-saver" ] || [ "$prof" = "quiet" ]; then
-        bash "$mode_ctl" set power-saver true 2>/dev/null || true
-    else
-        bash "$mode_ctl" set power-saver false 2>/dev/null || true
+    # 4. Atomic profile state sync
+    mkdir -p "$DESKTOP_STATE_DIR/power"
+    echo "$prof" > "$DESKTOP_STATE_DIR/power/profile.tmp" && mv -f "$DESKTOP_STATE_DIR/power/profile.tmp" "$DESKTOP_STATE_DIR/power/profile"
+    local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
+    [ ! -x "$state_ctl" ] && state_ctl="$HOME/nix/dotfiles/hypr/scripts/quickshell/state_ctl.sh"
+    if [ -x "$state_ctl" ]; then
+        bash "$state_ctl" set power.profile "$prof" >/dev/null 2>&1 || true
+    fi
+
+    # 5. Modes Engine SSOT sync (only if not called internally by mode_ctl.sh)
+    if [ "${CALLER_IS_MODE_CTL:-false}" != "true" ]; then
+        local mode_ctl="$SCRIPT_DIR/mode_ctl.sh"
+        [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
+        if [ "$prof" = "power-saver" ] || [ "$prof" = "quiet" ]; then
+            bash "$mode_ctl" set power-saver true 2>/dev/null || true
+        else
+            bash "$mode_ctl" set power-saver false 2>/dev/null || true
+        fi
     fi
 }
 

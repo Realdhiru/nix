@@ -104,12 +104,13 @@ capture_baseline_if_clean() {
 }
 
 recompute_and_apply() {
+    local prior_saver="${1:-}"
     local tmp_json="$MODES_JSON.tmp.$$"
     
     # Extract current computed values prior to recompute to avoid redundant subsystem work
-    local old_wp="true" old_blur="true" old_shadow="true" old_anim="true" old_solid="false" old_direct="0" old_tearing="0" old_coffee="false"
+    local old_wp="true" old_blur="true" old_shadow="true" old_anim="true" old_solid="false" old_direct="0" old_tearing="0" old_coffee="false" old_saver="false"
     if [ -f "$MODES_JSON" ]; then
-        read -r old_wp old_blur old_shadow old_anim old_solid old_direct old_tearing old_coffee < <(
+        read -r old_wp old_blur old_shadow old_anim old_solid old_direct old_tearing old_coffee old_saver < <(
             jq -r '[
                 (if .computed.wallpaper == null then true else .computed.wallpaper end),
                 (if .computed.blur == null then true else .computed.blur end),
@@ -118,10 +119,12 @@ recompute_and_apply() {
                 (if .computed.opacity_solid == null then false else .computed.opacity_solid end),
                 (if .computed.direct_scanout == null then 0 else .computed.direct_scanout end),
                 (if .computed.tearing == null then 0 else .computed.tearing end),
-                (if .computed.idle_inhibit == null then false else .computed.idle_inhibit end)
-            ] | @tsv' "$MODES_JSON" 2>/dev/null || echo "true true true true false 0 0 false"
+                (if .computed.idle_inhibit == null then false else .computed.idle_inhibit end),
+                (if .active["power-saver"] == null then false else .active["power-saver"] end)
+            ] | @tsv' "$MODES_JSON" 2>/dev/null || echo "true true true true false 0 0 false false"
         )
     fi
+    [ -n "$prior_saver" ] && old_saver="$prior_saver"
 
     # Detect if an exclusive mode was active BEFORE this recompute (captured before jq overwrites).
     # When restoring from an exclusive mode, blur/shadow/anim both read 'true' in old and new JSON,
@@ -158,8 +161,8 @@ recompute_and_apply() {
     fi
 
     # Extract new computed values in a single pass
-    local wp_val blur_val shadow_val anim_val solid_val direct_val tearing_val coffee_val
-    read -r wp_val blur_val shadow_val anim_val solid_val direct_val tearing_val coffee_val < <(
+    local wp_val blur_val shadow_val anim_val solid_val direct_val tearing_val coffee_val saver_val
+    read -r wp_val blur_val shadow_val anim_val solid_val direct_val tearing_val coffee_val saver_val < <(
         jq -r '[
             .computed.wallpaper,
             .computed.blur,
@@ -168,7 +171,8 @@ recompute_and_apply() {
             .computed.opacity_solid,
             .computed.direct_scanout,
             .computed.tearing,
-            .computed.idle_inhibit
+            .computed.idle_inhibit,
+            (.active["power-saver"] // false)
         ] | @tsv' "$MODES_JSON"
     )
 
@@ -264,7 +268,26 @@ recompute_and_apply() {
         fi
     fi
 
-    # 5. Optional backwards compatibility with state.json (batched single atomic update)
+    # 5. Restore hardware power profile when power-saver is disabled/preempted
+    if [ "$old_saver" = "true" ] && [ "$saver_val" = "false" ]; then
+        local target_prof="balanced"
+        local ac_online="0"
+        for ps in /sys/class/power_supply/*/online; do
+            if [ -f "$ps" ] && [ "$(cat "$ps" 2>/dev/null || echo 0)" = "1" ]; then
+                ac_online="1"
+                break
+            fi
+        done
+        [ "$ac_online" = "1" ] && target_prof="performance"
+
+        local power_sh="$HOME/.config/hypr/scripts/power.sh"
+        [ ! -x "$power_sh" ] && power_sh="$HOME/nix/dotfiles/hypr/scripts/power.sh"
+        if [ -x "$power_sh" ]; then
+            CALLER_IS_MODE_CTL=true bash "$power_sh" profile "$target_prof" >/dev/null 2>&1 || true
+        fi
+    fi
+
+    # 6. Optional backwards compatibility with state.json (batched single atomic update)
     local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
     if [ -x "$state_ctl" ]; then
         local is_game_active="false"
@@ -303,6 +326,7 @@ case "$ACTION" in
         [ "$TARGET_VAL" != "true" ] && TARGET_VAL="false"
 
         capture_baseline_if_clean
+        prior_saver=$(jq -r '.active["power-saver"] // false' "$MODES_JSON" 2>/dev/null || echo "false")
 
         tmp_json="$MODES_JSON.tmp.$$"
         if [ "$TARGET_VAL" = "true" ]; then
@@ -323,7 +347,7 @@ case "$ACTION" in
             exit 1
         fi
 
-        recompute_and_apply
+        recompute_and_apply "$prior_saver"
         ;;
 
     toggle)
@@ -338,6 +362,7 @@ case "$ACTION" in
         fi
 
         capture_baseline_if_clean
+        prior_saver=$(jq -r '.active["power-saver"] // false' "$MODES_JSON" 2>/dev/null || echo "false")
 
         tmp_json="$MODES_JSON.tmp.$$"
         if [ "$TARGET_VAL" = "true" ]; then
@@ -357,7 +382,7 @@ case "$ACTION" in
             exit 1
         fi
 
-        recompute_and_apply
+        recompute_and_apply "$prior_saver"
         new_val=$(jq -r --arg m "$MODE" '.active[$m]' "$MODES_JSON")
         echo "$new_val"
         ;;

@@ -1247,9 +1247,9 @@ Item {
                                         return width + window.s(1);
                                     }
                                     opacity: window.powerProfile === "transitioning" ? 0.4 : 1.0
-                                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                                     
-                                    Behavior on x { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
+                                    Behavior on x { NumberAnimation { duration: Motion.moveMs; easing.type: Motion.moveEasing } }
                                     
                                     gradient: Gradient {
                                         orientation: Gradient.Horizontal

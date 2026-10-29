@@ -413,11 +413,29 @@ Item {
         id: profileCacheFile
         path: Caching.powerProfileFile
         watchChanges: true
-        onLoaded: {
-            let raw = (typeof profileCacheFile.text === "function") ? profileCacheFile.text() : profileCacheFile.text;
-            let t = (raw || "").trim();
-            if (t.length > 0) {
-                root._reconcileStartupProfile(root.acOnline, t);
+        onLoaded: root._handleProfileFileUpdate()
+        onTextChanged: root._handleProfileFileUpdate()
+        onFileChanged: {
+            profileCacheFile.reload();
+            root._handleProfileFileUpdate();
+        }
+    }
+
+    function _handleProfileFileUpdate() {
+        let raw = (typeof profileCacheFile.text === "function") ? profileCacheFile.text() : profileCacheFile.text;
+        let t = (raw || "").trim();
+        if (!t) return;
+        if (!root._profileLoaded) {
+            root._profileLoaded = true;
+            root._reconcileStartupProfile(root.acOnline, t);
+        } else {
+            // Reactive external sync (e.g. from mode_ctl.sh preemption or power.sh CLI)
+            if (t === "power-saver" || t === "performance" || t === "balanced") {
+                if (root.powerProfile !== t) {
+                    root.powerProfile = t;
+                    root.requestedProfile = t;
+                    root._applyVisualOverrides(t);
+                }
             }
         }
     }
@@ -429,7 +447,8 @@ Item {
         stdout: StdioCollector {
             onStreamFinished: {
                 let prof = this.text ? this.text.trim() : "";
-                if (prof === "power-saver" || prof === "performance" || prof === "balanced") {
+                if (!root._profileLoaded && (prof === "power-saver" || prof === "performance" || prof === "balanced")) {
+                    root._profileLoaded = true;
                     root._reconcileStartupProfile(root.acOnline, prof);
                 }
             }

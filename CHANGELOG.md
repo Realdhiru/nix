@@ -3,10 +3,12 @@
 ## 2026-10-29 — Desktop Mode Preemption, Blur Restoration & Telemetry Repair Pass (`desktop-v5`)
 
 - **Atomic Mode Preemption**: Conflicting exclusive modes (`wallpaper-kill`, `gaming`, `power-saver`) now preempt automatically in a single atomic jq pass and apply without redundant compositor flickering.
+- **Native Hardware Power Profile Restoration**: Restored lowest-level hardware power profile switching (TLP and ACPI `/sys/firmware/acpi/platform_profile`) on `power-saver` preemption to fall back natively to `performance` on AC or `balanced` on battery, with event-driven FileView sync in `SysData.qml`.
 - **Hyprland Blur Restoration**: Replaced naive boolean hyprctl eval with full configuration restoration (`size = 8, passes = 1, vibrancy = 0.1696`), and fixed boolean extraction fallback so toggling wallpaper-kill off fully restores blur.
 - **Coffee Mode Transient Service & UI**: Added `systemctl --user reset-failed` to prevent transient unit collisions in `mode_ctl.sh`, guarded FileView text accessors in `SysData.qml`, and added click-to-disable MouseArea to the COFFEE pill in `BatteryPopup.qml`.
 - **Power Profile & Battery Widget State Sync**: Removed parallel out-of-order execution loops between QuickShell and `mode_ctl.sh`, cleanly delegating profile state through `power.sh profile`.
 - **KDE Connect Lifecycle & Route Discovery**: Narrowed process matching to avoid touching portal processes, and filtered router gateway addresses from link-local IPv6 discovery.
+- **CodeTantra SEA Deployment & Architecture Vault**: Packaged Debian runtime with Bubblewrap containerization, `systemd` process aliasing, dedicated Xephyr `:8` nested display isolation, containerized Ubuntu 22.04 LTS `os-release` spoofing, non-blocking X11 `maximizer`, and authored complete 6-note `codetantra-brain` vault at [`~/Projects/Vault/codetantra-brain/`](file:///home/realdhiru/Projects/Vault/codetantra-brain/).
 
 ## 2026-10-28 — Desktop Repair Pass v4 (`desktop-v4`)
 
