@@ -19,20 +19,10 @@ done
 # 2. Hyprland configuration & system-wide reload
 if command -v hyprctl >/dev/null 2>&1; then
     hyprctl reload >/dev/null 2>&1
-    # Re-apply persistent compositor flags
-    DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
-    PROFILE="$(cat "$DESKTOP_STATE_DIR/power/profile" 2>/dev/null || echo "")"
-    if [ -f "$DESKTOP_STATE_DIR/modes/wallpaper_killed" ] || [ -f "$DESKTOP_STATE_DIR/modes/gaming_mode" ] || [ "$PROFILE" = "power-saver" ]; then
-        hyprctl eval "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } } })" >/dev/null 2>&1 || true
-        if [ "$PROFILE" = "power-saver" ] || [ -f "$DESKTOP_STATE_DIR/modes/gaming_mode" ]; then
-            hyprctl eval "hl.config({ animations = { enabled = false } })" >/dev/null 2>&1 || true
-        fi
-    fi
-    if [ -f "$DESKTOP_STATE_DIR/modes/gaming_mode" ]; then
-        hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = true } })" >/dev/null 2>&1 || true
-    elif [ "$PROFILE" = "power-saver" ]; then
-        hyprctl eval "hl.config({ render = { direct_scanout = 2 }, misc = { vrr = 1 }, general = { allow_tearing = false } })" >/dev/null 2>&1 || true
-    fi
+    # Re-apply persistent compositor flags from modes.json (single source of truth)
+    MODES_CTL="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
+    [ ! -x "$MODES_CTL" ] && MODES_CTL="$HOME/.config/hypr/scripts/mode_ctl.sh"
+    [ -x "$MODES_CTL" ] && bash "$MODES_CTL" apply > /dev/null 2>&1 || true
 fi
 
 # 3. Clean quickshell spawn

@@ -31,4 +31,25 @@ else
     elif command -v kdeconnectd >/dev/null 2>&1; then
         nohup kdeconnectd >/dev/null 2>&1 &
     fi
+    # After daemon starts, inject phone link-local IPv6 into customDevices and refresh
+    (
+        sleep 1
+        # Get link-local IPv6 from neighbour table (stable, MAC-derived)
+        IFACE=$(ip route show default 2>/dev/null | awk '/^default/ {print $5}' | head -1)
+        LLADDR=$(ip -6 neigh show dev "${IFACE:-wlo1}" 2>/dev/null \
+            | awk '$5=="REACHABLE"||$5=="STALE"||$5=="DELAY"||$5=="PROBE" {if ($1~/^fe80::/) print $1}' \
+            | head -1)
+        if [ -n "$LLADDR" ]; then
+            LLADDR_SCOPE="${LLADDR}%${IFACE:-wlo1}"
+            CONFIG="$HOME/.config/kdeconnect/config"
+            if [ -f "$CONFIG" ]; then
+                if grep -q "^customDevices=" "$CONFIG"; then
+                    sed -i "s|^customDevices=.*|customDevices=${LLADDR_SCOPE}|" "$CONFIG"
+                else
+                    echo "customDevices=${LLADDR_SCOPE}" >> "$CONFIG"
+                fi
+            fi
+        fi
+        kdeconnect-cli --refresh > /dev/null 2>&1 || true
+    ) &
 fi

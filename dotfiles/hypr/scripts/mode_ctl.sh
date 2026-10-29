@@ -137,6 +137,12 @@ recompute_and_apply() {
         )
     fi
 
+    # Detect if an exclusive mode was active BEFORE this recompute (captured before jq overwrites).
+    # When restoring from an exclusive mode, blur/shadow/anim both read 'true' in old and new JSON,
+    # so a plain diff misses the restore. Force-apply compositor whenever we were in exclusive mode.
+    local was_exclusive="false"
+    { [ "$old_blur" = "false" ] || [ "$old_shadow" = "false" ] || [ "$old_anim" = "false" ]; } && was_exclusive="true"
+
     # Pure state calculation preserving prior baseline when modes are disabled
     jq '
       .active as $a |
@@ -180,8 +186,11 @@ recompute_and_apply() {
         ] | @tsv' "$MODES_JSON"
     )
 
-    # 1. Apply Compositor rules without reload only if compositor parameters changed
-    if [ "$blur_val" != "$old_blur" ] || [ "$shadow_val" != "$old_shadow" ] || \
+    # 1. Apply Compositor rules without reload only if compositor parameters changed.
+    # Also force-apply when restoring from exclusive mode (was_exclusive=true) because
+    # both old and new JSON have blur/shadow=true so diff alone misses the restore.
+    if [ "$was_exclusive" = "true" ] || \
+       [ "$blur_val" != "$old_blur" ] || [ "$shadow_val" != "$old_shadow" ] || \
        [ "$anim_val" != "$old_anim" ] || [ "$direct_val" != "$old_direct" ] || \
        [ "$tearing_val" != "$old_tearing" ]; then
         local vrr_val=0
@@ -234,10 +243,16 @@ recompute_and_apply() {
         [ -x "$term_op" ] && bash "$term_op" --reload >/dev/null 2>&1 || true
     fi
 
-    # 4. Idle inhibition (coffee) only if coffee changed
+    # 4. Idle inhibition (coffee) only if coffee changed.
+    # coffee-mode is NOT a pre-existing .service file — create a transient unit via systemd-run.
     if [ "$coffee_val" != "$old_coffee" ]; then
         if [ "$coffee_val" = "true" ]; then
-            systemctl --user start coffee-mode 2>/dev/null || true
+            if ! systemctl --user is-active --quiet coffee-mode 2>/dev/null; then
+                systemd-run --user --unit=coffee-mode \
+                    systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle \
+                    --why="Coffee mode (idle inhibit)" --mode=block \
+                    sleep infinity >/dev/null 2>&1 || true
+            fi
         else
             systemctl --user stop coffee-mode 2>/dev/null || true
         fi
@@ -291,9 +306,12 @@ case "$ACTION" in
         if [ "$TARGET_VAL" = "true" ]; then
             active_conflict=$(check_conflict "$MODE" || true)
             if [ -n "$active_conflict" ]; then
-                notify-send -a "Mode" "${MODE} blocked: ${active_conflict} on"
-                echo "${MODE} blocked: ${active_conflict} on" >&2
-                exit 0
+                # Auto-disable the conflicting mode first, then apply the requested one
+                for c in $active_conflict; do
+                    tmp_c="$MODES_JSON.tmp.$$c"
+                    jq --arg m "$c" '.active[$m] = false' "$MODES_JSON" > "$tmp_c" 2>/dev/null && mv -f "$tmp_c" "$MODES_JSON" || rm -f "$tmp_c"
+                done
+                recompute_and_apply
             fi
             capture_baseline_if_clean
         fi
@@ -321,10 +339,12 @@ case "$ACTION" in
             TARGET_VAL="true"
             active_conflict=$(check_conflict "$MODE" || true)
             if [ -n "$active_conflict" ]; then
-                notify-send -a "Mode" "${MODE} blocked: ${active_conflict} on"
-                echo "${MODE} blocked: ${active_conflict} on" >&2
-                echo "false"
-                exit 0
+                # Auto-disable the conflicting mode first, then fall through to apply
+                for c in $active_conflict; do
+                    tmp_c="$MODES_JSON.tmp.$$c"
+                    jq --arg m "$c" '.active[$m] = false' "$MODES_JSON" > "$tmp_c" 2>/dev/null && mv -f "$tmp_c" "$MODES_JSON" || rm -f "$tmp_c"
+                done
+                recompute_and_apply
             fi
             capture_baseline_if_clean
         fi
