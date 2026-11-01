@@ -210,7 +210,6 @@
               dotfiles/hypr/scripts/quickshell/network/bluetooth_panel_logic.sh|\
               dotfiles/hypr/scripts/quickshell/network/bt_agent.sh|\
               dotfiles/hypr/scripts/quickshell/restore_state.sh|\
-              dotfiles/hypr/scripts/quickshell/wallpaper/ddg_search.sh|\
               dotfiles/hypr/scripts/reload.sh|\
               dotfiles/hypr/scripts/rotate_display.sh|\
               dotfiles/wallpaper/backend/ddg_search.sh|\
@@ -228,9 +227,13 @@
             esac
           done < <(grep -rnE 'sleep[[:space:]]+[0-9]' dotfiles/ scripts/ 2>/dev/null || true)
 
-          echo "Guard 3: Python or Node shebangs in owned codebase"
+          echo "Guard 3: Python or Node in owned codebase"
           if grep -rnE '^#![[:space:]]*/usr/bin/(env[[:space:]]+)?(python|node)' dotfiles/ scripts/ 2>/dev/null; then
             echo "FAIL: Python or Node shebang found in owned codebase"
+            fail=1
+          fi
+          if find dotfiles/ scripts/ -name '*.py' | grep -q .; then
+            echo "FAIL: Python script found in owned codebase"
             fail=1
           fi
 
@@ -278,6 +281,16 @@
           echo "Guard 9: persistent state paths under ~/.cache"
           if grep -rnE '(\~|\$HOME)/\.cache/(quickshell/state\.json|modes/|power/profile|idle_inhibit|wallpaper_kill_throttle|gaming_mode|wallpaper_killed)' dotfiles/ 2>/dev/null; then
             echo "FAIL: persistent state path under ~/.cache found"
+            fail=1
+          fi
+
+          echo "Guard 10: plaintext secrets or tracked API key files"
+          if [ -f dotfiles/secrets/openweather.json ]; then
+            echo "FAIL: openweather.json must not be tracked in git"
+            fail=1
+          fi
+          if grep -rnE '(weatherApiKey|openweather.*api\.openweathermap\.org/data/2\.5/weather\?appid=[a-f0-9]{32})' dotfiles/ 2>/dev/null; then
+            echo "FAIL: hardcoded weather API token found in dotfiles"
             fail=1
           fi
 
