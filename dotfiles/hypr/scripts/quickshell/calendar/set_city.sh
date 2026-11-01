@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SECRET_FILE="$HOME/nix/dotfiles/secrets/openweather.json"
+SECRET_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/calendar/openweather.json"
+[ ! -f "$SECRET_FILE" ] && [ -f "$HOME/nix/dotfiles/secrets/openweather.json" ] && SECRET_FILE="$HOME/nix/dotfiles/secrets/openweather.json"
 if [ ! -f "$SECRET_FILE" ]; then
     exit 1
 fi

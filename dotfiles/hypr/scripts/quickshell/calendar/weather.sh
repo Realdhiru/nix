@@ -19,7 +19,8 @@ next_day_cache_file="${cache_dir}/next_day_precache.json"
 # -----------------------------------------------------------------------------
 # SECRETS MANAGEMENT (NIXOS SAFE)
 # -----------------------------------------------------------------------------
-SECRET_FILE="$HOME/nix/dotfiles/secrets/openweather.json"
+SECRET_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/calendar/openweather.json"
+[ ! -f "$SECRET_FILE" ] && [ -f "$HOME/nix/dotfiles/secrets/openweather.json" ] && SECRET_FILE="$HOME/nix/dotfiles/secrets/openweather.json"
 
 if [ -f "$SECRET_FILE" ]; then
     KEY=$(jq -r '.api_key // empty' "$SECRET_FILE")

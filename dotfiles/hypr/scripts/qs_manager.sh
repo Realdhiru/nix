@@ -205,7 +205,9 @@ fi
 if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
 
     if [[ "$TARGET" == "calendar" ]]; then
-        if [ ! -s "$HOME/nix/dotfiles/secrets/openweather.json" ]; then
+        local weather_secret="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/calendar/openweather.json"
+        [ ! -s "$weather_secret" ] && weather_secret="$HOME/nix/dotfiles/secrets/openweather.json"
+        if [ ! -s "$weather_secret" ]; then
             TARGET="weather_setup"
         fi
     fi

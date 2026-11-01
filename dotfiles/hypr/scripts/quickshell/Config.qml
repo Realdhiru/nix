@@ -15,7 +15,6 @@ Item {
     readonly property string cacheDir: Caching.cacheDir
 
     readonly property string settingsJsonPath: hyprDir + "/settings.json"
-    readonly property string weatherEnvPath: qsScriptsDir + "/calendar/.env"
 
     // Dynamic Hardware Sysfs Discovery (Multi-Hardware / Multi-Vendor Portability)
     property string backlightDevice: "/sys/class/backlight/intel_backlight"
@@ -185,16 +184,6 @@ Item {
     property string language: ""
     property string kbOptions: "grp:alt_shift_toggle"
 
-    property string weatherUnit: "metric"
-    property string weatherApiKey: ""
-    property string weatherCityId: ""
-
-    property var keybindsData: []
-    signal keybindsLoaded()
-
-    property var startupData: []
-    signal startupLoaded()
-
     // =========================================================================
     // Settings Save Functions
     // =========================================================================
@@ -217,28 +206,6 @@ Item {
             sh(reloadCmd);
             config.initialWorkspaceCount = config.workspaceCount;
         }
-    }
-
-    function saveWeatherConfig() {
-        let envs = {
-            "OPENWEATHER_KEY": config.weatherApiKey,
-            "OPENWEATHER_CITY_ID": config.weatherCityId,
-            "OPENWEATHER_UNIT": config.weatherUnit
-        };
-
-        config.updateEnvBulk(config.weatherEnvPath, envs);
-        sh(`rm -rf "${Caching.getCacheDir('weather')}"`);
-    }
-
-    function saveAllKeybinds(bindsArray) {
-        config.keybindsData = bindsArray;
-        config.setSetting("keybinds", bindsArray);
-        // Notification intentionally removed for silence
-    }
-
-    function saveAllStartup(startupArray) {
-        config.startupData = startupArray;
-        config.setSetting("startup", startupArray);
     }
 
     // =========================================================================
@@ -438,32 +405,7 @@ Item {
         parseSettingsTextSync();
         parseAppearanceSync();
         sh("mkdir -p ~/.cache && touch ~/.cache/hypr_power_monitor.conf");
-        envReader.running = false; envReader.running = true;
         config.updateSolidMode();
-    }
-
-    Process {
-        id: envReader
-        command: ["bash", "-c", `cat "${config.weatherEnvPath}" 2>/dev/null || echo ''`]
-        running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let lines = this.text ? this.text.trim().split('\n') : [];
-                for (let line of lines) {
-                    line = line.trim();
-                    let parts = line.split("=");
-                    if (parts.length >= 2) {
-                        let key = parts[0].trim();
-                        let val = parts.slice(1).join("=").replace(/^['"]|['"]$/g, '').trim();
-                        config.rawEnvs[key] = val;
-
-                        if (key === "OPENWEATHER_KEY") config.weatherApiKey = val;
-                        else if (key === "OPENWEATHER_CITY_ID") config.weatherCityId = val;
-                        else if (key === "OPENWEATHER_UNIT") config.weatherUnit = val;
-                    }
-                }
-            }
-        }
     }
 
     FileView {

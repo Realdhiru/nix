@@ -8,7 +8,6 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pam
 import Quickshell.Services.UPower
-import "../"
 
 ShellRoot {
     id: root

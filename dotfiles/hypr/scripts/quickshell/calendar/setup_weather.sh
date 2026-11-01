@@ -4,7 +4,7 @@ set -euo pipefail
 API_KEY="$1"
 CITY_ID="$2"
 
-SECRET_DIR="$HOME/nix/dotfiles/secrets"
+SECRET_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/calendar"
 SECRET_FILE="$SECRET_DIR/openweather.json"
 
 mkdir -p "$SECRET_DIR"

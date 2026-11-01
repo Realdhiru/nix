@@ -1193,7 +1193,7 @@ Item {
         window.searchQuery = searchInput.text.trim();
         
         let rawSearchDir = decodeURIComponent(window.searchDir.replace(/^file:\/\//, ""));
-        let scriptPath = decodeURIComponent(Qt.resolvedUrl("ddg_search.sh").toString().replace(/^file:\/\//, ""));
+        let scriptPath = Quickshell.env("HOME") + "/.config/wallpaper/backend/ddg_search.sh";
         
         const cmd = `
             exec > ${Caching.logDir}/ddg_run.log 2>&1
