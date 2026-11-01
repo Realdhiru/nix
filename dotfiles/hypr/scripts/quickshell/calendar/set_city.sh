@@ -1,21 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SECRET_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/calendar/openweather.json"
-[ ! -f "$SECRET_FILE" ] && [ -f "$HOME/nix/dotfiles/secrets/openweather.json" ] && SECRET_FILE="$HOME/nix/dotfiles/secrets/openweather.json"
-if [ ! -f "$SECRET_FILE" ]; then
+CITY_ARG="${1:-}"
+if [ -z "$CITY_ARG" ]; then
     exit 1
 fi
 
-CITY_ID="$1"
-if [ -z "$CITY_ID" ]; then
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/calendar"
+CONFIG_FILE="$STATE_DIR/weather_config.json"
+mkdir -p "$STATE_DIR"
+
+IFS=',' read -r lat lon name country <<< "$CITY_ARG"
+if [ -z "$lat" ] || [ -z "$lon" ]; then
     exit 1
 fi
 
-# Update city_id in the JSON file
-TMP_FILE=$(mktemp)
-jq --arg id "$CITY_ID" '.city_id = $id' "$SECRET_FILE" > "$TMP_FILE"
-mv "$TMP_FILE" "$SECRET_FILE"
+cat <<EOF > "$CONFIG_FILE"
+{
+  "name": "${name:-Unknown}",
+  "country": "${country:-}",
+  "latitude": ${lat},
+  "longitude": ${lon},
+  "unit": "metric"
+}
+EOF
 
 # Trigger a weather refresh
-~/.config/hypr/scripts/quickshell/calendar/weather.sh --getdata
+~/.config/hypr/scripts/quickshell/calendar/weather.sh --getdata >/dev/null 2>&1 &

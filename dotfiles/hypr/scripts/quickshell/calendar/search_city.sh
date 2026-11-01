@@ -1,27 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SECRET_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/calendar/openweather.json"
-[ ! -f "$SECRET_FILE" ] && [ -f "$HOME/nix/dotfiles/secrets/openweather.json" ] && SECRET_FILE="$HOME/nix/dotfiles/secrets/openweather.json"
-if [ ! -f "$SECRET_FILE" ]; then
-    echo "[]"
-    exit 0
-fi
-
-KEY=$(jq -r '.api_key // empty' "$SECRET_FILE")
-if [ -z "$KEY" ]; then
-    echo "[]"
-    exit 0
-fi
-
-QUERY="$1"
+QUERY="${1:-}"
 if [ -z "$QUERY" ]; then
     echo "[]"
     exit 0
 fi
 
-# Fetch from OpenWeatherMap find API
-RAW=$(curl -s "http://api.openweathermap.org/data/2.5/find?q=$(echo -n "$QUERY" | jq -sRr @uri)&appid=${KEY}")
-
-# Format as JSON array
-echo "$RAW" | jq -c '[.list[] | {id: .id, name: .name, country: .sys.country}]'
+encoded_query=$(jq -rn --arg q "$QUERY" '$q|@uri')
+raw=$(curl -sf -m 6 "https://geocoding-api.open-meteo.com/v1/search?name=${encoded_query}&count=10&language=en&format=json" 2>/dev/null || echo "{}")
+echo "$raw" | jq -c '[.results[]? | { id: "\(.latitude),\(.longitude),\(.name),\(.country_code // "")", name: .name, country: (.country // .country_code // "") }]' 2>/dev/null || echo "[]"

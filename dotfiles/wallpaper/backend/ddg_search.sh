@@ -27,9 +27,11 @@ trap 'rm -f "$ACTIVE_TMP" 2>/dev/null' EXIT INT TERM
 # 3. Native REST API Wallhaven fetcher (zero Python / HTML scraping)
 fetch_wallpapers() {
     local q="$1"
+    # Normalize query: replace underscores and hyphens with spaces for better search hits
+    q=$(echo "$q" | tr '_-' ' ' | xargs 2>/dev/null || echo "$q")
     local encoded_q
     encoded_q=$(jq -rn --arg q "$q" '$q|@uri')
-    for page in 1 2 3 4 5; do
+    for page in 1 2 3 4; do
         local state
         state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
         [ "$state" = "stop" ] && break
@@ -40,13 +42,22 @@ fetch_wallpapers() {
 
         local url
         if [ -z "$q" ]; then
-            url="https://wallhaven.cc/api/v1/search?sorting=toplist&order=desc&categories=111&purity=100&atleast=1920x1080&page=${page}"
+            url="https://wallhaven.cc/api/v1/search?sorting=toplist&order=desc&categories=111&purity=100&ratios=16x9,16x10,landscape&page=${page}"
         else
-            url="https://wallhaven.cc/api/v1/search?q=${encoded_q}&categories=111&purity=100&sorting=relevance&order=desc&atleast=1920x1080&page=${page}"
+            url="https://wallhaven.cc/api/v1/search?q=${encoded_q}&categories=111&purity=100&sorting=relevance&order=desc&ratios=16x9,16x10,landscape&page=${page}"
         fi
 
-        curl -s -m 8 -A "Mozilla/5.0 (X11; Linux x86_64)" "$url" 2>/dev/null | \
-            jq -r '.data[]? | "\(.thumbs.large // .thumbs.original // .thumbs.small)|\(.path)"' 2>/dev/null || break
+        local res
+        res=$(curl -s -m 8 -A "Mozilla/5.0 (X11; Linux x86_64)" "$url" 2>/dev/null)
+        local count
+        count=$(echo "$res" | jq -r '.data | length' 2>/dev/null || echo "0")
+        if [ "$count" -eq 0 ] && [ "$page" -eq 1 ] && [ -n "$q" ]; then
+            # Fallback: if strict aspect ratio returned 0, try without ratio restriction
+            url="https://wallhaven.cc/api/v1/search?q=${encoded_q}&categories=111&purity=100&sorting=relevance&order=desc&page=1"
+            res=$(curl -s -m 8 -A "Mozilla/5.0 (X11; Linux x86_64)" "$url" 2>/dev/null)
+        fi
+
+        echo "$res" | jq -r '.data[]? | "\(.thumbs.large // .thumbs.original // .thumbs.small)|\(.path)"' 2>/dev/null || break
     done
 }
 
@@ -66,18 +77,6 @@ fetch_wallpapers "$QUERY" | while IFS='|' read -r thumb_url full_url; do
     done
 
     if [ -z "$thumb_url" ] || [ -z "$full_url" ]; then continue; fi
-
-    # =========================================================================
-    # PRE-FLIGHT CHECK ON THE FULL URL
-    # =========================================================================
-    target_headers=$(curl -s -I -L -m 5 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "$full_url")
-    target_type=$(echo "$target_headers" | grep -i "content-type:" | tail -n 1 | tr -d '\r')
-
-    if [[ ! "$target_type" =~ "image/" ]]; then
-        echo "Skip: Full URL is dead or HTML ($target_type) -> $full_url" >> "$LOG_FILE"
-        continue
-    fi
-    # =========================================================================
 
     uuid=$(date +%s%N)
     ext="${full_url##*.}"

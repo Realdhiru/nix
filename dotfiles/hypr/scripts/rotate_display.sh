@@ -1,37 +1,24 @@
 #!/usr/bin/env bash
 #
 # rotate_display.sh -- toggle 180° rotation (transform 0 <-> 2) on the
-# focused monitor and persist it in ~/.cache/hypr_power_monitor.conf
-# (sourced by hyprland.conf, so it survives reboots).
+# focused monitor without touching mode, resolution, or refresh rate.
 #
-# Cache convention matches Config.qml/MonitorPopup.qml:
-#   monitor=<name>,<res>@<rate>,<pos>,<scale>,bitdepth,10[,transform,N]
-# (transform omitted when 0). The APPLY string always includes an explicit
-# transform so "restore to 0" actually resets the running display.
 
 set -uo pipefail
 
-CACHE_FILE="$HOME/.cache/hypr_power_monitor.conf"
-MONITOR=""
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/monitors"
+mkdir -p "$STATE_DIR"
+TRANSFORM_FILE="$STATE_DIR/transform.txt"
 
-# Focused monitor, fall back to the first one
+MONITOR=""
 if command -v hyprctl >/dev/null 2>&1; then
     MONITOR=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.monitor // empty' 2>/dev/null || true)
     [ -n "$MONITOR" ] || MONITOR=$(hyprctl monitors -j 2>/dev/null | jq -r '.[0].name // empty' 2>/dev/null || true)
 fi
-
 [ -n "$MONITOR" ] || exit 1
 
-CUR=""
-if grep -q "^monitor=$MONITOR,.*,transform,2" "$CACHE_FILE" 2>/dev/null; then
-    CUR=2
-elif grep -q "^monitor=$MONITOR,.*,transform,0" "$CACHE_FILE" 2>/dev/null; then
-    CUR=0
-fi
-
-if [ -z "$CUR" ]; then
-    CUR=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$MONITOR" '.[] | select(.name == $m) | .transform // 0' 2>/dev/null || true)
-fi
+# Current transform from hyprctl
+CUR=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$MONITOR" '.[] | select(.name == $m) | .transform // 0' 2>/dev/null || true)
 CUR="${CUR:-0}"
 
 TARGET_ARG="${1:-toggle}"
@@ -45,104 +32,30 @@ else
     NEW=2
 fi
 
-# Base monitor spec (everything before any ,transform,N segment)
-BASE=""
-if grep -q "^monitor=$MONITOR," "$CACHE_FILE" 2>/dev/null; then
-    BASE="$(grep "^monitor=$MONITOR," "$CACHE_FILE" | head -n 1 | sed -E 's/,transform[=,][0-9]+//g' | cut -d= -f2-)"
-fi
+# Persist transform state in user state dir (never git-tracked files)
+echo "$NEW" > "$TRANSFORM_FILE"
 
-IFS=',' read -r -a BASE_FIELDS <<< "$BASE"
-if [ "${#BASE_FIELDS[@]}" -lt 4 ]; then
-    # Fallback to querying hyprctl monitors directly
-    MON_INFO=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$MONITOR" '.[] | select(.name == $m) | "\(.width)x\(.height)@\(.refreshRate | round),\(.x)x\(.y),\(.scale)"' 2>/dev/null || true)
-    if [ -n "$MON_INFO" ]; then
-        BASE="$MONITOR,$MON_INFO,bitdepth,10"
-        IFS=',' read -r -a BASE_FIELDS <<< "$BASE"
+# Also update cache file for backwards compatibility with SysData
+CACHE_FILE="$HOME/.cache/hypr_power_monitor.conf"
+if [ -f "$CACHE_FILE" ]; then
+    if grep -q "transform," "$CACHE_FILE" 2>/dev/null; then
+        sed -i -E "s/transform,[0-9]+/transform,$NEW/g" "$CACHE_FILE"
+    else
+        sed -i "s/$/transform,$NEW/" "$CACHE_FILE"
     fi
 fi
 
-# Update the cache atomically: replace or append monitor spec with new transform
-ENTRY="monitor=$BASE,transform,$NEW"
-if grep -q "^monitor=$MONITOR" "$CACHE_FILE" 2>/dev/null; then
-    sed -i "/^monitor=$MONITOR/d" "$CACHE_FILE"
+# Apply transform cleanly in Hyprland Lua engine WITHOUT touching mode or rate
+DESC=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$MONITOR" '.[] | select(.name == $m) | .description // empty' 2>/dev/null || true)
+if [ -n "$DESC" ]; then
+    hyprctl eval "hl.monitor({ output = 'desc:$DESC', transform = $NEW }); hl.exec_scheduled_prop_refresh_immediately()" >/dev/null 2>&1
 fi
-echo "$ENTRY" >> "$CACHE_FILE"
-
-# Also persist in central state file ~/.config/hypr/settings.json
-SETTINGS_FILE="$HOME/.config/hypr/settings.json"
-if [ -f "$SETTINGS_FILE" ] && command -v jq >/dev/null 2>&1; then
-    jq --arg mon "$MONITOR" --argjson trans "$NEW" \
-       '(.monitors[] | select(.name == $mon).transform) = $trans' \
-       "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" \
-       && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
-fi
-
-# Apply live (explicit transform so restoring to 0 works).
-# Lua engine: hyprctl keyword is rejected, use eval with the same fields.
-OUTPUT="${BASE_FIELDS[0]}"
-LUA_MON="hl.monitor({output='$OUTPUT',transform=$NEW"
-if [ "${#BASE_FIELDS[@]}" -ge 4 ]; then
-    LUA_MON="$LUA_MON,mode='${BASE_FIELDS[1]}',position='${BASE_FIELDS[2]}',scale=${BASE_FIELDS[3]}"
-    i=4
-    while [ $i -lt "${#BASE_FIELDS[@]}" ]; do
-        case "${BASE_FIELDS[$i]}" in
-            bitdepth) LUA_MON="$LUA_MON,bitdepth=${BASE_FIELDS[$((i + 1))]}" ;;
-            cm)       LUA_MON="$LUA_MON,cm='${BASE_FIELDS[$((i + 1))]}'" ;;
-        esac
-        i=$((i + 2))
-    done
-fi
-hyprctl eval "$LUA_MON}); hl.exec_scheduled_prop_refresh_immediately()" >/dev/null 2>&1
+hyprctl eval "hl.monitor({ output = '$MONITOR', transform = $NEW }); hl.exec_scheduled_prop_refresh_immediately()" >/dev/null 2>&1
 
 if [ "$NEW" = "2" ]; then
     notify-send -a "Display" -u low -i video-display "Inverted 180°" 2>/dev/null || true
 else
     notify-send -a "Display" -u low -i video-display "Standard" 2>/dev/null || true
-fi
-
-
-# Re-commit the wallpaper layer surface to the rotated output. A 180° toggle
-# keeps logical dimensions, so a full daemon restart (ensure_awww.sh
-# --restart) is unnecessary and only causes a visible reload flash. A plain
-# re-push (~0.2 s, warm cache) re-commits the surface instead. Videos run on
-# their own mpvpaper surface and need nothing.
-STATE_WALL_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/wallpaper"
-WALL="$(cat "$STATE_WALL_DIR/current_wallpaper.txt" 2>/dev/null || true)"
-if [ -n "$WALL" ] && [ -f "$WALL" ]; then
-    EXT="${WALL##*.}"
-    EXT="${EXT,,}"
-    case "$EXT" in
-        mp4|mkv|mov|webm)
-            (
-                sleep 0.2
-                if ! pidof .mpvpaper-wrapped >/dev/null 2>&1; then
-                    "$HOME/.config/hypr/scripts/set_wallpaper.sh" "$WALL" >/dev/null 2>&1
-                fi
-            ) &
-            ;;
-        *)
-            filter="Bilinear"
-            [ "$EXT" = "gif" ] && filter="Nearest"
-            if awww query >/dev/null 2>&1; then
-                awww img "$WALL" \
-                    --transition-type fade \
-                    --transition-step 255 \
-                    --transition-duration 0.1 \
-                    --transition-fps 60 \
-                    --filter "$filter" \
-                    --outputs "$MONITOR" >/dev/null 2>&1
-            else
-                "$HOME/.config/hypr/scripts/ensure_awww.sh" >/dev/null 2>&1
-                awww img "$WALL" \
-                    --transition-type fade \
-                    --transition-step 255 \
-                    --transition-duration 0.1 \
-                    --transition-fps 60 \
-                    --filter "$filter" \
-                    --outputs "$MONITOR" >/dev/null 2>&1
-            fi
-            ;;
-    esac
 fi
 
 exit 0

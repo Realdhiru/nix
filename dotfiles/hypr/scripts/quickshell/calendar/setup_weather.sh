@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_KEY="$1"
-CITY_ID="$2"
+# Supports either setup_weather.sh "lat,lon,name,country" or legacy setup_weather.sh "dummy_key" "city_id"
+ARG1="${1:-}"
+ARG2="${2:-}"
 
-SECRET_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/calendar"
-SECRET_FILE="$SECRET_DIR/openweather.json"
+TARGET="${ARG2:-$ARG1}"
 
-mkdir -p "$SECRET_DIR"
-jq -n --arg api "$API_KEY" --arg city "$CITY_ID" '{api_key: $api, city_id: $city}' > "$SECRET_FILE"
-
-# Trigger a weather refresh
-~/.config/hypr/scripts/quickshell/calendar/weather.sh --getdata
+if [ -n "$TARGET" ]; then
+    "$(dirname "${BASH_SOURCE[0]}")/set_city.sh" "$TARGET"
+fi
 
 # Close the setup popup
-~/.config/hypr/scripts/qs_manager.sh close
+~/.config/hypr/scripts/qs_manager.sh close 2>/dev/null || true

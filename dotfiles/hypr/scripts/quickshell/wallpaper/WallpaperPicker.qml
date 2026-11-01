@@ -64,8 +64,8 @@ Item {
         }
     }
     
-    property bool isStartup: localFolderModel.status === FolderListModel.Loading || srcModel.status === FolderListModel.Loading
-    property bool isReady: visible && localFolderModel.status === FolderListModel.Ready
+    property bool isStartup: (!window.initialFocusSet && _localSyncedCount === 0) && (localFolderModel.status === FolderListModel.Loading || srcModel.status === FolderListModel.Loading)
+    property bool isReady: visible && (_localSyncedCount > 0 || localFolderModel.status === FolderListModel.Ready)
     property bool isSearchActive: window.currentFilter === "Search" && window.hasSearched && searchFolderModel.status === FolderListModel.Loading
     
     property string lastSearchName: ""
@@ -327,22 +327,6 @@ Item {
             window.activeWallpaperPath = "";
         }
         return window.activeWallpaperPath;
-    }
-
-    FolderListModel {
-        id: stateDirWatcher
-        folder: "file://" + window.stateDir
-        nameFilters: ["current_wallpaper.txt", "last_wallpaper.txt"]
-        showFiles: true
-        showDirs: false
-        onStatusChanged: {
-            if (status === FolderListModel.Ready) {
-                window.reloadActiveWallpaperPath();
-                let c = window.getCleanName(window.activeWallpaperName);
-                if (c !== "") window.appliedWallCleanName = c;
-                window.refreshActiveWallpapers();
-            }
-        }
     }
 
     FileView {
@@ -933,7 +917,7 @@ Item {
             centerOnActiveTimer.restart();
             return;
         }
-        window.currentFilter = "All";
+        if (!window.initialFocusSet && window.currentFilter !== "All") window.currentFilter = "All";
         let p = window.reloadActiveWallpaperPath();
         let activeWall = window.targetWallName !== "" ? window.targetWallName : window.activeWallpaperName;
         if (activeWall === "") return;
@@ -1653,10 +1637,6 @@ Item {
             NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing }
         }
         removeDisplaced: Transition {
-            enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
-            NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing }
-        }
-        displaced: Transition {
             enabled: window.allowAddAnimation && !window.isModelChanging && !window.isFilterAnimating && !(window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused)
             NumberAnimation { properties: "x,y"; duration: Motion.moveMs; easing.type: Motion.moveEasing }
         }
