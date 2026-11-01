@@ -12,8 +12,15 @@ LOCK_FILE="$MODES_DIR/.modes.lock"
 
 mkdir -p "$MODES_DIR"
 
-exec 200>"$LOCK_FILE"
-flock 200
+acquire_lock() {
+    exec 200>"$LOCK_FILE"
+    flock 200
+}
+
+release_lock() {
+    flock -u 200 2>/dev/null || true
+    exec 200>&- 2>/dev/null || true
+}
 
 rm -f "$MODES_DIR/gaming_mode" "$MODES_DIR/wallpaper_killed" "$MODES_DIR/saver_killed_wp" 2>/dev/null || true
 
@@ -352,9 +359,10 @@ case "$ACTION" in
         ;;
 
     set)
+        acquire_lock
         MODE="${2:-}"
         TARGET_VAL="${3:-false}"
-        [ -z "$MODE" ] && { echo "Usage: $0 set <mode> <true|false>"; exit 1; }
+        [ -z "$MODE" ] && { echo "Usage: $0 set <mode> <true|false>"; release_lock; exit 1; }
         [ "$TARGET_VAL" != "true" ] && TARGET_VAL="false"
 
         capture_baseline_if_clean
@@ -377,15 +385,18 @@ case "$ACTION" in
             mv -f "$tmp_json" "$MODES_JSON"
         else
             rm -f "$tmp_json"
+            release_lock
             exit 1
         fi
 
         recompute_and_apply "$prior_saver" "$prior_computed"
+        release_lock
         ;;
 
     toggle)
+        acquire_lock
         MODE="${2:-}"
-        [ -z "$MODE" ] && { echo "Usage: $0 toggle <mode>"; exit 1; }
+        [ -z "$MODE" ] && { echo "Usage: $0 toggle <mode>"; release_lock; exit 1; }
 
         current_val=$(jq -r --arg m "$MODE" '.active[$m] // false' "$MODES_JSON" 2>/dev/null || echo "false")
         if [ "$current_val" = "true" ]; then
@@ -413,16 +424,20 @@ case "$ACTION" in
             mv -f "$tmp_json" "$MODES_JSON"
         else
             rm -f "$tmp_json"
+            release_lock
             exit 1
         fi
 
         recompute_and_apply "$prior_saver" "$prior_computed"
         new_val=$(jq -r --arg m "$MODE" '.active[$m]' "$MODES_JSON")
+        release_lock
         echo "$new_val"
         ;;
 
     apply)
+        acquire_lock
         recompute_and_apply
+        release_lock
         ;;
 
     status)
@@ -434,5 +449,3 @@ case "$ACTION" in
         exit 1
         ;;
 esac
-
-flock -u 200
