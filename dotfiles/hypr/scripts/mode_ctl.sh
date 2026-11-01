@@ -206,26 +206,43 @@ recompute_and_apply() {
     # 2. Wallpaper surface management only if wallpaper state changed
     if [ "$wp_val" != "$old_wp" ]; then
         if [ "$wp_val" = "false" ]; then
-            pkill -STOP -f "mpvpaper" 2>/dev/null || true
+            # Preserve current wallpaper path in LAST_TXT before tearing down
+            local cur_wp="$DESKTOP_STATE_DIR/wallpaper/current_wallpaper.txt"
+            local last_wp="$DESKTOP_STATE_DIR/wallpaper/last_wallpaper.txt"
+            if [ -s "$cur_wp" ]; then
+                local prev_cur
+                prev_cur="$(cat "$cur_wp" 2>/dev/null || true)"
+                if [ -n "$prev_cur" ] && [ -f "$prev_cur" ]; then
+                    local dir
+                    dir="$(dirname "$last_wp")"
+                    mkdir -p "$dir"
+                    local tmp="$dir/.$(basename "$last_wp").tmp.$$"
+                    printf '%s\n' "$prev_cur" > "$tmp"
+                    mv -f "$tmp" "$last_wp"
+                fi
+            fi
+
+            # Tear down both mpvpaper (video/GIF) and awww (static image) surfaces
+            systemctl --user stop --no-block "mpvpaper@*" 2>/dev/null || true
+            pkill -15 -f "mpvpaper" 2>/dev/null || true
             command -v awww >/dev/null 2>&1 && awww clear >/dev/null 2>&1 || true
+
             local theme_engine="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
             [ ! -x "$theme_engine" ] && theme_engine="$HOME/nix/dotfiles/wallust/generate.sh"
             if [ -x "$theme_engine" ]; then
                 "$theme_engine" --neutral >/dev/null 2>&1 &
             fi
         else
-            pkill -CONT -f "mpvpaper" 2>/dev/null || true
-            local last_wp="$DESKTOP_STATE_DIR/wallpaper/current_wallpaper.txt"
-            [ ! -s "$last_wp" ] && last_wp="$DESKTOP_STATE_DIR/wallpaper/last_wallpaper.txt"
-            if [ -s "$last_wp" ]; then
+            local target_wp="$DESKTOP_STATE_DIR/wallpaper/current_wallpaper.txt"
+            [ ! -s "$target_wp" ] && target_wp="$DESKTOP_STATE_DIR/wallpaper/last_wallpaper.txt"
+            if [ -s "$target_wp" ]; then
                 local wp_path
-                wp_path="$(cat "$last_wp" 2>/dev/null || true)"
+                wp_path="$(cat "$target_wp" 2>/dev/null || true)"
                 if [ -n "$wp_path" ] && [ -f "$wp_path" ]; then
-                    command -v awww >/dev/null 2>&1 && awww img "$wp_path" --filter Bilinear >/dev/null 2>&1 || true
-                    local theme_engine="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
-                    [ ! -x "$theme_engine" ] && theme_engine="$HOME/nix/dotfiles/wallust/generate.sh"
-                    if [ -x "$theme_engine" ]; then
-                        "$theme_engine" "$wp_path" >/dev/null 2>&1 &
+                    local set_sh="$HOME/nix/dotfiles/wallpaper/backend/set.sh"
+                    [ ! -x "$set_sh" ] && set_sh="$HOME/.config/wallpaper/backend/set.sh"
+                    if [ -x "$set_sh" ]; then
+                        "$set_sh" "$wp_path" >/dev/null 2>&1 &
                     fi
                 fi
             fi

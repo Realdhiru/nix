@@ -45,12 +45,10 @@ if [ -f "$CACHE_FILE" ]; then
     fi
 fi
 
-# Apply transform cleanly in Hyprland Lua engine WITHOUT touching mode or rate
-DESC=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$MONITOR" '.[] | select(.name == $m) | .description // empty' 2>/dev/null || true)
-if [ -n "$DESC" ]; then
-    hyprctl eval "hl.monitor({ output = 'desc:$DESC', transform = $NEW }); hl.exec_scheduled_prop_refresh_immediately()" >/dev/null 2>&1
+# Apply transform cleanly by re-evaluating monitors.lua and committing properties immediately
+if command -v hyprctl >/dev/null 2>&1; then
+    hyprctl eval "dofile(os.getenv('HOME') .. '/.config/hypr-local/monitors.lua'); hl.exec_scheduled_prop_refresh_immediately()" >/dev/null 2>&1 || true
 fi
-hyprctl eval "hl.monitor({ output = '$MONITOR', transform = $NEW }); hl.exec_scheduled_prop_refresh_immediately()" >/dev/null 2>&1
 
 if [ "$NEW" = "2" ]; then
     notify-send -a "Display" -u low -i video-display "Inverted 180°" 2>/dev/null || true
