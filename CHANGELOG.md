@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-01 — Qt & Tray Popup Window Theming Fix (`qt-theme-fix`)
+
+- **Qt Platform Theme Stylesheet Loading**: Fixed `qt6ct.conf` and `qt5ct.conf` in [`modules/home/theme.nix`](file:///home/realdhiru/nix/modules/home/theme.nix) by moving `stylesheets` into the required `[Interface]` section with absolute filesystem path, enabling Qt applications and native tray context popup menus (such as Antigravity) to properly apply `qt-style.qss` (Wallust dynamic colors, borders, and dark palettes).
+
 ## 2026-10-29 — Desktop Mode Preemption, Blur Restoration & Telemetry Repair Pass (`desktop-v5`)
 
 - **Wallpaper Kill Mode Neutral Theme & Solid Window Opacity**: Wired `generate.sh --neutral` into `mode_ctl.sh` upon disabling wallpaper surface so wallpaper-derived colors reset to pure neutral dark, and dynamically reloaded Hyprland window rules (`rules.lua`) on `opacity_solid` transitions so all glass windows snap immediately to full 1.0 opaque.

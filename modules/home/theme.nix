@@ -69,16 +69,20 @@
     color_scheme_path=${config.home.homeDirectory}/.config/qt5ct/colors/theme.conf
     custom_palette=true
     icon_theme=buuf-nestort
-    stylesheets=qt-style.qss
     style=Fusion
+
+    [Interface]
+    stylesheets=${config.home.homeDirectory}/.config/qt5ct/qss/qt-style.qss
   '';
   xdg.configFile."qt6ct/qt6ct.conf".text = ''
     [Appearance]
     color_scheme_path=${config.home.homeDirectory}/.config/qt6ct/colors/theme.conf
     custom_palette=true
     icon_theme=buuf-nestort
-    stylesheets=qt-style.qss
     style=Fusion
+
+    [Interface]
+    stylesheets=${config.home.homeDirectory}/.config/qt6ct/qss/qt-style.qss
   '';
 
   # Enforce dark theme for KDE Frameworks applications (Okular, Dolphin, Gwenview)
