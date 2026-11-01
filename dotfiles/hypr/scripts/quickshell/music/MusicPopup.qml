@@ -499,8 +499,8 @@ Item {
                             NumberAnimation on rotation {
                                 from: 0; to: 360; duration: 8000
                                 loops: Animation.Infinite
-                                running: true
-                                paused: root.musicData.status !== "Playing"
+                                running: root.visible && root.musicData.status === "Playing"
+                                paused: !root.visible || root.musicData.status !== "Playing"
                             }
                         }
                     }
@@ -561,7 +561,7 @@ Item {
                                     SequentialAnimation on x {
                                         id: titleAnim
                                         loops: Animation.Infinite
-                                        running: titleTextMain.implicitWidth > titleClipRect.width
+                                        running: root.visible && titleTextMain.implicitWidth > titleClipRect.width
 
                                         PauseAnimation { duration: 3000 }
 

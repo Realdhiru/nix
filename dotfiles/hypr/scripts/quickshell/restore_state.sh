@@ -152,19 +152,10 @@ EOF
     hyprctl eval "hl.config({ decoration = { screen_shader = '${SHADER_FILE}' } })" >/dev/null 2>&1 || true
 fi
 
-# 3. Gaming Mode & Flag Synchronization
-if [ "$GAMING" = "true" ]; then
-    touch "$MODES_DIR/gaming_mode"
-else
-    rm -f "$MODES_DIR/gaming_mode"
-fi
-
-# 4. Wallpaper Killed Flag Synchronization
-if [ "$WP_KILLED" = "true" ]; then
-    touch "$MODES_DIR/wallpaper_killed"
-else
-    rm -f "$MODES_DIR/wallpaper_killed"
-fi
+# 3. Synchronize modes via mode_ctl.sh (Single Source of Truth)
+MODES_CTL="$SCRIPTS_DIR/mode_ctl.sh"
+[ ! -x "$MODES_CTL" ] && MODES_CTL="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
+[ -x "$MODES_CTL" ] && bash "$MODES_CTL" apply >/dev/null 2>&1 || true
 
 
 

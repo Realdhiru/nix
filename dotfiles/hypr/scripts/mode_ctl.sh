@@ -66,21 +66,6 @@ get_conflicts() {
     esac
 }
 
-check_conflict() {
-    local target_mode="$1"
-    local conflicts
-    conflicts=$(get_conflicts "$target_mode")
-    for c in $conflicts; do
-        local is_on
-        is_on=$(jq -r --arg c "$c" '.active[$c] // false' "$MODES_JSON" 2>/dev/null || echo "false")
-        if [ "$is_on" = "true" ]; then
-            echo "$c"
-            return 0
-        fi
-    done
-    return 1
-}
-
 capture_baseline_if_clean() {
     local any_exclusive
     any_exclusive=$(jq -r '
@@ -297,6 +282,7 @@ recompute_and_apply() {
 
     # 6. Optional backwards compatibility with state.json (batched single atomic update)
     local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
+    [ ! -x "$state_ctl" ] && state_ctl="$HOME/nix/dotfiles/hypr/scripts/quickshell/state_ctl.sh"
     if [ -x "$state_ctl" ]; then
         local is_game_active="false"
         [ "$solid_val" = "true" ] && [ "$anim_val" = "false" ] && is_game_active="true"

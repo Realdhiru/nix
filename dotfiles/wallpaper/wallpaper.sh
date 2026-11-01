@@ -152,17 +152,8 @@ cmd_kill() {
         fi
     fi
 
-    # 2. Engage wallpaper-kill mode
+    # 2. Engage wallpaper-kill mode via mode_ctl.sh (handles surfaces, rules, and neutral theme)
     bash "$mode_ctl" set wallpaper-kill true
-    "$BACKEND/ensure_awww.sh" --stop 2>/dev/null || true
-    pkill -STOP -f "mpvpaper" 2>/dev/null || true
-
-    # 3. Decoupled neutral theme trigger
-    THEME_ENGINE="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
-    [ ! -x "$THEME_ENGINE" ] && THEME_ENGINE="$HOME/nix/dotfiles/wallust/generate.sh"
-    if [ -x "$THEME_ENGINE" ]; then
-        "$THEME_ENGINE" --neutral >/dev/null 2>&1 &
-    fi
 }
 
 # -----------------------------------------------------------------------------

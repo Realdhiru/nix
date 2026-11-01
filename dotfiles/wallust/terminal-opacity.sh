@@ -10,8 +10,12 @@ apply_terminal_opacity() {
 
     # Check modes.json computed opacity_solid as single source of truth
     local modes_json="$desktop_state/modes/modes.json"
-    if [ -f "$modes_json" ] && [ "$(jq -r '.computed.opacity_solid // false' "$modes_json" 2>/dev/null || true)" = "true" ]; then
-        opacity="1.0"
+    if [ -f "$modes_json" ]; then
+        if [ "$(jq -r '.computed.opacity_solid // false' "$modes_json" 2>/dev/null || true)" = "true" ]; then
+            opacity="1.0"
+        elif [ -f "$state_file" ] && [ "$(jq -r '.ui.themeMode // "dark"' "$state_file" 2>/dev/null || true)" = "light" ]; then
+            opacity="0.60"
+        fi
     elif [ -f "$state_file" ] && [ "$(jq -r '.modes.wallpaperKilled // false' "$state_file" 2>/dev/null || true)" = "true" ]; then
         opacity="1.0"
     elif [ -f "$state_file" ] && [ "$(jq -r '.modes.gaming // false' "$state_file" 2>/dev/null || true)" = "true" ]; then

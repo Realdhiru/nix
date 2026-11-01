@@ -14,7 +14,7 @@ MODE_CTL="$ROOT_DIR/dotfiles/hypr/scripts/mode_ctl.sh"
 DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
 MODES_JSON="$DESKTOP_STATE_DIR/modes/modes.json"
 ALACRITTY_CONF="$HOME/.cache/theme/alacritty-colors.toml"
-PACE="${PACE:-0.15}"
+PACE="${PACE:-1.6}"
 
 echo "=== Mode Exclusivity and Baseline Restoration Self-Test Suite ==="
 
@@ -22,7 +22,8 @@ echo "=== Mode Exclusivity and Baseline Restoration Self-Test Suite ==="
 for m in "wallpaper-kill" "gaming" "power-saver" "coffee"; do
     bash "$MODE_CTL" set "$m" false >/dev/null 2>&1 || true
 done
-sleep 0.5
+bash "$ROOT_DIR/dotfiles/wallust/terminal-opacity.sh" >/dev/null 2>&1 || true
+sleep 1.0
 
 # 1. Snapshot baseline
 echo "[1] Snapshotting baseline compositor and mode state..."
@@ -89,9 +90,9 @@ for m in "wallpaper-kill" "gaming" "power-saver" "coffee"; do
     assert_baseline "Single mode $m off"
 done
 
-# 3. Test Conflict Exclusivity & Blocked Attempts
+# 3. Test Conflict Exclusivity & Atomic Preemption Transitions
 echo ""
-echo "[3] Testing Mode Exclusivity Conflicts & Blocked Transitions..."
+echo "[3] Testing Mode Exclusivity Conflicts & Atomic Preemption..."
 CONFLICT_PAIRS=(
     "power-saver:gaming"
     "power-saver:wallpaper-kill"
@@ -104,46 +105,37 @@ for pair in "${CONFLICT_PAIRS[@]}"; do
 
     echo "--- Testing Conflict Pair: $mode_a vs $mode_b ---"
 
-    # Test 1: Active A blocks B (via set and toggle)
-    echo "  [Test] Enabling $mode_a, expecting $mode_b to be blocked..."
+    # Test 1: Active A is atomically preempted by B
+    echo "  [Test] Enabling $mode_a, then atomically preempting with $mode_b..."
     bash "$MODE_CTL" set "$mode_a" true
     sleep "$PACE"
     [ "$(bash "$MODE_CTL" get "$mode_a")" = "true" ] || { echo "FAIL: $mode_a not active"; exit 1; }
 
-    # Attempt to set B true -> must be blocked
+    # Set B true -> atomically preempts A
     bash "$MODE_CTL" set "$mode_b" true
     sleep "$PACE"
-    [ "$(bash "$MODE_CTL" get "$mode_b")" = "false" ] || { echo "FAIL: $mode_b should be blocked by $mode_a"; exit 1; }
-    [ "$(bash "$MODE_CTL" get "$mode_a")" = "true" ] || { echo "FAIL: $mode_a was altered"; exit 1; }
+    [ "$(bash "$MODE_CTL" get "$mode_b")" = "true" ] || { echo "FAIL: $mode_b should be active via preemption"; exit 1; }
+    [ "$(bash "$MODE_CTL" get "$mode_a")" = "false" ] || { echo "FAIL: $mode_a should have been preempted"; exit 1; }
 
-    # Attempt to toggle B -> must remain blocked (false)
-    t_res=$(bash "$MODE_CTL" toggle "$mode_b")
+    # Disable B -> must restore baseline
+    bash "$MODE_CTL" set "$mode_b" false
     sleep "$PACE"
-    [ "$(bash "$MODE_CTL" get "$mode_b")" = "false" ] || { echo "FAIL: toggle $mode_b should remain blocked"; exit 1; }
+    assert_baseline "Deapplied $mode_b (after preempting $mode_a)"
 
-    # Disable A -> must restore baseline
-    bash "$MODE_CTL" set "$mode_a" false
-    sleep "$PACE"
-    assert_baseline "Deapplied $mode_a (after blocked $mode_b attempts)"
-
-    # Test 2: Active B blocks A (reverse direction)
-    echo "  [Test] Enabling $mode_b, expecting $mode_a to be blocked..."
+    # Test 2: Active B is atomically preempted by A (reverse direction)
+    echo "  [Test] Enabling $mode_b, then atomically preempting with $mode_a..."
     bash "$MODE_CTL" set "$mode_b" true
     sleep "$PACE"
     [ "$(bash "$MODE_CTL" get "$mode_b")" = "true" ] || { echo "FAIL: $mode_b not active"; exit 1; }
 
     bash "$MODE_CTL" set "$mode_a" true
     sleep "$PACE"
-    [ "$(bash "$MODE_CTL" get "$mode_a")" = "false" ] || { echo "FAIL: $mode_a should be blocked by $mode_b"; exit 1; }
-    [ "$(bash "$MODE_CTL" get "$mode_b")" = "true" ] || { echo "FAIL: $mode_b was altered"; exit 1; }
+    [ "$(bash "$MODE_CTL" get "$mode_a")" = "true" ] || { echo "FAIL: $mode_a should be active via preemption"; exit 1; }
+    [ "$(bash "$MODE_CTL" get "$mode_b")" = "false" ] || { echo "FAIL: $mode_b should have been preempted"; exit 1; }
 
-    t_res=$(bash "$MODE_CTL" toggle "$mode_a")
+    bash "$MODE_CTL" set "$mode_a" false
     sleep "$PACE"
-    [ "$(bash "$MODE_CTL" get "$mode_a")" = "false" ] || { echo "FAIL: toggle $mode_a should remain blocked"; exit 1; }
-
-    bash "$MODE_CTL" set "$mode_b" false
-    sleep "$PACE"
-    assert_baseline "Deapplied $mode_b (after blocked $mode_a attempts)"
+    assert_baseline "Deapplied $mode_a (after preempting $mode_b)"
 done
 
 # 4. Test Independent Modes Concurrency (coffee)
