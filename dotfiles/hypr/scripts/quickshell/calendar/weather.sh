@@ -126,7 +126,7 @@ get_data() {
 # -----------------------------------------------------------------------------
 action="${1:---getdata}"
 
-if [[ "$action" == "--getdata" ]]; then
+if [[ "$action" == "--getdata" || "$action" == "--json" ]]; then
     CACHE_LIMIT=900
     if [ -f "$json_file" ]; then
         last_update=$(stat -c %Y "$json_file" 2>/dev/null || echo "0")

@@ -4,8 +4,8 @@ hl.config({
         force_default_wallpaper = 0, -- Disable mascot wallpaper, render background_color
         disable_hyprland_logo   = true,
         background_color        = 0x000000, -- OLED pure pitch-black (0 light emitted on OLED)
-        key_press_enables_dpms  = true,     -- Wakes display on ANY key press
-        mouse_move_enables_dpms = true,     -- Wakes display on mouse/touchpad movement
+        key_press_enables_dpms  = false,    -- Disallow keypresses from waking DPMS to prevent typing keys into focused windows/lockscreen
+        mouse_move_enables_dpms = true,     -- Wakes display cleanly on mouse/touchpad movement
     },
 
     -- https://wiki.hypr.land/Configuring/Variables/#debug

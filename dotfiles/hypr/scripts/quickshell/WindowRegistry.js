@@ -15,7 +15,8 @@ const WIDGETS = {
     "calendar":      { w: 1450, h: 510, anchor: "top-center",    path: "calendar/CalendarPopup.qml" },
     "wallpaper":     { w: -1,   h: 650, anchor: "center-fill",   path: "wallpaper/WallpaperPicker.qml" },
     "music":         { w: 700,  h: 650, anchor: "top-left",      path: "music/MusicPopup.qml" },
-    "sunset":        { w: 320,  h: 390, anchor: "bottom-left",   path: "sunset/SunsetPopup.qml" }
+    "sunset":        { w: 320,  h: 390, anchor: "bottom-left",   path: "sunset/SunsetPopup.qml" },
+    "dashboard":     { w: 720,  h: 640, anchor: "center",        path: "dashboard/DashboardPopup.qml" }
 };
 
 function getScale(mw, mh, userScale) {

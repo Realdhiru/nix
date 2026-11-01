@@ -235,7 +235,14 @@ recompute_and_apply() {
     # 3. Window & terminal opacity update only if opacity_solid changed
     if [ "$solid_val" != "$old_solid" ]; then
         if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-            hyprctl eval "dofile(os.getenv('HOME') .. '/.config/hypr/rules.lua')" >/dev/null 2>&1 || true
+            local prop_val="unset"
+            [ "$solid_val" = "true" ] && prop_val="1"
+            hyprctl eval "
+                dofile(os.getenv('HOME') .. '/.config/hypr/rules.lua')
+                for _, w in ipairs(hl.get_windows()) do
+                    hl.dispatch(hl.dsp.window.set_prop({ window = 'address:' .. w.address, property = 'opaque', value = '$prop_val' }))
+                end
+            " >/dev/null 2>&1 || true
         fi
         local term_op="$HOME/nix/dotfiles/wallust/terminal-opacity.sh"
         [ ! -f "$term_op" ] && term_op="$HOME/.config/wallust/terminal-opacity.sh"

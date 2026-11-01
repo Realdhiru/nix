@@ -183,9 +183,6 @@ if [ "$WALLPAPER" = "--neutral" ]; then
 
     # Notify client applications.
     pkill -USR2 cava 2>/dev/null || true
-    RESTORE_SCRIPT="$HOME/.config/hypr/scripts/quickshell/restore_state.sh"
-    [ ! -x "$RESTORE_SCRIPT" ] && RESTORE_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh"
-    if [ -x "$RESTORE_SCRIPT" ]; then "$RESTORE_SCRIPT" >/dev/null 2>&1 || true; fi
     if command -v quickshell >/dev/null 2>&1; then
         quickshell ipc -p "$HOME/.config/hypr/scripts/quickshell/Shell.qml" call main reloadTheme >/dev/null 2>&1 || true
     fi
@@ -527,9 +524,6 @@ fi
 # Notify client applications if running
 pkill -USR2 cava 2>/dev/null || true
 alacritty msg config -r >/dev/null 2>&1 || true
-RESTORE_SCRIPT="$HOME/.config/hypr/scripts/quickshell/restore_state.sh"
-[ ! -x "$RESTORE_SCRIPT" ] && RESTORE_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh"
-if [ -x "$RESTORE_SCRIPT" ]; then "$RESTORE_SCRIPT" >/dev/null 2>&1 || true; fi
 if command -v quickshell >/dev/null 2>&1; then
     quickshell ipc -p "$HOME/.config/hypr/scripts/quickshell/Shell.qml" call main reloadTheme >/dev/null 2>&1 || true
 fi

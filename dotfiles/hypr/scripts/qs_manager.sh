@@ -204,13 +204,7 @@ fi
 
 if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
 
-    if [[ "$TARGET" == "calendar" ]]; then
-        local weather_secret="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/calendar/openweather.json"
-        [ ! -s "$weather_secret" ] && weather_secret="$HOME/nix/dotfiles/secrets/openweather.json"
-        if [ ! -s "$weather_secret" ]; then
-            TARGET="weather_setup"
-        fi
-    fi
+
 
     if [[ "$TARGET" == "network" ]]; then
         handle_network_prep
