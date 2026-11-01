@@ -51,8 +51,7 @@ QS_LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/quickshell"
 QS_LOG_FILE="$QS_LOG_DIR/quickshell.log"
 
 if [[ "$ACTION" == "reload" ]]; then
-    pkill -9 -f "quickshell" 2>/dev/null || true
-    pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
+    pkill -9 -f "quickshell.*Shell\.qml" 2>/dev/null || pkill -9 -x quickshell 2>/dev/null || pkill -9 -f "(^|/)\.quickshell-wra" 2>/dev/null || true
     reap_qs_orphans
     sleep 0.3
     mkdir -p "$QS_LOG_DIR"
@@ -61,9 +60,8 @@ if [[ "$ACTION" == "reload" ]]; then
 fi
 
 if [[ "$ACTION" == "toggle" && "$TARGET" == "quickshell" ]]; then
-    if pgrep -f "Shell.qml" >/dev/null || pgrep -x quickshell >/dev/null || pgrep -f "\.quickshell-wra" >/dev/null; then
-        pkill -9 -f "quickshell" 2>/dev/null || true
-        pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
+    if pgrep -f "Shell.qml" >/dev/null || pgrep -x quickshell >/dev/null || pgrep -f "(^|/)\.quickshell-wra" >/dev/null; then
+        pkill -9 -f "quickshell.*Shell\.qml" 2>/dev/null || pkill -9 -x quickshell 2>/dev/null || pkill -9 -f "(^|/)\.quickshell-wra" 2>/dev/null || true
         reap_qs_orphans
         notify-send -a "QuickShell" -u low "QuickShell OFF" 2>/dev/null || true
     else
@@ -86,8 +84,10 @@ if [[ "$ACTION" == "position" && ("$TARGET" == "topbar" || "$TARGET" == "bar") ]
 fi
 
 if [[ "$ACTION" == "open" || "$ACTION" == "toggle" || "$ACTION" == "close" ]]; then
-    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
-    exit 0
+    if [[ "$TARGET" != "network" && "$TARGET" != "wallpaper" && "$TARGET" != "calendar" ]]; then
+        "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
+        exit 0
+    fi
 fi
 
 

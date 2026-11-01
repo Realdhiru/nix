@@ -110,21 +110,16 @@ cmd_lock() {
     # Reset any stale compositor crash state before launching
     hyprctl eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
 
-    if [ -s "$lock_snap" ]; then
-        export CURRENT_WALLPAPER="$lock_snap"
-        export CURRENT_WALLPAPER_THUMB=""
-    else
-        local state_wall_dir="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/wallpaper"
-        local wp="$(head -n 1 "$state_wall_dir/current_wallpaper.txt" 2>/dev/null || true)"
-        export CURRENT_WALLPAPER="$wp"
-        export CURRENT_WALLPAPER_THUMB=""
-        if [[ "$wp" =~ \.(mp4|mkv|mov|webm)$ ]]; then
-            local base="$(basename "$wp")"
-            if [ -f "/tmp/thumb_${base}.jpg" ]; then
-                export CURRENT_WALLPAPER_THUMB="/tmp/thumb_${base}.jpg"
-            elif [ -f "$HOME/.cache/quickshell/wallpaper_picker/thumbs/${base}.jpg" ]; then
-                export CURRENT_WALLPAPER_THUMB="$HOME/.cache/quickshell/wallpaper_picker/thumbs/${base}.jpg"
-            fi
+    local state_wall_dir="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/wallpaper"
+    local wp="$(head -n 1 "$state_wall_dir/current_wallpaper.txt" 2>/dev/null || true)"
+    export CURRENT_WALLPAPER="$wp"
+    export CURRENT_WALLPAPER_THUMB=""
+    if [[ "$wp" =~ \.(mp4|mkv|mov|webm)$ ]]; then
+        local base="$(basename "$wp")"
+        if [ -f "/tmp/thumb_${base}.jpg" ]; then
+            export CURRENT_WALLPAPER_THUMB="/tmp/thumb_${base}.jpg"
+        elif [ -f "$HOME/.cache/quickshell/wallpaper_picker/thumbs/${base}.jpg" ]; then
+            export CURRENT_WALLPAPER_THUMB="$HOME/.cache/quickshell/wallpaper_picker/thumbs/${base}.jpg"
         fi
     fi
 
@@ -143,7 +138,6 @@ cmd_lock() {
     # Watchdog cleanup trap: clear crashed session lock if process terminates abnormally
     cleanup_lock() {
         local code=$?
-        rm -f "$lock_snap" 2>/dev/null || true
         if [ $code -ne 0 ]; then
             echo "[power.sh $(date '+%Y-%m-%d %H:%M:%S')] Lock process exited with code $code. Executing emergency clear_crashed_lockscreen failsafe." >> "$crash_log"
             hyprctl eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
@@ -153,7 +147,6 @@ cmd_lock() {
 
     "$qs_bin" -p "$LOCK_QML" 2> >(tee -a "$crash_log" >&2)
     local exit_code=$?
-    rm -f "$lock_snap" 2>/dev/null || true
     if [ $exit_code -ne 0 ]; then
         hyprctl eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
     fi

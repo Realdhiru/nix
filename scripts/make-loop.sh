@@ -100,7 +100,7 @@ process_file() {
             [0:v]split=2[v_main][v_tail];
             [v_main]trim=start=0:end=$offset,setpts=PTS-STARTPTS[v_start];
             [v_tail]trim=start=$offset:end=$seg_dur,setpts=PTS-STARTPTS[v_end];
-            [v_start][v_end]xfade=transition=fade:duration=$f_dur:offset=$xfade_offset[v_looped]
+            [v_start][v_end]xfade=transition=fade:duration=$f_dur:offset=${xfade_offset}[v_looped]
         " \
         -map "[v_looped]" \
         -an \

@@ -4,8 +4,7 @@
 set -uo pipefail
 
 # 1. Quickshell complete process kill (prevents in-place displacement / geometry glitches)
-pkill -9 -f "quickshell" 2>/dev/null || true
-pkill -9 -f "\.quickshell-wra" 2>/dev/null || true
+pkill -9 -f "quickshell.*Shell\.qml" 2>/dev/null || pkill -9 -x quickshell 2>/dev/null || pkill -9 -f "(^|/)\.quickshell-wra" 2>/dev/null || true
 
 # Reap orphaned follower processes (playerctl, cava, udevadm)
 for pid in $(pgrep -f "playerctl -a --follow" 2>/dev/null || true) $(pgrep -f "cava -p .*cava_topbar.conf" 2>/dev/null || true) $(pgrep -f "udevadm monitor --subsystem-match" 2>/dev/null || true); do
