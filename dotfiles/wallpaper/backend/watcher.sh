@@ -19,15 +19,11 @@ CURRENT_TXT="$STATE_WALL_DIR/current_wallpaper.txt"
 THUMB_SCRIPT="$SCRIPT_DIR/thumbnail.sh"
 
 # Prevent multiple watcher instances
-LOCKFILE="$HOME/.cache/wallpaper_watcher.pid"
-if [ -f "$LOCKFILE" ]; then
-    OLD_PID=$(cat "$LOCKFILE" 2>/dev/null || true)
-    if [ -n "$OLD_PID" ] && grep -qa "wallpaper_watcher" "/proc/$OLD_PID/cmdline" 2>/dev/null; then
-        exit 0
-    fi
+LOCKFILE="$HOME/.cache/wallpaper_watcher.lock"
+exec 200>"$LOCKFILE"
+if ! flock -n 200; then
+    exit 0
 fi
-echo "$$" > "$LOCKFILE"
-trap 'rm -f "$LOCKFILE"' EXIT
 
 cleanup_residue() {
     # 1. Clean broken symlinks and invalid links (pointing to previews or scripts) in flat/

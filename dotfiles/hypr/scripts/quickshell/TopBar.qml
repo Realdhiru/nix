@@ -806,7 +806,7 @@ Variants {
                             anchors.fill: parent
                             hoverEnabled: true
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            enabled: !centerBox.notifActive || NotifTicker.tickerNotif.actionsJson === "[]"
+                            enabled: !centerBox.notifActive || (NotifTicker.tickerNotif && NotifTicker.tickerNotif.actionsJson === "[]")
                             onClicked: (event) => {
                                 if (centerBox.notifActive) {
                                     if (event.button === Qt.RightButton) {

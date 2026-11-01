@@ -92,13 +92,10 @@ get_status() {
                 icon=$(get_icon "$icon_type" "$name")
                 profile=$(get_audio_profile "$mac" "$cached_cards")
                 
-                echo "CACHE_NAME=\"${name//\"/\\\"}\"" > "$CACHE_FILE"
-                echo "CACHE_ICON=\"${icon//\"/\\\"}\"" >> "$CACHE_FILE"
-                echo "CACHE_PROFILE=\"${profile//\"/\\\"}\"" >> "$CACHE_FILE"
-                
-                CACHE_NAME="${name//\"/\\\"}"
-                CACHE_ICON="${icon//\"/\\\"}"
-                CACHE_PROFILE="${profile//\"/\\\"}"
+                CACHE_NAME="$name"
+                CACHE_ICON="$icon"
+                CACHE_PROFILE="$profile"
+                declare -p CACHE_NAME CACHE_ICON CACHE_PROFILE > "$CACHE_FILE"
             fi
             
             bat=$(timeout 0.5 bluetoothctl info "$mac" 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g' | awk -F'[(|)]' '/Battery Percentage:/ {print $2}')

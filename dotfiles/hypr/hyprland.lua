@@ -34,7 +34,7 @@ end
 function is_real_external(name)
     if not name or #name == 0 then return false end
     if is_internal_monitor(name) then return false end
-    if name == "FALLBACK" or name == "NOOP" then return false end
+    if name == "FALLBACK" or name == "NOOP" or name:find("^HEADLESS%-") or name:find("^WAYLAND%-") then return false end
     return true
 end
 
@@ -244,6 +244,9 @@ hl.on("monitor.removed", function(m)
     end
     if external_count == 0 then
         hl.monitor({ output = known_internal_name, disabled = false, position = "0x0" })
+        for ws = 11, 20 do
+            hl.dispatch("moveworkspacetomonitor", string.format("%d %s", ws, known_internal_name))
+        end
     end
     apply_layout()
 end)
