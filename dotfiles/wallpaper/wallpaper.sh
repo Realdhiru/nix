@@ -126,15 +126,6 @@ cmd_kill() {
         # TOGGLE BACK ON:
         notify-send -a "Wallpaper" -u low "ON"
         bash "$mode_ctl" set wallpaper-kill false
-        local target=""
-        if [ -s "$LAST_TXT" ]; then
-            target="$(cat "$LAST_TXT" 2>/dev/null || true)"
-        fi
-        if [ -n "$target" ] && [ -f "$target" ]; then
-            "$BACKEND/set.sh" "$target"
-        else
-            cmd_boot
-        fi
         return 0
     fi
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
+set -uo pipefail
 
-QUERY="$1"
+QUERY="${1:-}"
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 
 # Caching directory initialization
@@ -16,121 +17,80 @@ if [ -f "$SCRIPT_DIR/../../caching.sh" ]; then
 fi
 
 echo "=== Starting search for: $QUERY ===" > "$LOG_FILE"
-
-# 1. Guarantee directory exists
 mkdir -p "$SEARCH_DIR" "$(dirname "$CONTROL_FILE")"
 
-# 2. Safely capture the active tmp path for the trap cleanup
-ACTIVE_TMP=""
-trap 'rm -f "$ACTIVE_TMP" 2>/dev/null' EXIT INT TERM
+# Normalize query
+QUERY=$(echo "$QUERY" | tr '_-' ' ' | xargs 2>/dev/null || echo "$QUERY")
+encoded_q=$(jq -rn --arg q "$QUERY" '$q|@uri')
 
-# 3. Native REST API Wallhaven fetcher (zero Python / HTML scraping)
-fetch_wallpapers() {
-    local q="$1"
-    # Normalize query: replace underscores and hyphens with spaces for better search hits
-    q=$(echo "$q" | tr '_-' ' ' | xargs 2>/dev/null || echo "$q")
-    local encoded_q
-    encoded_q=$(jq -rn --arg q "$q" '$q|@uri')
-    for page in 1 2 3 4; do
-        local state
-        state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
-        [ "$state" = "stop" ] && break
-        while [ "$state" = "pause" ]; do
-            sleep 1
-            state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
-        done
-
-        local url
-        if [ -z "$q" ]; then
-            url="https://wallhaven.cc/api/v1/search?sorting=toplist&order=desc&categories=111&purity=100&ratios=16x9,16x10,landscape&page=${page}"
-        else
-            url="https://wallhaven.cc/api/v1/search?q=${encoded_q}&categories=111&purity=100&sorting=relevance&order=desc&ratios=16x9,16x10,landscape&page=${page}"
-        fi
-
-        local res
-        res=$(curl -s -m 8 -A "Mozilla/5.0 (X11; Linux x86_64)" "$url" 2>/dev/null)
-        local count
-        count=$(echo "$res" | jq -r '.data | length' 2>/dev/null || echo "0")
-        if [ "$count" -eq 0 ] && [ "$page" -eq 1 ] && [ -n "$q" ]; then
-            # Fallback: if strict aspect ratio returned 0, try without ratio restriction
-            url="https://wallhaven.cc/api/v1/search?q=${encoded_q}&categories=111&purity=100&sorting=relevance&order=desc&page=1"
-            res=$(curl -s -m 8 -A "Mozilla/5.0 (X11; Linux x86_64)" "$url" 2>/dev/null)
-        fi
-
-        echo "$res" | jq -r '.data[]? | "\(.thumbs.large // .thumbs.original // .thumbs.small)|\(.path)"' 2>/dev/null || break
-    done
-}
-
-fetch_wallpapers "$QUERY" | while IFS='|' read -r thumb_url full_url; do
-
-    # Safely read control file
+for page in 1 2; do
     state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
-
-    if [[ "$state" == "stop" ]]; then
-        echo "Stop signal received. Exiting." >> "$LOG_FILE"
-        exit 0
-    fi
-
-    while [[ "$state" == "pause" ]]; do
+    [ "$state" = "stop" ] && { echo "Stop signal received. Exiting." >> "$LOG_FILE"; exit 0; }
+    while [ "$state" = "pause" ]; do
         sleep 1
         state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
     done
 
-    if [ -z "$thumb_url" ] || [ -z "$full_url" ]; then continue; fi
-
-    uuid=$(date +%s%N)
-    ext="${full_url##*.}"
-    ext="${ext%%\?*}"
-    ext=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
-    if [[ ! "$ext" =~ ^(jpg|jpeg|png|webp|gif)$ ]]; then ext="jpg"; fi
-
-    is_webp=0
-    if [[ "$ext" == "webp" ]]; then
-        is_webp=1
-        ext="jpg"
-    fi
-
-    filename="ddg_${uuid}.${ext}"
-    filepath="$SEARCH_DIR/$filename"
-    tmppath="${filepath}.tmp"
-    ACTIVE_TMP="$tmppath"
-
-    echo "Downloading Thumb: $thumb_url -> $filename" >> "$LOG_FILE"
-
-    # TIMEOUT ADDED: -m 5 prevents permanent freezing on stalled connections
-    curl -s -L -m 5 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "$thumb_url" -o "$tmppath"
-
-    # Check state again AFTER the curl block
-    state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
-    if [[ "$state" == "stop" ]]; then
-        echo "Stop signal received during download. Discarding." >> "$LOG_FILE"
-        rm -f "$tmppath"
-        ACTIVE_TMP=""
-        exit 0
-    fi
-
-    # Verify the thumbnail itself is valid and not corrupted
-    if [ -s "$tmppath" ]; then
-        actual_mime=$(file -b --mime-type "$tmppath")
-
-        if [[ ! "$actual_mime" =~ ^image/ ]]; then
-            echo "ERROR: Thumb is not an image ($actual_mime). Discarding." >> "$LOG_FILE"
-            rm -f "$tmppath"
-        else
-            if [[ "$actual_mime" == "image/webp" ]] || [ $is_webp -eq 1 ]; then
-                magick "$tmppath" "$filepath" 2>/dev/null || mv "$tmppath" "$filepath"
-                rm -f "$tmppath"
-            else
-                mv "$tmppath" "$filepath"
-            fi
-            echo "$filename|$full_url" >> "$MAP_FILE"
-            echo "Success: $filename saved." >> "$LOG_FILE"
-        fi
+    if [ -z "$QUERY" ]; then
+        url="https://wallhaven.cc/api/v1/search?sorting=toplist&order=desc&categories=111&purity=100&ratios=16x9,16x10,landscape&page=${page}"
     else
-        echo "ERROR: Failed or empty download for $thumb_url" >> "$LOG_FILE"
-        rm -f "$tmppath"
+        url="https://wallhaven.cc/api/v1/search?q=${encoded_q}&categories=111&purity=100&sorting=relevance&order=desc&ratios=16x9,16x10,landscape&page=${page}"
     fi
-    ACTIVE_TMP=""
+
+    echo "Querying API page $page: $url" >> "$LOG_FILE"
+    res=$(curl -s -m 8 -A "Mozilla/5.0 (X11; Linux x86_64)" "$url" 2>/dev/null || true)
+    count=$(echo "$res" | jq -r '.data | length' 2>/dev/null || echo "0")
+    if [ "$count" -eq 0 ] && [ "$page" -eq 1 ] && [ -n "$QUERY" ]; then
+        url="https://wallhaven.cc/api/v1/search?q=${encoded_q}&categories=111&purity=100&sorting=relevance&order=desc&page=1"
+        res=$(curl -s -m 8 -A "Mozilla/5.0 (X11; Linux x86_64)" "$url" 2>/dev/null || true)
+        count=$(echo "$res" | jq -r '.data | length' 2>/dev/null || echo "0")
+    fi
+
+    [ "$count" -eq 0 ] && break
+
+    curl_args=()
+    batch_entries=()
+    while IFS='|' read -r thumb_url full_url; do
+        [ -z "$thumb_url" ] || [ -z "$full_url" ] && continue
+
+        uuid=$(date +%s%N)
+        ext="${full_url##*.}"
+        ext="${ext%%\?*}"
+        ext=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+        [[ ! "$ext" =~ ^(jpg|jpeg|png|webp|gif)$ ]] && ext="jpg"
+
+        filename="ddg_${uuid}.${ext}"
+        filepath="$SEARCH_DIR/$filename"
+        tmppath="${filepath}.tmp"
+
+        curl_args+=( "$thumb_url" -o "$tmppath" )
+        batch_entries+=( "$tmppath|$filepath|$filename|$full_url" )
+    done < <(echo "$res" | jq -r '.data[]? | "\(.thumbs.large // .thumbs.original // .thumbs.small)|\(.path)"' 2>/dev/null || true)
+
+    if [ "${#curl_args[@]}" -gt 0 ]; then
+        echo "Downloading ${#curl_args[@]} thumbnails in parallel for page $page" >> "$LOG_FILE"
+        curl -Z -s -L -m 8 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "${curl_args[@]}" || true
+
+        state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
+        if [ "$state" = "stop" ]; then
+            for entry in "${batch_entries[@]}"; do
+                IFS='|' read -r tmp _ _ _ <<< "$entry"
+                rm -f "$tmp"
+            done
+            exit 0
+        fi
+
+        for entry in "${batch_entries[@]}"; do
+            IFS='|' read -r tmp fp fn fu <<< "$entry"
+            if [ -s "$tmp" ]; then
+                mv "$tmp" "$fp"
+                echo "$fn|$fu" >> "$MAP_FILE"
+            else
+                rm -f "$tmp"
+            fi
+        done
+        echo "Page $page batch complete." >> "$LOG_FILE"
+    fi
 done
 
 echo 'done' > "$CONTROL_FILE"

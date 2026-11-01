@@ -90,11 +90,25 @@ capture_baseline_if_clean() {
 
 recompute_and_apply() {
     local prior_saver="${1:-}"
+    local prior_comp_json="${2:-}"
     local tmp_json="$MODES_JSON.tmp.$$"
     
     # Extract current computed values prior to recompute to avoid redundant subsystem work
     local old_wp="true" old_blur="true" old_shadow="true" old_anim="true" old_solid="false" old_direct="0" old_tearing="0" old_coffee="false" old_saver="false"
-    if [ -f "$MODES_JSON" ]; then
+    if [ -n "$prior_comp_json" ] && [ "$prior_comp_json" != "{}" ]; then
+        read -r old_wp old_blur old_shadow old_anim old_solid old_direct old_tearing old_coffee < <(
+            echo "$prior_comp_json" | jq -r '[
+                (if .wallpaper == null then true else .wallpaper end),
+                (if .blur == null then true else .blur end),
+                (if .shadow == null then true else .shadow end),
+                (if .animations == null then true else .animations end),
+                (if .opacity_solid == null then false else .opacity_solid end),
+                (if .direct_scanout == null then 0 else .direct_scanout end),
+                (if .tearing == null then 0 else .tearing end),
+                (if .idle_inhibit == null then false else .idle_inhibit end)
+            ] | @tsv' 2>/dev/null || echo "true true true true false 0 0 false"
+        )
+    elif [ -f "$MODES_JSON" ]; then
         read -r old_wp old_blur old_shadow old_anim old_solid old_direct old_tearing old_coffee old_saver < <(
             jq -r '[
                 (if .computed.wallpaper == null then true else .computed.wallpaper end),
@@ -242,7 +256,7 @@ recompute_and_apply() {
                     local set_sh="$HOME/nix/dotfiles/wallpaper/backend/set.sh"
                     [ ! -x "$set_sh" ] && set_sh="$HOME/.config/wallpaper/backend/set.sh"
                     if [ -x "$set_sh" ]; then
-                        "$set_sh" "$wp_path" >/dev/null 2>&1 &
+                        "$set_sh" "$wp_path" 200>&- >/dev/null 2>&1 || true
                     fi
                 fi
             fi
@@ -345,6 +359,7 @@ case "$ACTION" in
 
         capture_baseline_if_clean
         prior_saver=$(jq -r '.active["power-saver"] // false' "$MODES_JSON" 2>/dev/null || echo "false")
+        prior_computed=$(jq -c '.computed // {}' "$MODES_JSON" 2>/dev/null || echo "{}")
 
         tmp_json="$MODES_JSON.tmp.$$"
         if [ "$TARGET_VAL" = "true" ]; then
@@ -365,7 +380,7 @@ case "$ACTION" in
             exit 1
         fi
 
-        recompute_and_apply "$prior_saver"
+        recompute_and_apply "$prior_saver" "$prior_computed"
         ;;
 
     toggle)
@@ -381,6 +396,7 @@ case "$ACTION" in
 
         capture_baseline_if_clean
         prior_saver=$(jq -r '.active["power-saver"] // false' "$MODES_JSON" 2>/dev/null || echo "false")
+        prior_computed=$(jq -c '.computed // {}' "$MODES_JSON" 2>/dev/null || echo "{}")
 
         tmp_json="$MODES_JSON.tmp.$$"
         if [ "$TARGET_VAL" = "true" ]; then
@@ -400,7 +416,7 @@ case "$ACTION" in
             exit 1
         fi
 
-        recompute_and_apply "$prior_saver"
+        recompute_and_apply "$prior_saver" "$prior_computed"
         new_val=$(jq -r --arg m "$MODE" '.active[$m]' "$MODES_JSON")
         echo "$new_val"
         ;;

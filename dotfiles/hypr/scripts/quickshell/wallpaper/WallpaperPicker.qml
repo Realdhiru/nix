@@ -140,16 +140,25 @@ Item {
     Process {
         id: downloadProc
         running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                window.isDownloadingWallpaper = false;
-                downloadTimeoutTimer.stop();
+        onExited: (exitCode, exitStatus) => {
+            window.isDownloadingWallpaper = false;
+            downloadTimeoutTimer.stop();
+            if (exitCode !== 0) {
+                window.statusToast = "Download failed";
+                statusClearTimer.restart();
+            } else {
                 window.hasPendingOrganize = true;
                 if (window.currentDownloadName !== "") {
                     let map = window.downloadedSearchMap;
                     map[window.currentDownloadName] = true;
                     window.downloadedSearchMap = map;
                 }
+            }
+        }
+        stdout: StdioCollector {
+            onStreamFinished: {
+                window.isDownloadingWallpaper = false;
+                downloadTimeoutTimer.stop();
             }
         }
     }
@@ -431,7 +440,7 @@ Item {
                     fi
                     
                     TMP_FILE="\${DEST_FILE}.tmp"
-                    curl -s -L --max-time 20 --connect-timeout 5 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "\$URL" -o "\$TMP_FILE"
+                    curl -s -L --max-time 45 --connect-timeout 8 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "\$URL" -o "\$TMP_FILE"
                     
                     if [ -s "\$TMP_FILE" ] && file -b --mime-type "\$TMP_FILE" | grep -q "^image/"; then
                         if file -b --mime-type "\$TMP_FILE" | grep -q "image/webp"; then
@@ -1162,10 +1171,11 @@ Item {
         searchProxyModel.clear();
         window.lastSearchName = "";
         searchState.lastName = "";
-        if (window.currentFilter === "Search") {
-            view.currentIndex = 0;
-            view.positionViewAtIndex(0, ListView.Center);
+        if (window.currentFilter !== "Search") {
+            window.currentFilter = "Search";
         }
+        view.currentIndex = 0;
+        view.positionViewAtIndex(0, ListView.Center);
         window.isModelChanging = false;
         window.searchIndexRestored = true;
         window.isOnlineSearch = true;
