@@ -11,6 +11,10 @@
   # Declarative Default Wallpaper (Flake store-path)
   home.sessionVariables.DEFAULT_WALLPAPER = "${./dotfiles/wallpaper/default.jpg}";
   home.sessionVariables.DESKTOP_STATE_DIR = config.desktop.stateDir;
+  home.sessionVariables.TERMINAL = "alacritty";
+  home.sessionVariables.BROWSER = "brave";
+  home.sessionVariables.EDITOR = "gram";
+  home.sessionVariables.FILEMANAGER = "pcmanfm-qt";
   xdg.configFile."environment.d/wallpaper.conf".text =
     "DEFAULT_WALLPAPER=${./dotfiles/wallpaper/default.jpg}\n";
   xdg.configFile."environment.d/desktop_state.conf".text =

@@ -2,6 +2,7 @@
 
 ## 2026-11-01 — Qt & Tray Popup Window Theming Fix (`qt-theme-fix`)
 
+- **Hyprland Keybinds Reassignment & Defaults**: Re-assigned system modes to `SUPER+F1..F5` via unified mode controllers, consolidated web apps under `SUPER+SHIFT+<letter>` (YouTube, WhatsApp, Notion, Todoist, Claude, ChatGPT), shifted pin to `SUPER+G`, removed obsolete `misc` special workspace and dim bind, defined unified default applications via Nix and compositor environment, removed dead `kill_wallpaper.sh` shim and monkeytype rules, and added Guard 11 duplicate keybind regression check in [`flake.nix`](file:///home/realdhiru/nix/flake.nix).
 - **Hyprland Keybinds Consistency & Hygiene**: Cleaned up inconsistencies in [`dotfiles/hypr/keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), deduplicated repeated web app launches and bar toggles with local helpers, grouped binds by priority with descriptive metadata, unified script path resolution, and purged obsolete monkeytype binding.
 
 - **Qt Platform Theme Stylesheet Loading**: Fixed `qt6ct.conf` and `qt5ct.conf` in [`modules/home/theme.nix`](file:///home/realdhiru/nix/modules/home/theme.nix) by moving `stylesheets` into the required `[Interface]` section with absolute filesystem path, enabling Qt applications and native tray context popup menus (such as Antigravity) to properly apply `qt-style.qss` (Wallust dynamic colors, borders, and dark palettes).

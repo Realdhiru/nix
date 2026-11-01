@@ -294,6 +294,28 @@
             fail=1
           fi
 
+          echo "Guard 11: duplicate keybinds in keybinds.lua"
+          if ! awk '
+            /hl\.define_submap/ { in_submap = 1 }
+            /hl\.bind\(/ {
+              if (match($0, /hl\.bind\(([^,]+)/)) {
+                key = substr($0, RSTART + 8, RLENGTH - 8)
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+                scope = in_submap ? "submap" : "root"
+                seen[scope ":" key]++
+                if (seen[scope ":" key] > 1) {
+                  print "Duplicate bind in " scope ": " key
+                  dup = 1
+                }
+              }
+            }
+            /end\)/ { in_submap = 0 }
+            END { exit dup }
+          ' dotfiles/hypr/keybinds.lua; then
+            echo "FAIL: duplicate keybind definition found in keybinds.lua"
+            fail=1
+          fi
+
           mkdir -p "$out"
           exit "$fail"
         '';

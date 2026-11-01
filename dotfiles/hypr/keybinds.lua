@@ -2,6 +2,12 @@ local mainMod = "SUPER"
 local home = os.getenv("HOME") or ("/home/" .. (os.getenv("USER") or "user"))
 local scripts = home .. "/.config/hypr/scripts/"
 
+-- Default applications resolved from environment
+local default_terminal = os.getenv("TERMINAL") or "alacritty"
+local default_browser = os.getenv("BROWSER") or "brave"
+local default_editor = os.getenv("EDITOR") or "gram"
+local default_filemanager = os.getenv("FILEMANAGER") or "pcmanfm-qt"
+
 -- ======================================================
 -- Helpers
 -- ======================================================
@@ -39,13 +45,14 @@ hl.bind(mainMod .. " + A", hl.dsp.exec_cmd(scripts .. "fuzzel_menu.sh app"), { d
 hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd(scripts .. "fuzzel_menu.sh file"), { description = "file finder" })
 hl.bind(mainMod .. " + PERIOD", hl.dsp.exec_cmd(scripts .. "fuzzel_menu.sh emoji"), { description = "emoji picker" })
 
-hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("alacritty"), { description = "launch terminal" })
-hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd("alacritty -o font.size=7 -e zsh -c 'fastfetch; exec zsh'"),
+hl.bind(mainMod .. " + T", hl.dsp.exec_cmd(default_terminal), { description = "launch default terminal" })
+hl.bind(mainMod .. " + ALT + T", hl.dsp.exec_cmd(default_terminal .. " -o font.size=7 -e zsh -c 'fastfetch; exec zsh'"),
     { description = "launch terminal with fastfetch" })
 
-hl.bind(mainMod .. " + B", hl.dsp.exec_cmd("brave"), { description = "launch web browser" })
-hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("env QT_QPA_PLATFORMTHEME=qt6ct pcmanfm-qt"), { description = "launch file manager" })
-hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("gram"), { description = "launch gram editor" })
+hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(default_browser), { description = "launch default web browser" })
+hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("env QT_QPA_PLATFORMTHEME=qt6ct " .. default_filemanager),
+    { description = "launch default file manager" })
+hl.bind(mainMod .. " + C", hl.dsp.exec_cmd(default_editor), { description = "launch default editor" })
 
 hl.bind(mainMod .. " + ALT + B", hl.dsp.exec_cmd("blueman-manager"), { description = "launch bluetooth manager" })
 hl.bind(mainMod .. " + ALT + V", hl.dsp.exec_cmd("pwvucontrol"), { description = "launch audio control" })
@@ -170,13 +177,23 @@ hl.define_submap("locked", function()
     end)
 end)
 
+-- Desktop Modes (SUPER + F1..F5)
+hl.bind(mainMod .. " + F1", hl.dsp.exec_cmd(scripts .. "wallpaper.sh kill"),
+    { description = "toggle solid mode (kill wallpaper)" })
+hl.bind(mainMod .. " + F2", hl.dsp.exec_cmd(scripts .. "power.sh inhibit"),
+    { description = "toggle coffee mode idle inhibit" })
+hl.bind(mainMod .. " + F3", hl.dsp.exec_cmd(scripts .. "toggle_gaming_mode.sh"),
+    { description = "toggle gaming mode" })
+hl.bind(mainMod .. " + F4", hl.dsp.exec_cmd(scripts .. "kdeconnect_toggle.sh"),
+    { description = "toggle kde connect daemon & tray" })
+hl.bind(mainMod .. " + F5", hl.dsp.exec_cmd(scripts .. "mode_ctl.sh toggle power-saver"),
+    { description = "toggle power-saver mode" })
+
 hl.bind("SHIFT + escape", hl.dsp.exec_cmd(scripts .. "power.sh suspend"), { description = "suspend system" })
 hl.bind("XF86PowerOff", hl.dsp.exec_cmd(scripts .. "power.sh display toggle"), { locked = true, description = "toggle display power" })
 hl.bind("CTRL + escape", hl.dsp.exec_cmd(scripts .. "rotate_display.sh"), { description = "rotate display orientation" })
 hl.bind("SHIFT + F1", hl.dsp.window.fullscreen({ action = "toggle", mode = "fullscreen" }), { description = "toggle fullscreen" })
 hl.bind("SHIFT + F2", hl.dsp.exec_cmd(scripts .. "power.sh lock"), { description = "lock session" })
-hl.bind(mainMod .. " + CTRL + U", hl.dsp.exec_cmd(scripts .. "power.sh inhibit"), { description = "toggle coffee mode idle inhibit" })
-hl.bind(mainMod .. " + SHIFT + G", hl.dsp.exec_cmd(scripts .. "toggle_gaming_mode.sh"), { description = "toggle gaming mode" })
 
 -- Fault-isolated Lid Switch Events
 pcall(function()
@@ -199,15 +216,13 @@ hl.bind(mainMod .. " + CTRL + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh togg
 hl.bind(mainMod .. " + U", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle battery"), { description = "toggle battery widget" })
 hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle wallpaper"),
     { description = "toggle wallpaper widget" })
-hl.bind(mainMod .. " + CTRL + SHIFT + W", hl.dsp.exec_cmd(scripts .. "kill_wallpaper.sh"),
-    { description = "toggle solid mode (kill wallpaper)" })
 hl.bind(mainMod .. " + SHIFT + backslash", hl.dsp.exec_cmd(scripts .. "wallpaper.sh fav"),
     { description = "toggle wallpaper favorite" })
 hl.bind(mainMod .. " + V", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle clipboard"),
     { description = "toggle clipboard widget" })
 hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle music"),
     { description = "toggle music widget" })
-hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle calendar"),
+hl.bind(mainMod .. " + CTRL + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle calendar"),
     { description = "toggle calendar widget" })
 
 hl.bind(mainMod .. " + CTRL + V", hl.dsp.exec_cmd(scripts .. "toggle_multi_sink.sh"),
@@ -216,15 +231,10 @@ hl.bind(mainMod .. " + CTRL + SHIFT + V", hl.dsp.exec_cmd(scripts .. "fix_audio.
     { description = "recover audio subsystem" })
 hl.bind(mainMod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle sunset"),
     { description = "toggle sunset screen tint" })
-hl.bind(mainMod .. " + SHIFT + X",
-    hl.dsp.exec_cmd("quickshell ipc -p " .. scripts .. "quickshell/Shell.qml call idle toggleDim"),
-    { description = "toggle idle dim" })
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(scripts .. "quickshell/toggle_theme_mode.sh"),
     { description = "toggle quickshell theme mode" })
 hl.bind(mainMod .. " + CTRL + SHIFT + Q", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle quickshell"),
     { description = "toggle quickshell overlay" })
-hl.bind(mainMod .. " + SHIFT + K", hl.dsp.exec_cmd(scripts .. "kdeconnect_toggle.sh"),
-    { description = "toggle kde connect daemon & tray" })
 
 -- Toggle Active Bar Only (SUPER + CTRL + ALT in any press order)
 local bar_toggle_combos = {
@@ -252,7 +262,7 @@ hl.bind(mainMod .. " + ALT + Down", hl.dsp.exec_cmd(scripts .. "qs_manager.sh po
     { description = "position topbar left" })
 
 -- ======================================================
--- 8. Web Apps
+-- 8. Web Apps (SUPER + SHIFT + Letter)
 -- ======================================================
 
 hl.bind(mainMod .. " + SHIFT + C",
@@ -267,15 +277,19 @@ hl.bind(mainMod .. " + CTRL + SHIFT + A",
     launch_brave_app({ incognito = true, class = "claude", url = "https://claude.ai/new" }),
     { description = "launch Claude (incognito) web app" })
 
-hl.bind(mainMod .. " + ALT + W",
+hl.bind(mainMod .. " + SHIFT + Q",
     launch_brave_app({ class = "whatsapp", url = "https://web.whatsapp.com" }),
     { description = "launch WhatsApp web app" })
 
-hl.bind(mainMod .. " + ALT + N",
+hl.bind(mainMod .. " + SHIFT + N",
     launch_brave_app({ class = "notion", url = "https://www.notion.so/02917993852a4825ab25a38c938de4f8" }),
     { description = "launch Notion web app" })
 
-hl.bind(mainMod .. " + ALT + Y",
+hl.bind(mainMod .. " + SHIFT + T",
+    launch_brave_app({ class = "todo", name = "todo", url = "https://to-do.live.com/tasks/inbox" }),
+    { description = "launch Microsoft To-Do web app" })
+
+hl.bind(mainMod .. " + SHIFT + Y",
     launch_brave_app({
         profile = "youtube",
         class = "youtube",
@@ -284,17 +298,13 @@ hl.bind(mainMod .. " + ALT + Y",
     }),
     { description = "launch YouTube web app" })
 
-hl.bind(mainMod .. " + ALT + D",
-    launch_brave_app({ class = "todo", name = "todo", url = "https://to-do.live.com/tasks/inbox" }),
-    { description = "launch Microsoft To-Do web app" })
-
 -- ======================================================
 -- 9. Window Management & Geometry
 -- ======================================================
 
+hl.bind(mainMod .. " + G", hl.dsp.window.pin(), { description = "pin active window" })
 hl.bind(mainMod .. " + W", hl.dsp.window.float(), { description = "toggle window floating" })
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo(), { description = "toggle pseudo-tiling" })
-hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.pin(), { description = "pin active window" })
 
 hl.bind(mainMod .. " + SHIFT + Right", hl.dsp.window.resize({ x = 30, y = 0, relative = true }),
     { repeating = true, description = "resize window right" })
@@ -321,7 +331,6 @@ hl.bind(mainMod .. " + D", hl.dsp.workspace.toggle_special("music"), { descripti
 hl.bind(mainMod .. " + SHIFT + D", hl.dsp.window.move({ workspace = "special:music" }),
     { description = "move window to music special workspace" })
 hl.bind(mainMod .. " + F", hl.dsp.workspace.toggle_special("notes"), { description = "toggle notes special workspace" })
-hl.bind(mainMod .. " + G", hl.dsp.workspace.toggle_special("misc"), { description = "toggle misc special workspace" })
 
 -- ======================================================
 -- 11. Rarely Used: Cursor Zoom & Gestures
