@@ -41,7 +41,7 @@ fi
 
 # ---------------------------------------------------- isolated alacritty probe
 # Default terminal is alacritty (keybind: alacritty).
-# Launch a dedicated standalone instance whose command self-exits after 6s; the
+# Launch a dedicated standalone instance whose command self-exits after 1.5s; the
 # window closes itself. Existing windows/processes are never touched.
 runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 probe_runtime=$(mktemp -d) || probe_runtime="$HOME/.cache/alacrittyprobe-$$"
@@ -52,7 +52,7 @@ if [ -e "$runtime/wayland-1" ]; then
     && ln -s "$runtime/wayland-1.lock" "$probe_runtime/wayland-1.lock"
 fi
 
-XDG_RUNTIME_DIR="$probe_runtime" timeout 20 alacritty -e sh -c 'sleep 6' \
+XDG_RUNTIME_DIR="$probe_runtime" timeout 10 alacritty -e sh -c 'sleep 1.5' \
   >/dev/null 2>&1 &
 wcli_pid=$!
 

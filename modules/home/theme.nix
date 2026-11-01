@@ -64,26 +64,32 @@
   xdg.configFile."qt6ct/qss/qt-style.qss".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.cache/theme/qt-style.qss";
 
-  xdg.configFile."qt5ct/qt5ct.conf".text = ''
-    [Appearance]
-    color_scheme_path=${config.home.homeDirectory}/.config/qt5ct/colors/theme.conf
-    custom_palette=true
-    icon_theme=buuf-nestort
-    style=Fusion
+  xdg.configFile."qt5ct/qt5ct.conf" = {
+    force = true;
+    text = ''
+      [Appearance]
+      color_scheme_path=${config.home.homeDirectory}/.config/qt5ct/colors/theme.conf
+      custom_palette=true
+      icon_theme=buuf-nestort
+      style=Fusion
 
-    [Interface]
-    stylesheets=${config.home.homeDirectory}/.config/qt5ct/qss/qt-style.qss
-  '';
-  xdg.configFile."qt6ct/qt6ct.conf".text = ''
-    [Appearance]
-    color_scheme_path=${config.home.homeDirectory}/.config/qt6ct/colors/theme.conf
-    custom_palette=true
-    icon_theme=buuf-nestort
-    style=Fusion
+      [Interface]
+      stylesheets=${config.home.homeDirectory}/.config/qt5ct/qss/qt-style.qss
+    '';
+  };
+  xdg.configFile."qt6ct/qt6ct.conf" = {
+    force = true;
+    text = ''
+      [Appearance]
+      color_scheme_path=${config.home.homeDirectory}/.config/qt6ct/colors/theme.conf
+      custom_palette=true
+      icon_theme=buuf-nestort
+      style=Fusion
 
-    [Interface]
-    stylesheets=${config.home.homeDirectory}/.config/qt6ct/qss/qt-style.qss
-  '';
+      [Interface]
+      stylesheets=${config.home.homeDirectory}/.config/qt6ct/qss/qt-style.qss
+    '';
+  };
 
   # Enforce dark theme for KDE Frameworks applications (Okular, Dolphin, Gwenview)
   xdg.configFile."kdeglobals".text = ''

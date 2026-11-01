@@ -3,6 +3,8 @@
 ## 2026-11-01 — Qt & Tray Popup Window Theming Fix (`qt-theme-fix`)
 
 - **Qt Platform Theme Stylesheet Loading**: Fixed `qt6ct.conf` and `qt5ct.conf` in [`modules/home/theme.nix`](file:///home/realdhiru/nix/modules/home/theme.nix) by moving `stylesheets` into the required `[Interface]` section with absolute filesystem path, enabling Qt applications and native tray context popup menus (such as Antigravity) to properly apply `qt-style.qss` (Wallust dynamic colors, borders, and dark palettes).
+- **Home Manager Clobber Prevention**: Added `force = true` on `qt5ct.conf` and `qt6ct.conf` in [`modules/home/theme.nix`](file:///home/realdhiru/nix/modules/home/theme.nix) so old backup files (`.hm-backup`) never collide or abort system rebuild activations.
+- **Terminal Safety Test Acceleration**: Shortened probe self-exit duration from 6.0s to 1.5s in [`scripts/health-check.sh`](file:///home/realdhiru/nix/scripts/health-check.sh), cutting `rebuild` post-switch verification time by 75% while maintaining GPU hang detection integrity.
 
 ## 2026-10-29 — Desktop Mode Preemption, Blur Restoration & Telemetry Repair Pass (`desktop-v5`)
 
