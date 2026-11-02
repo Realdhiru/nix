@@ -94,11 +94,11 @@ Item {
         // section per settings file, so the second call now waits for the
         // first to fully finish (and therefore sees its result) instead
         // of racing it. `util-linux` (flock) is explicit in packages.nix.
-        let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" && ` +
+        let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" '${cacheDir}' && ` +
                   `( flock 200; ` +
                   `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
                   `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
-                  `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}' ) 200>'${settingsJsonPath}.lock'`;
+                  `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}' ) 200>'${cacheDir}/settings.json.lock'`;
         sh(cmd);
     }
 
@@ -108,11 +108,11 @@ Item {
         // See setSetting() above — same flock-guarded critical section,
         // same lock file, so the two stay mutually exclusive with each
         // other too (not just with themselves).
-        let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" && ` +
+        let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" '${cacheDir}' && ` +
                   `( flock 200; ` +
                   `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
                   `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
-                  `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}' ) 200>'${settingsJsonPath}.lock'`;
+                  `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}' ) 200>'${cacheDir}/settings.json.lock'`;
         sh(cmd);
 
         for (let key in dataObj) rawSettings[key] = dataObj[key];

@@ -20,6 +20,9 @@ venv/
 *.tmp
 *.fifo
 *.pid
+*.lock
+!flake.lock
+!**/Cargo.lock
 .cache/
 
 

@@ -22,8 +22,6 @@ release_lock() {
     exec 200>&- 2>/dev/null || true
 }
 
-rm -f "$MODES_DIR/gaming_mode" "$MODES_DIR/wallpaper_killed" "$MODES_DIR/saver_killed_wp" 2>/dev/null || true
-
 # Initialize modes.json if absent or corrupted
 if [ ! -s "$MODES_JSON" ] || ! jq empty "$MODES_JSON" 2>/dev/null; then
     cat << 'EOF' > "$MODES_JSON.tmp.$$"
@@ -307,7 +305,7 @@ recompute_and_apply() {
         fi
     fi
 
-    # 5. Restore hardware power profile when power-saver is disabled/preempted
+    # 5. Synchronize hardware power profile when power-saver state changes
     if [ "$old_saver" = "true" ] && [ "$saver_val" = "false" ]; then
         local target_prof="balanced"
         local ac_online="0"
@@ -324,16 +322,35 @@ recompute_and_apply() {
         if [ -x "$power_sh" ]; then
             CALLER_IS_MODE_CTL=true bash "$power_sh" profile "$target_prof" >/dev/null 2>&1 || true
         fi
+    elif [ "$old_saver" = "false" ] && [ "$saver_val" = "true" ]; then
+        local power_sh="$HOME/.config/hypr/scripts/power.sh"
+        [ ! -x "$power_sh" ] && power_sh="$HOME/nix/dotfiles/hypr/scripts/power.sh"
+        if [ -x "$power_sh" ]; then
+            CALLER_IS_MODE_CTL=true bash "$power_sh" profile power-saver >/dev/null 2>&1 || true
+        fi
     fi
 
-    # 6. Optional backwards compatibility with state.json (batched single atomic update)
+    # 6. Backwards compatibility with state marker files & state.json
+    local is_game_active="false"
+    [ "$solid_val" = "true" ] && [ "$anim_val" = "false" ] && is_game_active="true"
+    local is_wp_killed="false"
+    [ "$wp_val" = "false" ] && is_wp_killed="true"
+
+    if [ "$is_game_active" = "true" ]; then
+        touch "$MODES_DIR/gaming_mode" 2>/dev/null || true
+    else
+        rm -f "$MODES_DIR/gaming_mode" 2>/dev/null || true
+    fi
+
+    if [ "$is_wp_killed" = "true" ]; then
+        touch "$MODES_DIR/wallpaper_killed" 2>/dev/null || true
+    else
+        rm -f "$MODES_DIR/wallpaper_killed" 2>/dev/null || true
+    fi
+
     local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
     [ ! -x "$state_ctl" ] && state_ctl="$HOME/nix/dotfiles/hypr/scripts/quickshell/state_ctl.sh"
     if [ -x "$state_ctl" ]; then
-        local is_game_active="false"
-        [ "$solid_val" = "true" ] && [ "$anim_val" = "false" ] && is_game_active="true"
-        local is_wp_killed="false"
-        [ "$wp_val" = "false" ] && is_wp_killed="true"
         bash "$state_ctl" modes "$is_game_active" "$is_wp_killed" "$coffee_val" 2>/dev/null || true
     fi
 }
