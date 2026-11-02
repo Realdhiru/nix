@@ -45,6 +45,7 @@ emit_neutral_theme() {
   "yellow": "#747576",
   "maroon": "#4C4D4F",
   "teal": "#ADADAF",
+  "lavender": "#EDE6DC",
   "isLight": false,
   "topLuminance": 0.0,
   "primary": "#EDE6DC",
@@ -174,7 +175,7 @@ EOF
         ' "$SCRIPT_DIR/templates/obsidian.css" > "$OBSIDIAN_SNIPPET" 2>/dev/null || true
     fi
 
-    apply_terminal_opacity
+    apply_terminal_opacity --reload
 }
 
 # 1. Handle Neutral Theme Mode (pure pitch-black OLED desktop state)
@@ -183,12 +184,13 @@ if [ "$WALLPAPER" = "--neutral" ]; then
 
     # Notify client applications.
     pkill -USR2 cava 2>/dev/null || true
+    alacritty msg config -r >/dev/null 2>&1 || true
     if command -v quickshell >/dev/null 2>&1; then
         quickshell ipc -p "$HOME/.config/hypr/scripts/quickshell/Shell.qml" call main reloadTheme >/dev/null 2>&1 || true
     fi
     if command -v gsettings >/dev/null 2>&1; then
-        gsettings set org.gnome.desktop.interface gtk-theme "Adwaita" >/dev/null 2>&1 || true
         gsettings set org.gnome.desktop.interface gtk-theme "Adwaita:dark" >/dev/null 2>&1 || true
+        gsettings set org.gnome.desktop.interface accent-color "slate" >/dev/null 2>&1 || true
     fi
     exit 0
 fi
@@ -528,7 +530,6 @@ if command -v quickshell >/dev/null 2>&1; then
     quickshell ipc -p "$HOME/.config/hypr/scripts/quickshell/Shell.qml" call main reloadTheme >/dev/null 2>&1 || true
 fi
 if command -v gsettings >/dev/null 2>&1; then
-    gsettings set org.gnome.desktop.interface gtk-theme "Adwaita" >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface gtk-theme "Adwaita:dark" >/dev/null 2>&1 || true
     if [ -n "${ACCENT:-}" ] && [ "${#ACCENT}" -ge 7 ]; then
         r=$((16#${ACCENT:1:2}))

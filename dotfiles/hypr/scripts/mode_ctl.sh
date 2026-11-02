@@ -246,10 +246,10 @@ recompute_and_apply() {
             pkill -15 -f "mpvpaper" 2>/dev/null || true
             command -v awww >/dev/null 2>&1 && awww clear >/dev/null 2>&1 || true
 
-            local theme_engine="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
-            [ ! -x "$theme_engine" ] && theme_engine="$HOME/nix/dotfiles/wallust/generate.sh"
+            local theme_engine="$HOME/nix/dotfiles/wallust/generate.sh"
+            [ ! -x "$theme_engine" ] && theme_engine="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
             if [ -x "$theme_engine" ]; then
-                "$theme_engine" --neutral >/dev/null 2>&1 &
+                "$theme_engine" --neutral >/dev/null 2>&1 || true
             fi
         else
             local target_wp="$DESKTOP_STATE_DIR/wallpaper/current_wallpaper.txt"

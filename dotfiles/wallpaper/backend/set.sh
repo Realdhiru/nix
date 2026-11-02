@@ -76,13 +76,6 @@ else
     flock 8
 fi
 
-# Cancel any pending async awww clear from a previous switch
-CLEANUP_PID_FILE="$CACHE_DIR/wallpaper_clear.pid"
-if [ -f "$CLEANUP_PID_FILE" ]; then
-    kill "$(cat "$CLEANUP_PID_FILE" 2>/dev/null)" 2>/dev/null || true
-    rm -f "$CLEANUP_PID_FILE" 2>/dev/null || true
-fi
-
 WAS_KILLED=0
 MODE_CTL="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
 [ -f "$MODE_CTL" ] || MODE_CTL="$HOME/.config/hypr/scripts/mode_ctl.sh"
@@ -147,6 +140,27 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
         fi
     fi
 
+    # Ensure awww daemon is active to provide an instant zero-blink transition buffer
+    if (command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet awww-daemon) || [ -n "$(pidof .awww-daemon-wrapped 2>/dev/null || true)" ]; then
+        :
+    else
+        "$SCRIPT_DIR/ensure_awww.sh" 8>&- 2>/dev/null || true
+    fi
+
+    POSTER_FRAME=""
+    THUMB_DIR="$CACHE_DIR/quickshell/wallpaper_picker/thumbs"
+    if [ -f "$THUMB_DIR/$BASENAME.jpg" ]; then
+        POSTER_FRAME="$THUMB_DIR/$BASENAME.jpg"
+    elif [ -f "$THUMB_DIR/$BASENAME" ]; then
+        POSTER_FRAME="$THUMB_DIR/$BASENAME"
+    elif [[ "$EXT" == "gif" ]]; then
+        POSTER_FRAME="$WALL"
+    fi
+
+    if [ -n "$POSTER_FRAME" ] && command -v awww >/dev/null 2>&1; then
+        awww img --resize crop --transition-type none "$POSTER_FRAME" >/dev/null 2>&1 || true
+    fi
+
     if [ "${#RESOLVED_OUTPUTS[@]}" -eq 0 ]; then
         RESOLVED_OUTPUTS=("eDP-1")
     fi
@@ -162,16 +176,8 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
         # Clean up any unmanaged orphan mpvpaper processes before systemd start
         pkill -f "mpvpaper.*$out" 2>/dev/null || true
 
-        # Start/restart systemd-managed mpvpaper
+        # Start/restart systemd-managed mpvpaper seamlessly over the poster frame
         systemctl --user restart "mpvpaper@$out" 2>/dev/null || true
-
-        # Clear awww layer on this output ONLY after new surface (mpvpaper) maps, tracked by CLEANUP_PID_FILE
-        (
-            sleep 0.25
-            command -v awww >/dev/null 2>&1 && awww clear -o "$out" >/dev/null 2>&1 || true
-            rm -f "$CLEANUP_PID_FILE" 2>/dev/null || true
-        ) &
-        echo $! > "$CLEANUP_PID_FILE" 2>/dev/null || true
     done
 else
     # 2. Static Images (Handled natively via awww)
@@ -286,8 +292,8 @@ if [ "$should_run_wallust" -eq 1 ]; then
             [ -s "$frame_seed" ] && SEED="$frame_seed"
         fi
 
-        THEME_ENGINE="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
-        [ ! -x "$THEME_ENGINE" ] && THEME_ENGINE="$HOME/nix/dotfiles/wallust/generate.sh"
+        THEME_ENGINE="$HOME/nix/dotfiles/wallust/generate.sh"
+        [ ! -x "$THEME_ENGINE" ] && THEME_ENGINE="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
         if [ -x "$THEME_ENGINE" ]; then
             "$THEME_ENGINE" "$SEED" >/dev/null 2>&1
         fi
