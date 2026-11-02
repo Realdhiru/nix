@@ -1,0 +1,62 @@
+/* Dynamic Wallust Palette for Obsidian */
+.theme-dark, .theme-light {
+    --background-primary: #000000;
+    --background-primary-alt: #111116;
+    --background-secondary: #000000;
+    --background-secondary-alt: #181820;
+    --background-modifier-border: #22222a;
+    --background-modifier-border-hover: #ADB8B7;
+    --background-modifier-border-focus: #58B1A5;
+    --background-modifier-form-field: #111116;
+    
+    --text-normal: #F4F6F5;
+    --text-muted: #CED5D4;
+    --text-faint: #ADB8B7;
+    --text-accent: #58B1A5;
+    --text-accent-hover: #CED5D4;
+    
+    --interactive-normal: #111116;
+    --interactive-hover: #181820;
+    --interactive-accent: #58B1A5;
+    --interactive-accent-hover: #CED5D4;
+    
+    --text-selection: #58B1A555;
+    
+    /* Headings & Links */
+    --link-color: #58B1A5;
+    --link-color-hover: #CED5D4;
+    --h1-color: #58B1A5;
+    --h2-color: #ADADAF;
+    --h3-color: #7E7E7F;
+    --h4-color: #828284;
+    --h5-color: #58B1A5;
+    --h6-color: #CED5D4;
+
+    /* Graph View Elements */
+    --graph-node: #58B1A5;
+    --graph-node-focused: #F4F6F5;
+    --graph-line: #22222a;
+}
+
+.theme-dark {
+    --color-base-00: #000000;
+    --color-base-10: #000000;
+    --color-base-20: #000000;
+    --color-base-25: #111116;
+    --color-base-30: #181820;
+    --color-base-35: #22222a;
+    --color-base-40: #ADB8B7;
+    --color-base-50: #CED5D4;
+    --color-base-60: #F4F6F5;
+    --color-base-70: #ADB8B7;
+    --color-base-100: #F4F6F5;
+    
+    --color-red: #484849;
+    --color-orange: #828284;
+    --color-yellow: #747576;
+    --color-green: #5E5E60;
+    --color-cyan: #ADADAF;
+    --color-blue: #7E7E7F;
+    --color-purple: #58B1A5;
+    --color-pink: #B4B5B7;
+}

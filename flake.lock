@@ -57,6 +57,22 @@
         "type": "github"
       }
     },
+    "gamescope-pkgs": {
+      "locked": {
+        "lastModified": 1770073757,
+        "narHash": "sha256-Vy+G+F+3E/Tl+GMNgiHl9Pah2DgShmIUBJXmbiQPHbI=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "47472570b1e607482890801aeaf29bfb749884f6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "47472570b1e607482890801aeaf29bfb749884f6",
+        "type": "github"
+      }
+    },
     "git-hooks": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -175,6 +191,7 @@
       "inputs": {
         "anifetch": "anifetch",
         "chatgpt": "chatgpt",
+        "gamescope-pkgs": "gamescope-pkgs",
         "helium": "helium",
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs_2",

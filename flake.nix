@@ -29,6 +29,17 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Gamescope pinned to the nixpkgs snapshot from immediately before the
+    # 2026-10-28 flake update. Only the gamescope game-window compositor is
+    # pinned; everything else keeps following nixos-unstable.
+    # Reason: gamescope 3.16.30/3.16.31 + Hyprland never map the gamescope
+    # output window after gamescope's own initial unmap (it waits for an
+    # xdg-shell configure Hyprland never sends) — game launches hang for
+    # ~1 minute with audio-only, no video (ValveSoftware/gamescope#2439,
+    # Hyprland #16411; upstream PR #2440 does not fix Hyprland; gamescope
+    # 3.16.29 and earlier are unaffected and were working here for months).
+    gamescope-pkgs.url = "github:NixOS/nixpkgs/47472570b1e607482890801aeaf29bfb749884f6";
+
     # Standalone repo: ~/Projects/flakes/codex-flake.
     chatgpt = {
       url = "github:Realdhiru/codex-flake";
@@ -86,6 +97,13 @@
                 buildFHSEnvChroot = patchFHS prev.buildFHSEnvChroot;
               }
             ))
+            (final: prev: {
+              # Pin gamescope to 3.16.19 from the gamescope-pkgs snapshot
+              # (last version that maps its output window reliably on
+              # Hyprland — see the gamescope-pkgs input comment above).
+              gamescope =
+                inputs.gamescope-pkgs.legacyPackages.${final.system}.gamescope;
+            })
             # chatgpt from the standalone ~/Projects/codex-flake flake.
             inputs.chatgpt.overlays.default
           ];

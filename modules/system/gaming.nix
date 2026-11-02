@@ -49,6 +49,7 @@
 
   environment.systemPackages = with pkgs; [
     mangohud
+    vulkan-tools     # vulkaninfo — Lutris probes it at every start (log error if missing)
 
     # Launchers / prefix managers
     lutris
