@@ -150,13 +150,23 @@ get_status() {
 }
 
 toggle_power() {
-    rfkill unblock bluetooth 2>/dev/null
+    local desktop_state="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+    local bt_state_dir="$desktop_state/bluetooth"
+    mkdir -p "$bt_state_dir"
+    local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
+    [ ! -x "$state_ctl" ] && state_ctl="$HOME/nix/dotfiles/hypr/scripts/quickshell/state_ctl.sh"
+
     if timeout 0.5 bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
         timeout 0.5 bluetoothctl power off 2>/dev/null
-        sleep 0.5
+        echo "off" > "$bt_state_dir/power.tmp.$$" && mv -f "$bt_state_dir/power.tmp.$$" "$bt_state_dir/power"
+        [ -x "$state_ctl" ] && bash "$state_ctl" set bluetooth.powered false 2>/dev/null || true
+        sleep 0.2
     else
+        rfkill unblock bluetooth 2>/dev/null
         timeout 0.5 bluetoothctl power on 2>/dev/null
-        sleep 0.5
+        echo "on" > "$bt_state_dir/power.tmp.$$" && mv -f "$bt_state_dir/power.tmp.$$" "$bt_state_dir/power"
+        [ -x "$state_ctl" ] && bash "$state_ctl" set bluetooth.powered true 2>/dev/null || true
+        sleep 0.2
     fi
 }
 

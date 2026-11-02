@@ -54,7 +54,7 @@ Item {
     
     Timer {
         id: applyUnlockTimer
-        interval: 120
+        interval: 300
         onTriggered: {
             window.isApplying = false;
             if (window.applyingWallCleanName !== "") {
@@ -168,81 +168,69 @@ Item {
     property var wallpaperScoreMap: ({})
     property bool hasPendingOrganize: false
 
-    Process {
-        id: markersProc
-        command: ["bash", "-c", "\"$HOME/.config/hypr/scripts/quickshell/wallpaper/indexer.sh\" \"$HOME/Pictures/Wallpapers\" \"$HOME/.cache/quickshell/wallpaper_index.json\" && cat \"$HOME/.cache/quickshell/wallpaper_index.json\""]
-        running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let output = this.text;
-                if (!output || output.trim().length === 0) return;
-                try {
-                    let data = JSON.parse(output);
-                    let catMap = {};
-                    let colorMap = {};
-                    let scoreMap = {};
-                    if (data && data.items) {
-                        for (let i = 0; i < data.items.length; i++) {
-                            let item = data.items[i];
-                            if (item && item.fileName) {
-                                let fn = item.fileName;
-                                let clean = window.getCleanName(fn);
-                                let hex = item.hex || "#1e1e2e";
-                                let bucket = item.bucket || "Dark";
-                                let score = (item.band !== undefined && item.colorKey !== undefined) ?
-                                    { band: item.band, key: item.colorKey } :
-                                    window.hexToColorScore(hex);
-                                catMap[fn] = bucket;
-                                colorMap[fn] = hex.replace("#", "");
-                                scoreMap[fn] = score;
-                                if (clean.length > 0) {
-                                    catMap[clean] = bucket;
-                                    colorMap[clean] = hex.replace("#", "");
-                                    scoreMap[clean] = score;
-                                }
-                            }
-                        }
-                    }
-                    window.wallpaperCategoryMap = catMap;
-                    window.wallpaperColorMap = colorMap;
-                    window.wallpaperScoreMap = scoreMap;
-                    window.updateCategoryCounts();
-                    if (localProxyModel.count > 0) {
-                        window.sortListModel(localProxyModel);
-                        window.sortListModel(favoritesProxyModel);
-                        window.sortListModel(gifsProxyModel);
-                        window.sortListModel(videosProxyModel);
-                        if (window.currentFilter !== "All" && window.currentFilter !== "Favorites" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "Search") {
-                            window.updateCategoryProxyModel();
-                        }
+    FileView {
+        id: indexFileView
+        path: Quickshell.env("HOME") + "/.cache/quickshell/wallpaper_index.json"
+        watchChanges: true
+        onFileChanged: {
+            indexFileView.reload();
+            window.loadIndexData(indexFileView.text());
+        }
+    }
 
-                        let targetModel = window.getModelForFilter(window.currentFilter);
-                        let wallToFind = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
-                        if (!window.initialFocusSet && targetModel && targetModel.count > 0 && wallToFind !== "" && window.visible && view.width > 0) {
-                            let cleanTarget = window.getCleanName(wallToFind);
-                            let foundIdx = -1;
-                            for (let i = 0; i < targetModel.count; i++) {
-                                let fn = targetModel.get(i).fileName || "";
-                                if (fn === wallToFind || window.getCleanName(fn) === cleanTarget) {
-                                    foundIdx = i;
-                                    break;
-                                }
-                            }
-                            if (foundIdx !== -1) {
-                                window.targetWallName = targetModel.get(foundIdx).fileName || wallToFind;
-                                window.executeFocusRestore(foundIdx, false, true);
-                            }
+    function loadIndexData(output) {
+        if (!output || output.trim().length === 0) return;
+        try {
+            let data = JSON.parse(output);
+            let catMap = {};
+            let colorMap = {};
+            let scoreMap = {};
+            if (data && data.items) {
+                for (let i = 0; i < data.items.length; i++) {
+                    let item = data.items[i];
+                    if (item && item.fileName) {
+                        let fn = item.fileName;
+                        let clean = window.getCleanName(fn);
+                        let hex = item.hex || "#1e1e2e";
+                        let bucket = item.bucket || "Dark";
+                        let score = (item.band !== undefined && item.colorKey !== undefined) ?
+                            { band: item.band, key: item.colorKey } :
+                            window.hexToColorScore(hex);
+                        catMap[fn] = bucket;
+                        colorMap[fn] = hex.replace("#", "");
+                        scoreMap[fn] = score;
+                        if (clean.length > 0) {
+                            catMap[clean] = bucket;
+                            colorMap[clean] = hex.replace("#", "");
+                            scoreMap[clean] = score;
                         }
                     }
-                } catch (e) {
-                    console.log("[WALLPAPER_PICKER] Error loading index json:", e);
                 }
             }
+            window.wallpaperCategoryMap = catMap;
+            window.wallpaperColorMap = colorMap;
+            window.wallpaperScoreMap = scoreMap;
+            window.updateCategoryCounts();
+
+            // Only re-sort models if the picker is NOT visible to prevent delegate churn and jitter
+            if (!window.visible && localProxyModel.count > 0) {
+                window.sortListModel(localProxyModel);
+                window.sortListModel(favoritesProxyModel);
+                window.sortListModel(gifsProxyModel);
+                window.sortListModel(videosProxyModel);
+                if (window.currentFilter !== "All" && window.currentFilter !== "Favorites" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "Search") {
+                    window.updateCategoryProxyModel();
+                }
+            }
+        } catch (e) {
+            console.log("[WALLPAPER_PICKER] Error loading index json:", e);
         }
     }
 
     function processMarkers() {
-        markersProc.running = true;
+        if (indexFileView.text()) {
+            window.loadIndexData(indexFileView.text());
+        }
     }
 
     function syncMonitors() {
@@ -472,7 +460,7 @@ Item {
         const escOriginal = escapeBash(originalFile);
 
         const fullScript = `
-            ~/.config/hypr/scripts/set_wallpaper.sh ${outArg} "${escOriginal}"
+            ~/.config/hypr/scripts/set_wallpaper.sh ${outArg} "${escOriginal}" "none" "0.0" "120"
         `;
         Quickshell.execDetached(["bash", "-c", fullScript]);
     }

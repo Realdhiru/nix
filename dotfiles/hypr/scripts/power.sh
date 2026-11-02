@@ -198,9 +198,9 @@ cmd_lid() {
             # 3. Pause CAVA audio FFT processing to eliminate wasted audio analysis cycles
             pkill -STOP -f "cava.*cava_topbar.conf" 2>/dev/null || true
 
-            # 4. Turn off Bluetooth radio IF no device is actively connected
+            # 4. Turn off Bluetooth radio IF no device is actively connected AND it was powered on
             if ! bluetoothctl devices Connected 2>/dev/null | grep -q "Device"; then
-                if rfkill list bluetooth 2>/dev/null | grep -q "Soft blocked: no"; then
+                if timeout 0.5 bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
                     touch /run/user/${UID:-1000}/lid_bt_turned_off 2>/dev/null || true
                     rfkill block bluetooth 2>/dev/null || true
                 fi

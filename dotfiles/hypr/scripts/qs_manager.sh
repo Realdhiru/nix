@@ -182,8 +182,10 @@ handle_wallpaper_prep() {
 # Controlled scan initialization relying on internal daemons rather than an infinite shell lock
 handle_network_prep() {
     echo "" > "$BT_SCAN_LOG"
-    timeout 30 bluetoothctl scan on > "$BT_SCAN_LOG" 2>&1 &
-    echo $! > "$BT_PID_FILE"
+    if timeout 0.5 bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
+        timeout 30 bluetoothctl scan on > "$BT_SCAN_LOG" 2>&1 &
+        echo $! > "$BT_PID_FILE"
+    fi
     nmcli device wifi rescan >/dev/null 2>&1 &
 }
 

@@ -76,6 +76,13 @@ else
     flock 8
 fi
 
+# Cancel any pending async awww clear from a previous switch
+CLEANUP_PID_FILE="$CACHE_DIR/wallpaper_clear.pid"
+if [ -f "$CLEANUP_PID_FILE" ]; then
+    kill "$(cat "$CLEANUP_PID_FILE" 2>/dev/null)" 2>/dev/null || true
+    rm -f "$CLEANUP_PID_FILE" 2>/dev/null || true
+fi
+
 WAS_KILLED=0
 MODE_CTL="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
 [ -f "$MODE_CTL" ] || MODE_CTL="$HOME/.config/hypr/scripts/mode_ctl.sh"
@@ -152,23 +159,19 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
         echo "WALLPAPER_VIDEO=\"$WALL_TARGET\"" > "$TMP_ENV"
         mv -f "$TMP_ENV" "$ENV_FILE"
 
-        # Start/restart systemd-managed mpvpaper first
+        # Clean up any unmanaged orphan mpvpaper processes before systemd start
+        pkill -f "mpvpaper.*$out" 2>/dev/null || true
+
+        # Start/restart systemd-managed mpvpaper
         systemctl --user restart "mpvpaper@$out" 2>/dev/null || true
 
-        # Robust fallback: if systemd unit is not active, launch mpvpaper directly
-        if ! systemctl --user is-active --quiet "mpvpaper@$out" 2>/dev/null; then
-            pkill -f "mpvpaper.*$out" 2>/dev/null || true
-            if command -v mpvpaper >/dev/null 2>&1; then
-                mpvpaper -p -o "no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0" "$out" "$WALL_TARGET" 8>&- >/dev/null 2>&1 &
-                disown $! 2>/dev/null || true
-            fi
-        fi
-
-        # Clear awww layer on this output ONLY after new surface (mpvpaper) maps
+        # Clear awww layer on this output ONLY after new surface (mpvpaper) maps, tracked by CLEANUP_PID_FILE
         (
-            sleep 0.2
+            sleep 0.25
             command -v awww >/dev/null 2>&1 && awww clear -o "$out" >/dev/null 2>&1 || true
+            rm -f "$CLEANUP_PID_FILE" 2>/dev/null || true
         ) &
+        echo $! > "$CLEANUP_PID_FILE" 2>/dev/null || true
     done
 else
     # 2. Static Images (Handled natively via awww)

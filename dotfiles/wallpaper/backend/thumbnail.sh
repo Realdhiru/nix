@@ -128,7 +128,7 @@ process_wallpaper() {
         category="${category,,}"
     fi
 
-    ln -sf "$file" "$FLAT_DIR/$name"
+    [ -L "$FLAT_DIR/$name" ] || ln -sf "$file" "$FLAT_DIR/$name"
 
     local target="$THUMB/$name"
     local ext="${file##*.}"

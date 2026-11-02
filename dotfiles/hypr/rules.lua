@@ -29,27 +29,38 @@ end
 
 
 -- Opacity options: "0.0" (transparent) to "1.0" (opaque). Glass range: "0.50" to "0.70"
-if not is_opaque then
-    hl.window_rule({ match = { class = "^app.liten.Gram$" }, opacity = "0.76" })
-    hl.window_rule({ match = { class = "^antigravity$" }, opacity = "0.47" })
-    hl.window_rule({ match = { class = "^chatgpt$" }, opacity = "0.47" })
-    hl.window_rule({ match = { class = "^Chatgpt$" }, opacity = "0.5" })
-    hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.6" })
-    hl.window_rule({ match = { class = "^(Alacritty)$" }, opacity = "0.70" })
-    hl.window_rule({ match = { class = "^(obsidian|md.obsidian.Obsidian)$" }, opacity = "0.65" })
+hl.window_rule({ match = { class = "^app.liten.Gram$" }, opacity = "0.76" })
+hl.window_rule({ match = { class = "^antigravity$" }, opacity = "0.47" })
+hl.window_rule({ match = { class = "^chatgpt$" }, opacity = "0.47" })
+hl.window_rule({ match = { class = "^Chatgpt$" }, opacity = "0.5" })
+hl.window_rule({ match = { class = "^(pcmanfm-qt)$" }, opacity = "0.6" })
+hl.window_rule({ match = { class = "^(Alacritty)$" }, opacity = "0.70" })
+hl.window_rule({ match = { class = "^(obsidian|md.obsidian.Obsidian)$" }, opacity = "0.65" })
 
-    -- Brave Apps
-    hl.window_rule({ match = { class = "^brave-chat\\.openai\\.com__-Default$" }, opacity = "0.57" })                               -- ChatGPT
-    hl.window_rule({ match = { class = "^brave-gemini\\.google\\.com__app-Default$" }, opacity = "0.57" })                          -- Gemini
-    hl.window_rule({ match = { class = "^brave-claude\\.ai__new-Default$" }, opacity = "0.57" })                                    -- Claude
-    hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab25a38c938de4f8-Default$" }, opacity = "0.57" }) -- Notion
-    hl.window_rule({ match = { class = "^(brave-to-do\\.live\\.com__tasks-Default|todo)$" }, opacity = "0.57" })                     -- To-Do
+-- Brave Apps
+hl.window_rule({ match = { class = "^brave-chat\\.openai\\.com__-Default$" }, opacity = "0.57" })                               -- ChatGPT
+hl.window_rule({ match = { class = "^brave-gemini\\.google\\.com__app-Default$" }, opacity = "0.57" })                          -- Gemini
+hl.window_rule({ match = { class = "^brave-claude\\.ai__new-Default$" }, opacity = "0.57" })                                    -- Claude
+hl.window_rule({ match = { class = "^brave-www\\.notion\\.so__02917993852a4825ab25a38c938de4f8-Default$" }, opacity = "0.57" }) -- Notion
+hl.window_rule({ match = { class = "^(brave-to-do\\.live\\.com__tasks-Default|todo)$" }, opacity = "0.57" })                     -- To-Do
 
-    -- Spotify Lyrics (Chromium)
-    hl.window_rule({ match = { class = "^(chromium-browser)$" }, opacity = "0.85" })
-else
-    hl.window_rule({ match = { class = ".*" }, opacity = "1.0 override 1.0 override" })
+-- Spotify Lyrics (Chromium)
+hl.window_rule({ match = { class = "^(chromium-browser)$" }, opacity = "0.85" })
+
+-- Dynamic solid mode enforcement: apply opaque window property directly without polluting rules
+if is_solid_mode() then
+    for _, w in ipairs(hl.get_windows()) do
+        if w.address then
+            hl.dispatch(hl.dsp.window.set_prop({ window = "address:" .. w.address, prop = "opaque", value = "1" }))
+        end
+    end
 end
+
+hl.on("window.open", function(w)
+    if is_solid_mode() and w and w.address then
+        hl.dispatch(hl.dsp.window.set_prop({ window = "address:" .. w.address, prop = "opaque", value = "1" }))
+    end
+end)
 
 -- ======================================================
 -- Spotify Lyrics Popup (CEF / chromium-browser)

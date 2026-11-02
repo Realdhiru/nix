@@ -182,3 +182,20 @@ rm -f "$HOME/.cache/hyprsunset_state.json"
 if ! systemctl --user is-active --quiet inhibit-power-key 2>/dev/null && ! systemd-inhibit --list 2>/dev/null | grep -q "handle-power-key"; then
     systemd-run --user --unit=inhibit-power-key systemd-inhibit --what=handle-power-key --who=hyprland --why="Handle power key in Hyprland" --mode=block sleep infinity >/dev/null 2>&1 || true
 fi
+
+# 10. Bluetooth Power State Restoration (Strictly respect persistent state)
+BT_STATE_DIR="$DESKTOP_STATE_DIR/bluetooth"
+if [ -f "$BT_STATE_DIR/power" ]; then
+    BT_SAVED_POWER="$(cat "$BT_STATE_DIR/power" 2>/dev/null | tr -d '\r\n')"
+    if [ "$BT_SAVED_POWER" = "off" ]; then
+        timeout 0.5 bluetoothctl power off >/dev/null 2>&1 || true
+    elif [ "$BT_SAVED_POWER" = "on" ]; then
+        rfkill unblock bluetooth 2>/dev/null || true
+        timeout 0.5 bluetoothctl power on >/dev/null 2>&1 || true
+    fi
+else
+    # Default to OFF if never explicitly turned on
+    timeout 0.5 bluetoothctl power off >/dev/null 2>&1 || true
+    mkdir -p "$BT_STATE_DIR"
+    echo "off" > "$BT_STATE_DIR/power"
+fi

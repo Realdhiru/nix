@@ -276,9 +276,10 @@ recompute_and_apply() {
             local prop_val="unset"
             [ "$solid_val" = "true" ] && prop_val="1"
             hyprctl eval "
-                dofile(os.getenv('HOME') .. '/.config/hypr/rules.lua')
                 for _, w in ipairs(hl.get_windows()) do
-                    hl.dispatch(hl.dsp.window.set_prop({ window = 'address:' .. w.address, property = 'opaque', value = '$prop_val' }))
+                    if w.address then
+                        hl.dispatch(hl.dsp.window.set_prop({ window = 'address:' .. w.address, prop = 'opaque', value = '$prop_val' }))
+                    end
                 end
             " >/dev/null 2>&1 || true
         fi
