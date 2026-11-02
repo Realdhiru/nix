@@ -16,12 +16,18 @@
     theme = { name = "Adwaita:dark"; package = pkgs.gnome-themes-extra; };
     iconTheme = { name = "buuf-nestort"; package = pkgs.buuf-nestort-icon-theme; };
     gtk3.extraConfig.gtk-application-prefer-dark-theme = true;
+    gtk3.extraConfig.gtk-decoration-layout = ":";
     gtk4.extraConfig.gtk-application-prefer-dark-theme = true;
+    gtk4.extraConfig.gtk-decoration-layout = ":";
   };
 
   dconf.settings."org/gnome/desktop/interface" = {
     color-scheme = "prefer-dark";
     gtk-theme = "Adwaita:dark";
+  };
+
+  dconf.settings."org/gnome/desktop/wm/preferences" = {
+    button-layout = ":";
   };
 
   xdg.dataFile."icons/buuf-nestort" = {
