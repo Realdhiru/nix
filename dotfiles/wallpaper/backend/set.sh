@@ -173,11 +173,21 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
         echo "WALLPAPER_VIDEO=\"$WALL_TARGET\"" > "$TMP_ENV"
         mv -f "$TMP_ENV" "$ENV_FILE"
 
-        # Clean up any unmanaged orphan mpvpaper processes before systemd start
-        pkill -f "mpvpaper.*$out" 2>/dev/null || true
+        SOCK="${XDG_RUNTIME_DIR:-/run/user/$UID}/mpvpaper-${out}.sock"
+        ipc_success=0
+        if [ -S "$SOCK" ]; then
+            # Instant hot-swap via MPV IPC socket (<5ms)
+            if echo '{ "command": ["loadfile", "'"$WALL_TARGET"'", "replace"] }' | socat - "UNIX-CONNECT:$SOCK" >/dev/null 2>&1; then
+                ipc_success=1
+            fi
+        fi
 
-        # Start/restart systemd-managed mpvpaper seamlessly over the poster frame
-        systemctl --user restart "mpvpaper@$out" 2>/dev/null || true
+        if [ "$ipc_success" -eq 0 ]; then
+            # Clean up any unmanaged orphan mpvpaper processes before systemd start
+            pkill -f "mpvpaper.*$out" 2>/dev/null || true
+            # Start/restart systemd-managed mpvpaper seamlessly over the poster frame
+            systemctl --user restart "mpvpaper@$out" 2>/dev/null || true
+        fi
     done
 else
     # 2. Static Images (Handled natively via awww)

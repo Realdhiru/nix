@@ -249,7 +249,14 @@ if ! wallust run \
     -s \
     -q \
     "$WALLPAPER" 2>/dev/null; then
-    emit_neutral_theme
+    # Monochromatic or uniform wallpapers (e.g. solid emerald) don't have 16 distinct colors.
+    # Fall back to high-fidelity base theme templates instead of dumping terminal to dead monochrome grey:
+    FALLBACK_THEME=$([ "$MODE" = "light" ] && echo "Nord-Light" || echo "Nord")
+    wallust theme \
+        --config-dir "$SCRIPT_DIR" \
+        -s \
+        -q \
+        "$FALLBACK_THEME" 2>/dev/null || emit_neutral_theme
 fi
 apply_terminal_opacity
 

@@ -470,7 +470,7 @@
     };
     Service = {
       EnvironmentFile = "%h/.local/state/mpvpaper/%i.env";
-      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p -o \"no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0\" %i \${WALLPAPER_VIDEO}";
+      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p -o \"no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0 --input-ipc-server=%t/mpvpaper-%i.sock\" %i \${WALLPAPER_VIDEO}";
       Restart = "on-failure";
     };
   };
