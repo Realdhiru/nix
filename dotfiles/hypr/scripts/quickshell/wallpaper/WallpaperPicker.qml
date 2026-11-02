@@ -484,6 +484,16 @@ Item {
         property string lastName: ""
     }
 
+    FileView {
+        id: searchControlView
+        path: Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"
+        watchChanges: true
+    }
+    readonly property bool isSearchDone: {
+        let raw = (typeof searchControlView.text === "function" ? searchControlView.text() : searchControlView.text) || "";
+        return raw.trim() === "done";
+    }
+
     // FIXED: Property handlers are now strictly bound directly under the root 'window' Item
     onIsSearchPausedChanged: {
         Quickshell.execDetached(["bash", "-c", "echo '" + (isSearchPaused ? "pause" : "run") + "' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
@@ -568,7 +578,7 @@ Item {
                              (window.currentFilter === "Search" && searchFolderModel.status === FolderListModel.Loading)
 
     property bool showSpinner: window.isDownloadingWallpaper || 
-                               (window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused && window.visibleItemCount === 0) || 
+                               (window.currentFilter === "Search" && window.hasSearched && !window.isSearchPaused && !window.isSearchDone && window.visibleItemCount === 0) || 
                                (window.currentFilter !== "Search" && window.isLoading)
 
     property string statusToast: ""
@@ -584,7 +594,9 @@ Item {
         if (window.currentFilter === "Search") {
             if (!window.hasSearched) return "Type something to search...";
             if (window.isSearchPaused) return "Search Paused";
-            if (window.visibleItemCount === 0) return "Searching DDG (FHD+)...";
+            if (window.visibleItemCount === 0) {
+                return window.isSearchDone ? "No wallpapers found" : "Searching Wallhaven...";
+            }
             return window.visibleItemCount > 0 ? (window.visibleItemCount + " wallpapers found") : "";
         }
         if (isLoading) return "Parsing wallpapers...";
