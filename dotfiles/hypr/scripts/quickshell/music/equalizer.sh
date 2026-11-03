@@ -57,9 +57,14 @@ case $cmd in
     if [ ! -f "$STATE_FILE" ]; then
         save_preset 0 0 0 0 0 0 0 0 0 0 "Flat"
     fi
-    EQ_NODE_ID=$(get_node_id)
-    if [ -n "$EQ_NODE_ID" ]; then
-        wpctl set-default "$EQ_NODE_ID" 2>/dev/null || true
+    KARAOKE_ID=$(pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.karaoke"/ {gsub(/,/, "", id); print id}')
+    if [ -n "$KARAOKE_ID" ]; then
+        wpctl set-default "$KARAOKE_ID" 2>/dev/null || true
+    else
+        EQ_NODE_ID=$(get_node_id)
+        if [ -n "$EQ_NODE_ID" ]; then
+            wpctl set-default "$EQ_NODE_ID" 2>/dev/null || true
+        fi
     fi
     apply_eq
     ;;

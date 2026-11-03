@@ -87,6 +87,7 @@ Item {
         "b6": 0, "b7": 0, "b8": 0, "b9": 0, "b10": 0,
         "preset": "Flat", "pending": false
     }
+    property bool karaokeActive: false
 
     property string accumulatedMusicOut: ""
     property string accumulatedEqOut: ""
@@ -295,6 +296,20 @@ Item {
         onTriggered: {
             if (!musicProc.running) musicProc.running = true;
             if (!eqProc.running) eqProc.running = true;
+            if (!karProc.running) karProc.running = true;
+        }
+    }
+
+    Process {
+        id: karProc
+        running: true
+        command: ["bash", "-c", "cat \"${XDG_RUNTIME_DIR:-/tmp}/karaoke.state\" 2>/dev/null || echo off"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (this.text) {
+                    root.karaokeActive = (this.text.trim() === "on");
+                }
+            }
         }
     }
 
@@ -867,6 +882,37 @@ Item {
                         transform: Translate { y: root.s(15) * (1 - root.introEqHeader) }
 
                         Text { text: "Equalizer"; color: root.mauve; font.family: "JetBrains Mono"; font.pixelSize: root.s(16); font.bold: true; Layout.fillWidth: true }
+
+                        Rectangle {
+                            Layout.preferredHeight: root.s(28)
+                            Layout.preferredWidth: karTxt.width + root.s(24)
+                            radius: root.s(10)
+                            color: root.karaokeActive ? root.mauve : root.surface1
+                            border.color: root.karaokeActive ? root.mauve : root.surface2
+                            border.width: 1
+
+                            Behavior on color { ColorAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                            Behavior on border.color { ColorAnimation { duration: 250; easing.type: Easing.OutCubic } }
+
+                            Text {
+                                id: karTxt
+                                anchors.centerIn: parent
+                                text: root.karaokeActive ? "Karaoke ON" : "Karaoke"
+                                color: root.karaokeActive ? root.base : root.subtext0
+                                font.family: "JetBrains Mono"
+                                font.pixelSize: root.s(11)
+                                font.bold: true
+                                Behavior on color { ColorAnimation { duration: 250 } }
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    root.karaokeActive = !root.karaokeActive;
+                                    root.execCmd("$HOME/.config/hypr/scripts/karaoke.sh " + (root.karaokeActive ? "on" : "off"));
+                                }
+                            }
+                        }
 
                         Rectangle {
                             Layout.preferredHeight: root.s(28)
