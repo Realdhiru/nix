@@ -201,6 +201,13 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
             systemctl --user restart "mpvpaper@$out" 2>/dev/null || true
         fi
     done
+
+    # Ensure only ONE wallpaper renderer runs at any given time.
+    # Stop awww-daemon now that mpvpaper is active on all screens.
+    if (command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet awww-daemon) || [ -n "$(pidof .awww-daemon-wrapped 2>/dev/null || true)" ]; then
+        systemctl --user stop --no-block awww-daemon 2>/dev/null || true
+        pkill -f "awww-daemon" 2>/dev/null || true
+    fi
 else
     # 2. Static Images (Handled natively via awww)
     # Ensure awww daemon is active
