@@ -94,6 +94,7 @@ case $cmd in
     case $arg1 in
         "Flat")    save_preset 0 0 0 0 0 0 0 0 0 0 "Flat" ;;
         "Bass")    save_preset 4 5 3 0 -1 0 1 1 2 1 "Bass" ;;
+        "Karaoke") save_preset 6 6 4 1 -3 -4 -3 1 3 4 "Karaoke" ;;
         "Treble")  save_preset -2 -1 0 0 1 2 3 4 5 4 "Treble" ;;
         "Vocal")   save_preset -3 -2 -1 1 3 4 3 2 1 0 "Vocal" ;;
         "Pop")     save_preset 2 3 1 -1 0 2 3 3 2 2 "Pop" ;;

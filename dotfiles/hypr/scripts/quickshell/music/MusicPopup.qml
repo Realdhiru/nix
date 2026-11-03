@@ -24,7 +24,7 @@ Item {
         }
     }
 
-    property var presetList: ["Flat", "Bass", "Karaoke", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
+    property var presetList: ["Flat", "Bass", "Treble", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
 
     Keys.onPressed: (event) => {
         if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
@@ -254,6 +254,7 @@ Item {
             "Flat": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             "Bass": [4, 5, 3, 0, -1, 0, 1, 1, 2, 1],
             "Karaoke": [6, 6, 4, 1, -3, -4, -3, 1, 3, 4],
+            "Treble": [-2, -1, 0, 0, 1, 2, 3, 4, 5, 4],
             "Vocal": [-3, -2, -1, 1, 3, 4, 3, 2, 1, 0],
             "Pop": [2, 3, 1, -1, 0, 2, 3, 3, 2, 2],
             "Rock": [4, 3, 1, -2, -1, 1, 2, 3, 4, 3],
