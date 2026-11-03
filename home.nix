@@ -363,42 +363,58 @@
     ]
   '';
 
-  # Native Butterworth Crossover & Center-Channel Vocal Cancellation Filter-Chain
+  # Mid-Side Center-Cut Karaoke Filter-Chain
+  # L' = G*(L - g*M + g*LP(M) + g*HP(M)), g=0.9, G=1.26
+  # LP4@150Hz preserves bass/kick, HP4@7kHz preserves cymbals/air — stereo width maintained
   xdg.configFile."pipewire/pipewire.conf.d/60-karaoke.conf".text = ''
     context.modules = [
       { name = libpipewire-module-filter-chain
         args = {
           node.description = "Karaoke"
-          media.name = "Karaoke"
+          media.name       = "Karaoke"
           filter.graph = {
             nodes = [
               { type = builtin label = copy name = inL }
               { type = builtin label = copy name = inR }
-              { type = builtin label = mixer name = side control = { "Gain 1" = 0.5 "Gain 2" = -0.5 } }
-              { type = builtin label = mixer name = mid  control = { "Gain 1" = 0.5 "Gain 2" = 0.5 } }
-              { type = builtin label = bq_highpass name = hp1 control = { "Freq" = 150.0 "Q" = 0.7071 } }
-              { type = builtin label = bq_highpass name = hp2 control = { "Freq" = 150.0 "Q" = 0.7071 } }
-              { type = builtin label = bq_lowpass  name = lp1 control = { "Freq" = 150.0 "Q" = 0.7071 } }
-              { type = builtin label = bq_lowpass  name = lp2 control = { "Freq" = 150.0 "Q" = 0.7071 } }
-              { type = builtin label = mixer name = kar    control = { "Gain 1" = 1.0 "Gain 2" = 1.0 } }
+
+              { type = builtin label = mixer name = mid
+                control = { "Gain 1" = 0.5 "Gain 2" = 0.5 } }
+
+              { type = builtin label = bq_lowpass  name = lp1 control = { "Freq" = 150.0  "Q" = 0.7071 } }
+              { type = builtin label = bq_lowpass  name = lp2 control = { "Freq" = 150.0  "Q" = 0.7071 } }
+              { type = builtin label = bq_highpass name = hp1 control = { "Freq" = 7000.0 "Q" = 0.7071 } }
+              { type = builtin label = bq_highpass name = hp2 control = { "Freq" = 7000.0 "Q" = 0.7071 } }
+
+              { type = builtin label = mixer name = karL
+                control = { "Gain 1" = 1.26 "Gain 2" = -1.134 "Gain 3" = 1.134 "Gain 4" = 1.134 } }
+              { type = builtin label = mixer name = karR
+                control = { "Gain 1" = 1.26 "Gain 2" = -1.134 "Gain 3" = 1.134 "Gain 4" = 1.134 } }
+
               { type = builtin label = mixer name = finalL control = { "Gain 1" = 1.0 "Gain 2" = 0.0 } }
               { type = builtin label = mixer name = finalR control = { "Gain 1" = 1.0 "Gain 2" = 0.0 } }
             ]
             links = [
-              { output = "inL:Out" input = "side:In 1" }
-              { output = "inR:Out" input = "side:In 2" }
               { output = "inL:Out" input = "mid:In 1" }
               { output = "inR:Out" input = "mid:In 2" }
-              { output = "side:Out" input = "hp1:In" }
-              { output = "hp1:Out" input = "hp2:In" }
+
               { output = "mid:Out" input = "lp1:In" }
               { output = "lp1:Out" input = "lp2:In" }
-              { output = "hp2:Out" input = "kar:In 1" }
-              { output = "lp2:Out" input = "kar:In 2" }
-              { output = "inL:Out" input = "finalL:In 1" }
-              { output = "kar:Out" input = "finalL:In 2" }
-              { output = "inR:Out" input = "finalR:In 1" }
-              { output = "kar:Out" input = "finalR:In 2" }
+              { output = "mid:Out" input = "hp1:In" }
+              { output = "hp1:Out" input = "hp2:In" }
+
+              { output = "inL:Out"  input = "karL:In 1" }
+              { output = "mid:Out"  input = "karL:In 2" }
+              { output = "lp2:Out"  input = "karL:In 3" }
+              { output = "hp2:Out"  input = "karL:In 4" }
+              { output = "inR:Out"  input = "karR:In 1" }
+              { output = "mid:Out"  input = "karR:In 2" }
+              { output = "lp2:Out"  input = "karR:In 3" }
+              { output = "hp2:Out"  input = "karR:In 4" }
+
+              { output = "inL:Out"  input = "finalL:In 1" }
+              { output = "karL:Out" input = "finalL:In 2" }
+              { output = "inR:Out"  input = "finalR:In 1" }
+              { output = "karR:Out" input = "finalR:In 2" }
             ]
             inputs  = [ "inL:In" "inR:In" ]
             outputs = [ "finalL:Out" "finalR:Out" ]
@@ -406,14 +422,14 @@
           audio.channels = 2
           audio.position = [ FL FR ]
           capture.props = {
-            node.name = "effect_input.karaoke"
-            media.class = Audio/Sink
+            node.name        = "effect_input.karaoke"
+            media.class      = Audio/Sink
             priority.driver  = 2300
             priority.session = 2300
           }
           playback.props = {
-            node.name = "effect_output.karaoke"
-            node.passive = true
+            node.name     = "effect_output.karaoke"
+            node.passive  = true
             target.object = "effect_input.eq10"
           }
         }
