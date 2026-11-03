@@ -23,7 +23,7 @@ hl.config({
         column_width = 0.5,
         focus_fit_method = 1,
         follow_focus = true,
-        fullscreen_on_one_column = true,
+        fullscreen_on_one_column = false,
         direction = "right",
     },
 
@@ -38,3 +38,27 @@ hl.config({
         zoom_detached_camera = false,
     },
 })
+
+-- Inhibit ribbon scrolling whenever a fullscreen window is active to prevent forced scrolling blinking,
+-- while automatically re-enabling normal scrolling as soon as focus leaves the fullscreen window.
+local function sync_fullscreen_scroll_inhibit(win)
+    local w = win or hl.get_active_window()
+    local is_fs = w and w.fullscreen and w.fullscreen ~= 0
+    if is_fs then
+        hl.dispatch(hl.dsp.layout("inhibit_scroll true"))
+    else
+        hl.dispatch(hl.dsp.layout("inhibit_scroll false"))
+    end
+end
+
+hl.on("window.fullscreen", function(win)
+    sync_fullscreen_scroll_inhibit(win)
+end)
+
+hl.on("window.active", function(win)
+    sync_fullscreen_scroll_inhibit(win)
+end)
+
+hl.on("workspace.active", function()
+    sync_fullscreen_scroll_inhibit()
+end)
