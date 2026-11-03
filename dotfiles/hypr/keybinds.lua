@@ -190,6 +190,12 @@ hl.bind(mainMod .. " + F5", hl.dsp.exec_cmd(scripts .. "mode_ctl.sh toggle power
     { description = "toggle power-saver mode" })
 hl.bind(mainMod .. " + F10", hl.dsp.exec_cmd(scripts .. "toggle_layout.sh"),
     { description = "toggle dwindle and scrolling layout" })
+hl.bind(mainMod .. " + bracketright", hl.dsp.layout("colresize +conf"),
+    { description = "cycle column width larger (50% -> 75% -> 100%)" })
+hl.bind(mainMod .. " + bracketleft", hl.dsp.layout("colresize -conf"),
+    { description = "cycle column width smaller (100% -> 75% -> 50%)" })
+hl.bind(mainMod .. " + backslash", hl.dsp.layout("promote"),
+    { description = "promote window to separate column" })
 
 hl.bind("SHIFT + escape", hl.dsp.exec_cmd(scripts .. "power.sh suspend"), { description = "suspend system" })
 hl.bind("XF86PowerOff", hl.dsp.exec_cmd(scripts .. "power.sh display toggle"), { locked = true, description = "toggle display power" })
