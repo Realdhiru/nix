@@ -2,6 +2,7 @@
 
 ## 2026-11-03 — Wallpaper State Reliability & Hyprsunset Responsiveness
 
+- **Native Scrolling Column Fitting & Post-Destroy Scale Recovery ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Replaced imperative `window.resize` duct tape with Hyprland native `layoutmsg fit all`, hooked `window.destroy` to ensure accurate remaining window counts after window destruction, and excluded ghost surfaces and the dying window during `window.close` so 3, 2, or 1 remaining windows always snap flush to the left margin without clipping or void gaps.
 - **Lua Window Vector Keys & Native Fullscreen Column Scaling ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Fixed vector property accesses (`at.x`, `size.x` instead of array indices) and enabled `fullscreen_on_one_column`, activating 100% full scale for single windows, 50% for two, 33.3% for three, and ribbon overflow for 4+.
 - **Deterministic Natural Window Scaling & Left-Edge Pinning ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Implemented clean native window scaling for 1 (100%), 2 (50%), 3 (33.3%), and 4+ (ribbon overflow) windows with automatic scale-back on quit and exact delta pinning to eliminate left-side void space.
 - **Scrolling Layout Bloat Purge & Pure Declarative Restoration ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Purged all imperative Lua event hooks, resize loops, tape clamps, and duct-tape overrides, restoring 100% native declarative Hyprland scrolling layout with zero runtime errors.

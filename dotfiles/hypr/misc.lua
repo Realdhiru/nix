@@ -46,29 +46,20 @@ hl.config({
 -- 2 windows: 50% each side-by-side.
 -- 3 windows: 33.3% each side-by-side on single screen.
 -- 4+ windows: open along the continuous scrolling ribbon at 33.3%.
--- Closing windows scales remaining windows back up (3 -> 2 -> 1).
+-- Closing windows scales remaining windows back up (4+ -> 3 -> 2 -> 1) via native 'fit all'.
 -- Left boundary is pinned to the monitor margin (no empty void on the left).
-local function get_screen_dimensions()
-    local mons = hl.get_monitors()
-    local m = mons and mons[1]
-    local width = 1440
-    local height = 810
-    if m and m.width and m.scale and m.scale > 0 then
-        width = math.floor(m.width / m.scale)
-        height = math.floor(m.height / m.scale)
-    end
-    local usable_w = width - 64
-    local usable_h = height - 24
-    local half_w = math.floor((usable_w - 10) / 2)
-    local third_w = math.floor((usable_w - 20) / 3)
-    return usable_w, half_w, third_w, usable_h
-end
-
-local function get_tiled_windows_on_workspace(ws_id)
+local function get_tiled_windows_on_workspace(ws_id, exclude_addr)
     local list = {}
     for _, w in ipairs(hl.get_windows()) do
         if w.mapped and not w.floating and w.workspace and w.workspace.id == ws_id then
-            table.insert(list, w)
+            if not exclude_addr or w.address ~= exclude_addr then
+                local w_w = (w.size and w.size.x) or 0
+                local w_h = (w.size and w.size.y) or 0
+                -- Exclude ghost/minimized surfaces
+                if w_w > 50 and w_h > 50 then
+                    table.insert(list, w)
+                end
+            end
         end
     end
     table.sort(list, function(a, b)
@@ -79,31 +70,7 @@ local function get_tiled_windows_on_workspace(ws_id)
     return list
 end
 
-local function resize_if_needed(win, target_w, default_h)
-    if not win or not win.address then return end
-    if win.fullscreen and win.fullscreen ~= 0 then return end
-    local cur_w = (win.size and win.size.x) or 0
-    if math.abs(cur_w - target_w) > 4 then
-        local h = (win.size and win.size.y) or default_h
-        hl.dispatch(hl.dsp.window.resize({ window = "address:" .. win.address, x = target_w, y = h, exact = true }))
-    end
-end
-
-local function align_leftmost_column(wins, target_margin)
-    if not wins or #wins == 0 then return end
-    local first = wins[1]
-    local cur_x = (first.at and first.at.x)
-    if not cur_x then return end
-    local delta = cur_x - target_margin
-    if math.abs(delta) > 4 then
-        local shift = -delta
-        pcall(function()
-            hl.dispatch(hl.dsp.layout("move " .. tostring(shift)))
-        end)
-    end
-end
-
-local function sync_window_scale(ws_id)
+local function sync_window_scale(ws_id, exclude_addr)
     local active_ws = hl.get_active_workspace()
     local active_ws_id = active_ws and active_ws.id
     local target_ws_id = ws_id or active_ws_id
@@ -113,40 +80,43 @@ local function sync_window_scale(ws_id)
         return
     end
 
-    local wins = get_tiled_windows_on_workspace(target_ws_id)
+    local wins = get_tiled_windows_on_workspace(target_ws_id, exclude_addr)
     local count = #wins
-    local full_w, half_w, third_w, full_h = get_screen_dimensions()
     local is_active_ws = (active_ws_id == target_ws_id)
 
     if count <= 1 then
-        if count == 1 and wins[1] then
-            resize_if_needed(wins[1], full_w, full_h)
-        end
         hl.config({ scrolling = { column_width = 0.5 } })
-        if is_active_ws then
-            align_leftmost_column(wins, 52)
+        if is_active_ws and count == 1 then
+            pcall(function()
+                hl.dispatch(hl.dsp.layout("fit all"))
+            end)
         end
     elseif count == 2 then
-        for _, w in ipairs(wins) do
-            resize_if_needed(w, half_w, full_h)
-        end
-        hl.config({ scrolling = { column_width = 0.333333 } })
+        hl.config({ scrolling = { column_width = 0.5 } })
         if is_active_ws then
-            align_leftmost_column(wins, 52)
+            pcall(function()
+                hl.dispatch(hl.dsp.layout("fit all"))
+            end)
         end
     elseif count == 3 then
-        for _, w in ipairs(wins) do
-            resize_if_needed(w, third_w, full_h)
-        end
         hl.config({ scrolling = { column_width = 0.333333 } })
         if is_active_ws then
-            align_leftmost_column(wins, 52)
+            pcall(function()
+                hl.dispatch(hl.dsp.layout("fit all"))
+            end)
         end
     else
-        -- 4+ windows: open along the continuous scrolling ribbon at 33.3%
+        -- 4+ windows: open along continuous scrolling ribbon at 33.3%
         hl.config({ scrolling = { column_width = 0.333333 } })
-        for _, w in ipairs(wins) do
-            resize_if_needed(w, third_w, full_h)
+        if is_active_ws and #wins > 0 then
+            local first = wins[1]
+            local cur_x = (first.at and first.at.x)
+            if cur_x and cur_x > 52 then
+                local delta = cur_x - 52
+                pcall(function()
+                    hl.dispatch(hl.dsp.layout("move " .. tostring(-delta)))
+                end)
+            end
         end
     end
 end
@@ -173,7 +143,12 @@ end)
 
 hl.on("window.close", function(w)
     local ws_id = (w and w.workspace and w.workspace.id)
-    sync_window_scale(ws_id)
+    local addr = (w and w.address)
+    sync_window_scale(ws_id, addr)
+end)
+
+hl.on("window.destroy", function()
+    sync_window_scale()
 end)
 
 hl.on("workspace.active", function()
