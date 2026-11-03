@@ -26,7 +26,7 @@ hl.config({
         fullscreen_on_one_column = true,
         direction = "right",
         wrap_focus = true,
-        explicit_column_widths = "0.333, 0.5, 0.667, 1.0",
+        explicit_column_widths = "0.5, 0.667, 1.0, 0.333",
     },
 
     -- Binds
@@ -42,11 +42,10 @@ hl.config({
 })
 
 -- Dynamic natural window scaling for scrolling layout:
--- 1 window:  100% full scale (usable monitor width).
--- 2 windows: 50% each side-by-side.
--- 3 windows: 33.3% each side-by-side on single screen.
--- 4+ windows: open along the continuous scrolling ribbon at 33.3%.
--- Closing windows scales remaining windows back up (4+ -> 3 -> 2 -> 1) via native 'fit all'.
+-- 1 window:  100% full scale (usable monitor width, flush on margin).
+-- 2 windows: 50% each side-by-side (fills screen cleanly).
+-- 3+ windows: 50% each along the continuous scrolling ribbon.
+-- Closing windows scales remaining windows back up (3+ -> 2 -> 1) via native 'fit all'.
 -- Left boundary is pinned to the monitor margin (no empty void on the left).
 local function get_tiled_windows_on_workspace(ws_id, exclude_addr)
     local list = {}
@@ -98,16 +97,9 @@ local function sync_window_scale(ws_id, exclude_addr)
                 hl.dispatch(hl.dsp.layout("fit all"))
             end)
         end
-    elseif count == 3 then
-        hl.config({ scrolling = { column_width = 0.333333 } })
-        if is_active_ws then
-            pcall(function()
-                hl.dispatch(hl.dsp.layout("fit all"))
-            end)
-        end
     else
-        -- 4+ windows: open along continuous scrolling ribbon at 33.3%
-        hl.config({ scrolling = { column_width = 0.333333 } })
+        -- 3+ windows: 50% columns along continuous scrolling ribbon
+        hl.config({ scrolling = { column_width = 0.5 } })
         if is_active_ws and #wins > 0 then
             local first = wins[1]
             local cur_x = (first.at and first.at.x)

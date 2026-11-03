@@ -31,17 +31,9 @@ apply_eq() {
     b9=$(echo "$vals" | jq -r '.b9 // 0')
     b10=$(echo "$vals" | jq -r '.b10 // 0')
 
-    preset=$(echo "$vals" | jq -r '.preset // "Flat"')
-    if [ "$preset" = "Karaoke" ]; then
-        matrix="\"channelmix.matrix\", [ 1.0, -1.0, -1.0, 1.0 ],"
-    else
-        matrix="\"channelmix.matrix\", [ 1.0, 0.0, 0.0, 1.0 ],"
-    fi
-
     EQ_NODE_ID=$(get_node_id)
     if [ -n "$EQ_NODE_ID" ]; then
         pw-cli s "$EQ_NODE_ID" Props "{ \"params\": [ \
-            $matrix \
             \"eq_band_1:Gain\", $b1, \
             \"eq_band_2:Gain\", $b2, \
             \"eq_band_3:Gain\", $b3, \

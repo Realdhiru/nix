@@ -91,7 +91,7 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 | **Compositor** | [Hyprland](https://hyprland.org) | Wayland dynamic tiling compositor with native Niri-style continuous scrolling ribbon layout |
 | **Desktop Shell** | [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) (Qt6 / QML) | Event-driven topbar, circular battery dial, MPRIS music & popups |
 | **Theming** | [Wallust](https://codeberg.org/explosion-mental/wallust) | Sub-millisecond wallpaper-derived color extraction across UI, terminals & GTK |
-| **Audio Engine** | [PipeWire](https://pipewire.org) (`filter-chain`) | Low-latency audio routing with 10-band C DSP equalizer & real-time karaoke vocal cancellation |
+| **Audio Engine** | [PipeWire](https://pipewire.org) (`filter-chain`) | Low-latency audio routing with native 10-band C DSP equalizer |
 | **Power Engine** | [TLP 1.9.1](https://linrunner.de/tlp/) | Firmware battery threshold (80%), dynamic platform profiles & deep C-states |
 | **Launchers** | [Fuzzel](https://codeberg.org/dnkl/fuzzel) | Frosted glass app launcher, instant file search & emoji/glyph picker |
 | **Knowledge Base** | [Obsidian](https://obsidian.md) | Native Wayland markdown second-brain vault with interactive graph view |
@@ -143,7 +143,7 @@ Built for **100% portability** — clone, edit one file, and deploy on any machi
 | `Super + F10` | Atomic layout toggle between **Dwindle** (tiling) and **Scrolling** (continuous ribbon) |
 | `3-Finger Horizontal Swipe` | Continuous touchpad ribbon scrolling with magnetic snap-to-grid |
 | `Super + Alt + Wheel` | Scroll ribbon left / right with mouse wheel |
-| *Window Scaling* | 1 window: 100% full scale; 2 windows: 50% split; 3 windows: 33.3% side-by-side; 4+ windows: scrolling ribbon overflow with automatic scale recovery on close |
+| *Window Scaling* | 1 window: 100% full scale; 2 windows: 50% split side-by-side; 3+ windows: 50% columns along the continuous scrolling ribbon with automatic scale recovery on close |
 
 ### Desktop Modes & System
 | Keybinding | Action |
@@ -161,7 +161,7 @@ Built for **100% portability** — clone, edit one file, and deploy on any machi
 | :--- | :--- |
 | `Super + Shift + W` | QuickShell 3D Wallpaper Carousel & Accelerated Multi-Source Downloader |
 | `Super + Shift + \` | Toggle current wallpaper favorite status |
-| `Super + Shift + M` | MPRIS Music Player & PipeWire DSP Equalizer (with Real-time Karaoke vocal cut) |
+| `Super + Shift + M` | MPRIS Music Player & PipeWire 10-Band DSP Equalizer |
 | `Super + V` | Clipboard Manager with rich text & image previews |
 | `Super + N` / `Super + U` | Network Panel (Wi-Fi/Bluetooth/Ethernet) / Battery & Power Hub |
 | `Super + Ctrl + N` / `Super + Ctrl + D` | Calendar & Open-Meteo Weather / System Dashboard & Task Manager |

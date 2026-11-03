@@ -43,7 +43,6 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 - **WebRTC Microphone Denoising**: `libpipewire-module-echo-cancel` with `monitor.mode = true` binds to the microphone array, cancels speaker playback acoustic bleed from `effect_input.eq10:monitor`, and publishes `echo_cancel_source` at priority 2100 with zero daemon overhead.
 - **Multi-Output Audio Broadcast**: `Super + Ctrl + V` (`toggle_multi_sink.sh` / `pw-broadcast`) dynamically broadcasts equalizer output across all connected external endpoints simultaneously via sub-2ms `pw-link` graph connections, auto-compensating Bluetooth buffer latency (340ms) on wired channels.
 - **MPV MPRIS Integration**: `mpv` overridden with `mpvScripts.mpris` symlinked to `~/.config/mpv/scripts/mpris.so` to broadcast D-Bus `org.mpris.MediaPlayer2` signals.
-- **Smart DSP Karaoke Phase Cancellation**: Real-time vocal attenuation dynamically injects `channelmix.matrix = [1.0, -1.0, -1.0, 1.0]` on the PipeWire equalizer node with compensated low-end bass (+6dB) and high-end air (+4dB), completely extinguishing center lead vocals at 0ms latency with 0% extra battery drain.
 - **WirePlumber Diagnostic Audit**:
   - `mod.rt`: `failed to set realtime policy: Operation not permitted` in journal indicates user session lacking `RLIMIT_RTPRIO` / RTKit permissions; falls back to standard nice scheduling with no dropouts, addressable via `security.rtkit.enable = true`.
   - `m-mpris`: `failed to get DesktopEntry` occurs when browser instances (Brave/Chromium) register dynamic MPRIS D-Bus interfaces with instance PIDs without static `.desktop` file matches; benign telemetry warning.
@@ -85,8 +84,8 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 - **HiDPI Toolkit Scaling**: `GDK_SCALE = "2"`, `QT_AUTO_SCREEN_SCALE_FACTOR = "1"`, `QT_ENABLE_HIGHDPI_SCALING = "1"` in `env.lua`. Chromium download bubbles disabled in favor of in-window progress to avoid detached subsurface coordinate misplacement.
 - **Dynamic Scrolling Ribbon Architecture (`misc.lua`, `toggle_layout.sh`)**:
   - Toggled atomically via `SUPER + F10` between Dwindle and Scrolling layouts.
-  - Native space-filling scaling: 1 window takes 100% full scale (`fullscreen_on_one_column = true`); 2 windows split 50% each; 3 windows pack side-by-side at 33.3% across the usable monitor width ($x = 52$ to $1428\text{px}$); 4+ windows open along a continuous ribbon at 33.3% with touchpad swipe (`gestures:scrolling:move_snap_to_grid`) and mouse wheel navigation (`SUPER + ALT + Wheel`).
-  - Scale recovery on close ($4+ \rightarrow 3 \rightarrow 2 \rightarrow 1$) operates natively via `layoutmsg fit all` hooked to `window.destroy`, eliminating imperative resize hacks, left-side void space, and 1px collapsed sliver surfaces.
+  - Native space-filling scaling: 1 window takes 100% full scale (`fullscreen_on_one_column = true`); 2 windows split 50% each side-by-side ($x = 52$ and $x = 745\text{px}$); 3+ windows open as 50% columns along the continuous scrolling ribbon with touchpad swipe (`gestures:scrolling:move_snap_to_grid`) and mouse wheel navigation (`SUPER + ALT + Wheel`).
+  - Scale recovery on close ($3+ \rightarrow 2 \rightarrow 1$) operates natively via `layoutmsg fit all` hooked to `window.destroy`, eliminating imperative resize hacks, left-side void space, and collapsed sliver surfaces.
 
 ## 7. Operational Discipline & Safety Rules
 - **Intel GPU Ring Protection**: Minimum 1.5s separation between manual visual mode test steps to prevent integrated GPU `rcs0` execution ring saturation and Aquamarine DRM page-flip crashes (`CHyprOpenGLImpl::begin` assertion failure -> `SIGABRT` -> Safe Mode). Product code drops overlapping requests while a transition is in flight.
