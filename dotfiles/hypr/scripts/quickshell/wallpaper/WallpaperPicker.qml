@@ -473,10 +473,22 @@ Item {
         Quickshell.execDetached(["bash", "-c", "echo '" + (isSearchPaused ? "pause" : "run") + "' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
     }
 
+    onCurrentFilterChanged: {
+        if (currentFilter !== "" && currentFilter !== "Search") {
+            Quickshell.execDetached(["bash", "-c", "mkdir -p ~/.local/state/desktop/wallpaper && echo '" + currentFilter + "' > ~/.local/state/desktop/wallpaper/picker_filter.txt"]);
+        }
+    }
+
     onVisibleChanged: {
         if (!visible) {
             window.initialFocusSet = false;
-            window.targetWallName = "";
+            let curModel = window.getModelForFilter(window.currentFilter);
+            if (curModel && view.currentIndex >= 0 && view.currentIndex < curModel.count) {
+                let curItem = curModel.get(view.currentIndex);
+                if (curItem && curItem.fileName) {
+                    window.targetWallName = String(curItem.fileName);
+                }
+            }
             window.allowAddAnimation = false;
             window.searchIndexRestored = false;
             window.isApplying = false;
@@ -938,28 +950,46 @@ Item {
 
     function centerActiveWallpaper() {
         if (!window.visible) return;
-        if (localProxyModel.count === 0 || view.width <= 0) {
-            centerOnActiveTimer.restart();
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (!targetModel || targetModel.count === 0 || view.width <= 0) {
+            if (window.centerRetryCount < 30) {
+                window.centerRetryCount++;
+                centerOnActiveTimer.restart();
+            }
             return;
         }
-        if (!window.initialFocusSet && window.currentFilter !== "All") window.currentFilter = "All";
+
         let p = window.reloadActiveWallpaperPath();
         let activeWall = window.targetWallName !== "" ? window.targetWallName : window.activeWallpaperName;
-        if (activeWall === "") return;
+        if (activeWall === "" && targetModel.count > 0) {
+            let itm0 = targetModel.get(0);
+            if (itm0 && itm0.fileName) {
+                window.targetWallName = String(itm0.fileName);
+                activeWall = window.targetWallName;
+            }
+        }
 
         let cleanActive = window.getCleanName(activeWall);
         let foundIdx = -1;
-        for (let i = 0; i < localProxyModel.count; i++) {
-            let fn = localProxyModel.get(i).fileName || "";
-            if (fn === activeWall || window.getCleanName(fn) === cleanActive) {
+        for (let i = 0; i < targetModel.count; i++) {
+            let fn = targetModel.get(i).fileName || "";
+            if (fn === activeWall || (cleanActive && window.getCleanName(fn) === cleanActive)) {
                 foundIdx = i;
                 break;
             }
         }
+
+        if (foundIdx === -1 && targetModel.count > 0) {
+            foundIdx = Math.min(Math.max(0, view.currentIndex), targetModel.count - 1);
+        }
+
         if (foundIdx !== -1) {
             window.centerRetryCount = 0;
             window.isModelChanging = true;
-            window.targetWallName = localProxyModel.get(foundIdx).fileName || activeWall;
+            let finalItem = targetModel.get(foundIdx);
+            if (finalItem && finalItem.fileName) {
+                window.targetWallName = String(finalItem.fileName);
+            }
             view.currentIndex = foundIdx;
             view.forceLayout();
             view.positionViewAtIndex(foundIdx, ListView.Center);
@@ -976,16 +1006,20 @@ Item {
         favFileView.reload();
         window.syncFavoritesModel();
         window.processMarkers();
-        window.currentFilter = "All";
-        let p = window.reloadActiveWallpaperPath();
-        if (p !== "") {
-            let parts = p.split("/");
-            let fname = parts[parts.length - 1];
-            if (fname !== "") {
-                window.targetWallName = fname;
+        if (!window.currentFilter) {
+            window.currentFilter = "All";
+        }
+        if (!window.targetWallName) {
+            let p = window.reloadActiveWallpaperPath();
+            if (p !== "") {
+                let parts = p.split("/");
+                let fname = parts[parts.length - 1];
+                if (fname !== "") {
+                    window.targetWallName = fname;
+                }
+            } else if (window.activeWallpaperName !== "") {
+                window.targetWallName = window.activeWallpaperName;
             }
-        } else if (window.activeWallpaperName !== "") {
-            window.targetWallName = window.activeWallpaperName;
         }
         window.applyFilters(true);
         view.forceActiveFocus();
@@ -1382,11 +1416,6 @@ Item {
         enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
         onActivated: window.toggleFavoriteCurrentWallpaper()
     }
-    Shortcut { 
-        sequence: "Space"
-        enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
-        onActivated: window.toggleFavoriteCurrentWallpaper()
-    }
     Shortcut { sequence: "Escape"; enabled: window.visible && !window.isApplying && window.currentFilter === "Search"; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
     Shortcut { sequence: "Tab"; enabled: window.visible; onActivated: window.cycleFilter(1) }
     Shortcut { sequence: "Backtab"; enabled: window.visible; onActivated: window.cycleFilter(-1) }
@@ -1398,6 +1427,20 @@ Item {
     ListModel { id: videosProxyModel }
     ListModel { id: searchProxyModel }
     readonly property var activeModel: window.getModelForFilter(window.currentFilter)
+
+    readonly property string filterStateFile: Quickshell.env("HOME") + "/.local/state/desktop/wallpaper/picker_filter.txt"
+
+    FileView {
+        id: filterStateView
+        path: window.filterStateFile
+        watchChanges: false
+        onLoadedChanged: {
+            let saved = (filterStateView.text() || "").trim();
+            if (saved !== "" && saved !== "Search" && window.isFilterVisible(saved)) {
+                window.currentFilter = saved;
+            }
+        }
+    }
 
     readonly property string favoritesFile: Quickshell.env("HOME") + "/.local/share/wallpaper_favorites.txt"
     property var activeFavSet: ({})
@@ -1432,24 +1475,59 @@ Item {
         }
         window.activeFavSet = favSet;
 
-        favoritesProxyModel.clear();
-        let batch = [];
+        let isFavTab = (window.currentFilter === "Favorites" || window.currentFilter === "Fav");
+        let currentFocused = "";
+        if (isFavTab && view.currentIndex >= 0 && view.currentIndex < favoritesProxyModel.count) {
+            let curItem = favoritesProxyModel.get(view.currentIndex);
+            if (curItem && curItem.fileName) currentFocused = String(curItem.fileName);
+        }
+
+        let targetList = [];
         for (let i = 0; i < localProxyModel.count; i++) {
             let item = localProxyModel.get(i);
             if (!item || !item.fileName) continue;
             let fn = item.fileName;
             let cleanFn = window.getCleanName(fn);
             if (favSet[fn] || favSet[cleanFn]) {
-                batch.push({ "fileName": fn, "fileUrl": item.fileUrl });
+                targetList.push({ "fileName": fn, "fileUrl": item.fileUrl });
             }
         }
-        if (batch.length > 0) {
-            favoritesProxyModel.append(batch);
+
+        // Surgical removal: prune unfavorited items without clearing the model
+        for (let i = favoritesProxyModel.count - 1; i >= 0; i--) {
+            let fn = favoritesProxyModel.get(i).fileName;
+            let cleanFn = window.getCleanName(fn);
+            if (!favSet[fn] && (!cleanFn || !favSet[cleanFn])) {
+                favoritesProxyModel.remove(i);
+            }
+        }
+
+        // Surgical addition: append newly favorited items
+        let existingMap = {};
+        for (let i = 0; i < favoritesProxyModel.count; i++) {
+            existingMap[favoritesProxyModel.get(i).fileName] = true;
+        }
+        for (let item of targetList) {
+            if (!existingMap[item.fileName]) {
+                favoritesProxyModel.append(item);
+            }
         }
         window.sortListModel(favoritesProxyModel);
-        if (window.currentFilter === "Favorites" || window.currentFilter === "Fav") {
-            if (favoritesProxyModel.count > 0 && view.currentIndex >= favoritesProxyModel.count) {
-                view.currentIndex = Math.max(0, favoritesProxyModel.count - 1);
+
+        if (isFavTab) {
+            let restoredIdx = -1;
+            if (currentFocused !== "") {
+                for (let i = 0; i < favoritesProxyModel.count; i++) {
+                    if (favoritesProxyModel.get(i).fileName === currentFocused) {
+                        restoredIdx = i;
+                        break;
+                    }
+                }
+            }
+            if (restoredIdx !== -1) {
+                view.currentIndex = restoredIdx;
+            } else if (favoritesProxyModel.count > 0) {
+                view.currentIndex = Math.min(Math.max(0, view.currentIndex), favoritesProxyModel.count - 1);
             }
             window.updateVisibleCount();
         }
@@ -1790,15 +1868,9 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     enabled: delegateRoot.matchesFilter
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    onClicked: (mouse) => {
-                        if (mouse.button === Qt.RightButton) {
-                            view.currentIndex = index;
-                            window.toggleFavoriteWallpaper(delegateRoot.safeFileName);
-                        } else {
-                            view.currentIndex = index;
-                            window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo);
-                        }
+                    onClicked: {
+                        view.currentIndex = index;
+                        window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo);
                     }
                 }
 
