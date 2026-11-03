@@ -473,12 +473,6 @@ Item {
         Quickshell.execDetached(["bash", "-c", "echo '" + (isSearchPaused ? "pause" : "run") + "' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
     }
 
-    onCurrentFilterChanged: {
-        if (currentFilter !== "" && currentFilter !== "Search") {
-            Quickshell.execDetached(["bash", "-c", "mkdir -p ~/.local/state/desktop/wallpaper && echo '" + currentFilter + "' > ~/.local/state/desktop/wallpaper/picker_filter.txt"]);
-        }
-    }
-
     onVisibleChanged: {
         if (!visible) {
             window.initialFocusSet = false;
@@ -1435,7 +1429,8 @@ Item {
         path: window.filterStateFile
         watchChanges: false
         onLoadedChanged: {
-            let saved = (filterStateView.text() || "").trim();
+            let raw = (typeof filterStateView.text === "function" ? filterStateView.text() : filterStateView.text) || "";
+            let saved = raw.trim();
             if (saved !== "" && saved !== "Search" && window.isFilterVisible(saved)) {
                 window.currentFilter = saved;
             }
