@@ -363,9 +363,14 @@
     ]
   '';
 
-  # Mid-Side Center-Cut Karaoke Filter-Chain
-  # L' = G*(L - g*M + g*LP(M) + g*HP(M)), g=0.9, G=1.26
-  # LP4@150Hz preserves bass/kick, HP4@7kHz preserves cymbals/air — stereo width maintained
+  # Mid-Side Center-Cut Karaoke Filter-Chain (Phase A Architecture)
+  # M = 0.5L + 0.5R, S = 0.5L - 0.5R
+  # M' = (1-g)*M + g*bl*LP(M) + g*ha*HP(M)
+  # L' = G*(M' + ks*S), R' = G*(M' - ks*S)
+  # Defaults: g=0.9, bl=1.0, ha=1.0, ks=1.0, G=1.5
+  # mp: Gain 1 = 1-g (0.1), Gain 2 = g*bl (0.9), Gain 3 = g*ha (0.9)
+  # karL: Gain 1 = G (1.5), Gain 2 = G*ks (1.5)
+  # karR: Gain 1 = G (1.5), Gain 2 = -G*ks (-1.5)
   xdg.configFile."pipewire/pipewire.conf.d/60-karaoke.conf".text = ''
     context.modules = [
       { name = libpipewire-module-filter-chain
@@ -379,16 +384,21 @@
 
               { type = builtin label = mixer name = mid
                 control = { "Gain 1" = 0.5 "Gain 2" = 0.5 } }
+              { type = builtin label = mixer name = side
+                control = { "Gain 1" = 0.5 "Gain 2" = -0.5 } }
 
               { type = builtin label = bq_lowpass  name = lp1 control = { "Freq" = 150.0  "Q" = 0.7071 } }
               { type = builtin label = bq_lowpass  name = lp2 control = { "Freq" = 150.0  "Q" = 0.7071 } }
               { type = builtin label = bq_highpass name = hp1 control = { "Freq" = 7000.0 "Q" = 0.7071 } }
               { type = builtin label = bq_highpass name = hp2 control = { "Freq" = 7000.0 "Q" = 0.7071 } }
 
+              { type = builtin label = mixer name = mp
+                control = { "Gain 1" = 0.1 "Gain 2" = 0.9 "Gain 3" = 0.9 } }
+
               { type = builtin label = mixer name = karL
-                control = { "Gain 1" = 1.26 "Gain 2" = -1.134 "Gain 3" = 1.134 "Gain 4" = 1.134 } }
+                control = { "Gain 1" = 1.5 "Gain 2" = 1.5 } }
               { type = builtin label = mixer name = karR
-                control = { "Gain 1" = 1.26 "Gain 2" = -1.134 "Gain 3" = 1.134 "Gain 4" = 1.134 } }
+                control = { "Gain 1" = 1.5 "Gain 2" = -1.5 } }
 
               { type = builtin label = mixer name = finalL control = { "Gain 1" = 1.0 "Gain 2" = 0.0 } }
               { type = builtin label = mixer name = finalR control = { "Gain 1" = 1.0 "Gain 2" = 0.0 } }
@@ -396,20 +406,22 @@
             links = [
               { output = "inL:Out" input = "mid:In 1" }
               { output = "inR:Out" input = "mid:In 2" }
+              { output = "inL:Out" input = "side:In 1" }
+              { output = "inR:Out" input = "side:In 2" }
 
               { output = "mid:Out" input = "lp1:In" }
               { output = "lp1:Out" input = "lp2:In" }
               { output = "mid:Out" input = "hp1:In" }
               { output = "hp1:Out" input = "hp2:In" }
 
-              { output = "inL:Out"  input = "karL:In 1" }
-              { output = "mid:Out"  input = "karL:In 2" }
-              { output = "lp2:Out"  input = "karL:In 3" }
-              { output = "hp2:Out"  input = "karL:In 4" }
-              { output = "inR:Out"  input = "karR:In 1" }
-              { output = "mid:Out"  input = "karR:In 2" }
-              { output = "lp2:Out"  input = "karR:In 3" }
-              { output = "hp2:Out"  input = "karR:In 4" }
+              { output = "mid:Out" input = "mp:In 1" }
+              { output = "lp2:Out" input = "mp:In 2" }
+              { output = "hp2:Out" input = "mp:In 3" }
+
+              { output = "mp:Out"   input = "karL:In 1" }
+              { output = "side:Out" input = "karL:In 2" }
+              { output = "mp:Out"   input = "karR:In 1" }
+              { output = "side:Out" input = "karR:In 2" }
 
               { output = "inL:Out"  input = "finalL:In 1" }
               { output = "karL:Out" input = "finalL:In 2" }
