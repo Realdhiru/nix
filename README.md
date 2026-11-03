@@ -120,56 +120,6 @@ Built for **100% portability** — clone, edit one file, and deploy on any machi
 
 ---
 
-## ⌨️ Common Keybindings
-
-### Daily Core & Windows
-| Keybinding | Action |
-| :--- | :--- |
-| `Super + Q` | Close focused window gracefully |
-| `Super + T` | Terminal (`alacritty`) |
-| `Super + A` | Application Launcher (`fuzzel`) |
-| `Super + SPACE` | Centered Instant File Search |
-| `Super + .` | Emoji & Nerd Font Glyph Picker (`Tab` to toggle mode) |
-| `Super + E` | File Manager (`pcmanfm-qt`) |
-| `Super + B` | Web Browser (`brave` with native VA-API hardware acceleration) |
-| `Super + C` | Text Editor (`gram`) |
-| `Super + W` | Toggle Floating Window |
-| `Super + G` | Pin Window across all workspaces |
-| `Super + Left/Right` | Focus window left / right |
-
-### Scrolling Layout & Gestures
-| Keybinding | Action |
-| :--- | :--- |
-| `Super + F10` | Atomic layout toggle between **Dwindle** (tiling) and **Scrolling** (continuous ribbon) |
-| `3-Finger Horizontal Swipe` | Continuous touchpad ribbon scrolling with magnetic snap-to-grid |
-| `Super + Alt + Wheel` | Scroll ribbon left / right with mouse wheel |
-| *Window Scaling* | 1 window: 100% full scale; 2 windows: 50% split side-by-side; 3+ windows: 50% columns along the continuous scrolling ribbon with automatic scale recovery on close |
-
-### Desktop Modes & System
-| Keybinding | Action |
-| :--- | :--- |
-| `Super + F1` | Toggle **Solid Mode** (Kills wallpaper, forces OLED pure pitch-black & solid window opacity) |
-| `Super + F2` | Toggle **Coffee Mode** (Idle & sleep inhibition for streaming/presentations) |
-| `Super + F3` | Toggle **Gaming Mode** (Disables compositor blur/animations for max FPS & lowest latency) |
-| `Super + F4` | Toggle **KDE Connect** daemon & system tray indicator |
-| `Super + F5` | Toggle **Power-Saver Mode** |
-| `Super + R` | Frame-0 Compositor, QuickShell & Theme Reload |
-| `Power Button` (`XF86PowerOff`) | Toggle Display Power (DPMS off/on without system sleep; any input wakes) |
-
-### QuickShell Desktop Panels & Media
-| Keybinding | Action |
-| :--- | :--- |
-| `Super + Shift + W` | QuickShell 3D Wallpaper Carousel & Accelerated Multi-Source Downloader |
-| `Super + Shift + \` | Toggle current wallpaper favorite status |
-| `Super + Shift + M` | MPRIS Music Player & PipeWire 10-Band DSP Equalizer |
-| `Super + V` | Clipboard Manager with rich text & image previews |
-| `Super + N` / `Super + U` | Network Panel (Wi-Fi/Bluetooth/Ethernet) / Battery & Power Hub |
-| `Super + Ctrl + N` / `Super + Ctrl + D` | Calendar & Open-Meteo Weather / System Dashboard & Task Manager |
-| `Super + Ctrl + V` | Toggle Multi-Output Audio Broadcast (Synchronized external endpoints) |
-| `Super + Shift + Z` | Selective Area Screenshot (`grim` + `slurp`) |
-
----
-
 ## 🧭 System Management Commands
 
 Custom shell workflows defined in [`modules/home/shell.nix`](modules/home/shell.nix):

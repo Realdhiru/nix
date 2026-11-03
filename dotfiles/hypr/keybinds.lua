@@ -325,8 +325,53 @@ hl.bind(mainMod .. " + Z", hl.dsp.window.drag(), { mouse = true, description = "
 hl.bind(mainMod .. " + X", hl.dsp.window.resize(), { mouse = true, description = "hold to resize window" })
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "drag window with mouse" })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "resize window with mouse" })
-hl.bind(mainMod .. " + ALT + mouse_down", hl.dsp.layout("move +col"), { description = "scroll ribbon right with mouse wheel" })
-hl.bind(mainMod .. " + ALT + mouse_up", hl.dsp.layout("move -col"), { description = "scroll ribbon left with mouse wheel" })
+local function scroll_ribbon_left()
+    local ws = hl.get_active_workspace()
+    if not ws or ws.tiled_layout ~= "scrolling" then return end
+    local wins = {}
+    for _, w in ipairs(hl.get_windows()) do
+        if w.mapped and not w.floating and w.workspace and w.workspace.id == ws.id then
+            local ww = (w.size and w.size.x) or 0
+            if ww > 50 then table.insert(wins, w) end
+        end
+    end
+    table.sort(wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
+    if #wins == 0 then return end
+    local first = wins[1]
+    local first_x = (first.at and first.at.x) or 0
+    -- If already at or past the leftmost margin (52px), disallow scrolling left into empty void
+    if first_x >= 50 then
+        if first_x > 52 then
+            hl.dispatch(hl.dsp.layout("move " .. tostring(52 - first_x)))
+        end
+        return
+    end
+    hl.dispatch(hl.dsp.layout("move -col"))
+end
+
+local function scroll_ribbon_right()
+    local ws = hl.get_active_workspace()
+    if not ws or ws.tiled_layout ~= "scrolling" then return end
+    local wins = {}
+    for _, w in ipairs(hl.get_windows()) do
+        if w.mapped and not w.floating and w.workspace and w.workspace.id == ws.id then
+            local ww = (w.size and w.size.x) or 0
+            if ww > 50 then table.insert(wins, w) end
+        end
+    end
+    table.sort(wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
+    if #wins == 0 then return end
+    local last = wins[#wins]
+    local last_right = ((last.at and last.at.x) or 0) + ((last.size and last.size.x) or 0)
+    -- If the rightmost window is already within the usable screen (1428px), disallow scrolling right into empty void
+    if last_right <= 1430 then
+        return
+    end
+    hl.dispatch(hl.dsp.layout("move +col"))
+end
+
+hl.bind(mainMod .. " + ALT + mouse_down", scroll_ribbon_right, { description = "scroll ribbon right with mouse wheel" })
+hl.bind(mainMod .. " + ALT + mouse_up", scroll_ribbon_left, { description = "scroll ribbon left with mouse wheel" })
 
 -- ======================================================
 -- 10. Rarely Used: Special Workspaces

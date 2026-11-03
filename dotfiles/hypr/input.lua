@@ -15,8 +15,8 @@ hl.config({
     gestures = {
         workspace_swipe_forever = true,
         scrolling = {
-            move_snap_to_grid = false,
-            move_snap_cursor = false,
+            move_snap_to_grid = true,
+            move_snap_cursor = true,
         },
     },
 })

@@ -100,13 +100,54 @@ local function sync_window_scale(ws_id, exclude_addr)
     else
         -- 3+ windows: 50% columns along continuous scrolling ribbon
         hl.config({ scrolling = { column_width = 0.5 } })
-        if is_active_ws and #wins > 0 then
-            local first = wins[1]
-            local cur_x = (first.at and first.at.x)
-            if cur_x and cur_x > 52 then
-                local delta = cur_x - 52
+    end
+end
+
+-- Strictly clamps ribbon margins: ensures leftmost window never drifts into screen void,
+-- and auto-scrolls margins of focused windows so they cleanly frame without clipping.
+local function clamp_ribbon_margins(ws_id)
+    local active_ws = hl.get_active_workspace()
+    local target_ws_id = ws_id or (active_ws and active_ws.id)
+    if not target_ws_id then return end
+    if active_ws and active_ws.tiled_layout ~= "scrolling" then return end
+
+    local wins = get_tiled_windows_on_workspace(target_ws_id)
+    if #wins == 0 then return end
+
+    local count = #wins
+    if count <= 2 then
+        pcall(function()
+            hl.dispatch(hl.dsp.layout("fit all"))
+        end)
+        return
+    end
+
+    -- 3+ windows along continuous ribbon:
+    local first = wins[1]
+    local cur_x = (first.at and first.at.x)
+
+    -- Left margin clamp: leftmost window must NEVER exceed x = 52 (zero left void)
+    if cur_x and cur_x > 52 then
+        local delta = cur_x - 52
+        pcall(function()
+            hl.dispatch(hl.dsp.layout("move " .. tostring(-delta)))
+        end)
+        return
+    end
+
+    -- Auto-scroll margins for focused window so view never gets messy/clipped
+    local active_win = hl.get_active_window()
+    if active_win and active_win.workspace and active_win.workspace.id == target_ws_id and not active_win.floating then
+        local ax = active_win.at and active_win.at.x
+        local aw = active_win.size and active_win.size.x
+        if ax and aw and aw > 50 then
+            if ax < 52 then
                 pcall(function()
-                    hl.dispatch(hl.dsp.layout("move " .. tostring(-delta)))
+                    hl.dispatch(hl.dsp.layout("move " .. tostring(52 - ax)))
+                end)
+            elseif (ax + aw) > 1430 then
+                pcall(function()
+                    hl.dispatch(hl.dsp.layout("move " .. tostring(1428 - (ax + aw))))
                 end)
             end
         end
@@ -131,21 +172,25 @@ end
 hl.on("window.open", function(w)
     local ws_id = (w and w.workspace and w.workspace.id)
     sync_window_scale(ws_id)
+    clamp_ribbon_margins(ws_id)
 end)
 
 hl.on("window.close", function(w)
     local ws_id = (w and w.workspace and w.workspace.id)
     local addr = (w and w.address)
     sync_window_scale(ws_id, addr)
+    clamp_ribbon_margins(ws_id)
 end)
 
 hl.on("window.destroy", function()
     sync_window_scale()
+    clamp_ribbon_margins()
 end)
 
 hl.on("workspace.active", function()
     sync_window_scale()
     sync_fullscreen_inhibit()
+    clamp_ribbon_margins()
 end)
 
 hl.on("window.fullscreen", function()
@@ -154,7 +199,9 @@ end)
 
 hl.on("window.active", function()
     sync_fullscreen_inhibit()
+    clamp_ribbon_margins()
 end)
 
 sync_window_scale()
 sync_fullscreen_inhibit()
+clamp_ribbon_margins()
