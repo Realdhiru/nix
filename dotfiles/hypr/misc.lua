@@ -39,24 +39,15 @@ hl.config({
     },
 })
 
--- Inhibit ribbon scrolling whenever a fullscreen window is active to prevent forced scrolling blinking,
--- while automatically re-enabling normal scrolling as soon as focus leaves the fullscreen window.
-local function sync_fullscreen_scroll_inhibit(win)
-    local w = win or hl.get_active_window()
-    local is_fs = w and w.fullscreen and w.fullscreen ~= 0
-    if is_fs then
-        hl.dispatch(hl.dsp.layout("inhibit_scroll true"))
-    else
-        hl.dispatch(hl.dsp.layout("inhibit_scroll false"))
-    end
-end
-
--- Responsive dynamic column sizing for scrolling layout:
--- 1. Single window on workspace expands to cover the entire usable screen (100% width).
--- 2. Two windows dynamically share the screen side-by-side (50% each), filling available space without ribbon overflow.
--- 3. Three windows fit on one screen side-by-side (33.3% each), sized safely without component or text clipping.
--- 4. Four or more windows scroll smoothly along the continuous tape at 33.3% width.
--- 5. Windows dynamically expand when other windows close.
+-- Unified scroll inhibition and responsive dynamic column sizing:
+-- 1. When windows count <= 3 on the workspace, or when a fullscreen window is active:
+--    scroll is inhibited (`inhibit_scroll true`) so the screen never scrolls or jumps off to the right.
+--    The tape is pinned to the left edge (`move -99999`) ensuring all windows fit side-by-side on screen.
+-- 2. Single window expands to 100% usable screen width.
+-- 3. Two windows dynamically split the screen side-by-side (50% each).
+-- 4. Three windows dynamically split the screen side-by-side (33.3% each) without UI/text clipping.
+-- 5. Next-spawn column_width is pre-configured so new windows never overflow or force-scroll on creation.
+-- 6. Four or more windows unlock smooth continuous ribbon scrolling (`inhibit_scroll false`).
 local function get_screen_dimensions()
     local mons = hl.get_monitors()
     local m = mons and mons[1]
@@ -80,70 +71,91 @@ local function get_tiled_windows_on_workspace(ws_id)
             table.insert(list, w)
         end
     end
+    table.sort(list, function(a, b)
+        local ax = (a.at and a.at[1]) or 0
+        local bx = (b.at and b.at[1]) or 0
+        return ax < bx
+    end)
     return list
 end
 
-local function sync_dynamic_column_width(ws_id)
-    if not ws_id then
-        local ws = hl.get_active_workspace()
-        ws_id = ws and ws.id
-    end
-    if not ws_id then return end
-
-    local wins = get_tiled_windows_on_workspace(ws_id)
-    local count = #wins
-    local full_w, half_w, third_w, full_h = get_screen_dimensions()
-
-    if count <= 1 then
-        hl.config({ scrolling = { column_width = 1.0 } })
-        if count == 1 and wins[1] and wins[1].address and (wins[1].fullscreen == 0 or not wins[1].fullscreen) then
-            local h = (wins[1].size and wins[1].size[2]) or full_h
-            hl.dispatch(hl.dsp.window.resize({ window = "address:" .. wins[1].address, x = full_w, y = h, exact = true }))
-        end
-    elseif count == 2 then
-        hl.config({ scrolling = { column_width = 0.5 } })
-        for _, w in ipairs(wins) do
-            if w.address and (w.fullscreen == 0 or not w.fullscreen) then
-                local h = (w.size and w.size[2]) or full_h
-                hl.dispatch(hl.dsp.window.resize({ window = "address:" .. w.address, x = half_w, y = h, exact = true }))
-            end
-        end
-    elseif count == 3 then
-        hl.config({ scrolling = { column_width = 0.333333 } })
-        for _, w in ipairs(wins) do
-            if w.address and (w.fullscreen == 0 or not w.fullscreen) then
-                local h = (w.size and w.size[2]) or full_h
-                hl.dispatch(hl.dsp.window.resize({ window = "address:" .. w.address, x = third_w, y = h, exact = true }))
-            end
-        end
-    else
-        -- 4 or more windows retain 33.3% columns along the continuous tape without crushing components
-        hl.config({ scrolling = { column_width = 0.333333 } })
+local function resize_if_needed(win, target_w, default_h)
+    if not win or not win.address then return end
+    if win.fullscreen and win.fullscreen ~= 0 then return end
+    local cur_w = (win.size and win.size[1]) or 0
+    if math.abs(cur_w - target_w) > 2 then
+        local h = (win.size and win.size[2]) or default_h
+        hl.dispatch(hl.dsp.window.resize({ window = "address:" .. win.address, x = target_w, y = h, exact = true }))
     end
 end
 
-hl.on("window.fullscreen", function(win)
-    sync_fullscreen_scroll_inhibit(win)
-    sync_dynamic_column_width()
+local function sync_scrolling_state(ws_id, force_reset_tape)
+    local active_ws = hl.get_active_workspace()
+    local active_ws_id = active_ws and active_ws.id
+    local target_ws_id = ws_id or active_ws_id
+    if not target_ws_id then return end
+
+    local is_active_ws = (active_ws_id == target_ws_id)
+    local wins = get_tiled_windows_on_workspace(target_ws_id)
+    local count = #wins
+    local full_w, half_w, third_w, full_h = get_screen_dimensions()
+
+    local active_win = hl.get_active_window()
+    local is_fs = active_win and active_win.fullscreen and active_win.fullscreen ~= 0
+
+    if count == 0 then
+        hl.config({ scrolling = { column_width = 1.0 } })
+    elseif count == 1 then
+        resize_if_needed(wins[1], full_w, full_h)
+        hl.config({ scrolling = { column_width = 0.5 } })
+    elseif count == 2 then
+        for _, w in ipairs(wins) do
+            resize_if_needed(w, half_w, full_h)
+        end
+        hl.config({ scrolling = { column_width = 0.333333 } })
+    elseif count == 3 then
+        for _, w in ipairs(wins) do
+            resize_if_needed(w, third_w, full_h)
+        end
+        hl.config({ scrolling = { column_width = 0.333333 } })
+    else
+        hl.config({ scrolling = { column_width = 0.333333 } })
+    end
+
+    if is_active_ws then
+        local should_reset = force_reset_tape or (wins[1] and wins[1].at and wins[1].at[1] and wins[1].at[1] > 65)
+        if count <= 3 and should_reset then
+            hl.dispatch(hl.dsp.layout("move -99999"))
+        end
+
+        if is_fs or count <= 3 then
+            hl.dispatch(hl.dsp.layout("inhibit_scroll true"))
+        else
+            hl.dispatch(hl.dsp.layout("inhibit_scroll false"))
+        end
+    end
+end
+
+hl.on("window.fullscreen", function()
+    sync_scrolling_state(nil, true)
 end)
 
-hl.on("window.active", function(win)
-    sync_fullscreen_scroll_inhibit(win)
+hl.on("window.active", function()
+    sync_scrolling_state()
 end)
 
 hl.on("workspace.active", function()
-    sync_fullscreen_scroll_inhibit()
-    sync_dynamic_column_width()
+    sync_scrolling_state(nil, true)
 end)
 
 hl.on("window.open", function(w)
-    local ws_id = (w and w.workspace and w.workspace.id) or (hl.get_active_workspace() and hl.get_active_workspace().id)
-    sync_dynamic_column_width(ws_id)
+    local ws_id = (w and w.workspace and w.workspace.id)
+    sync_scrolling_state(ws_id, true)
 end)
 
 hl.on("window.close", function(w)
-    local ws_id = (w and w.workspace and w.workspace.id) or (hl.get_active_workspace() and hl.get_active_workspace().id)
-    sync_dynamic_column_width(ws_id)
+    local ws_id = (w and w.workspace and w.workspace.id)
+    sync_scrolling_state(ws_id, true)
 end)
 
-sync_dynamic_column_width()
+sync_scrolling_state(nil, true)
