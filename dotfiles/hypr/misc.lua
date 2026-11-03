@@ -23,7 +23,7 @@ hl.config({
         column_width = 0.5,
         focus_fit_method = 1,
         follow_focus = true,
-        fullscreen_on_one_column = false,
+        fullscreen_on_one_column = true,
         direction = "right",
         wrap_focus = true,
         explicit_column_widths = "0.333, 0.5, 0.667, 1.0",
@@ -72,8 +72,8 @@ local function get_tiled_windows_on_workspace(ws_id)
         end
     end
     table.sort(list, function(a, b)
-        local ax = (a.at and a.at[1]) or 0
-        local bx = (b.at and b.at[1]) or 0
+        local ax = (a.at and a.at.x) or 0
+        local bx = (b.at and b.at.x) or 0
         return ax < bx
     end)
     return list
@@ -82,9 +82,9 @@ end
 local function resize_if_needed(win, target_w, default_h)
     if not win or not win.address then return end
     if win.fullscreen and win.fullscreen ~= 0 then return end
-    local cur_w = (win.size and win.size[1]) or 0
+    local cur_w = (win.size and win.size.x) or 0
     if math.abs(cur_w - target_w) > 4 then
-        local h = (win.size and win.size[2]) or default_h
+        local h = (win.size and win.size.y) or default_h
         hl.dispatch(hl.dsp.window.resize({ window = "address:" .. win.address, x = target_w, y = h, exact = true }))
     end
 end
@@ -92,7 +92,7 @@ end
 local function align_leftmost_column(wins, target_margin)
     if not wins or #wins == 0 then return end
     local first = wins[1]
-    local cur_x = (first.at and first.at[1])
+    local cur_x = (first.at and first.at.x)
     if not cur_x then return end
     local delta = cur_x - target_margin
     if math.abs(delta) > 4 then
