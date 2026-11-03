@@ -139,12 +139,6 @@ hl.window_rule({ match = { class = "^(lxqt-archiver)$" }, float = true, center =
 
 hl.window_rule({ match = { class = "^(org\\.gnome\\.Loupe)$" }, float = true, center = true, size = { 850, 550 } })
 
--- ======================================================
--- Steam & Gaming Dialogs
--- ======================================================
-
-hl.window_rule({ match = { class = "^(steam)$", title = "^(Friends List|Special Offers|Music Player|Screenshot Uploader)$" }, float = true, center = true })
-hl.window_rule({ match = { class = "^(steam)$", title = "^(Steam Settings)$" }, float = true, center = true, size = { 900, 700 } })
 
 -- ======================================================
 -- Idle Inhibit & Video Rules (Fullscreen Video / Games / YouTube)
