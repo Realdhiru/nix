@@ -897,6 +897,36 @@ Item {
         toastTimer.restart();
     }
 
+    function toggleFavoriteWallpaper(fileName) {
+        if (!fileName) return;
+        if (window.currentFilter === "Search") {
+            window.statusToast = "Apply first to favorite";
+            toastTimer.restart();
+            return;
+        }
+        let flatPath = window.flatSrcDir.replace("file://", "") + "/" + fileName;
+        const escapeBash = (str) => String(str).replace(/(["\\$`])/g, '\\$1');
+        const escTarget = escapeBash(flatPath);
+
+        let isFav = window.isWallpaperFavorite(fileName);
+        window.statusToast = isFav ? "Removed from Favorites" : "Added to Favorites";
+        toastTimer.restart();
+
+        Quickshell.execDetached(["bash", "-c", `~/.config/hypr/scripts/wallpaper.sh fav "${escTarget}"`]);
+    }
+
+    function toggleFavoriteCurrentWallpaper() {
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        if (!targetModel || targetModel.count === 0) return;
+        let idx = view.currentIndex;
+        if (idx < 0 || idx >= targetModel.count) return;
+
+        let item = targetModel.get(idx);
+        if (!item || !item.fileName) return;
+
+        window.toggleFavoriteWallpaper(String(item.fileName));
+    }
+
     property int centerRetryCount: 0
 
     Timer {
@@ -1347,6 +1377,16 @@ Item {
         enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
         onActivated: window.deleteCurrentWallpaper()
     }
+    Shortcut { 
+        sequence: "F"
+        enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
+        onActivated: window.toggleFavoriteCurrentWallpaper()
+    }
+    Shortcut { 
+        sequence: "Space"
+        enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
+        onActivated: window.toggleFavoriteCurrentWallpaper()
+    }
     Shortcut { sequence: "Escape"; enabled: window.visible && !window.isApplying && window.currentFilter === "Search"; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
     Shortcut { sequence: "Tab"; enabled: window.visible; onActivated: window.cycleFilter(1) }
     Shortcut { sequence: "Backtab"; enabled: window.visible; onActivated: window.cycleFilter(-1) }
@@ -1360,6 +1400,13 @@ Item {
     readonly property var activeModel: window.getModelForFilter(window.currentFilter)
 
     readonly property string favoritesFile: Quickshell.env("HOME") + "/.local/share/wallpaper_favorites.txt"
+    property var activeFavSet: ({})
+
+    function isWallpaperFavorite(fileName) {
+        if (!fileName) return false;
+        let clean = window.getCleanName(fileName);
+        return !!(window.activeFavSet[fileName] || (clean && window.activeFavSet[clean]));
+    }
 
     FileView {
         id: favFileView
@@ -1383,6 +1430,7 @@ Item {
             let clean = window.getCleanName(base);
             if (clean) favSet[clean] = true;
         }
+        window.activeFavSet = favSet;
 
         favoritesProxyModel.clear();
         let batch = [];
@@ -1400,6 +1448,9 @@ Item {
         }
         window.sortListModel(favoritesProxyModel);
         if (window.currentFilter === "Favorites" || window.currentFilter === "Fav") {
+            if (favoritesProxyModel.count > 0 && view.currentIndex >= favoritesProxyModel.count) {
+                view.currentIndex = Math.max(0, favoritesProxyModel.count - 1);
+            }
             window.updateVisibleCount();
         }
     }
@@ -1739,9 +1790,15 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     enabled: delegateRoot.matchesFilter
-                    onClicked: {
-                        view.currentIndex = index;
-                        window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo);
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: (mouse) => {
+                        if (mouse.button === Qt.RightButton) {
+                            view.currentIndex = index;
+                            window.toggleFavoriteWallpaper(delegateRoot.safeFileName);
+                        } else {
+                            view.currentIndex = index;
+                            window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo);
+                        }
                     }
                 }
 
