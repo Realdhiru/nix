@@ -1270,7 +1270,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: root.s(10)
                             Repeater {
-                                model: ["Flat", "Bass", "Karaoke", "Vocal"]
+                                model: ["Flat", "Bass", "Treble", "Vocal"]
                                 delegate: PresetButton { name: modelData }
                             }
                         }
