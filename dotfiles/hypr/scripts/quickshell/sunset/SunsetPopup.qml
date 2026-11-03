@@ -219,8 +219,8 @@ Item {
         };
 
         root.pendingSunset = payload;
-        if (!root.applyInFlight) {
-            applyDebounceTimer.restart();
+        if (!root.applyInFlight && !applyDebounceTimer.running) {
+            applyDebounceTimer.start();
         }
     }
 
