@@ -197,3 +197,9 @@ else
     mkdir -p "$BT_STATE_DIR"
     echo "off" > "$BT_STATE_DIR/power"
 fi
+
+# 11. Online Wallpaper Search Cache Cleanup (Clean temporary search history on startup)
+rm -rf "$HOME/.cache/quickshell/wallpaper_picker/search_thumbs"/* 2>/dev/null || true
+rm -f "$HOME/.cache/quickshell/wallpaper_picker/search_map.txt" 2>/dev/null || true
+rm -f "$DESKTOP_STATE_DIR/wallpaper/search_history.txt" 2>/dev/null || true
+

@@ -98,7 +98,6 @@ Variants {
             readonly property color brightColor: mocha.text
             readonly property color volColor: mocha.text
             readonly property color wifiColor: mocha.text
-            readonly property color btColor: mocha.text
 
             readonly property color cardBg: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
             readonly property color cardBorder: (Config.borderWidth > 0 && Config.borderOpacity > 0)
@@ -497,14 +496,14 @@ Variants {
                             anchors.centerIn: parent
                             spacing: barWindow.s(4)
 
-                            // Hours (Enlarged to 19px JetBrains Mono Black, wallpaper accent color)
+                            // Hours (Enlarged to 19px JetBrains Mono Black, matching active workspace pill)
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: barWindow.timeStr.split(":")[0] || "00"
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: barWindow.s(19)
                                 font.weight: Font.Black
-                                color: barWindow.accentColor
+                                color: barWindow.wsActiveColor
                             }
 
                             // Minutes (Enlarged to 19px JetBrains Mono Black, tinted white)
@@ -966,17 +965,17 @@ Variants {
                         }
                     }
 
-                    // Quick Actions Combined Card (4 icons: Brightness, Volume, WiFi, Bluetooth - zero divider lines, clean direct layout)
+                    // Quick Actions Combined Card (3 icons: Brightness, Volume, WiFi - zero divider lines, clean direct layout)
                     Rectangle {
                         id: quickActionsBox
                         visible: true
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: barWindow.barThickness
-                        height: barWindow.s(138)
+                        height: barWindow.s(104)
                         radius: barWindow.s(14)
                         color: barWindow.cardBg
                         border.width: Config.borderWidth
-                        border.color: (sunsetMouse.containsMouse || volMouse.containsMouse || wifiMouse.containsMouse || btMouse.containsMouse) ? barWindow.accentColor : barWindow.cardBorder
+                        border.color: (sunsetMouse.containsMouse || volMouse.containsMouse || wifiMouse.containsMouse) ? barWindow.accentColor : barWindow.cardBorder
                         clip: true
 
                         Rectangle {
@@ -1083,29 +1082,6 @@ Variants {
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh open network wifi"])
-                                }
-                            }
-
-                            // 4. Bluetooth
-                            Item {
-                                width: barWindow.barThickness
-                                height: barWindow.s(32)
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "󰂯"
-                                    font.family: barWindow.iconFont
-                                    font.pixelSize: barWindow.s(15)
-                                    color: btMouse.containsMouse ? mocha.text : barWindow.btColor
-                                    Behavior on color { ColorAnimation { duration: 150 } }
-                                }
-
-                                MouseArea {
-                                    id: btMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh open network bt"])
                                 }
                             }
                         }

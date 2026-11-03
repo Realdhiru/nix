@@ -29,6 +29,8 @@ Item {
     property color teal: "#94e2d5"
     property color lavender: "#b4befe"
     property color primary: "#cba6f7"
+    property var brights: []
+    readonly property color highlight: (brights && brights.length > 7 && brights[7]) ? brights[7] : subtext0
 
     // Dynamic wallpaper lightness indicators for adaptive widget styling
     property bool isLight: false

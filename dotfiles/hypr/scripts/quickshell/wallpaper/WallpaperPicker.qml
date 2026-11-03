@@ -37,6 +37,7 @@ Item {
     property string _lastFilter: "All"
 
     property string searchQuery: ""
+    property string searchType: "photos" // "photos", "gif", "video"
     property bool isOnlineSearch: false
     property bool isSearchPaused: false
     property bool hasSearched: false
@@ -407,12 +408,24 @@ Item {
                     TMP_FILE="\${DEST_FILE}.tmp"
                     curl -s -L --max-time 45 --connect-timeout 8 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "\$URL" -o "\$TMP_FILE"
                     
-                    if [ -s "\$TMP_FILE" ] && file -b --mime-type "\$TMP_FILE" | grep -q "^image/"; then
-                        if file -b --mime-type "\$TMP_FILE" | grep -q "image/webp"; then
-                            magick "\$TMP_FILE" "\$DEST_FILE" 2>/dev/null || mv "\$TMP_FILE" "\$DEST_FILE"
+                    if [ -s "\$TMP_FILE" ]; then
+                        MIME=\$(file -b --mime-type "\$TMP_FILE" 2>/dev/null || echo "")
+                        if [[ "\$MIME" =~ ^video/ ]] || [[ "\$MIME" == "image/gif" ]] || [[ "\$SAFE_NAME" =~ \.(mp4|mkv|mov|webm|gif)$ ]]; then
+                            mv "\$TMP_FILE" "\$DEST_FILE"
+                        elif [[ "\$MIME" =~ ^image/ ]]; then
+                            if [ "\$MIME" = "image/webp" ]; then
+                                magick "\$TMP_FILE" "\$DEST_FILE" 2>/dev/null || mv "\$TMP_FILE" "\$DEST_FILE"
+                                rm -f "\$TMP_FILE"
+                            else
+                                mv "\$TMP_FILE" "\$DEST_FILE"
+                            fi
+                        elif [ -s "\$SEARCH_THUMB" ]; then
+                            cp "\$SEARCH_THUMB" "\$DEST_FILE"
                             rm -f "\$TMP_FILE"
                         else
-                            mv "\$TMP_FILE" "\$DEST_FILE"
+                            rm -f "\$TMP_FILE"
+                            echo "ERROR: Unsupported download mime: \$MIME"
+                            exit 1
                         fi
                     elif [ -s "\$SEARCH_THUMB" ]; then
                         cp "\$SEARCH_THUMB" "\$DEST_FILE"
@@ -566,7 +579,7 @@ Item {
             if (!window.hasSearched) return "Type something to search...";
             if (window.isSearchPaused) return "Search Paused";
             if (window.visibleItemCount === 0) {
-                return window.isSearchDone ? "No wallpapers found" : "Searching Wallhaven...";
+                return window.isSearchDone ? "No wallpapers found" : "Searching...";
             }
             return window.visibleItemCount > 0 ? (window.visibleItemCount + " wallpapers found") : "";
         }
@@ -776,13 +789,30 @@ Item {
                 export THUMB_PATH="${escapeBash(thumbPath)}"
                 export MAP_FILE="${escapeBash(mapFile)}"
                 export FILE_NAME="${escapeBash(fileName)}"
+                export SRC_DIR="${escapeBash(window.srcDir)}"
 
+                # 1. Remove if still in root ~/Pictures/Wallpapers
                 gio trash "$DEST_FILE" 2>/dev/null || rm -f "$DEST_FILE"
-                rm -f "${DEST_FILE}.tmp"
+                rm -f "\${DEST_FILE}.tmp"
+
+                # 2. Also remove if auto_organize.py already moved it to a subfolder
+                for cat_file in "$SRC_DIR"/*/"$FILE_NAME"; do
+                    if [ -f "$cat_file" ]; then
+                        python3 "$SRC_DIR/scripts/auto_organize.py" --delete "$cat_file" 2>/dev/null || gio trash "$cat_file" 2>/dev/null || rm -f "$cat_file"
+                    fi
+                done
+
+                # 3. Clean search thumbnail and map
                 rm -f "$THUMB_PATH"
                 if [ -f "$MAP_FILE" ]; then
                     grep -v "^\$FILE_NAME|" "\$MAP_FILE" > "\${MAP_FILE}.tmp" 2>/dev/null && mv "\${MAP_FILE}.tmp" "\$MAP_FILE" || rm -f "\${MAP_FILE}.tmp"
                 fi
+
+                # 4. Clean any generated thumbnails/previews
+                rm -f "$HOME/.cache/quickshell/wallpaper_picker/thumbs/\${FILE_NAME}"*
+                rm -f "$HOME/.cache/quickshell/wallpaper_picker/colors_markers/\${FILE_NAME}"*
+                rm -f "$HOME/.cache/converted_gifs/\${FILE_NAME}"*
+                rm -f "$SRC_DIR/previews/"*"/\${FILE_NAME}"*
             `;
             Quickshell.execDetached(["bash", "-c", deleteSearchScript]);
 
@@ -1235,7 +1265,7 @@ Item {
             rm -rf "${rawSearchDir}"/* || true
             rm -f "${rawSearchDir}/../search_map.txt" || true
             echo 'run' > ${Caching.getRunDir("wallpaper_picker")}/ddg_search_control
-            bash "${scriptPath}" "${window.searchQuery}" &
+            bash "${scriptPath}" "${window.searchQuery}" "${window.searchType}" &
         `;
         Quickshell.execDetached(["bash", "-c", cmd]);
         searchInput.focus = false;
@@ -1401,7 +1431,14 @@ Item {
         enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
         onActivated: window.toggleFavoriteCurrentWallpaper()
     }
-    Shortcut { sequence: "Escape"; enabled: window.visible && !window.isApplying && window.currentFilter === "Search"; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
+    Shortcut { 
+        sequence: "Escape"
+        enabled: window.visible && !window.isApplying && window.currentFilter === "Search" && !searchInput.activeFocus
+        onActivated: { 
+            window.currentFilter = "All"; 
+            view.forceActiveFocus();
+        } 
+    }
     Shortcut { sequence: "Tab"; enabled: window.visible; onActivated: window.cycleFilter(1) }
     Shortcut { sequence: "Backtab"; enabled: window.visible; onActivated: window.cycleFilter(-1) }
 
@@ -2311,7 +2348,7 @@ Item {
             Rectangle {
                 id: searchBox
                 height: window.s(44)
-                width: window.currentFilter === "Search" ? window.s(360) : window.s(44)
+                width: window.currentFilter === "Search" ? window.s(450) : window.s(44)
                 radius: window.s(12)
                 clip: true
                 anchors.verticalCenter: parent.verticalCenter
@@ -2368,20 +2405,21 @@ Item {
                 Text {
                     id: placeholderLabel
                     anchors.left: searchIcon.right
-                    anchors.right: submitBtn.left
+                    anchors.right: formatSelectorRow.left
                     anchors.rightMargin: window.s(8)
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "Type something to search..."
-                    color: Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.5)
+                    text: "Search..."
+                    color: Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.45)
                     font.family: "JetBrains Mono"
                     font.pixelSize: window.s(14)
+                    elide: Text.ElideRight
                     visible: window.currentFilter === "Search" && searchInput.text.length === 0 && !searchInput.activeFocus
                 }
 
                 TextInput {
                     id: searchInput
                     anchors.left: searchIcon.right
-                    anchors.right: submitBtn.left
+                    anchors.right: formatSelectorRow.left
                     anchors.rightMargin: window.s(8)
                     anchors.verticalCenter: parent.verticalCenter
                     opacity: window.currentFilter === "Search" ? 1.0 : 0.0
@@ -2389,9 +2427,22 @@ Item {
                     Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                     color: _theme.text
                     font.family: "JetBrains Mono"
-                    font.pixelSize: window.s(15)
+                    font.pixelSize: window.s(14)
                     clip: true
                     
+                    Keys.onEscapePressed: (event) => {
+                        event.accepted = true;
+                        if (searchInput.text.length > 0) {
+                            searchInput.text = "";
+                            searchInput.focus = false;
+                            view.forceActiveFocus();
+                        } else {
+                            searchInput.focus = false;
+                            window.currentFilter = "All";
+                            view.forceActiveFocus();
+                        }
+                    }
+
                     onTextEdited: {
                         window.hasSearched = false;
                         searchState.searched = false;
@@ -2400,6 +2451,65 @@ Item {
                         window.triggerOnlineSearch();
                         searchInput.focus = false;
                         view.forceActiveFocus();
+                    }
+                }
+
+                Row {
+                    id: formatSelectorRow
+                    anchors.right: submitBtn.left
+                    anchors.rightMargin: window.s(8)
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: window.s(4)
+                    opacity: window.currentFilter === "Search" ? 1.0 : 0.0
+                    visible: opacity > 0
+                    Behavior on opacity { NumberAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+
+                    Repeater {
+                        model: [
+                            { id: "photos", label: "Photos" },
+                            { id: "gif", label: "GIF" },
+                            { id: "video", label: "Video" }
+                        ]
+                        delegate: Rectangle {
+                            id: formatPill
+                            width: pillText.implicitWidth + window.s(12)
+                            height: window.s(26)
+                            radius: window.s(6)
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            readonly property bool isSelected: window.searchType === modelData.id
+                            
+                            color: isSelected ? _theme.text : (pillMouse.containsMouse ? Qt.rgba(_theme.surface1.r, _theme.surface1.g, _theme.surface1.b, 0.6) : "transparent")
+                            border.color: isSelected ? _theme.text : Qt.rgba(_theme.surface2.r, _theme.surface2.g, _theme.surface2.b, 0.6)
+                            border.width: 1
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+
+                            Text {
+                                id: pillText
+                                text: modelData.label
+                                anchors.centerIn: parent
+                                color: formatPill.isSelected ? _theme.base : (pillMouse.containsMouse ? _theme.text : Qt.rgba(_theme.text.r, _theme.text.g, _theme.text.b, 0.7))
+                                font.family: "JetBrains Mono"
+                                font.pixelSize: window.s(11)
+                                font.bold: formatPill.isSelected
+                                Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
+                            }
+
+                            MouseArea {
+                                id: pillMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                enabled: !window.isApplying
+                                onClicked: {
+                                    window.searchType = modelData.id;
+                                    if (searchInput.text.trim() !== "") {
+                                        window.triggerOnlineSearch();
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -2463,15 +2573,6 @@ Item {
         Quickshell.execDetached(["bash", "-c", "mkdir -p '" + decodeURIComponent(window.searchDir.replace("file://", "")) + "'; mkdir -p '" + Caching.getRunDir("wallpaper_picker") + "'; touch '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
         window.syncMonitors();
         window.refreshActiveWallpapers();
-
-        if (searchState.searched) {
-            searchInput.text = searchState.query;
-            window.searchQuery = searchState.query;
-            window.hasSearched = true;
-            window.lastSearchName = searchState.lastName;
-            window.isSearchPaused = true;
-        }
-
         view.forceActiveFocus();
         window.processMarkers();
     }
@@ -2483,9 +2584,6 @@ Item {
             Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
         }
         if (window.hasSearched) {
-            searchState.query = searchInput.text;
-            searchState.searched = window.hasSearched;
-            searchState.lastName = window.lastSearchName;
             Quickshell.execDetached(["bash", "-c", "echo 'pause' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control"]);
             Quickshell.execDetached(["bash", "-c", "echo 'stop' > " + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control; for p in \$(pgrep -f ddg_search.sh); do if [ \"\$p\" != \"\$\$\" ] && [ \"\$p\" != \"\$BASHPID\" ]; then kill -9 \$p 2>/dev/null || true; fi; done"]);
         }

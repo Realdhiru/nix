@@ -328,19 +328,16 @@ END {
         cl = l_arr[i];
         cs = s_arr[i];
 
-        # Exclude deep void shadows (< 0.20) and extreme white highlights (> 0.90)
-        if (cl >= 0.20 && cl <= 0.90) {
-            cov_factor = (cnt_arr[i] ^ 0.60);
-            # Reward chromatic identity over dead neutral gray:
-            chroma_factor = (cs >= 0.025) ? (cs ^ 0.40) : (cs * 5.0);
-            # Ideal midtone luminance for UI legibility:
-            lum_factor = 1.0 - (cl - 0.52) * (cl - 0.52) * 2.0;
+        # Include vibrant tones from deep backgrounds (luminance >= 0.04 up to 0.95)
+        if (cl >= 0.04 && cl <= 0.95) {
+            cov_factor = (cnt_arr[i] ^ 0.50);
+            # Heavily reward authentic chromatic saturation over neutral blacks/grays:
+            chroma_factor = (cs >= 0.02) ? (cs ^ 0.75) : 0.001;
+            # Balance UI visibility while respecting authentic color:
+            lum_factor = 1.0 - (cl - 0.50) * (cl - 0.50) * 1.5;
             if (lum_factor < 0.2) lum_factor = 0.2;
 
-            # Penalize isolated micro-details (< 1.5% pixel share) to avoid spot outliers:
-            outlier_mult = (cov < 0.015) ? 0.08 : 1.0;
-
-            score = cov_factor * chroma_factor * lum_factor * outlier_mult;
+            score = cov_factor * chroma_factor * lum_factor;
             if (score > best_score) {
                 best_score = score;
                 best_idx = i;
@@ -360,9 +357,20 @@ END {
         final_s = s_arr[best_idx];
         final_l = l_arr[best_idx];
 
-        # Ensure optimal midtone contrast without distorting authentic saturation
-        if (final_l < 0.50) final_l = 0.52;
-        if (final_l > 0.68) final_l = 0.60;
+        # ONLY adjust if the color is actually muddy or dull:
+        # 1. Truly muddy/dull (low saturation + dark): lift luminance to make it legible
+        if (final_s < 0.25 && final_l < 0.35) {
+            final_l = 0.48;
+        }
+        # 2. Richly saturated but very dark: lift gently while capping saturation to avoid neon eye-strain
+        else if (final_l < 0.30) {
+            final_l = 0.36;
+            if (final_s > 0.48) final_s = 0.45;
+        }
+        # 3. Blown out / washed out highlights: pull down slightly
+        else if (final_l > 0.72) {
+            final_l = 0.60;
+        }
 
         print hsl2rgb(final_h, final_s, final_l);
     } else {

@@ -196,7 +196,7 @@ Variants {
 
             function cavaBarColor(barIndex, barCount, segIndex, segCount) {
                 let mode = Config.cavaGradient || "soft";
-                let topColor = barWindow.accentColor;
+                let topColor = barWindow.wsActiveColor;
                 let t = (segCount <= 1) ? 1.0 : (segIndex / (segCount - 1));
 
                 if (mode === "soft") {
@@ -844,7 +844,7 @@ Variants {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(18)
                                     font.weight: Font.Black
-                                    color: mocha.text
+                                    color: barWindow.wsActiveColor
                                 }
 
                                 Text {
@@ -853,7 +853,8 @@ Variants {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(18)
                                     font.weight: Font.Black
-                                    color: barWindow.accentColor
+                                    color: mocha.subtext1
+                                    opacity: 0.45
                                 }
 
                                 Text {
@@ -887,7 +888,7 @@ Variants {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(10)
                                     font.weight: Font.Bold
-                                    color: barWindow.accentColor
+                                    color: mocha.subtext1
                                     horizontalAlignment: Text.AlignLeft
                                     Layout.fillWidth: true
                                 }
@@ -1178,7 +1179,7 @@ Variants {
                                         anchors.fill: parent
                                         radius: barWindow.s(10)
                                         opacity: 1.0
-                                        color: Qt.rgba(barWindow.accentColor.r, barWindow.accentColor.g, barWindow.accentColor.b, 0.78)
+                                        color: Qt.rgba(barWindow.wsActiveColor.r, barWindow.wsActiveColor.g, barWindow.wsActiveColor.b, 0.85)
                                     }
 
                                     property real targetWidth: barWindow.isDesktop ? barWindow.s(34) : batLayoutRow.implicitWidth + barWindow.s(24)
@@ -1264,7 +1265,7 @@ Variants {
                                 text: ""
                                 font.family: "Iosevka Nerd Font"
                                 font.pixelSize: barWindow.s(20)
-                                color: barWindow.accentColor
+                                color: barWindow.wsActiveColor
 
                                 SequentialAnimation on opacity {
                                     running: barWindow.isRecording && !recButton.isHovered
