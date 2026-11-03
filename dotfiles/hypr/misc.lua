@@ -54,8 +54,9 @@ end
 -- Responsive dynamic column sizing for scrolling layout:
 -- 1. Single window on workspace expands to cover the entire usable screen (100% width).
 -- 2. Two windows dynamically share the screen side-by-side (50% each), filling available space without ribbon overflow.
--- 3. Three or more windows scroll smoothly along the continuous tape at 50% width.
--- 4. Single remaining window automatically re-expands to full width when other windows close.
+-- 3. Three windows fit on one screen side-by-side (33.3% each), sized safely without component or text clipping.
+-- 4. Four or more windows scroll smoothly along the continuous tape at 33.3% width.
+-- 5. Windows dynamically expand when other windows close.
 local function get_screen_dimensions()
     local mons = hl.get_monitors()
     local m = mons and mons[1]
@@ -67,8 +68,9 @@ local function get_screen_dimensions()
     end
     local usable_w = width - 64
     local usable_h = height - 24
-    local half_w = math.floor((usable_w - 12) / 2)
-    return usable_w, half_w, usable_h
+    local half_w = math.floor((usable_w - 10) / 2)
+    local third_w = math.floor((usable_w - 20) / 3)
+    return usable_w, half_w, third_w, usable_h
 end
 
 local function get_tiled_windows_on_workspace(ws_id)
@@ -90,7 +92,7 @@ local function sync_dynamic_column_width(ws_id)
 
     local wins = get_tiled_windows_on_workspace(ws_id)
     local count = #wins
-    local full_w, half_w, full_h = get_screen_dimensions()
+    local full_w, half_w, third_w, full_h = get_screen_dimensions()
 
     if count <= 1 then
         hl.config({ scrolling = { column_width = 1.0 } })
@@ -106,8 +108,17 @@ local function sync_dynamic_column_width(ws_id)
                 hl.dispatch(hl.dsp.window.resize({ window = "address:" .. w.address, x = half_w, y = h, exact = true }))
             end
         end
+    elseif count == 3 then
+        hl.config({ scrolling = { column_width = 0.333333 } })
+        for _, w in ipairs(wins) do
+            if w.address and (w.fullscreen == 0 or not w.fullscreen) then
+                local h = (w.size and w.size[2]) or full_h
+                hl.dispatch(hl.dsp.window.resize({ window = "address:" .. w.address, x = third_w, y = h, exact = true }))
+            end
+        end
     else
-        hl.config({ scrolling = { column_width = 0.5 } })
+        -- 4 or more windows retain 33.3% columns along the continuous tape without crushing components
+        hl.config({ scrolling = { column_width = 0.333333 } })
     end
 end
 
