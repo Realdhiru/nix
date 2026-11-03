@@ -2,6 +2,7 @@
 
 ## 2026-11-03 — Wallpaper State Reliability & Hyprsunset Responsiveness
 
+- **Hyprland Lua API Layout Dispatch Guard ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Fixed invalid `hl.get_option` call with native `ws.tiled_layout` property check, clearing top red error banner and yellow runtime notifications.
 - **Manual Ribbon Scrolling Restoration ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Restored manual ribbon scrolling across all window counts by scoping `inhibit_scroll` strictly to fullscreen windows, restricting tape offset auto-resets only to window open/close events, and guarding layout dispatches.
 - **Scrolling Layout Viewport Right-Shift & Tape Drift Fix ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Eliminated unexpected viewport right-scrolling and window push-off when spawning windows by inhibiting scrolling and resetting tape offset for <=3 windows, pre-configuring next-spawn column widths, and gating resize dispatches.
 - **Three-Window Side-by-Side Screen Fitting in Scrolling Layout ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Extended dynamic column sizing to pack 3 windows side-by-side on a single screen without ribbon overflow (~452px each), safely sized to avoid clipping text or UI elements.

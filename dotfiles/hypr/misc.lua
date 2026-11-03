@@ -90,9 +90,8 @@ local function resize_if_needed(win, target_w, default_h)
 end
 
 local function dispatch_scrolling_layout(cmd)
-    local cur = hl.get_option("general:layout")
-    local layout_name = (cur and cur.str) or ""
-    if layout_name == "scrolling" then
+    local ws = hl.get_active_workspace()
+    if ws and ws.tiled_layout == "scrolling" then
         pcall(function()
             hl.dispatch(hl.dsp.layout(cmd))
         end)
