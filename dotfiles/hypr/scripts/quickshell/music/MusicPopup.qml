@@ -24,7 +24,7 @@ Item {
         }
     }
 
-    property var presetList: ["Flat", "Bass", "Treble", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
+    property var presetList: ["Flat", "Bass", "Karaoke", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
 
     Keys.onPressed: (event) => {
         if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
@@ -886,37 +886,6 @@ Item {
 
                         Rectangle {
                             Layout.preferredHeight: root.s(28)
-                            Layout.preferredWidth: karTxt.width + root.s(24)
-                            radius: root.s(10)
-                            color: root.karaokeActive ? root.mauve : root.surface1
-                            border.color: root.karaokeActive ? root.mauve : root.surface2
-                            border.width: 1
-
-                            Behavior on color { ColorAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                            Behavior on border.color { ColorAnimation { duration: 250; easing.type: Easing.OutCubic } }
-
-                            Text {
-                                id: karTxt
-                                anchors.centerIn: parent
-                                text: root.karaokeActive ? "Karaoke ON" : "Karaoke"
-                                color: root.karaokeActive ? root.base : root.subtext0
-                                font.family: "JetBrains Mono"
-                                font.pixelSize: root.s(11)
-                                font.bold: true
-                                Behavior on color { ColorAnimation { duration: 250 } }
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    root.karaokeActive = !root.karaokeActive;
-                                    root.execCmd("$HOME/.config/hypr/scripts/karaoke.sh " + (root.karaokeActive ? "on" : "off"));
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.preferredHeight: root.s(28)
                             Layout.preferredWidth: applyTxt.width + root.s(30)
                             radius: root.s(10)
                             color: root.eqData.pending ? root.mauve : root.surface1
@@ -1317,7 +1286,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: root.s(10)
                             Repeater {
-                                model: ["Flat", "Bass", "Treble", "Vocal"]
+                                model: ["Flat", "Bass", "Karaoke", "Vocal"]
                                 delegate: PresetButton { name: modelData }
                             }
                         }

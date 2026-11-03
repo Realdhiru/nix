@@ -67,6 +67,12 @@ case $cmd in
         fi
     fi
     apply_eq
+    CUR_PRESET=$(jq -r '.preset // "Flat"' "$STATE_FILE" 2>/dev/null || echo "Flat")
+    if [ "$CUR_PRESET" = "Karaoke" ]; then
+        "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" on 2>/dev/null || true
+    else
+        "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" off 2>/dev/null || true
+    fi
     ;;
 "get")
     if [ -f "$STATE_FILE" ]; then
@@ -94,8 +100,7 @@ case $cmd in
     case $arg1 in
         "Flat")    save_preset 0 0 0 0 0 0 0 0 0 0 "Flat" ;;
         "Bass")    save_preset 4 5 3 0 -1 0 1 1 2 1 "Bass" ;;
-        "Karaoke") save_preset 6 6 4 1 -3 -4 -3 1 3 4 "Karaoke" ;;
-        "Treble")  save_preset -2 -1 0 0 1 2 3 4 5 4 "Treble" ;;
+        "Karaoke") save_preset 4 4 2 0 -2 -3 -2 1 2 2 "Karaoke" ;;
         "Vocal")   save_preset -3 -2 -1 1 3 4 3 2 1 0 "Vocal" ;;
         "Pop")     save_preset 2 3 1 -1 0 2 3 3 2 2 "Pop" ;;
         "Rock")    save_preset 4 3 1 -2 -1 1 2 3 4 3 "Rock" ;;
@@ -103,5 +108,10 @@ case $cmd in
         "Classic") save_preset 1 1 0 0 1 1 1 2 3 3 "Classic" ;;
     esac
     apply_eq
+    if [ "$arg1" = "Karaoke" ]; then
+        "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" on 2>/dev/null || true
+    else
+        "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" off 2>/dev/null || true
+    fi
     ;;
 esac
