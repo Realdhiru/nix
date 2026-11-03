@@ -14,6 +14,10 @@ hl.config({
     },
     gestures = {
         workspace_swipe_forever = true,
+        scrolling = {
+            move_snap_to_grid = true,
+            move_snap_cursor = true,
+        },
     },
 })
 hl.gesture({ fingers = 3, direction = "horizontal", action = "scroll_move" })
