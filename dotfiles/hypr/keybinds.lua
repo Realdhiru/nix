@@ -233,8 +233,6 @@ hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggl
 
 hl.bind(mainMod .. " + CTRL + V", hl.dsp.exec_cmd(scripts .. "toggle_multi_sink.sh"),
     { description = "toggle multi-sink audio broadcast" })
-hl.bind(mainMod .. " + ALT + K", hl.dsp.exec_cmd(scripts .. "karaoke.sh toggle"),
-    { description = "toggle karaoke vocal cancellation" })
 hl.bind(mainMod .. " + CTRL + SHIFT + V", hl.dsp.exec_cmd(scripts .. "fix_audio.sh"),
     { description = "recover audio subsystem" })
 hl.bind(mainMod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle sunset"),
