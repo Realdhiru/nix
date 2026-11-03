@@ -364,24 +364,10 @@ Item {
         let outputs = window.getMonitorOutputs();
         if (outputs === "none") return;
 
-        // Check if wallpaper is already active on all targeted outputs via awww query --json
-        let targetList = (outputs === "all" || outputs === "") 
-            ? Object.keys(window.activeWallpapersByOutput) 
-            : outputs.split(",");
-
-        let allActive = targetList.length > 0;
-        for (let i = 0; i < targetList.length; i++) {
-            let mon = targetList[i];
-            let activePath = window.activeWallpapersByOutput[mon] || "";
-            let activeFile = activePath.split("/").pop();
-            if (window.getCleanName(activeFile) !== cleanTarget) {
-                allActive = false;
-                break;
-            }
-        }
-
-        if (allActive && !window.isApplying) {
-            console.log("[WALLPAPER_PICKER] Wallpaper already active on selected outputs:", safeFileName);
+        // If clicking the EXACT same wallpaper that is already active on the desktop, ignore redundant click
+        let currentClean = window.getCleanName(window.activeWallpaperName);
+        if (cleanTarget !== "" && cleanTarget === currentClean && !window.isApplying) {
+            console.log("[WALLPAPER_PICKER] Wallpaper already active, ignoring redundant click:", safeFileName);
             window.statusToast = "Already active";
             toastTimer.restart();
             return;
