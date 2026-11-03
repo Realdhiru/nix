@@ -140,29 +140,41 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
         fi
     fi
 
-    # Ensure awww daemon is active to provide an instant zero-blink transition buffer
-    if (command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet awww-daemon) || [ -n "$(pidof .awww-daemon-wrapped 2>/dev/null || true)" ]; then
-        :
-    else
-        "$SCRIPT_DIR/ensure_awww.sh" 8>&- 2>/dev/null || true
-    fi
-
-    POSTER_FRAME=""
-    THUMB_DIR="$CACHE_DIR/quickshell/wallpaper_picker/thumbs"
-    if [ -f "$THUMB_DIR/$BASENAME.jpg" ]; then
-        POSTER_FRAME="$THUMB_DIR/$BASENAME.jpg"
-    elif [ -f "$THUMB_DIR/$BASENAME" ]; then
-        POSTER_FRAME="$THUMB_DIR/$BASENAME"
-    elif [[ "$EXT" == "gif" ]]; then
-        POSTER_FRAME="$WALL"
-    fi
-
-    if [ -n "$POSTER_FRAME" ] && command -v awww >/dev/null 2>&1; then
-        awww img --resize crop --transition-type none "$POSTER_FRAME" >/dev/null 2>&1 || true
-    fi
-
     if [ "${#RESOLVED_OUTPUTS[@]}" -eq 0 ]; then
         RESOLVED_OUTPUTS=("eDP-1")
+    fi
+
+    # Determine if mpvpaper is already running on all target outputs
+    all_sockets_ready=1
+    for out in "${RESOLVED_OUTPUTS[@]}"; do
+        [ -n "$out" ] || continue
+        SOCK="${XDG_RUNTIME_DIR:-/run/user/$UID}/mpvpaper-${out}.sock"
+        if [ ! -S "$SOCK" ]; then
+            all_sockets_ready=0
+            break
+        fi
+    done
+
+    # If mpvpaper is NOT running yet (e.g. coming from static image), render an instant poster frame
+    # on awww to bridge initialization without black screens
+    if [ "$all_sockets_ready" -eq 0 ]; then
+        if (command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet awww-daemon) || [ -n "$(pidof .awww-daemon-wrapped 2>/dev/null || true)" ]; then
+            :
+        else
+            "$SCRIPT_DIR/ensure_awww.sh" 8>&- 2>/dev/null || true
+        fi
+
+        POSTER_FRAME=""
+        THUMB_DIR="$CACHE_DIR/quickshell/wallpaper_picker/thumbs"
+        if [ -f "$THUMB_DIR/$BASENAME.jpg" ]; then
+            POSTER_FRAME="$THUMB_DIR/$BASENAME.jpg"
+        elif [ -f "$THUMB_DIR/$BASENAME" ]; then
+            POSTER_FRAME="$THUMB_DIR/$BASENAME"
+        fi
+
+        if [ -n "$POSTER_FRAME" ] && command -v awww >/dev/null 2>&1; then
+            awww img --resize crop --transition-type none "$POSTER_FRAME" >/dev/null 2>&1 || true
+        fi
     fi
 
     for out in "${RESOLVED_OUTPUTS[@]}"; do

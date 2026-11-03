@@ -460,7 +460,7 @@ Item {
         const escOriginal = escapeBash(originalFile);
 
         const fullScript = `
-            ~/.config/hypr/scripts/set_wallpaper.sh ${outArg} "${escOriginal}" "none" "0.0" "120"
+            ~/.config/hypr/scripts/set_wallpaper.sh ${outArg} "${escOriginal}" "fade" "0.2" "120"
         `;
         Quickshell.execDetached(["bash", "-c", fullScript]);
     }
