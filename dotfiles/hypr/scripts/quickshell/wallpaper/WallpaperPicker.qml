@@ -355,23 +355,14 @@ Item {
         
         let cleanTarget = window.getCleanName(safeFileName);
 
-        // If clicking the EXACT same wallpaper that is already currently applying, ignore duplicate click
-        if (cleanTarget !== "" && cleanTarget === window.applyingWallCleanName) {
+        // If clicking the EXACT same wallpaper that is already currently applying in-flight, ignore duplicate click
+        if (window.isApplying && cleanTarget !== "" && cleanTarget === window.applyingWallCleanName) {
             console.log("[WALLPAPER_PICKER] Wallpaper is already in-flight applying, ignoring duplicate:", safeFileName);
             return;
         }
 
         let outputs = window.getMonitorOutputs();
         if (outputs === "none") return;
-
-        // If clicking the EXACT same wallpaper that is already active on the desktop, ignore redundant click
-        let currentClean = window.getCleanName(window.activeWallpaperName);
-        if (cleanTarget !== "" && cleanTarget === currentClean && !window.isApplying) {
-            console.log("[WALLPAPER_PICKER] Wallpaper already active, ignoring redundant click:", safeFileName);
-            window.statusToast = "Already active";
-            toastTimer.restart();
-            return;
-        }
         
         window.applyingWallCleanName = cleanTarget;
         window.targetWallName = safeFileName;

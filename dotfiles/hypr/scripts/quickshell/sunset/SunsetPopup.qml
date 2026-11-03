@@ -135,6 +135,20 @@ Item {
 
     property bool applyInFlight: false
     property var pendingSunset: null
+    readonly property bool isUserInteracting: (tempSlider && tempSlider.pressed) || (gammaSlider && gammaSlider.pressed) || (satSlider && satSlider.pressed) || (grainSlider && grainSlider.pressed) || (crtSlider && crtSlider.pressed)
+
+    Timer {
+        id: applyDebounceTimer
+        interval: 35
+        repeat: false
+        onTriggered: {
+            if (root.pendingSunset !== null) {
+                let next = root.pendingSunset;
+                root.pendingSunset = null;
+                root.doApplyBackend(next);
+            }
+        }
+    }
 
     Process {
         id: sunsetProcess
@@ -166,7 +180,7 @@ Item {
     }
 
     function parseStateJson(txt) {
-        if (!txt || txt.trim() === "") return;
+        if (!txt || txt.trim() === "" || root.isUserInteracting || root.applyInFlight) return;
         try {
             let full = JSON.parse(txt.trim());
             let d = full.sunset || full;
@@ -191,6 +205,7 @@ Item {
         root.isActive = !isDefault;
 
         if (isDefault) {
+            applyDebounceTimer.stop();
             root.resetAll();
             return;
         }
@@ -203,10 +218,20 @@ Item {
             crt: root.currentCrt
         };
 
-        if (root.applyInFlight) {
-            root.pendingSunset = payload;
-        } else {
-            root.doApplyBackend(payload);
+        root.pendingSunset = payload;
+        if (!root.applyInFlight) {
+            applyDebounceTimer.restart();
+        }
+    }
+
+    function flushPendingBackend() {
+        applyDebounceTimer.stop();
+        if (root.pendingSunset !== null) {
+            let next = root.pendingSunset;
+            root.pendingSunset = null;
+            root.doApplyBackend(next);
+        } else if (!root.applyInFlight) {
+            root.doApplyBackend();
         }
     }
 
@@ -234,7 +259,11 @@ Item {
         let needsShader = (p.sat !== 100 || p.grain > 0 || p.crt > 0);
 
         let script = `
-            # 1. Hardware CTM (hyprsunset managed via declarative systemd user service)
+            # 1. Hardware CTM (ensure hyprsunset daemon is active)
+            if ! pgrep -x hyprsunset >/dev/null 2>&1; then
+                systemctl --user start hyprsunset.service 2>/dev/null || hyprsunset -i >/dev/null 2>&1 &
+            fi
+
             if [ "${p.temp}" -ne 6500 ] || [ "${p.gamma}" -ne 100 ]; then
                 hyprctl hyprsunset temperature ${p.temp} >/dev/null 2>&1 || true
                 hyprctl hyprsunset gamma ${p.gamma} >/dev/null 2>&1 || true
@@ -435,7 +464,7 @@ EOF
                                 root.selectedControl = 0;
                                 root.forceActiveFocus();
                             } else {
-                                root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
+                                root.flushPendingBackend();
                             }
                         }
                         onMoved: root.applyBackend(value, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt)
@@ -550,7 +579,7 @@ EOF
                                 root.selectedControl = 1;
                                 root.forceActiveFocus();
                             } else {
-                                root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
+                                root.flushPendingBackend();
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, value, root.currentSat, root.currentGrain, root.currentCrt)
@@ -665,7 +694,7 @@ EOF
                                 root.selectedControl = 2;
                                 root.forceActiveFocus();
                             } else {
-                                root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
+                                root.flushPendingBackend();
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, value, root.currentGrain, root.currentCrt)
@@ -780,7 +809,7 @@ EOF
                                 root.selectedControl = 3;
                                 root.forceActiveFocus();
                             } else {
-                                root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
+                                root.flushPendingBackend();
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, value, root.currentCrt)
@@ -895,7 +924,7 @@ EOF
                                 root.selectedControl = 4;
                                 root.forceActiveFocus();
                             } else {
-                                root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, root.currentCrt);
+                                root.flushPendingBackend();
                             }
                         }
                         onMoved: root.applyBackend(root.currentTemp, root.currentGamma, root.currentSat, root.currentGrain, value)

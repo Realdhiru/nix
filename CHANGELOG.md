@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-03 — Wallpaper State Reliability & Hyprsunset Responsiveness
+
+- **Wallpaper State Synchronization & Hyprsunset Responsiveness ([`set.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/backend/set.sh), [`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml), [`SunsetPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/sunset/SunsetPopup.qml), [`restore_state.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/restore_state.sh), [`toggle_sunset.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/toggle_sunset.sh))**: Deferred wallpaper state commit until renderers (`awww`/`mpvpaper`) exit successfully and removed click-suppression traps in `WallpaperPicker.qml` to prevent false "Already active" errors; debounced backend shader and state writes (35ms) while unbounding UI sliders for 120 FPS dragging without jitter or snapbacks; preserved `hyprsunset` systemd daemon lifecycle via identity matrix resets, eliminating `pkill` race conditions and the 20-second activation delay.
+
 ## 2026-11-02 — Window Opacity, Wallpaper Picker Performance & Bluetooth State Persistence
 
 - **Wallpaper Picker State Persistence & Dedicated Favorite Key ([`WallpaperPicker.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml))**: Persisted selected category filter across sessions to `$XDG_STATE_HOME/desktop/wallpaper/picker_filter.txt`, prevented carousel layout and focus from resetting on favorite toggles via in-place model patching, and streamlined favorite toggling to a single dedicated `F` key.

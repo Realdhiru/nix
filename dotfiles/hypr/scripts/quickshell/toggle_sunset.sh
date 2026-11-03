@@ -9,7 +9,12 @@ SHADER_FILE="$HOME/.cache/screen_shader.frag"
 mkdir -p "$STATE_DIR"
 
 IS_RUNNING=0
-if pgrep -x hyprsunset >/dev/null 2>&1 || [ -f "$SHADER_FILE" ]; then
+if [ -f "$STATE_FILE" ]; then
+    ACTIVE=$(jq -r '.sunset.active // false' "$STATE_FILE" 2>/dev/null)
+    if [ "$ACTIVE" = "true" ]; then
+        IS_RUNNING=1
+    fi
+elif [ -f "$SHADER_FILE" ]; then
     IS_RUNNING=1
 fi
 
@@ -20,12 +25,9 @@ if [ "$IS_RUNNING" -eq 1 ]; then
         mv "$SAVED_FILE.tmp" "$SAVED_FILE" 2>/dev/null || true
     fi
 
-    # Disable hyprsunset
-    if pgrep -x hyprsunset >/dev/null 2>&1; then
-        hyprctl hyprsunset identity >/dev/null 2>&1 || true
-        hyprctl hyprsunset gamma 100 >/dev/null 2>&1 || true
-        pkill -x hyprsunset >/dev/null 2>&1 || true
-    fi
+    # Disable hyprsunset via identity matrix (keeps daemon alive for instant re-apply)
+    hyprctl hyprsunset identity >/dev/null 2>&1 || true
+    hyprctl hyprsunset gamma 100 >/dev/null 2>&1 || true
 
     # Disable shaders
     hyprctl eval "hl.config({ decoration = { screen_shader = '' } })" >/dev/null 2>&1 || true

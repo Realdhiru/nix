@@ -69,18 +69,16 @@ fi
 
 
 # 1. Hardware CTM Restoration (hyprsunset)
+if ! pgrep -x hyprsunset >/dev/null 2>&1; then
+    systemctl --user start hyprsunset.service 2>/dev/null || true
+fi
+
 if [ "$SUNSET_ACTIVE" = "true" ] && ([ "$TEMP" -ne 6500 ] || [ "$GAMMA" -ne 100 ]); then
-    if ! pgrep -x hyprsunset >/dev/null 2>&1; then
-        nohup hyprsunset -t "$TEMP" -g "$GAMMA" >/dev/null 2>&1 & disown
-        sleep 0.08
-    fi
     hyprctl hyprsunset temperature "$TEMP" >/dev/null 2>&1 || true
     hyprctl hyprsunset gamma "$GAMMA" >/dev/null 2>&1 || true
 else
-    if pgrep -x hyprsunset >/dev/null 2>&1; then
-        hyprctl hyprsunset identity >/dev/null 2>&1 || true
-        pkill -x hyprsunset >/dev/null 2>&1 || true
-    fi
+    hyprctl hyprsunset identity >/dev/null 2>&1 || true
+    hyprctl hyprsunset gamma 100 >/dev/null 2>&1 || true
 fi
 
 # 2. Shader Restoration (Saturation / Paper Grain / CRT Curvature)

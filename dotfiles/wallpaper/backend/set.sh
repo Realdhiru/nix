@@ -97,16 +97,18 @@ atomic_write() {
 CURRENT_TXT="$WALL_STATE_DIR/current_wallpaper.txt"
 LAST_TXT="$WALL_STATE_DIR/last_wallpaper.txt"
 
-# Update persistent state files atomically (tmp + mv in same dir)
-if [ -s "$CURRENT_TXT" ]; then
-    prev_wall="$(cat "$CURRENT_TXT" 2>/dev/null || true)"
-    if [ -n "$prev_wall" ] && [ "$prev_wall" != "$WALL" ]; then
-        atomic_write "$LAST_TXT" "$prev_wall"
+commit_wallpaper_state() {
+    if [ -s "$CURRENT_TXT" ]; then
+        local prev_wall
+        prev_wall="$(cat "$CURRENT_TXT" 2>/dev/null || true)"
+        if [ -n "$prev_wall" ] && [ "$prev_wall" != "$WALL" ]; then
+            atomic_write "$LAST_TXT" "$prev_wall"
+        fi
     fi
-fi
-atomic_write "$CURRENT_TXT" "$WALL"
-[ ! -s "$LAST_TXT" ] && atomic_write "$LAST_TXT" "$WALL"
-[ -z "${FORCE_CYCLE:-}" ] && rm -f "$CACHE_DIR/target_wallpaper.txt"
+    atomic_write "$CURRENT_TXT" "$WALL"
+    [ ! -s "$LAST_TXT" ] && atomic_write "$LAST_TXT" "$WALL"
+    [ -z "${FORCE_CYCLE:-}" ] && rm -f "$CACHE_DIR/target_wallpaper.txt"
+}
 
 # Resolve target outputs once for both video and awww pipelines
 RESOLVED_OUTPUTS=()
@@ -202,6 +204,8 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
         fi
     done
 
+    commit_wallpaper_state
+
     # Ensure only ONE wallpaper renderer runs at any given time.
     # Stop awww-daemon now that mpvpaper is active on all screens.
     if (command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet awww-daemon) || [ -n "$(pidof .awww-daemon-wrapped 2>/dev/null || true)" ]; then
@@ -241,7 +245,14 @@ else
         fi
 
         # Map new image surface before stopping old mpvpaper surface
-        awww img "${AWWW_ARGS[@]}" "$WALL" > /dev/null 2>&1
+        if awww img "${AWWW_ARGS[@]}" "$WALL" > /dev/null 2>&1; then
+            commit_wallpaper_state
+        else
+            "$SCRIPT_DIR/ensure_awww.sh" 8>&- 2>/dev/null || true
+            if awww img "${AWWW_ARGS[@]}" "$WALL" > /dev/null 2>&1; then
+                commit_wallpaper_state
+            fi
+        fi
     fi
 
     # Now that awww surface has mapped, stop mpvpaper on targeted outputs ONLY if it was actually running
