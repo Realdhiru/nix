@@ -20,8 +20,7 @@ hl.config({
     },
 
     scrolling = {
-        column_width = 1.0, -- Defaults to full 100% expansive width (no cramped boxed-in feeling)
-        explicit_column_widths = "0.5, 0.75, 1.0", -- Dynamic width cycles (half, 75% master, full)
+        column_width = 0.5,
         focus_fit_method = 1,
         follow_focus = true,
         fullscreen_on_one_column = true,
