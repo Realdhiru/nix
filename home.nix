@@ -363,14 +363,12 @@
     ]
   '';
 
-  # Mid-Side Center-Cut Karaoke Filter-Chain (Phase A Architecture)
+  # Mid-Side Center-Cut Karaoke Filter-Chain with Lookahead Limiter & Dry Phase-Delay Alignment
   # M = 0.5L + 0.5R, S = 0.5L - 0.5R
   # M' = (1-g)*M + g*bl*LP(M) + g*ha*HP(M)
   # L' = G*(M' + ks*S), R' = G*(M' - ks*S)
-  # Defaults: g=0.9, bl=1.0, ha=1.0, ks=1.0, G=1.5
-  # mp: Gain 1 = 1-g (0.1), Gain 2 = g*bl (0.9), Gain 3 = g*ha (0.9)
-  # karL: Gain 1 = G (1.5), Gain 2 = G*ks (1.5)
-  # karR: Gain 1 = G (1.5), Gain 2 = -G*ks (-1.5)
+  # Wet path: karL/karR -> fastLookaheadLimiter (LADSPA 1913, limit=-1.0 dB, 5ms lookahead) -> finalL/finalR:In 2
+  # Dry path: inL/inR -> delayL/delayR (builtin delay 5ms) -> finalL/finalR:In 1
   xdg.configFile."pipewire/pipewire.conf.d/60-karaoke.conf".text = ''
     context.modules = [
       { name = libpipewire-module-filter-chain
@@ -381,6 +379,14 @@
             nodes = [
               { type = builtin label = copy name = inL }
               { type = builtin label = copy name = inR }
+
+              # Dry path 5ms delay compensation to match limiter lookahead
+              { type = builtin label = delay name = delayL
+                config = { "max-delay" = 0.05 }
+                control = { "Delay (s)" = 0.005 } }
+              { type = builtin label = delay name = delayR
+                config = { "max-delay" = 0.05 }
+                control = { "Delay (s)" = 0.005 } }
 
               { type = builtin label = mixer name = mid
                 control = { "Gain 1" = 0.5 "Gain 2" = 0.5 } }
@@ -396,19 +402,37 @@
                 control = { "Gain 1" = 0.1 "Gain 2" = 0.9 "Gain 3" = 0.9 } }
 
               { type = builtin label = mixer name = karL
-                control = { "Gain 1" = 1.5 "Gain 2" = 1.5 } }
+                control = { "Gain 1" = 1.74 "Gain 2" = 1.74 } }
               { type = builtin label = mixer name = karR
-                control = { "Gain 1" = 1.5 "Gain 2" = -1.5 } }
+                control = { "Gain 1" = 1.74 "Gain 2" = -1.74 } }
+
+              # Fast Lookahead Limiter (Steve Harris SWH LADSPA 1913)
+              { type = ladspa
+                name = limiter
+                plugin = "${pkgs.ladspaPlugins}/lib/ladspa/fast_lookahead_limiter_1913.so"
+                label = fastLookaheadLimiter
+                control = {
+                  "Input gain (dB)"  = 0.0
+                  "Limit (dB)"       = -1.0
+                  "Release time (s)" = 0.50
+                }
+              }
 
               { type = builtin label = mixer name = finalL control = { "Gain 1" = 1.0 "Gain 2" = 0.0 } }
               { type = builtin label = mixer name = finalR control = { "Gain 1" = 1.0 "Gain 2" = 0.0 } }
             ]
             links = [
+              # Dry path to delay
+              { output = "inL:Out" input = "delayL:In" }
+              { output = "inR:Out" input = "delayR:In" }
+
+              # Mid/Side decomposition
               { output = "inL:Out" input = "mid:In 1" }
               { output = "inR:Out" input = "mid:In 2" }
               { output = "inL:Out" input = "side:In 1" }
               { output = "inR:Out" input = "side:In 2" }
 
+              # Filter branches
               { output = "mid:Out" input = "lp1:In" }
               { output = "lp1:Out" input = "lp2:In" }
               { output = "mid:Out" input = "hp1:In" }
@@ -418,15 +442,21 @@
               { output = "lp2:Out" input = "mp:In 2" }
               { output = "hp2:Out" input = "mp:In 3" }
 
+              # Re-matrix to L/R
               { output = "mp:Out"   input = "karL:In 1" }
               { output = "side:Out" input = "karL:In 2" }
               { output = "mp:Out"   input = "karR:In 1" }
               { output = "side:Out" input = "karR:In 2" }
 
-              { output = "inL:Out"  input = "finalL:In 1" }
-              { output = "karL:Out" input = "finalL:In 2" }
-              { output = "inR:Out"  input = "finalR:In 1" }
-              { output = "karR:Out" input = "finalR:In 2" }
+              # Limiter in wet path
+              { output = "karL:Out" input = "limiter:Input 1" }
+              { output = "karR:Out" input = "limiter:Input 2" }
+
+              # Selectors: In 1 = delayed dry, In 2 = limited wet
+              { output = "delayL:Out"    input = "finalL:In 1" }
+              { output = "limiter:Output 1" input = "finalL:In 2" }
+              { output = "delayR:Out"    input = "finalR:In 1" }
+              { output = "limiter:Output 2" input = "finalR:In 2" }
             ]
             inputs  = [ "inL:In" "inR:In" ]
             outputs = [ "finalL:Out" "finalR:Out" ]
