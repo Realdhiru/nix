@@ -2,6 +2,7 @@
 
 ## 2026-11-03 — Wallpaper State Reliability & Hyprsunset Responsiveness
 
+- **Dynamic Responsive Column Sizing in Scrolling Layout ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Replaced fixed 50% column width with dynamic space-filling logic: single windows expand to cover the entire screen (100% width), two windows automatically share the monitor side-by-side (50% each), three or more windows slide along the continuous tape, and single remaining windows re-expand to full width when other windows close.
 - **Fullscreen Scroll Inhibit & Column Isolation ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Set `scrolling.fullscreen_on_one_column = false` and synchronized `inhibit_scroll` across `window.fullscreen`, `window.active`, and `workspace.active` events, eliminating forced scrolling blinking and viewport fighting on fullscreen windows while keeping normal ribbon scrolling active on non-fullscreen windows.
 - **Window Rules Hygiene & Dead Rules Purge ([`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua))**: Purged dead Steam dialog and settings window rules from configuration, ensuring no orphaned rules or uninstalled application constraints exist.
 - **Brave & YouTube Window Sizing Constraints ([`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua))**: Removed hardcoded `min_size = { 426, 240 }` constraint from YouTube web app and Picture-in-Picture window rules, eliminating the artificial size barrier when resizing floating video popups and web apps.

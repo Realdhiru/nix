@@ -20,7 +20,7 @@ hl.config({
     },
 
     scrolling = {
-        column_width = 0.5,
+        column_width = 1.0,
         focus_fit_method = 1,
         follow_focus = true,
         fullscreen_on_one_column = false,
@@ -51,8 +51,69 @@ local function sync_fullscreen_scroll_inhibit(win)
     end
 end
 
+-- Responsive dynamic column sizing for scrolling layout:
+-- 1. Single window on workspace expands to cover the entire usable screen (100% width).
+-- 2. Two windows dynamically share the screen side-by-side (50% each), filling available space without ribbon overflow.
+-- 3. Three or more windows scroll smoothly along the continuous tape at 50% width.
+-- 4. Single remaining window automatically re-expands to full width when other windows close.
+local function get_screen_dimensions()
+    local mons = hl.get_monitors()
+    local m = mons and mons[1]
+    local width = 1440
+    local height = 810
+    if m and m.width and m.scale and m.scale > 0 then
+        width = math.floor(m.width / m.scale)
+        height = math.floor(m.height / m.scale)
+    end
+    local usable_w = width - 64
+    local usable_h = height - 24
+    local half_w = math.floor((usable_w - 12) / 2)
+    return usable_w, half_w, usable_h
+end
+
+local function get_tiled_windows_on_workspace(ws_id)
+    local list = {}
+    for _, w in ipairs(hl.get_windows()) do
+        if w.mapped and not w.floating and w.workspace and w.workspace.id == ws_id then
+            table.insert(list, w)
+        end
+    end
+    return list
+end
+
+local function sync_dynamic_column_width(ws_id)
+    if not ws_id then
+        local ws = hl.get_active_workspace()
+        ws_id = ws and ws.id
+    end
+    if not ws_id then return end
+
+    local wins = get_tiled_windows_on_workspace(ws_id)
+    local count = #wins
+    local full_w, half_w, full_h = get_screen_dimensions()
+
+    if count <= 1 then
+        hl.config({ scrolling = { column_width = 1.0 } })
+        if count == 1 and wins[1] and wins[1].address and (wins[1].fullscreen == 0 or not wins[1].fullscreen) then
+            local h = (wins[1].size and wins[1].size[2]) or full_h
+            hl.dispatch(hl.dsp.window.resize({ window = "address:" .. wins[1].address, x = full_w, y = h, exact = true }))
+        end
+    elseif count == 2 then
+        hl.config({ scrolling = { column_width = 0.5 } })
+        for _, w in ipairs(wins) do
+            if w.address and (w.fullscreen == 0 or not w.fullscreen) then
+                local h = (w.size and w.size[2]) or full_h
+                hl.dispatch(hl.dsp.window.resize({ window = "address:" .. w.address, x = half_w, y = h, exact = true }))
+            end
+        end
+    else
+        hl.config({ scrolling = { column_width = 0.5 } })
+    end
+end
+
 hl.on("window.fullscreen", function(win)
     sync_fullscreen_scroll_inhibit(win)
+    sync_dynamic_column_width()
 end)
 
 hl.on("window.active", function(win)
@@ -61,4 +122,17 @@ end)
 
 hl.on("workspace.active", function()
     sync_fullscreen_scroll_inhibit()
+    sync_dynamic_column_width()
 end)
+
+hl.on("window.open", function(w)
+    local ws_id = (w and w.workspace and w.workspace.id) or (hl.get_active_workspace() and hl.get_active_workspace().id)
+    sync_dynamic_column_width(ws_id)
+end)
+
+hl.on("window.close", function(w)
+    local ws_id = (w and w.workspace and w.workspace.id) or (hl.get_active_workspace() and hl.get_active_workspace().id)
+    sync_dynamic_column_width(ws_id)
+end)
+
+sync_dynamic_column_width()
