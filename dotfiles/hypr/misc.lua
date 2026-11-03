@@ -89,6 +89,16 @@ local function resize_if_needed(win, target_w, default_h)
     end
 end
 
+local function dispatch_scrolling_layout(cmd)
+    local cur = hl.get_option("general:layout")
+    local layout_name = (cur and cur.str) or ""
+    if layout_name == "scrolling" then
+        pcall(function()
+            hl.dispatch(hl.dsp.layout(cmd))
+        end)
+    end
+end
+
 local function sync_scrolling_state(ws_id, force_reset_tape)
     local active_ws = hl.get_active_workspace()
     local active_ws_id = active_ws and active_ws.id
@@ -123,29 +133,28 @@ local function sync_scrolling_state(ws_id, force_reset_tape)
     end
 
     if is_active_ws then
-        local should_reset = force_reset_tape or (wins[1] and wins[1].at and wins[1].at[1] and wins[1].at[1] > 65)
-        if count <= 3 and should_reset then
-            hl.dispatch(hl.dsp.layout("move -99999"))
+        if count <= 3 and force_reset_tape then
+            dispatch_scrolling_layout("move -99999")
         end
 
-        if is_fs or count <= 3 then
-            hl.dispatch(hl.dsp.layout("inhibit_scroll true"))
+        if is_fs then
+            dispatch_scrolling_layout("inhibit_scroll true")
         else
-            hl.dispatch(hl.dsp.layout("inhibit_scroll false"))
+            dispatch_scrolling_layout("inhibit_scroll false")
         end
     end
 end
 
-hl.on("window.fullscreen", function()
-    sync_scrolling_state(nil, true)
+hl.on("window.fullscreen", function(win)
+    sync_scrolling_state(nil, false)
 end)
 
-hl.on("window.active", function()
+hl.on("window.active", function(win)
     sync_scrolling_state()
 end)
 
 hl.on("workspace.active", function()
-    sync_scrolling_state(nil, true)
+    sync_scrolling_state(nil, false)
 end)
 
 hl.on("window.open", function(w)
@@ -158,4 +167,4 @@ hl.on("window.close", function(w)
     sync_scrolling_state(ws_id, true)
 end)
 
-sync_scrolling_state(nil, true)
+sync_scrolling_state(nil, false)
