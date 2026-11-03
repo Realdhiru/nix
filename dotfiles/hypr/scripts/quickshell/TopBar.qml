@@ -90,7 +90,7 @@ Variants {
                 return col;
             }
 
-            readonly property color accentColor: ensureBright((Config.accentColorSource && mocha[Config.accentColorSource]) ? mocha[Config.accentColorSource] : mocha.primary)
+            readonly property color accentColor: ensureBright((Config.barAccentColorSource && mocha[Config.barAccentColorSource]) ? mocha[Config.barAccentColorSource] : mocha.text)
 
             readonly property color pillBg: {
                 let baseCol = Config.topbarColorSource === "glass" ? Qt.rgba(1, 1, 1, 1) : (mocha[Config.topbarColorSource] || mocha.surface1);
@@ -525,7 +525,7 @@ Variants {
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
 
-                                        color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
+                                        color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.subtext1))
 
                                         Behavior on color { ColorAnimation { duration: 250 } }
                                     }
@@ -843,7 +843,7 @@ Variants {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(18)
                                     font.weight: Font.Black
-                                    color: mocha.subtext0
+                                    color: mocha.text
                                 }
 
                                 Text {
@@ -861,7 +861,7 @@ Variants {
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: barWindow.s(18)
                                     font.weight: Font.Black
-                                    color: mocha.subtext0
+                                    color: mocha.text
                                 }
                             }
 

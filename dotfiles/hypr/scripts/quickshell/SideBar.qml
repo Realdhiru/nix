@@ -93,7 +93,7 @@ Variants {
                 return col;
             }
 
-            readonly property color accentColor: ensureBright((Config.accentColorSource && mocha[Config.accentColorSource]) ? mocha[Config.accentColorSource] : mocha.primary)
+            readonly property color accentColor: ensureBright((Config.barAccentColorSource && mocha[Config.barAccentColorSource]) ? mocha[Config.barAccentColorSource] : mocha.text)
             readonly property color brightColor: mocha.text
             readonly property color volColor: mocha.text
             readonly property color wifiColor: mocha.text
@@ -542,7 +542,7 @@ Variants {
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: barWindow.s(12)
                                 font.weight: Font.Bold
-                                color: barWindow.accentColor
+                                color: mocha.subtext0
                             }
                         }
 
@@ -722,7 +722,7 @@ Variants {
                                             horizontalAlignment: Text.AlignHCenter
                                             verticalAlignment: Text.AlignVCenter
 
-                                            color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.overlay0))
+                                            color: index === workspacesModel.activeIndex ? mocha.crust : (isHovered ? mocha.text : (stateLabel === "occupied" ? mocha.text : mocha.subtext1))
 
                                             Behavior on color { ColorAnimation { duration: 250 } }
                                         }
