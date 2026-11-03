@@ -6,6 +6,7 @@
 set -uo pipefail
 
 SRC="$HOME/Pictures/Wallpapers"
+PROJECTS_SRC="$HOME/Projects/Wallpapers"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CACHE_DIR="$HOME/.cache/quickshell/wallpaper_picker"
 THUMB="$CACHE_DIR/thumbs"
@@ -142,29 +143,49 @@ cleanup_residue
 if [ -f "$SRC/scripts/auto_organize.py" ]; then
     python3 "$SRC/scripts/auto_organize.py" --force >/dev/null 2>&1 || true
 fi
+if [ -d "$PROJECTS_SRC" ] && [ -f "$PROJECTS_SRC/scripts/auto_organize.py" ]; then
+    python3 "$PROJECTS_SRC/scripts/auto_organize.py" --force >/dev/null 2>&1 || true
+fi
 if [ -x "$THUMB_SCRIPT" ]; then
     "$THUMB_SCRIPT" &
 fi
 
-# Watch ~/Pictures/Wallpapers recursively for any media changes (line-buffered for instant response)
+# Watch ~/Pictures/Wallpapers and ~/Projects/Wallpapers recursively for any media changes (line-buffered for instant response)
+WATCH_DIRS=()
+[ -d "$SRC" ] && WATCH_DIRS+=("$SRC")
+[ -d "$PROJECTS_SRC" ] && WATCH_DIRS+=("$PROJECTS_SRC")
+
+if [ ${#WATCH_DIRS[@]} -eq 0 ]; then
+    exit 0
+fi
+
 stdbuf -oL inotifywait -m -r -q \
     -e create -e delete -e moved_from -e moved_to -e close_write \
     --exclude "(\.git|previews|scripts|.*\.tmp|.*~)" \
     --format '%w%f' \
-    "$SRC" 2>/dev/null | while read -r changed_file; do
+    "${WATCH_DIRS[@]}" 2>/dev/null | while read -r changed_file; do
     # Debounce: drain any events arriving in rapid succession within 0.5s
     while read -t 0.5 -r next_file; do
         :
     done
 
-    # If any new media is dropped/written in root, auto-organize into proper category folder
-    if [ -f "$SRC/scripts/auto_organize.py" ]; then
-        python3 "$SRC/scripts/auto_organize.py" --force >/dev/null 2>&1 || true
+    # If the change occurred in Projects/Wallpapers, auto-organize that repository
+    if [[ "$changed_file" == "$PROJECTS_SRC"* ]]; then
+        if [ -f "$PROJECTS_SRC/scripts/auto_organize.py" ]; then
+            python3 "$PROJECTS_SRC/scripts/auto_organize.py" --force >/dev/null 2>&1 || true
+        fi
     fi
 
-    cleanup_residue
-    if [ -x "$THUMB_SCRIPT" ]; then
-        "$THUMB_SCRIPT" &
+    # If the change occurred in Pictures/Wallpapers, auto-organize desktop wallpapers & update caches
+    if [[ "$changed_file" == "$SRC"* ]]; then
+        if [ -f "$SRC/scripts/auto_organize.py" ]; then
+            python3 "$SRC/scripts/auto_organize.py" --force >/dev/null 2>&1 || true
+        fi
+
+        cleanup_residue
+        if [ -x "$THUMB_SCRIPT" ]; then
+            "$THUMB_SCRIPT" &
+        fi
     fi
 done
 
