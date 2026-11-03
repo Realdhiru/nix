@@ -59,6 +59,7 @@ Item {
     property int activeEditIndex: 0
     property int activeFocusIndex: 0 // 0: Res, 1: Orientation, 2: Frame, 3: Scale, 4: Apply
     property string displayMode: "extend"
+    property int externalMonitorCount: 0
     property real uiScale: 0.10
 
     // Wayland Absolute Anchor tracking
@@ -552,6 +553,7 @@ Item {
 
                     let hasMirror = false;
                     let activeExtCount = 0;
+                    let totalExtCount = 0;
                     let internalActive = false;
                     for (let i = 0; i < data.length; i++) {
                         if (data[i].mirrorOf && data[i].mirrorOf !== "none" && data[i].mirrorOf !== "") {
@@ -560,13 +562,15 @@ Item {
                         if (data[i].name && window.isInternalName(data[i].name)) {
                             if (!data[i].disabled) internalActive = true;
                         } else if (data[i].name) {
+                            totalExtCount++;
                             if (!data[i].disabled) activeExtCount++;
                         }
                     }
+                    window.externalMonitorCount = totalExtCount;
 
                     if (hasMirror) {
                         window.displayMode = "mirror";
-                    } else if (activeExtCount === 0) {
+                    } else if (totalExtCount === 0 || activeExtCount === 0) {
                         window.displayMode = "internal";
                     } else if (!internalActive && activeExtCount > 0) {
                         window.displayMode = "external";
@@ -608,7 +612,7 @@ Item {
         let monitorsDir = stateDir + "/monitors";
         let intentFile = monitorsDir + "/intent.json";
         let tmpFile = intentFile + ".tmp";
-        let intent = (window.displayMode === "mirror" || window.displayMode === "internal" || window.displayMode === "external") ? window.displayMode : "extend";
+        let intent = (window.displayMode === "mirror" || window.displayMode === "internal" || (window.displayMode === "external" && window.externalMonitorCount > 0)) ? window.displayMode : (window.externalMonitorCount > 0 ? "extend" : "internal");
 
         // 1. Build displays dictionary keyed by desc:
         let displays = {};
@@ -1584,12 +1588,17 @@ Item {
                         opacity: window.applyInFlight ? 0.5 : 1.0
                         Behavior on opacity { NumberAnimation { duration: 150 } }
 
-                        property var modeItems: [
-                            { mode: "extend",   label: "Extend" },
-                            { mode: "mirror",   label: "Mirror" },
-                            { mode: "internal", label: "Laptop" },
-                            { mode: "external", label: "External" }
-                        ]
+                        property var modeItems: {
+                            let items = [
+                                { mode: "extend",   label: "Extend" },
+                                { mode: "mirror",   label: "Mirror" },
+                                { mode: "internal", label: "Laptop" }
+                            ];
+                            if (window.externalMonitorCount > 0) {
+                                items.push({ mode: "external", label: "External" });
+                            }
+                            return items;
+                        }
 
                         Repeater {
                             model: parent.modeItems
@@ -1623,6 +1632,7 @@ Item {
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
+                                        if (modelData.mode === "external" && window.externalMonitorCount <= 0) return;
                                         window.activeFocusIndex = 4;
                                         window.displayMode = modelData.mode;
                                         window.triggerApply();
