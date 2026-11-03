@@ -20,7 +20,7 @@ hl.config({
     },
 
     scrolling = {
-        column_width = 1.0,
+        column_width = 0.5,
         focus_fit_method = 1,
         follow_focus = true,
         fullscreen_on_one_column = false,
@@ -39,15 +39,11 @@ hl.config({
     },
 })
 
--- Unified scroll inhibition and responsive dynamic column sizing:
--- 1. When windows count <= 3 on the workspace, or when a fullscreen window is active:
---    scroll is inhibited (`inhibit_scroll true`) so the screen never scrolls or jumps off to the right.
---    The tape is pinned to the left edge (`move -99999`) ensuring all windows fit side-by-side on screen.
--- 2. Single window expands to 100% usable screen width.
--- 3. Two windows dynamically split the screen side-by-side (50% each).
--- 4. Three windows dynamically split the screen side-by-side (33.3% each) without UI/text clipping.
--- 5. Next-spawn column_width is pre-configured so new windows never overflow or force-scroll on creation.
--- 6. Four or more windows unlock smooth continuous ribbon scrolling (`inhibit_scroll false`).
+-- Dynamic ribbon layout with continuous overflow and scrolling:
+-- 1. Single window on workspace dynamically expands to full usable screen width (100%).
+-- 2. Two or more windows use 50% columns so 3+ windows naturally overflow onto the ribbon (150%+),
+--    enabling continuous horizontal scrolling across the tape anytime.
+-- 3. Inhibit scroll is strictly isolated to fullscreen windows to eliminate compositor blinking.
 local function get_screen_dimensions()
     local mons = hl.get_monitors()
     local m = mons and mons[1]
@@ -60,8 +56,7 @@ local function get_screen_dimensions()
     local usable_w = width - 64
     local usable_h = height - 24
     local half_w = math.floor((usable_w - 10) / 2)
-    local third_w = math.floor((usable_w - 20) / 3)
-    return usable_w, half_w, third_w, usable_h
+    return usable_w, half_w, usable_h
 end
 
 local function get_tiled_windows_on_workspace(ws_id)
@@ -98,7 +93,7 @@ local function dispatch_scrolling_layout(cmd)
     end
 end
 
-local function sync_scrolling_state(ws_id, force_reset_tape)
+local function sync_scrolling_state(ws_id)
     local active_ws = hl.get_active_workspace()
     local active_ws_id = active_ws and active_ws.id
     local target_ws_id = ws_id or active_ws_id
@@ -107,35 +102,25 @@ local function sync_scrolling_state(ws_id, force_reset_tape)
     local is_active_ws = (active_ws_id == target_ws_id)
     local wins = get_tiled_windows_on_workspace(target_ws_id)
     local count = #wins
-    local full_w, half_w, third_w, full_h = get_screen_dimensions()
+    local full_w, half_w, full_h = get_screen_dimensions()
 
     local active_win = hl.get_active_window()
     local is_fs = active_win and active_win.fullscreen and active_win.fullscreen ~= 0
 
-    if count == 0 then
-        hl.config({ scrolling = { column_width = 1.0 } })
-    elseif count == 1 then
-        resize_if_needed(wins[1], full_w, full_h)
+    if count <= 1 then
+        if count == 1 and wins[1] then
+            resize_if_needed(wins[1], full_w, full_h)
+        end
         hl.config({ scrolling = { column_width = 0.5 } })
-    elseif count == 2 then
+    else
+        -- 2 or more windows: standard 50% columns so 3+ windows overflow onto the ribbon
+        hl.config({ scrolling = { column_width = 0.5 } })
         for _, w in ipairs(wins) do
             resize_if_needed(w, half_w, full_h)
         end
-        hl.config({ scrolling = { column_width = 0.333333 } })
-    elseif count == 3 then
-        for _, w in ipairs(wins) do
-            resize_if_needed(w, third_w, full_h)
-        end
-        hl.config({ scrolling = { column_width = 0.333333 } })
-    else
-        hl.config({ scrolling = { column_width = 0.333333 } })
     end
 
     if is_active_ws then
-        if count <= 3 and force_reset_tape then
-            dispatch_scrolling_layout("move -99999")
-        end
-
         if is_fs then
             dispatch_scrolling_layout("inhibit_scroll true")
         else
@@ -144,26 +129,26 @@ local function sync_scrolling_state(ws_id, force_reset_tape)
     end
 end
 
-hl.on("window.fullscreen", function(win)
-    sync_scrolling_state(nil, false)
+hl.on("window.fullscreen", function()
+    sync_scrolling_state()
 end)
 
-hl.on("window.active", function(win)
+hl.on("window.active", function()
     sync_scrolling_state()
 end)
 
 hl.on("workspace.active", function()
-    sync_scrolling_state(nil, false)
+    sync_scrolling_state()
 end)
 
 hl.on("window.open", function(w)
     local ws_id = (w and w.workspace and w.workspace.id)
-    sync_scrolling_state(ws_id, true)
+    sync_scrolling_state(ws_id)
 end)
 
 hl.on("window.close", function(w)
     local ws_id = (w and w.workspace and w.workspace.id)
-    sync_scrolling_state(ws_id, true)
+    sync_scrolling_state(ws_id)
 end)
 
-sync_scrolling_state(nil, false)
+sync_scrolling_state()
