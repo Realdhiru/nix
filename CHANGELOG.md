@@ -2,6 +2,7 @@
 
 ## 2026-11-03 — Wallpaper State Reliability & Hyprsunset Responsiveness
 
+- **Deterministic Natural Window Scaling & Left-Edge Pinning ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Implemented clean native window scaling for 1 (100%), 2 (50%), 3 (33.3%), and 4+ (ribbon overflow) windows with automatic scale-back on quit and exact delta pinning to eliminate left-side void space.
 - **Scrolling Layout Bloat Purge & Pure Declarative Restoration ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Purged all imperative Lua event hooks, resize loops, tape clamps, and duct-tape overrides, restoring 100% native declarative Hyprland scrolling layout with zero runtime errors.
 - **Unrestricted Ribbon Overflow & Continuous Scrolling ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Removed all tape clamps and 3-window squeezing constraints, allowing columns (50% each) to naturally overflow onto the ribbon so horizontal scrolling is always available anytime.
 - **Hyprland Lua API Layout Dispatch Guard ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Fixed invalid `hl.get_option` call with native `ws.tiled_layout` property check, clearing top red error banner and yellow runtime notifications.
