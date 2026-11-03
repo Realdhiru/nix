@@ -325,6 +325,8 @@ hl.bind(mainMod .. " + Z", hl.dsp.window.drag(), { mouse = true, description = "
 hl.bind(mainMod .. " + X", hl.dsp.window.resize(), { mouse = true, description = "hold to resize window" })
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "drag window with mouse" })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "resize window with mouse" })
+hl.bind(mainMod .. " + ALT + mouse_down", hl.dsp.layout("move +col"), { description = "scroll ribbon right with mouse wheel" })
+hl.bind(mainMod .. " + ALT + mouse_up", hl.dsp.layout("move -col"), { description = "scroll ribbon left with mouse wheel" })
 
 -- ======================================================
 -- 10. Rarely Used: Special Workspaces

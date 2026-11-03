@@ -22,7 +22,7 @@ hl.config({
     scrolling = {
         column_width = 0.5,
         focus_fit_method = 1,
-        follow_focus = false,
+        follow_focus = true,
         fullscreen_on_one_column = true,
         direction = "right",
     },
@@ -38,3 +38,13 @@ hl.config({
         zoom_detached_camera = false,
     },
 })
+
+-- Automatically inhibit ribbon scrolling in fullscreen mode to prevent bouncy/laggy geometry fighting
+hl.on("window.fullscreen", function(win)
+    local is_fs = win and win.fullscreen and win.fullscreen ~= 0
+    if is_fs then
+        hl.dispatch(hl.dsp.layout("inhibit_scroll true"))
+    else
+        hl.dispatch(hl.dsp.layout("inhibit_scroll false"))
+    end
+end)
