@@ -1,3 +1,17 @@
+local home = os.getenv("HOME") or ""
+local desktop_state = os.getenv("DESKTOP_STATE_DIR") or ((os.getenv("XDG_STATE_HOME") or (home .. "/.local/state")) .. "/desktop")
+local layout_file = desktop_state .. "/layout/current_layout.txt"
+
+local current_layout = "dwindle"
+local lf = io.open(layout_file, "r")
+if lf then
+    local val = lf:read("*l")
+    lf:close()
+    if val and (val == "scrolling" or val == "dwindle") then
+        current_layout = val
+    end
+end
+
 hl.config({
     general = {
         gaps_in  = 5,
@@ -15,7 +29,7 @@ hl.config({
 
         allow_tearing = false,
 
-        layout = "dwindle",
+        layout = current_layout,
     },
 
     decoration = {
