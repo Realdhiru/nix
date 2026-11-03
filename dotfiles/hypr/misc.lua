@@ -103,8 +103,8 @@ local function sync_window_scale(ws_id, exclude_addr)
     end
 end
 
--- Strictly clamps ribbon margins: ensures leftmost window never drifts into screen void,
--- and auto-scrolls margins of focused windows so they cleanly frame without clipping.
+-- Strictly clamps ribbon margins: ensures leftmost window never drifts into screen void (x > 52),
+-- while preserving free scroll framing across the ribbon.
 local function clamp_ribbon_margins(ws_id)
     local active_ws = hl.get_active_workspace()
     local target_ws_id = ws_id or (active_ws and active_ws.id)
@@ -133,24 +133,6 @@ local function clamp_ribbon_margins(ws_id)
             hl.dispatch(hl.dsp.layout("move " .. tostring(-delta)))
         end)
         return
-    end
-
-    -- Auto-scroll margins for focused window so view never gets messy/clipped
-    local active_win = hl.get_active_window()
-    if active_win and active_win.workspace and active_win.workspace.id == target_ws_id and not active_win.floating then
-        local ax = active_win.at and active_win.at.x
-        local aw = active_win.size and active_win.size.x
-        if ax and aw and aw > 50 then
-            if ax < 52 then
-                pcall(function()
-                    hl.dispatch(hl.dsp.layout("move " .. tostring(52 - ax)))
-                end)
-            elseif (ax + aw) > 1430 then
-                pcall(function()
-                    hl.dispatch(hl.dsp.layout("move " .. tostring(1428 - (ax + aw))))
-                end)
-            end
-        end
     end
 end
 
