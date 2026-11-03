@@ -67,13 +67,11 @@ Variants {
                 id: mocha
             }
 
-            readonly property color pillBorder: (Config.borderWidth > 0 && Config.borderOpacity > 0)
-                ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, Config.borderOpacity)
-                : "transparent"
+            readonly property color notifAccent: (Config.accentColorSource && mocha[Config.accentColorSource]) ? mocha[Config.accentColorSource] : mocha.primary
 
-            readonly property color pillBorderHover: (Config.borderWidth > 0 && Config.borderOpacity > 0)
-                ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, Config.borderOpacity * 2)
-                : "transparent"
+            readonly property color pillBorder: Qt.rgba(toastWindow.notifAccent.r, toastWindow.notifAccent.g, toastWindow.notifAccent.b, 0.35)
+
+            readonly property color pillBorderHover: Qt.rgba(toastWindow.notifAccent.r, toastWindow.notifAccent.g, toastWindow.notifAccent.b, 0.70)
 
             property var n: NotifTicker.tickerNotif
             onNChanged: {
@@ -203,7 +201,7 @@ Variants {
                         id: osdSliderContainer
                         Layout.alignment: Qt.AlignVCenter
                         Layout.preferredWidth: toastWindow.s(180)
-                        Layout.preferredHeight: toastWindow.s(14)
+                        Layout.preferredHeight: toastWindow.s(8)
 
                         property bool isMuted: toastWindow.n && (toastWindow.n.body.indexOf("Muted") !== -1 || toastWindow.n.body === "Muted")
                         property real pct: {
@@ -227,18 +225,7 @@ Variants {
                                 width: parent.fillW
                                 height: parent.height
                                 radius: height / 2
-                                color: osdSliderContainer.isMuted ? mocha.subtext1 : mocha.blue
-                            }
-
-                            Rectangle {
-                                width: parent.height + toastWindow.s(4)
-                                height: parent.height + toastWindow.s(4)
-                                radius: width / 2
-                                color: osdSliderContainer.isMuted ? mocha.subtext1 : mocha.blue
-                                border.color: mocha.surface2
-                                border.width: toastWindow.s(1)
-                                x: Math.max(0, Math.min(osdSliderContainer.width - width, parent.fillW - width / 2))
-                                anchors.verticalCenter: parent.verticalCenter
+                                color: osdSliderContainer.isMuted ? mocha.subtext1 : toastWindow.notifAccent
                             }
                         }
                     }
@@ -272,16 +259,16 @@ Variants {
                         Layout.alignment: Qt.AlignVCenter
                         text: toastWindow.n ? toastWindow.n.appName : ""
                         font.family: "JetBrains Mono"
-                        font.weight: Font.Medium
-                        font.pixelSize: toastWindow.s(10)
-                        color: mocha.subtext1
+                        font.weight: Font.Bold
+                        font.pixelSize: toastWindow.s(10.5)
+                        color: mocha.subtext0
                     }
 
                     Text {
                         Layout.alignment: Qt.AlignVCenter
                         text: "\u2022"
                         font.pixelSize: toastWindow.s(10)
-                        color: mocha.overlay0
+                        color: mocha.subtext1
                     }
 
                     Text {
@@ -318,7 +305,7 @@ Variants {
                                 width: actLabel.implicitWidth + toastWindow.s(14)
                                 radius: toastWindow.s(7)
                                 property bool isPrimary: index === 0
-                                color: isPrimary ? (actMa.containsMouse ? mocha.blue : Qt.darker(mocha.blue, 1.2)) : (actMa.containsMouse ? mocha.surface2 : mocha.surface1)
+                                color: isPrimary ? (actMa.containsMouse ? Qt.lighter(toastWindow.notifAccent, 1.15) : toastWindow.notifAccent) : (actMa.containsMouse ? Qt.rgba(toastWindow.notifAccent.r, toastWindow.notifAccent.g, toastWindow.notifAccent.b, 0.30) : Qt.rgba(toastWindow.notifAccent.r, toastWindow.notifAccent.g, toastWindow.notifAccent.b, 0.15))
                                 Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                                 Text {
@@ -348,7 +335,7 @@ Variants {
                         height: toastWindow.s(22)
                         width: toastWindow.s(22)
                         radius: toastWindow.s(11)
-                        color: closeMa.containsMouse ? mocha.surface2 : "transparent"
+                        color: closeMa.containsMouse ? Qt.rgba(toastWindow.notifAccent.r, toastWindow.notifAccent.g, toastWindow.notifAccent.b, 0.20) : "transparent"
                         Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
                         Text {
@@ -356,7 +343,7 @@ Variants {
                             text: "󰅖"
                             font.family: "Iosevka Nerd Font"
                             font.pixelSize: toastWindow.s(11)
-                            color: closeMa.containsMouse ? mocha.red : mocha.overlay1
+                            color: closeMa.containsMouse ? mocha.red : Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.5)
                             Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
                         }
 

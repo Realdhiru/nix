@@ -91,6 +91,7 @@ Variants {
             }
 
             readonly property color accentColor: ensureBright((Config.barAccentColorSource && mocha[Config.barAccentColorSource]) ? mocha[Config.barAccentColorSource] : mocha.text)
+            readonly property color wsActiveColor: ensureBright((Config.accentColorSource && mocha[Config.accentColorSource]) ? mocha[Config.accentColorSource] : mocha.primary)
 
             readonly property color pillBg: {
                 let baseCol = Config.topbarColorSource === "glass" ? Qt.rgba(1, 1, 1, 1) : (mocha[Config.topbarColorSource] || mocha.surface1);
@@ -458,7 +459,7 @@ Variants {
                             y: (workspacesBox.height - barWindow.s(32)) / 2
                             height: barWindow.s(32)
                             radius: barWindow.s(10)
-                            color: Qt.rgba(barWindow.accentColor.r, barWindow.accentColor.g, barWindow.accentColor.b, 0.78)
+                            color: Qt.rgba(barWindow.wsActiveColor.r, barWindow.wsActiveColor.g, barWindow.wsActiveColor.b, 0.85)
                             z: 0
 
                             property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsRepeater.count)
@@ -943,15 +944,15 @@ Variants {
                                     Layout.alignment: Qt.AlignVCenter
                                     text: notifLayout.n ? notifLayout.n.appName : ""
                                     font.family: "JetBrains Mono"
-                                    font.weight: Font.Medium
-                                    font.pixelSize: barWindow.s(10)
-                                    color: mocha.overlay1
+                                    font.weight: Font.Bold
+                                    font.pixelSize: barWindow.s(10.5)
+                                    color: mocha.subtext0
                                 }
                                 Text {
                                     Layout.alignment: Qt.AlignVCenter
                                     text: "\u2022"
                                     font.pixelSize: barWindow.s(10)
-                                    color: mocha.overlay0
+                                    color: mocha.subtext1
                                 }
                                 Text {
                                     Layout.alignment: Qt.AlignVCenter
@@ -983,7 +984,7 @@ Variants {
                                             width: actLabel.implicitWidth + barWindow.s(14)
                                             radius: barWindow.s(7)
                                             property bool isPrimary: index === 0
-                                            color: isPrimary ? (actMa.containsMouse ? mocha.blue : Qt.darker(mocha.blue, 1.2)) : (actMa.containsMouse ? mocha.surface2 : mocha.surface1)
+                                            color: isPrimary ? (actMa.containsMouse ? Qt.lighter(barWindow.wsActiveColor, 1.15) : barWindow.wsActiveColor) : (actMa.containsMouse ? Qt.rgba(barWindow.wsActiveColor.r, barWindow.wsActiveColor.g, barWindow.wsActiveColor.b, 0.30) : Qt.rgba(barWindow.wsActiveColor.r, barWindow.wsActiveColor.g, barWindow.wsActiveColor.b, 0.15))
                                             Behavior on color { ColorAnimation { duration: 150 } }
 
                                             Text {
@@ -1012,7 +1013,7 @@ Variants {
                                     height: barWindow.s(22)
                                     width: barWindow.s(22)
                                     radius: barWindow.s(11)
-                                    color: closeMa.containsMouse ? mocha.surface2 : "transparent"
+                                    color: closeMa.containsMouse ? Qt.rgba(barWindow.wsActiveColor.r, barWindow.wsActiveColor.g, barWindow.wsActiveColor.b, 0.20) : "transparent"
                                     Behavior on color { ColorAnimation { duration: 150 } }
 
                                     Text {
@@ -1020,7 +1021,7 @@ Variants {
                                         text: "󰅖"
                                         font.family: "Iosevka Nerd Font"
                                         font.pixelSize: barWindow.s(11)
-                                        color: closeMa.containsMouse ? mocha.red : mocha.overlay1
+                                        color: closeMa.containsMouse ? mocha.red : Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, 0.5)
                                         Behavior on color { ColorAnimation { duration: 150 } }
                                     }
 
@@ -1074,7 +1075,7 @@ Variants {
                                         id: sliderContainer
                                         Layout.alignment: Qt.AlignVCenter
                                         Layout.preferredWidth: barWindow.s(200)
-                                        Layout.preferredHeight: barWindow.s(16)
+                                        Layout.preferredHeight: barWindow.s(8)
                                         
                                         property bool isMuted: notifLayout.n && (notifLayout.n.body.indexOf("Muted") !== -1 || notifLayout.n.body === "Muted")
 
@@ -1091,7 +1092,7 @@ Variants {
                                             color: mocha.surface1
                                         }
                                         
-                                        // Fill and Thumb container (for shared animation)
+                                        // Fill container (for smooth progress animation)
                                         Item {
                                             anchors.fill: parent
                                             
@@ -1102,19 +1103,7 @@ Variants {
                                                 width: parent.fillW
                                                 height: parent.height
                                                 radius: height / 2
-                                                color: sliderContainer.isMuted ? mocha.subtext1 : barWindow.accentColor
-                                            }
-                                            
-                                            Rectangle {
-                                                width: parent.height + barWindow.s(4)
-                                                height: parent.height + barWindow.s(4)
-                                                radius: width / 2
-                                                color: sliderContainer.isMuted ? mocha.subtext1 : barWindow.accentColor
-                                                border.color: mocha.surface2
-                                                border.width: barWindow.s(1)
-                                                
-                                                x: Math.max(0, Math.min(sliderContainer.width - width, parent.fillW - width / 2))
-                                                anchors.verticalCenter: parent.verticalCenter
+                                                color: sliderContainer.isMuted ? mocha.subtext1 : barWindow.wsActiveColor
                                             }
                                         }
                                     }

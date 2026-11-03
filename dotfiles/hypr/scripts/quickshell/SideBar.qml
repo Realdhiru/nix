@@ -94,6 +94,7 @@ Variants {
             }
 
             readonly property color accentColor: ensureBright((Config.barAccentColorSource && mocha[Config.barAccentColorSource]) ? mocha[Config.barAccentColorSource] : mocha.text)
+            readonly property color wsActiveColor: ensureBright((Config.accentColorSource && mocha[Config.accentColorSource]) ? mocha[Config.accentColorSource] : mocha.primary)
             readonly property color brightColor: mocha.text
             readonly property color volColor: mocha.text
             readonly property color wifiColor: mocha.text
@@ -516,14 +517,6 @@ Variants {
                                 color: mocha.text
                             }
 
-                            // Thin accent divider line
-                            Rectangle {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: barWindow.s(20)
-                                height: barWindow.s(2)
-                                radius: barWindow.s(1)
-                                color: Qt.rgba(barWindow.accentColor.r, barWindow.accentColor.g, barWindow.accentColor.b, 0.45)
-                            }
 
                             // Day of Month (Enlarged to 14px, solid high-contrast white text)
                             Text {
@@ -656,7 +649,7 @@ Variants {
                                 x: (wsFlickable.width - barWindow.s(32)) / 2
                                 width: barWindow.s(32)
                                 radius: barWindow.s(10)
-                                color: Qt.rgba(barWindow.accentColor.r, barWindow.accentColor.g, barWindow.accentColor.b, 0.78)
+                                color: Qt.rgba(barWindow.wsActiveColor.r, barWindow.wsActiveColor.g, barWindow.wsActiveColor.b, 0.85)
                                 z: 0
 
                                 property var activePill: (workspacesModel.activeIndex >= 0 && workspacesModel.activeIndex < wsRepeater.count)
