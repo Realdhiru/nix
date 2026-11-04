@@ -407,10 +407,10 @@ hl.bind(mainMod .. " + SHIFT + Up", function() smart_resize(0, -30) end,
 hl.bind(mainMod .. " + SHIFT + Down", function() smart_resize(0, 30) end,
     { repeating = true, description = "resize window down" })
 
-hl.bind(mainMod .. " + Z", hl.dsp.window.drag(), { mouse = true, description = "hold to move window" })
-hl.bind(mainMod .. " + X", hl.dsp.window.resize(), { mouse = true, description = "hold to resize window" })
-hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "drag window with mouse" })
-hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "resize window with mouse" })
+hl.bind(mainMod .. " + SHIFT + mouse_down", function() smart_resize(-30, 0) end,
+    { description = "shrink window with mouse wheel" })
+hl.bind(mainMod .. " + SHIFT + mouse_up", function() smart_resize(30, 0) end,
+    { description = "expand window with mouse wheel" })
 
 local function get_left_margin()
     local home = os.getenv("HOME") or ""
@@ -425,6 +425,80 @@ local function get_left_margin()
     -- Default is "left" topbar position (36px bar + 16px padding/gap = 52px)
     return 52
 end
+
+local function normalize_dual_windows()
+    local ws = hl.get_active_workspace()
+    if not ws or ws.tiled_layout ~= "scrolling" then return end
+
+    local wins = {}
+    for _, w in ipairs(hl.get_windows()) do
+        if w.mapped and not w.floating and w.workspace and w.workspace.id == ws.id then
+            local ww = (w.size and w.size.x) or 0
+            local wh = (w.size and w.size.y) or 0
+            if ww > 50 and wh > 50 then table.insert(wins, w) end
+        end
+    end
+    table.sort(wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
+
+    if #wins ~= 2 then return end
+
+    local w1 = wins[1]
+    local w2 = wins[2]
+    local w1_w = (w1.size and w1.size.x) or 683
+    local w2_w = (w2.size and w2.size.x) or 683
+    local active_win = hl.get_active_window()
+    local active_addr = active_win and active_win.address
+
+    -- Usable screen width: 1440 - left_margin (52) - right_margin (12) - gap (10) = 1366
+    local total_usable = 1366
+    local active_w = (active_addr == w2.address) and w2_w or w1_w
+    local frac_active = active_w / total_usable
+    if frac_active < 0.20 then frac_active = 0.20 end
+    if frac_active > 0.80 then frac_active = 0.80 end
+
+    local frac_w1, frac_w2
+    if active_addr == w2.address then
+        frac_w2 = frac_active
+        frac_w1 = 1.0 - frac_w2
+    else
+        frac_w1 = frac_active
+        frac_w2 = 1.0 - frac_w1
+    end
+
+    pcall(function()
+        hl.dispatch(hl.dsp.focus({ window = "address:" .. w1.address }))
+        hl.dispatch(hl.dsp.layout(string.format("colresize %.02f", frac_w1)))
+        hl.dispatch(hl.dsp.focus({ window = "address:" .. w2.address }))
+        hl.dispatch(hl.dsp.layout(string.format("colresize %.02f", frac_w2)))
+        if active_addr then
+            hl.dispatch(hl.dsp.focus({ window = "address:" .. active_addr }))
+        end
+    end)
+
+    local left_margin = get_left_margin()
+    local updated_wins = {}
+    for _, w in ipairs(hl.get_windows()) do
+        if w.mapped and not w.floating and w.workspace and w.workspace.id == ws.id then
+            if ((w.size and w.size.x) or 0) > 50 then table.insert(updated_wins, w) end
+        end
+    end
+    table.sort(updated_wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
+    if #updated_wins > 0 and updated_wins[1].at then
+        local cur_x = updated_wins[1].at.x
+        if cur_x ~= left_margin then
+            pcall(function()
+                hl.dispatch(hl.dsp.layout("move " .. tostring(left_margin - cur_x)))
+            end)
+        end
+    end
+end
+
+hl.bind(mainMod .. " + Z", hl.dsp.window.drag(), { mouse = true, description = "hold to move window" })
+hl.bind(mainMod .. " + X", hl.dsp.window.resize(), { mouse = true, description = "hold to resize window" })
+hl.bind(mainMod .. " + X", normalize_dual_windows, { release = true, description = "normalize dual windows on mouse resize release" })
+hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "drag window with mouse" })
+hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "resize window with mouse" })
+hl.bind(mainMod .. " + mouse:273", normalize_dual_windows, { release = true, description = "normalize dual windows on mouse resize release" })
 
 local function scroll_ribbon_left()
     local ws = hl.get_active_workspace()
