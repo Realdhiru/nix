@@ -333,6 +333,8 @@
             update-props = {
               priority.session = 1000
               priority.driver = 1000
+              "node.drain-on-empty" = false
+              "session.suspend-timeout-seconds" = 0
             }
           }
         }

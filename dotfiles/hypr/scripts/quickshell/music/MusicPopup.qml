@@ -19,6 +19,7 @@ FocusScope {
 
     onVisibleChanged: {
         if (visible) {
+            root.forceActiveFocus();
             root.lastEqUpdate = 0;
             if (!musicProc.running) musicProc.running = true;
             eqProc.running = false;
@@ -681,6 +682,7 @@ FocusScope {
                                 id: progBar
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: root.s(20)
+                                focusPolicy: Qt.NoFocus
                                 from: 0; to: 100
 
                                 Connections {
@@ -1024,6 +1026,7 @@ FocusScope {
                                             Layout.fillHeight: true
                                             Layout.alignment: Qt.AlignHCenter
                                             orientation: Qt.Vertical
+                                            focusPolicy: Qt.NoFocus
                                             from: -12; to: 12
                                             stepSize: 1
 
