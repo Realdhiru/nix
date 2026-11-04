@@ -73,6 +73,8 @@
                 prev.callPackage ./pkgs/hypr-kdeconnect-portal.nix { };
               gameclean =
                 prev.callPackage ./pkgs/gameclean.nix { };
+              tesseract =
+                prev.callPackage ./pkgs/tesseract-fast.nix { };
               pcmanfm-qt = prev.pcmanfm-qt.overrideAttrs (old: {
                 patches = (old.patches or [ ]) ++ [ ./pkgs/pcmanfm-qt-appid.patch ];
               });

@@ -157,6 +157,7 @@ hl.bind(mainMod .. " + Down", hl.dsp.focus({ direction = "d" }), { description =
 hl.bind(mainMod .. " + SHIFT + Z", hl.dsp.exec_cmd(scripts .. "screenshot.sh area"), { description = "capture region screenshot" })
 hl.bind(mainMod .. " + CTRL + SHIFT + Z", hl.dsp.exec_cmd(scripts .. "screenshot.sh freeze"),
     { description = "capture frozen region screenshot" })
+hl.bind(mainMod .. " + SHIFT + X", hl.dsp.exec_cmd(scripts .. "screenshot.sh ocr"), { description = "ocr region screenshot to clipboard" })
 hl.bind("Print", hl.dsp.exec_cmd(scripts .. "screenshot.sh screen"), { description = "capture full screen screenshot" })
 hl.bind(mainMod .. " + CTRL + R", hl.dsp.exec_cmd(scripts .. "record.sh"), { description = "toggle screen recording" })
 
