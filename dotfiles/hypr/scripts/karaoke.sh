@@ -49,8 +49,17 @@ apply_preset_params() {
 update_eq_preset() {
   local p="$1"
   if [ -f "$EQ_STATE" ]; then
-    local tmp="${EQ_STATE}.tmp.$$"
-    jq -c --arg p "$p" '.preset = $p' "$EQ_STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$EQ_STATE"
+    local cur_p
+    cur_p=$(jq -r '.preset // "Off"' "$EQ_STATE" 2>/dev/null || echo "Off")
+    if [ "$p" = "Off" ]; then
+      if [ "$cur_p" = "Karaoke" ]; then
+        local tmp="${EQ_STATE}.tmp.$$"
+        jq -c '.preset = "Off"' "$EQ_STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$EQ_STATE"
+      fi
+    else
+      local tmp="${EQ_STATE}.tmp.$$"
+      jq -c --arg p "$p" '.preset = $p' "$EQ_STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$EQ_STATE"
+    fi
   fi
 }
 
@@ -64,16 +73,24 @@ case "$cmd" in
     apply_preset_params
     save_state true
     update_eq_preset "Karaoke"
-    notify-send -a "Karaoke" -u low "Karaoke ON" 2>/dev/null || true
-    echo "Karaoke ON"
+    if [ "$cur_enabled" != "true" ]; then
+      notify-send -a "Karaoke" -u low "Karaoke ON" 2>/dev/null || true
+      echo "Karaoke ON"
+    else
+      echo "Karaoke is already active"
+    fi
     ;;
 
   off)
     set_mix 1.0 0.0
-    save_state false
-    update_eq_preset "Off"
-    notify-send -a "Karaoke" -u low "Karaoke OFF" 2>/dev/null || true
-    echo "Karaoke OFF"
+    if [ "$cur_enabled" = "true" ]; then
+      save_state false
+      update_eq_preset "Off"
+      notify-send -a "Karaoke" -u low "Karaoke OFF" 2>/dev/null || true
+      echo "Karaoke OFF"
+    else
+      save_state false
+    fi
     ;;
 
   toggle|cycle)
