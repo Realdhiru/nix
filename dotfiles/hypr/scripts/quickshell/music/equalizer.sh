@@ -34,16 +34,16 @@ apply_eq() {
     EQ_NODE_ID=$(get_node_id)
     if [ -n "$EQ_NODE_ID" ]; then
         pw-cli s "$EQ_NODE_ID" Props "{ \"params\": [ \
-            \"eq_band_1:Gain\", $b1, \
-            \"eq_band_2:Gain\", $b2, \
-            \"eq_band_3:Gain\", $b3, \
-            \"eq_band_4:Gain\", $b4, \
-            \"eq_band_5:Gain\", $b5, \
-            \"eq_band_6:Gain\", $b6, \
-            \"eq_band_7:Gain\", $b7, \
-            \"eq_band_8:Gain\", $b8, \
-            \"eq_band_9:Gain\", $b9, \
-            \"eq_band_10:Gain\", $b10 \
+            \"eq_band_1_l:Gain\", $b1, \"eq_band_1_r:Gain\", $b1, \
+            \"eq_band_2_l:Gain\", $b2, \"eq_band_2_r:Gain\", $b2, \
+            \"eq_band_3_l:Gain\", $b3, \"eq_band_3_r:Gain\", $b3, \
+            \"eq_band_4_l:Gain\", $b4, \"eq_band_4_r:Gain\", $b4, \
+            \"eq_band_5_l:Gain\", $b5, \"eq_band_5_r:Gain\", $b5, \
+            \"eq_band_6_l:Gain\", $b6, \"eq_band_6_r:Gain\", $b6, \
+            \"eq_band_7_l:Gain\", $b7, \"eq_band_7_r:Gain\", $b7, \
+            \"eq_band_8_l:Gain\", $b8, \"eq_band_8_r:Gain\", $b8, \
+            \"eq_band_9_l:Gain\", $b9, \"eq_band_9_r:Gain\", $b9, \
+            \"eq_band_10_l:Gain\", $b10, \"eq_band_10_r:Gain\", $b10 \
         ] }" >/dev/null 2>&1
     fi
 }
@@ -83,7 +83,7 @@ case $cmd in
     echo "$updated" > "$STATE_FILE"
     EQ_NODE_ID=$(get_node_id)
     if [ -n "$EQ_NODE_ID" ]; then
-        pw-cli s "$EQ_NODE_ID" Props "{ \"params\": [ \"eq_band_${arg1}:Gain\", $arg2 ] }" >/dev/null 2>&1
+        pw-cli s "$EQ_NODE_ID" Props "{ \"params\": [ \"eq_band_${arg1}_l:Gain\", $arg2, \"eq_band_${arg1}_r:Gain\", $arg2 ] }" >/dev/null 2>&1
     fi
     "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" off 2>/dev/null || true
     ;;

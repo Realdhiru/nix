@@ -346,6 +346,8 @@
         "bluetooth.autoswitch-to-headset-profile" = false
         "bluetooth.profile-preference" = "quality"
         "bluetooth.use-persistent-storage" = false
+        "device.routes.mute-on-bluetooth-playback-removed" = true
+        "device.routes.mute-on-alsa-playback-removed" = true
       }
     '';
   };
@@ -367,67 +369,13 @@
     '';
   };
 
-  # Native 10-band Equalizer filter-chain for PipeWire (replaces EasyEffects with zero background daemon overhead)
+  # Native Unified 10-band Equalizer and Mid-Side Karaoke filter-chain for PipeWire
   xdg.configFile."pipewire/pipewire.conf.d/99-equalizer-sink.conf".text = ''
     context.modules = [
       { name = libpipewire-module-filter-chain
         args = {
           node.description = "PipeWire Equalizer"
           media.name       = "PipeWire Equalizer"
-          filter.graph = {
-            nodes = [
-              { type = builtin name = eq_band_1  label = bq_peaking control = { "Freq" = 31.0   "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_2  label = bq_peaking control = { "Freq" = 63.0   "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_3  label = bq_peaking control = { "Freq" = 125.0  "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_4  label = bq_peaking control = { "Freq" = 250.0  "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_5  label = bq_peaking control = { "Freq" = 500.0  "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_6  label = bq_peaking control = { "Freq" = 1000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_7  label = bq_peaking control = { "Freq" = 2000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_8  label = bq_peaking control = { "Freq" = 4000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_9  label = bq_peaking control = { "Freq" = 8000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_10 label = bq_peaking control = { "Freq" = 16000.0 "Q" = 1.414 "Gain" = 0.0 } }
-            ]
-            links = [
-              { output = "eq_band_1:Out" input = "eq_band_2:In" }
-              { output = "eq_band_2:Out" input = "eq_band_3:In" }
-              { output = "eq_band_3:Out" input = "eq_band_4:In" }
-              { output = "eq_band_4:Out" input = "eq_band_5:In" }
-              { output = "eq_band_5:Out" input = "eq_band_6:In" }
-              { output = "eq_band_6:Out" input = "eq_band_7:In" }
-              { output = "eq_band_7:Out" input = "eq_band_8:In" }
-              { output = "eq_band_8:Out" input = "eq_band_9:In" }
-              { output = "eq_band_9:Out" input = "eq_band_10:In" }
-            ]
-          }
-          audio.channels = 2
-          audio.position = [ FL FR ]
-          capture.props = {
-            node.name        = "effect_input.eq10"
-            media.class      = "Audio/Sink"
-            priority.session = 2200
-          }
-          playback.props = {
-            node.name    = "effect_output.eq10"
-            node.passive = true
-          }
-        }
-      }
-    ]
-  '';
-
-  # Mid-Side Center-Cut Karaoke Filter-Chain with Lookahead Limiter & Dry Phase-Delay Alignment
-  # M = 0.5L + 0.5R, S = 0.5L - 0.5R
-  # M' = (1-g)*M + g*bl*LP(M) + g*ha*HP(M)
-  # L' = G*(M' + ks*S), R' = G*(M' - ks*S)
-  # Wet path: karL/karR -> fastLookaheadLimiter (LADSPA 1913, limit=-1.0 dB, 5ms lookahead) -> finalL/finalR:In 2
-  # Dry path: inL/inR -> delayL/delayR (builtin delay 5ms) -> finalL/finalR:In 1
-  xdg.configFile."pipewire/pipewire.conf.d/60-karaoke.conf" = lib.mkIf config.desktop.audio.karaoke.enable {
-    text = ''
-    context.modules = [
-      { name = libpipewire-module-filter-chain
-        args = {
-          node.description = "Karaoke"
-          media.name       = "Karaoke"
           filter.graph = {
             nodes = [
               { type = builtin label = copy name = inL }
@@ -494,8 +442,32 @@
                 }
               }
 
+              # Mode selector mixers: In 1 = dry, In 2 = wet karaoke
               { type = builtin label = mixer name = finalL control = { "Gain 1" = 1.0 "Gain 2" = 0.0 } }
               { type = builtin label = mixer name = finalR control = { "Gain 1" = 1.0 "Gain 2" = 0.0 } }
+
+              # 10-Band Equalizer stages (Stereo left & right)
+              { type = builtin name = eq_band_1_l  label = bq_peaking control = { "Freq" = 31.0   "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_2_l  label = bq_peaking control = { "Freq" = 63.0   "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_3_l  label = bq_peaking control = { "Freq" = 125.0  "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_4_l  label = bq_peaking control = { "Freq" = 250.0  "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_5_l  label = bq_peaking control = { "Freq" = 500.0  "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_6_l  label = bq_peaking control = { "Freq" = 1000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_7_l  label = bq_peaking control = { "Freq" = 2000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_8_l  label = bq_peaking control = { "Freq" = 4000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_9_l  label = bq_peaking control = { "Freq" = 8000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_10_l label = bq_peaking control = { "Freq" = 16000.0 "Q" = 1.414 "Gain" = 0.0 } }
+
+              { type = builtin name = eq_band_1_r  label = bq_peaking control = { "Freq" = 31.0   "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_2_r  label = bq_peaking control = { "Freq" = 63.0   "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_3_r  label = bq_peaking control = { "Freq" = 125.0  "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_4_r  label = bq_peaking control = { "Freq" = 250.0  "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_5_r  label = bq_peaking control = { "Freq" = 500.0  "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_6_r  label = bq_peaking control = { "Freq" = 1000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_7_r  label = bq_peaking control = { "Freq" = 2000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_8_r  label = bq_peaking control = { "Freq" = 4000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_9_r  label = bq_peaking control = { "Freq" = 8000.0 "Q" = 1.414 "Gain" = 0.0 } }
+              { type = builtin name = eq_band_10_r label = bq_peaking control = { "Freq" = 16000.0 "Q" = 1.414 "Gain" = 0.0 } }
             ]
             links = [
               # Dry path to delay and dry ebur128
@@ -551,27 +523,49 @@
               { output = "limiter:Output 1"   input = "finalL:In 2" }
               { output = "delayR:Out"        input = "finalR:In 1" }
               { output = "limiter:Output 2"   input = "finalR:In 2" }
+
+              # Left Equalizer Chain
+              { output = "finalL:Out"        input = "eq_band_1_l:In" }
+              { output = "eq_band_1_l:Out"   input = "eq_band_2_l:In" }
+              { output = "eq_band_2_l:Out"   input = "eq_band_3_l:In" }
+              { output = "eq_band_3_l:Out"   input = "eq_band_4_l:In" }
+              { output = "eq_band_4_l:Out"   input = "eq_band_5_l:In" }
+              { output = "eq_band_5_l:Out"   input = "eq_band_6_l:In" }
+              { output = "eq_band_6_l:Out"   input = "eq_band_7_l:In" }
+              { output = "eq_band_7_l:Out"   input = "eq_band_8_l:In" }
+              { output = "eq_band_8_l:Out"   input = "eq_band_9_l:In" }
+              { output = "eq_band_9_l:Out"   input = "eq_band_10_l:In" }
+
+              # Right Equalizer Chain
+              { output = "finalR:Out"        input = "eq_band_1_r:In" }
+              { output = "eq_band_1_r:Out"   input = "eq_band_2_r:In" }
+              { output = "eq_band_2_r:Out"   input = "eq_band_3_r:In" }
+              { output = "eq_band_3_r:Out"   input = "eq_band_4_r:In" }
+              { output = "eq_band_4_r:Out"   input = "eq_band_5_r:In" }
+              { output = "eq_band_5_r:Out"   input = "eq_band_6_r:In" }
+              { output = "eq_band_6_r:Out"   input = "eq_band_7_r:In" }
+              { output = "eq_band_7_r:Out"   input = "eq_band_8_r:In" }
+              { output = "eq_band_8_r:Out"   input = "eq_band_9_r:In" }
+              { output = "eq_band_9_r:Out"   input = "eq_band_10_r:In" }
             ]
             inputs  = [ "inL:In" "inR:In" ]
-            outputs = [ "finalL:Out" "finalR:Out" ]
+            outputs = [ "eq_band_10_l:Out" "eq_band_10_r:Out" ]
           }
           audio.channels = 2
           audio.position = [ FL FR ]
           capture.props = {
-            node.name        = "effect_input.karaoke"
-            media.class      = Audio/Sink
-            priority.session = 2100
+            node.name        = "effect_input.eq10"
+            media.class      = "Audio/Sink"
+            priority.session = 2500
           }
           playback.props = {
-            node.name     = "effect_output.karaoke"
-            node.passive  = true
-            target.object = "effect_input.eq10"
+            node.name    = "effect_output.eq10"
+            node.passive = true
           }
         }
       }
     ]
   '';
-  };
 
   # WebRTC Echo-Cancellation, Noise Suppression & AGC module for internal stereo mic
   xdg.configFile."pipewire/pipewire.conf.d/60-echo-cancel.conf".text = ''

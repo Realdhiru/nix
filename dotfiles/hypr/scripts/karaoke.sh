@@ -5,8 +5,8 @@ set -eu
 exec 201>"${XDG_RUNTIME_DIR:-/run/user/1000}/karaoke.lock"
 flock 201
 
-id=$(timeout 2 pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.karaoke"/ {gsub(/,/, "", id); print id; exit}' || true)
-[ -n "$id" ] || { echo "effect_input.karaoke not found" >&2; exit 0; }
+id=$(timeout 2 pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.eq10"/ {gsub(/,/, "", id); print id; exit}' || true)
+[ -n "$id" ] || { echo "effect_input.eq10 not found" >&2; exit 0; }
 
 preset="${1:-Standard}"
 
@@ -37,8 +37,8 @@ apply_preset_params() {
 
 case "$preset" in
   toggle)
-    def_sink=$(timeout 2 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '/id [0-9]+/ {print $2; exit}' || echo "")
-    if [ "$def_sink" = "$id," ] || [ "$def_sink" = "$id" ]; then
+    cur_gain2=$(timeout 2 pw-dump "$id" 2>/dev/null | jq -r '.[].info.params.Props[]?.params[]? // empty' 2>/dev/null | grep -A 1 '^finalL:Gain 2$' | tail -n 1 || echo "0.0")
+    if [ "$(awk -v g="$cur_gain2" 'BEGIN { print (g > 0.5) ? 1 : 0 }')" -eq 1 ]; then
       "$0" off
     else
       "$0" Standard
@@ -53,42 +53,11 @@ case "$preset" in
     echo "Karaoke adaptive allowance trimmed by ${delta_db} dB: ${cur_allowance} -> ${new_allowance} LU"
     ;;
   off)
-    set_mix 0.0 0.0
-    def_sink=$(timeout 1 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '/id [0-9]+/ {print $2; exit}' | tr -d ',' || echo "")
-    eq_id=$(timeout 1 pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.eq10"/ {gsub(/,/, "", id); print id; exit}' || true)
-    
-    # Sync volume from karaoke back to eq10 when exiting karaoke
-    if [ -n "$eq_id" ] && [ -n "$id" ]; then
-      kar_vol=$(timeout 1 wpctl get-volume "$id" 2>/dev/null | awk '{print $2}' || echo "1.00")
-      [ -n "$kar_vol" ] && timeout 1 wpctl set-volume "$eq_id" "$kar_vol" 2>/dev/null || true
-    fi
-
-    if [ -n "$eq_id" ] && [ "$def_sink" != "$eq_id" ]; then
-      timeout 2 wpctl set-default "$eq_id" 2>/dev/null || true
-    fi
+    set_mix 1.0 0.0
     ;;
   on|"Gentle"|"Light"|"Standard"|"Hard"|"Max"|"Max vocal"|"MaxVocal")
     apply_preset_params "$preset"
     set_mix 0.0 1.0
-
-    # Ensure link between karaoke output and equalizer input exists
-    timeout 1 pw-link effect_output.karaoke:output_FL effect_input.eq10:playback_FL 2>/dev/null || true
-    timeout 1 pw-link effect_output.karaoke:output_FR effect_input.eq10:playback_FR 2>/dev/null || true
-
-    # Inherit current volume from eq10 to karaoke, then pin eq10 to 1.00 (0 dB unity pass-through)
-    eq_id=$(timeout 1 pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.eq10"/ {gsub(/,/, "", id); print id; exit}' || true)
-    if [ -n "$eq_id" ] && [ -n "$id" ]; then
-      eq_vol=$(timeout 1 wpctl get-volume "$eq_id" 2>/dev/null | awk '{print $2}' || echo "1.00")
-      if [ -n "$eq_vol" ] && [ "$eq_vol" != "0.00" ]; then
-        timeout 1 wpctl set-volume "$id" "$eq_vol" 2>/dev/null || true
-      fi
-      timeout 1 wpctl set-volume "$eq_id" 1.00 2>/dev/null || true
-    fi
-
-    def_sink=$(timeout 1 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '/id [0-9]+/ {print $2; exit}' | tr -d ',' || echo "")
-    if [ -n "$id" ] && [ "$def_sink" != "$id" ]; then
-      timeout 2 wpctl set-default "$id" 2>/dev/null || true
-    fi
     ;;
   *)
     exit 0

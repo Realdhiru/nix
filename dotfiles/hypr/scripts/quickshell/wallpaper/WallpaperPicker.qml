@@ -677,12 +677,13 @@ Item {
 
 
     function getFileTypeRank(fileName) {
-        if (!fileName) return 0;
+        if (!fileName) return 2;
         let fn = String(fileName).toLowerCase();
-        if (fn.endsWith(".gif")) return 1; // 2. GIFs second
-        if (window.isVideoFile(fileName)) return 2; // 3. Videos last
-        return 0; // 1. Static images first (sorted by color score)
+        if (window.isVideoFile(fileName)) return 0; // 1. Videos first
+        if (fn.endsWith(".gif")) return 1;          // 2. GIFs second
+        return 2;                                   // 3. Static images third (sorted by color score)
     }
+
 
     function hexToColorScore(hex) {
         if (!hex || hex.length < 6) return { band: 2, key: 999 };

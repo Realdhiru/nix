@@ -73,7 +73,7 @@ function hex2score(hex, res,   r, g, b, max_c, min_c, d, l, s, h) {
             if (hex == "") hex = "1e1e2e";
             cat = marker_cat[h];
             if (cat == "") cat = "Dark";
-            is_vid = (fn ~ /\.(mp4|mkv|webm)$/) ? "true" : "false";
+            is_vid = (fn ~ /\.(mp4|mkv|mov|webm)$/) ? "true" : "false";
 
             hex2score(hex, sc);
 
@@ -156,9 +156,10 @@ if [ -f "$OUTPUT_FILE" ]; then
         else . end;
       def type_rank:
         (.fileName | ascii_downcase) as $fn |
-        if ($fn | endswith(".gif")) then 1
-        elif (.isVideo == true or ($fn | test("\\.(mp4|mkv|webm)$"))) then 2
-        else 0 end;
+        if (.isVideo == true or ($fn | test("\\.(mp4|mkv|mov|webm)$"))) then 0
+        elif ($fn | endswith(".gif")) then 1
+        else 2 end;
+
       .items
       | sort_by(
           type_rank,
