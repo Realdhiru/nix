@@ -21,6 +21,8 @@ case "$MODE" in
         trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
         if [ -n "$trimmed" ]; then
             printf '%s' "$text" | wl-copy -n --type "text/plain;charset=utf-8"
+        else
+            notify-send -a "OCR" "No text found"
         fi
         exit 0
         ;;
