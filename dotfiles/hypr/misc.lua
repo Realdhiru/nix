@@ -91,8 +91,14 @@ local function sync_window_scale(ws_id, exclude_addr)
             end)
         end
     elseif count == 2 then
-        hl.config({ scrolling = { column_width = 0.5 } })
-        if is_active_ws then
+        -- Only fit if the 2 windows do not already span the usable screen
+        -- (e.g. freshly opened second window). If custom ratio is set, preserve it.
+        local w1 = wins[1]
+        local w2 = wins[2]
+        local w1_w = (w1 and w1.size and w1.size.x) or 0
+        local w2_w = (w2 and w2.size and w2.size.x) or 0
+        local sum_w = w1_w + w2_w + 10
+        if is_active_ws and math.abs(sum_w - 1376) > 40 then
             pcall(function()
                 hl.dispatch(hl.dsp.layout("fit all"))
             end)

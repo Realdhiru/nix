@@ -358,9 +358,9 @@ local function smart_resize(dx, dy)
         is_resizing_pair = true
         pcall(function()
             hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", delta)))
-            hl.dispatch(hl.dsp.focus({ window = other.address }))
+            hl.dispatch(hl.dsp.focus({ window = "address:" .. other.address }))
             hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", -delta)))
-            hl.dispatch(hl.dsp.focus({ window = active_win.address }))
+            hl.dispatch(hl.dsp.focus({ window = "address:" .. active_win.address }))
         end)
         is_resizing_pair = false
         return
