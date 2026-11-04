@@ -51,13 +51,19 @@ case "$preset" in
     ;;
   off)
     set_mix 1.0 0.0
-    eq_id=$(timeout 2 pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.eq10"/ {gsub(/,/, "", id); print id; exit}' || true)
-    [ -n "$eq_id" ] && timeout 2 wpctl set-default "$eq_id" 2>/dev/null || true
+    def_sink=$(timeout 1 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '/id [0-9]+/ {print $2; exit}' | tr -d ',' || echo "")
+    eq_id=$(timeout 1 pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.eq10"/ {gsub(/,/, "", id); print id; exit}' || true)
+    if [ -n "$eq_id" ] && [ "$def_sink" != "$eq_id" ]; then
+      timeout 2 wpctl set-default "$eq_id" 2>/dev/null || true
+    fi
     ;;
   on|"Gentle"|"Light"|"Standard"|"Hard"|"Max"|"Max vocal"|"MaxVocal")
     apply_preset_params "$preset"
     set_mix 0.0 1.0
-    timeout 2 wpctl set-default "$id" 2>/dev/null || true
+    def_sink=$(timeout 1 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '/id [0-9]+/ {print $2; exit}' | tr -d ',' || echo "")
+    if [ -n "$id" ] && [ "$def_sink" != "$id" ]; then
+      timeout 2 wpctl set-default "$id" 2>/dev/null || true
+    fi
     ;;
   *)
     exit 0

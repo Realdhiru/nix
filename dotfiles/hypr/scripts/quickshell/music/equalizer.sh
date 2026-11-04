@@ -52,6 +52,11 @@ cmd=$1
 arg1=$2
 arg2=$3
 
+if [ "$cmd" != "get" ]; then
+    exec 200>"${QS_RUN_MUSIC}/equalizer.lock"
+    flock 200
+fi
+
 case $cmd in
 "--init")
     if [ ! -f "$STATE_FILE" ]; then

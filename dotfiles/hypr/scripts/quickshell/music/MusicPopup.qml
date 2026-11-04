@@ -275,7 +275,20 @@ Item {
             root.lastEqUpdate = Date.now();
 
             root.triggerEqLightning();
-            execCmd(`$HOME/.config/hypr/scripts/quickshell/music/equalizer.sh preset ${presetName}`);
+            root.pendingPreset = presetName;
+            presetDebounceTimer.restart();
+        }
+    }
+
+    property string pendingPreset: ""
+    Timer {
+        id: presetDebounceTimer
+        interval: 80
+        repeat: false
+        onTriggered: {
+            if (root.pendingPreset) {
+                root.execCmd(`$HOME/.config/hypr/scripts/quickshell/music/equalizer.sh preset ${root.pendingPreset}`);
+            }
         }
     }
 

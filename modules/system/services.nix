@@ -36,6 +36,7 @@
   systemd.user.services.wireplumber.environment = {
     WIREPLUMBER_DEBUG = "I,s-linking:D,s-default-nodes:D";
   };
+  systemd.user.services.pipewire.wants = [ "pipewire-pulse.service" ];
 
   # Bluetooth.
   hardware.bluetooth = {
