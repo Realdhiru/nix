@@ -79,12 +79,13 @@ function hex2score(hex, res,   r, g, b, max_c, min_c, d, l, s, h) {
 
             if (!first) printf ",\n";
             first = 0;
-            printf "{\"fileName\":\"%s\",\"filePath\":\"%s\",\"hex\":\"#%s\",\"band\":%d,\"colorKey\":%.2f,\"bucket\":\"%s\",\"theme\":\"%s\",\"isVideo\":%s}", fn, real_path, hex, sc["band"], sc["key"], cat, tolower(cat), is_vid;
+            printf "{\"fileName\":\"%s\",\"cleanName\":\"%s\",\"filePath\":\"%s\",\"hex\":\"#%s\",\"band\":%d,\"colorKey\":%.2f,\"bucket\":\"%s\",\"theme\":\"%s\",\"isVideo\":%s}", fn_sym, fn, real_path, hex, sc["band"], sc["key"], cat, tolower(cat), is_vid;
         }
         close(cmd);
         print "\n]}";
     }
     ' > "${OUTPUT_FILE}.tmp" && mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
+
 elif [ -d "$COLOR_DIR" ]; then
     ls "$COLOR_DIR" 2>/dev/null | gawk -F'_' -v src="$SRC_DIR" '
     function hex2score(hex, res,   r, g, b, max_c, min_c, d, l, s, h) {
@@ -149,24 +150,25 @@ fi
 
 PATHS_FILE="${OUTPUT_FILE%/*}/wallpaper_paths.txt"
 if [ -f "$OUTPUT_FILE" ]; then
-    jq -r '
+    jq '
       def clean_name:
         if startswith("000_") then .[4:]
         elif (length > 33 and .[32:33] == "_") then .[33:]
         else . end;
       def type_rank:
-        (.fileName | ascii_downcase) as $fn |
+        ((.cleanName // (.fileName | clean_name)) | ascii_downcase) as $fn |
         if (.isVideo == true or ($fn | test("\\.(mp4|mkv|mov|webm)$"))) then 0
         elif ($fn | endswith(".gif")) then 1
         else 2 end;
 
-      .items
-      | sort_by(
+      .items |= sort_by(
           type_rank,
           -(.band // 0),
           (.colorKey // 0),
-          (.fileName | clean_name | ascii_downcase)
+          ((.cleanName // (.fileName | clean_name)) | ascii_downcase)
         )
-      | .[].filePath
-    ' "$OUTPUT_FILE" > "${PATHS_FILE}.tmp" 2>/dev/null && mv -f "${PATHS_FILE}.tmp" "$PATHS_FILE" 2>/dev/null || true
+    ' "$OUTPUT_FILE" > "${OUTPUT_FILE}.tmp" 2>/dev/null && mv -f "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE" 2>/dev/null || true
+
+    jq -r '.items[].filePath' "$OUTPUT_FILE" > "${PATHS_FILE}.tmp" 2>/dev/null && mv -f "${PATHS_FILE}.tmp" "$PATHS_FILE" 2>/dev/null || true
 fi
+

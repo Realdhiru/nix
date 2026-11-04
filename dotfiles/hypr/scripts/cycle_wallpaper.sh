@@ -33,20 +33,20 @@ if [ -f "$INDEX_FILE" ] && { [ ! -s "$PATHS_FILE" ] || [ "$INDEX_FILE" -nt "$PAT
         elif (length > 33 and .[32:33] == "_") then .[33:]
         else . end;
       def type_rank:
-        (.fileName | ascii_downcase) as $fn |
+        ((.cleanName // (.fileName | clean_name)) | ascii_downcase) as $fn |
         if (.isVideo == true or ($fn | test("\\.(mp4|mkv|mov|webm)$"))) then 0
         elif ($fn | endswith(".gif")) then 1
         else 2 end;
       .items
       | sort_by(
-
           type_rank,
           -(.band // 0),
           (.colorKey // 0),
-          (.fileName | clean_name | ascii_downcase)
+          ((.cleanName // (.fileName | clean_name)) | ascii_downcase)
         )
       | .[].filePath
     ' "$INDEX_FILE" > "$PATHS_FILE.tmp" 2>/dev/null && mv -f "$PATHS_FILE.tmp" "$PATHS_FILE" 2>/dev/null || true
+
 fi
 
 CUR_PATH=""
@@ -129,7 +129,7 @@ if [ -z "$TARGET_PATH" ] && [ -f "$INDEX_FILE" ]; then
           .[33:]
         else . end;
       def type_rank:
-        (.fileName | ascii_downcase) as $fn |
+        ((.cleanName // (.fileName | clean_name)) | ascii_downcase) as $fn |
         if (.isVideo == true or ($fn | test("\\.(mp4|mkv|mov|webm)$"))) then 0
         elif ($fn | endswith(".gif")) then 1
         else 2 end;
@@ -142,8 +142,9 @@ if [ -z "$TARGET_PATH" ] && [ -f "$INDEX_FILE" ]; then
           type_rank,
           -(.band // 0),
           (.colorKey // 0),
-          (.fileName | clean_name | ascii_downcase)
+          ((.cleanName // (.fileName | clean_name)) | ascii_downcase)
         )
+
       | . as $sorted
       | ($sorted | length) as $len
       | if $len == 0 then empty else

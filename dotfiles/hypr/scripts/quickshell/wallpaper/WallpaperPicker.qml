@@ -173,9 +173,14 @@ Item {
         id: indexFileView
         path: Quickshell.env("HOME") + "/.cache/quickshell/wallpaper_index.json"
         watchChanges: true
+        onLoadedChanged: {
+            let txt = (typeof indexFileView.text === "function" ? indexFileView.text() : indexFileView.text) || "";
+            if (txt.trim().length > 0) window.loadIndexData(txt);
+        }
         onFileChanged: {
             indexFileView.reload();
-            window.loadIndexData(indexFileView.text());
+            let txt = (typeof indexFileView.text === "function" ? indexFileView.text() : indexFileView.text) || "";
+            if (txt.trim().length > 0) window.loadIndexData(txt);
         }
     }
 
@@ -183,42 +188,76 @@ Item {
         if (!output || output.trim().length === 0) return;
         try {
             let data = JSON.parse(output);
+            if (!data || !data.items || data.items.length === 0) return;
+
             let catMap = {};
             let colorMap = {};
             let scoreMap = {};
-            if (data && data.items) {
-                for (let i = 0; i < data.items.length; i++) {
-                    let item = data.items[i];
-                    if (item && item.fileName) {
-                        let fn = item.fileName;
-                        let clean = window.getCleanName(fn);
-                        let hex = item.hex || "#1e1e2e";
-                        let bucket = item.bucket || "Dark";
-                        let score = (item.band !== undefined && item.colorKey !== undefined) ?
-                            { band: item.band, key: item.colorKey } :
-                            window.hexToColorScore(hex);
-                        catMap[fn] = bucket;
-                        colorMap[fn] = hex.replace("#", "");
-                        scoreMap[fn] = score;
-                        if (clean.length > 0) {
-                            catMap[clean] = bucket;
-                            colorMap[clean] = hex.replace("#", "");
-                            scoreMap[clean] = score;
-                        }
-                    }
+            let batchAll = [];
+            let batchGifs = [];
+            let batchVids = [];
+
+            for (let i = 0; i < data.items.length; i++) {
+                let item = data.items[i];
+                if (!item) continue;
+                let fn = item.fileName || "";
+                let clean = item.cleanName || window.getCleanName(fn);
+                let hex = item.hex || "#1e1e2e";
+                let bucket = item.bucket || "Dark";
+                let score = (item.band !== undefined && item.colorKey !== undefined) ?
+                    { band: item.band, key: item.colorKey } :
+                    window.hexToColorScore(hex);
+
+                catMap[fn] = bucket;
+                colorMap[fn] = hex.replace("#", "");
+                scoreMap[fn] = score;
+                if (clean.length > 0) {
+                    catMap[clean] = bucket;
+                    colorMap[clean] = hex.replace("#", "");
+                    scoreMap[clean] = score;
+                }
+
+                let modelItem = {
+                    "fileName": fn,
+                    "fileUrl": "file://" + (item.filePath || "")
+                };
+                batchAll.push(modelItem);
+                if (item.isVideo || window.isVideoFile(fn)) {
+                    batchVids.push(modelItem);
+                } else if (String(fn).toLowerCase().endsWith(".gif")) {
+                    batchGifs.push(modelItem);
                 }
             }
+
             window.wallpaperCategoryMap = catMap;
             window.wallpaperColorMap = colorMap;
             window.wallpaperScoreMap = scoreMap;
-            window.updateCategoryCounts();
 
-            // Only re-sort models if the picker is NOT visible to prevent delegate churn and jitter
-            if (!window.visible && localProxyModel.count > 0) {
-                window.sortListModel(localProxyModel);
-                window.sortListModel(favoritesProxyModel);
-                window.sortListModel(gifsProxyModel);
-                window.sortListModel(videosProxyModel);
+            let isDifferent = (localProxyModel.count !== batchAll.length);
+            if (!isDifferent) {
+                for (let k = 0; k < Math.min(20, batchAll.length); k++) {
+                    if (localProxyModel.get(k).fileName !== batchAll[k].fileName) {
+                        isDifferent = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isDifferent) {
+                window.isModelChanging = true;
+                localProxyModel.clear();
+                localProxyModel.append(batchAll);
+
+                gifsProxyModel.clear();
+                gifsProxyModel.append(batchGifs);
+
+                videosProxyModel.clear();
+                videosProxyModel.append(batchVids);
+                window._localSyncedCount = batchAll.length;
+                window.isModelChanging = false;
+
+                window.updateCategoryCounts();
+                window.syncFavoritesModel();
                 if (window.currentFilter !== "All" && window.currentFilter !== "Favorites" && window.currentFilter !== "GIFs" && window.currentFilter !== "Videos" && window.currentFilter !== "Search") {
                     window.updateCategoryProxyModel();
                 }
@@ -229,10 +268,13 @@ Item {
     }
 
     function processMarkers() {
-        if (indexFileView.text()) {
-            window.loadIndexData(indexFileView.text());
+        indexFileView.reload();
+        let txt = (typeof indexFileView.text === "function" ? indexFileView.text() : indexFileView.text) || "";
+        if (txt.trim().length > 0) {
+            window.loadIndexData(txt);
         }
     }
+
 
     function syncMonitors() {
         let screens = Quickshell.screens;
@@ -1666,7 +1708,10 @@ Item {
             window._suppressSync = false;
             return;
         }
-        let folderCount = localFolderModel.count;
+        if (localProxyModel.count > 0) {
+            return;
+        }
+
         let preservedTarget = window._pendingDeleteTarget || window.targetWallName || "";
         let fallbackIndex = window._pendingDeleteIndex !== -1 ? window._pendingDeleteIndex : view.currentIndex;
         window._pendingDeleteTarget = "";
