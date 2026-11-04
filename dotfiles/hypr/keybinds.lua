@@ -417,16 +417,16 @@ hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, descr
 
 local function get_left_margin()
     local home = os.getenv("HOME") or ""
-    local desktop_state = os.getenv("DESKTOP_STATE_DIR") or ((os.getenv("XDG_STATE_HOME") or (home .. "/.local/state")) .. "/desktop")
-    local f = io.open(desktop_state .. "/quickshell/state.json", "r")
+    local f = io.open(home .. "/.config/hypr/settings.json", "r")
     if f then
         local content = f:read("*a")
         f:close()
-        if content and content:match('"topbarPosition"%s*:%s*"left"') then
-            return 52
+        if content and content:match('"topbarPosition"%s*:%s*"top"') then
+            return 12
         end
     end
-    return 12
+    -- Default is "left" topbar position (36px bar + 16px padding/gap = 52px)
+    return 52
 end
 
 local function scroll_ribbon_left()

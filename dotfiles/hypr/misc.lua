@@ -111,16 +111,16 @@ end
 
 local function get_left_margin()
     local home = os.getenv("HOME") or ""
-    local desktop_state = os.getenv("DESKTOP_STATE_DIR") or ((os.getenv("XDG_STATE_HOME") or (home .. "/.local/state")) .. "/desktop")
-    local f = io.open(desktop_state .. "/quickshell/state.json", "r")
+    local f = io.open(home .. "/.config/hypr/settings.json", "r")
     if f then
         local content = f:read("*a")
         f:close()
-        if content and content:match('"topbarPosition"%s*:%s*"left"') then
-            return 52
+        if content and content:match('"topbarPosition"%s*:%s*"top"') then
+            return 12
         end
     end
-    return 12
+    -- Default is "left" topbar position (36px bar + 16px padding/gap = 52px)
+    return 52
 end
 
 -- Strictly clamps ribbon margins on window lifecycle/workspace switch:
@@ -139,8 +139,9 @@ local function clamp_ribbon_margins(ws_id)
     local cur_x = (first.at and first.at.x)
     local left_margin = get_left_margin()
 
-    -- Left margin clamp: leftmost window must NEVER exceed left_margin (into void)
-    if cur_x and cur_x > left_margin then
+    -- Strict left screen margin clamp: leftmost window must NEVER exceed left_margin into void.
+    -- A 6px deadzone avoids rounding jitter while instantly preventing the window from sitting in void.
+    if cur_x and cur_x > (left_margin + 6) then
         local delta = cur_x - left_margin
         pcall(function()
             hl.dispatch(hl.dsp.layout("move " .. tostring(-delta)))
