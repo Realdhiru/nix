@@ -75,6 +75,8 @@
                 prev.callPackage ./pkgs/gameclean.nix { };
               tesseract-fast =
                 prev.callPackage ./pkgs/tesseract-fast.nix { };
+              ladspa-spectral-karaoke =
+                prev.callPackage ./pkgs/ladspa-karaoke { };
               pcmanfm-qt = prev.pcmanfm-qt.overrideAttrs (old: {
                 patches = (old.patches or [ ]) ++ [ ./pkgs/pcmanfm-qt-appid.patch ];
               });

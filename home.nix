@@ -381,54 +381,28 @@
               { type = builtin label = copy name = inL }
               { type = builtin label = copy name = inR }
 
-              # Dry path 5ms delay compensation to match limiter lookahead
+              # Dry path delay compensation to match spectral karaoke (1024 samples = 21.33ms) + limiter (5ms) = 26.33ms
               { type = builtin label = delay name = delayL
-                config = { "max-delay" = 0.05 }
-                control = { "Delay (s)" = 0.005 } }
+                config = { "max-delay" = 0.1 }
+                control = { "Delay (s)" = 0.026333 } }
               { type = builtin label = delay name = delayR
-                config = { "max-delay" = 0.05 }
-                control = { "Delay (s)" = 0.005 } }
+                config = { "max-delay" = 0.1 }
+                control = { "Delay (s)" = 0.026333 } }
 
-              # Dry ebur128 node
-              { type = ebur128 label = ebur128 name = ebDry }
-
-              # Dynamic loudness allowance adder (control offset in LU)
-              { type = builtin label = linear name = addAllowance
-                control = { "Mult" = 1.0 "Add" = -3.0 } }
-
-              # Mid / Side decomposition
-              { type = builtin label = mixer name = mid
-                control = { "Gain 1" = 0.5 "Gain 2" = 0.5 } }
-              { type = builtin label = mixer name = side
-                control = { "Gain 1" = 0.5 "Gain 2" = -0.5 } }
-
-              { type = builtin label = bq_lowpass  name = lp1 control = { "Freq" = 150.0  "Q" = 0.7071 } }
-              { type = builtin label = bq_lowpass  name = lp2 control = { "Freq" = 150.0  "Q" = 0.7071 } }
-              { type = builtin label = bq_highpass name = hp1 control = { "Freq" = 7000.0 "Q" = 0.7071 } }
-              { type = builtin label = bq_highpass name = hp2 control = { "Freq" = 7000.0 "Q" = 0.7071 } }
-
-              { type = builtin label = mixer name = mp
-                control = { "Gain 1" = 0.1 "Gain 2" = 0.9 "Gain 3" = 0.9 } }
-
-              # Raw wet recombination at unity G (M' +/- ks*S)
-              { type = builtin label = mixer name = karL_raw
-                control = { "Gain 1" = 1.0 "Gain 2" = 1.0 } }
-              { type = builtin label = mixer name = karR_raw
-                control = { "Gain 1" = 1.0 "Gain 2" = -1.0 } }
-
-              # Wet ebur128 node
-              { type = ebur128 label = ebur128 name = ebWet }
-
-              # Dynamic gain calculator: Gain = 10^((Target - WetLUFS)/20)
-              { type = ebur128 label = lufs2gain name = l2g }
-
-              # Safe gain clamping: min ~0.7x, max ~1.41x (+3 dB ceiling)
-              { type = builtin label = clamp name = gainClamp
-                control = { "Min" = 0.7 "Max" = 1.41 } }
-
-              # Dynamic amplifiers
-              { type = builtin label = linear name = ampL control = { "Add" = 0.0 } }
-              { type = builtin label = linear name = ampR control = { "Add" = 0.0 } }
+              # Native C Spectral Per-Bin Karaoke LADSPA Plugin
+              { type = ladspa
+                name = spectral_karaoke
+                plugin = "${pkgs.ladspa-spectral-karaoke}/lib/ladspa/spectral_karaoke.so"
+                label = spectral_karaoke
+                control = {
+                  "Depth"                = 0.85
+                  "Low Cutoff (Hz)"      = 150.0
+                  "Air Depth"            = 0.20
+                  "Transient Protection" = 0.50
+                  "Release (ms)"         = 80.0
+                  "Reverb Duck (dB)"     = 2.5
+                }
+              }
 
               # Fast Lookahead Limiter (Steve Harris SWH LADSPA 1913)
               { type = ladspa
@@ -470,53 +444,15 @@
               { type = builtin name = eq_band_10_r label = bq_peaking control = { "Freq" = 16000.0 "Q" = 1.414 "Gain" = 0.0 } }
             ]
             links = [
-              # Dry path to delay and dry ebur128
+              # Dry path to delay
               { output = "inL:Out" input = "delayL:In" }
               { output = "inR:Out" input = "delayR:In" }
-              { output = "inL:Out" input = "ebDry:In FL" }
-              { output = "inR:Out" input = "ebDry:In FR" }
 
-              # Mid/Side decomposition
-              { output = "inL:Out" input = "mid:In 1" }
-              { output = "inR:Out" input = "mid:In 2" }
-              { output = "inL:Out" input = "side:In 1" }
-              { output = "inR:Out" input = "side:In 2" }
-
-              # Filter branches
-              { output = "mid:Out" input = "lp1:In" }
-              { output = "lp1:Out" input = "lp2:In" }
-              { output = "mid:Out" input = "hp1:In" }
-              { output = "hp1:Out" input = "hp2:In" }
-
-              { output = "mid:Out" input = "mp:In 1" }
-              { output = "lp2:Out" input = "mp:In 2" }
-              { output = "hp2:Out" input = "mp:In 3" }
-
-              # Re-matrix to raw wet L/R
-              { output = "mp:Out"   input = "karL_raw:In 1" }
-              { output = "side:Out" input = "karL_raw:In 2" }
-              { output = "mp:Out"   input = "karR_raw:In 1" }
-              { output = "side:Out" input = "karR_raw:In 2" }
-
-              # Wet ebur128 measurement
-              { output = "karL_raw:Out" input = "ebWet:In FL" }
-              { output = "karR_raw:Out" input = "ebWet:In FR" }
-
-              # Control linking: Shortterm LUFS + Allowance -> Target LUFS -> lufs2gain -> clamp -> amp Mult
-              { output = "ebDry:Shortterm LUFS" input = "addAllowance:Control" }
-              { output = "addAllowance:Notify"   input = "l2g:Target LUFS" }
-              { output = "ebWet:Shortterm LUFS" input = "l2g:LUFS" }
-              { output = "l2g:Gain"              input = "gainClamp:Control" }
-              { output = "gainClamp:Notify"      input = "ampL:Mult" }
-              { output = "gainClamp:Notify"      input = "ampR:Mult" }
-
-              # Dynamic amplification
-              { output = "karL_raw:Out" input = "ampL:In" }
-              { output = "karR_raw:Out" input = "ampR:In" }
-
-              # Limiter in wet path
-              { output = "ampL:Out" input = "limiter:Input 1" }
-              { output = "ampR:Out" input = "limiter:Input 2" }
+              # Wet path through Spectral Karaoke plugin and limiter
+              { output = "inL:Out" input = "spectral_karaoke:Input L" }
+              { output = "inR:Out" input = "spectral_karaoke:Input R" }
+              { output = "spectral_karaoke:Output L" input = "limiter:Input 1" }
+              { output = "spectral_karaoke:Output R" input = "limiter:Input 2" }
 
               # Selectors: In 1 = delayed dry, In 2 = limited wet
               { output = "delayL:Out"        input = "finalL:In 1" }
