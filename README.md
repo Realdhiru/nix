@@ -91,7 +91,7 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 | **Compositor** | [Hyprland](https://hyprland.org) | Wayland dynamic tiling compositor with native Niri-style continuous scrolling ribbon layout |
 | **Desktop Shell** | [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) (Qt6 / QML) | Event-driven topbar, circular battery dial, MPRIS music & popups |
 | **Theming** | [Wallust](https://codeberg.org/explosion-mental/wallust) | Sub-millisecond wallpaper-derived color extraction across UI, terminals & GTK |
-| **Audio Engine** | [PipeWire](https://pipewire.org) (`filter-chain`) | Low-latency audio routing with native 10-band C DSP equalizer |
+| **Audio Engine** | [PipeWire](https://pipewire.org) (`filter-chain`) | Low-latency audio routing with native 10-band C DSP equalizer & mid/side adaptive karaoke processor |
 | **Power Engine** | [TLP 1.9.1](https://linrunner.de/tlp/) | Firmware battery threshold (80%), dynamic platform profiles & deep C-states |
 | **Launchers** | [Fuzzel](https://codeberg.org/dnkl/fuzzel) | Frosted glass app launcher, instant file search & emoji/glyph picker |
 | **Knowledge Base** | [Obsidian](https://obsidian.md) | Native Wayland markdown second-brain vault with interactive graph view |

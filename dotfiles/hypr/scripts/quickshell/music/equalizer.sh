@@ -65,10 +65,28 @@ case $cmd in
     esac
     ;;
 "get")
+    def_name=$(timeout 1 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk -F'"' '/node.name =/ {print $2; exit}' || echo "")
     if [ -f "$STATE_FILE" ]; then
-        cat "$STATE_FILE"
+        cur_state=$(cat "$STATE_FILE" 2>/dev/null || echo '{"preset":"Flat"}')
+        cur_preset=$(echo "$cur_state" | jq -r '.preset // "Flat"' 2>/dev/null || echo "Flat")
+        if [ "$def_name" = "effect_input.karaoke" ]; then
+            if [[ "$cur_preset" != Karaoke* ]]; then
+                cur_preset="Karaoke"
+                cur_state=$(echo "$cur_state" | jq -c --arg p "$cur_preset" '.preset = $p')
+                echo "$cur_state" > "$STATE_FILE"
+            fi
+        else
+            if [[ "$cur_preset" == Karaoke* ]]; then
+                cur_preset="Flat"
+                cur_state=$(echo "$cur_state" | jq -c --arg p "$cur_preset" '.preset = $p')
+                echo "$cur_state" > "$STATE_FILE"
+            fi
+        fi
+        echo "$cur_state"
     else
-        echo '{"b1":0,"b2":0,"b3":0,"b4":0,"b5":0,"b6":0,"b7":0,"b8":0,"b9":0,"b10":0,"preset":"Flat","pending":false}'
+        p="Flat"
+        [ "$def_name" = "effect_input.karaoke" ] && p="Karaoke"
+        echo "{\"b1\":0,\"b2\":0,\"b3\":0,\"b4\":0,\"b5\":0,\"b6\":0,\"b7\":0,\"b8\":0,\"b9\":0,\"b10\":0,\"preset\":\"$p\",\"pending\":false}"
     fi
     ;;
 "set_band")
@@ -89,16 +107,16 @@ case $cmd in
 "preset")
     case $arg1 in
         "Flat")           save_preset 0 0 0 0 0 0 0 0 0 0 "Flat" ;;
-        "Bass")           save_preset 4 5 3 0 -1 0 1 1 2 1 "Bass" ;;
-        "Karaoke")        save_preset 4 4 2 0 -2 -3 -2 1 2 2 "Karaoke" ;;
-        "Karaoke Gentle") save_preset 2 2 1 0 -1 -2 -1 1 1 1 "Karaoke Gentle" ;;
-        "Karaoke Hard")   save_preset 5 5 3 0 -3 -4 -3 1 3 3 "Karaoke Hard" ;;
-        "Karaoke Max")    save_preset 5 5 3 0 -4 -5 -4 1 3 3 "Karaoke Max" ;;
+        "Bass")           save_preset 3 4 2 0 -1 0 1 1 1 1 "Bass" ;;
+        "Karaoke")        save_preset 0 0 0 0 -2 -3 -2 0 1 1 "Karaoke" ;;
+        "Karaoke Gentle") save_preset 0 0 0 0 -1 -2 -1 0 1 1 "Karaoke Gentle" ;;
+        "Karaoke Hard")   save_preset 0 0 0 0 -3 -4 -3 0 2 2 "Karaoke Hard" ;;
+        "Karaoke Max")    save_preset 0 0 0 0 -4 -5 -4 0 2 2 "Karaoke Max" ;;
         "Vocal")          save_preset -3 -2 -1 1 3 4 3 2 1 0 "Vocal" ;;
-        "Pop")            save_preset 2 3 1 -1 0 2 3 3 2 2 "Pop" ;;
-        "Rock")           save_preset 4 3 1 -2 -1 1 2 3 4 3 "Rock" ;;
-        "Jazz")           save_preset 2 2 1 1 2 2 2 2 1 1 "Jazz" ;;
-        "Classic")        save_preset 1 1 0 0 1 1 1 2 3 3 "Classic" ;;
+        "Pop")            save_preset 1 2 1 -1 0 2 2 2 2 1 "Pop" ;;
+        "Rock")           save_preset 2 2 1 -1 -1 1 2 2 3 2 "Rock" ;;
+        "Jazz")           save_preset 1 1 1 1 2 2 2 2 1 1 "Jazz" ;;
+        "Classic")        save_preset 1 1 0 0 1 1 1 2 2 2 "Classic" ;;
     esac
     apply_eq
     case "$arg1" in

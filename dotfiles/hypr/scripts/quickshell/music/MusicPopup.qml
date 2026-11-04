@@ -19,8 +19,10 @@ Item {
 
     onVisibleChanged: {
         if (visible) {
+            root.lastEqUpdate = 0;
             if (!musicProc.running) musicProc.running = true;
-            if (!eqProc.running) eqProc.running = true;
+            eqProc.running = false;
+            eqProc.running = true;
         }
     }
 
@@ -252,14 +254,14 @@ Item {
     function applyPresetOptimistically(presetName) {
         var presets = {
             "Flat": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            "Bass": [4, 5, 3, 0, -1, 0, 1, 1, 2, 1],
-            "Karaoke": [6, 6, 4, 1, -3, -4, -3, 1, 3, 4],
+            "Bass": [3, 4, 2, 0, -1, 0, 1, 1, 1, 1],
+            "Karaoke": [0, 0, 0, 0, -2, -3, -2, 0, 1, 1],
             "Treble": [-2, -1, 0, 0, 1, 2, 3, 4, 5, 4],
             "Vocal": [-3, -2, -1, 1, 3, 4, 3, 2, 1, 0],
-            "Pop": [2, 3, 1, -1, 0, 2, 3, 3, 2, 2],
-            "Rock": [4, 3, 1, -2, -1, 1, 2, 3, 4, 3],
-            "Jazz": [2, 2, 1, 1, 2, 2, 2, 2, 1, 1],
-            "Classic": [1, 1, 0, 0, 1, 1, 1, 2, 3, 3]
+            "Pop": [1, 2, 1, -1, 0, 2, 2, 2, 2, 1],
+            "Rock": [2, 2, 1, -1, -1, 1, 2, 2, 3, 2],
+            "Jazz": [1, 1, 1, 1, 2, 2, 2, 2, 1, 1],
+            "Classic": [1, 1, 0, 0, 1, 1, 1, 2, 2, 2]
         };
         if (presets[presetName]) {
             var temp = Object.assign({}, root.eqData);
@@ -297,20 +299,6 @@ Item {
         onTriggered: {
             if (!musicProc.running) musicProc.running = true;
             if (!eqProc.running) eqProc.running = true;
-            if (!karProc.running) karProc.running = true;
-        }
-    }
-
-    Process {
-        id: karProc
-        running: true
-        command: ["bash", "-c", "cat \"${XDG_RUNTIME_DIR:-/tmp}/karaoke.state\" 2>/dev/null || echo off"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                if (this.text) {
-                    root.karaokeActive = (this.text.trim() === "on");
-                }
-            }
         }
     }
 
@@ -1310,7 +1298,13 @@ Item {
         Layout.preferredHeight: root.s(32)
         radius: root.s(8)
 
-        property bool isActivePreset: root.eqData && root.eqData.preset === name
+        property bool isActivePreset: {
+            if (!root.eqData || !root.eqData.preset) return false;
+            if (name === "Karaoke") {
+                return root.eqData.preset.indexOf("Karaoke") !== -1;
+            }
+            return root.eqData.preset === name;
+        }
         property bool isHovered: hoverMa.containsMouse
 
         color: isActivePreset ? root.mauve : (isHovered ? root.surface1 : Qt.rgba(root.base.r, root.base.g, root.base.b, 0.75))
@@ -1334,7 +1328,13 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.applyPresetOptimistically(parent.name)
+            onClicked: {
+                if (parent.name === "Karaoke" && parent.isActivePreset) {
+                    root.applyPresetOptimistically("Flat");
+                } else {
+                    root.applyPresetOptimistically(parent.name);
+                }
+            }
         }
     }
 }
