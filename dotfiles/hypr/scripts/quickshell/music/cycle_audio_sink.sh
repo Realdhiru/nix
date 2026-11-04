@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
 # Fast PipeWire audio sink cycler (pure bash + pw-link + wpctl)
 
-mapfile -t sinks < <(pw-link -i 2>/dev/null | grep ':playback_FL' | grep -v 'effect_input' | sed 's/:playback_FL//')
+has_hdmi=false
+if grep -q "^connected" /sys/class/drm/card*-HDMI*/status 2>/dev/null; then
+    has_hdmi=true
+fi
+
+raw_sinks=$(pw-link -i 2>/dev/null | grep ':playback_FL' | grep -v 'effect_input' || true)
+sinks=()
+while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    node="${line%:playback_FL}"
+    if [[ "$node" == *"HiFi__HDMI"* ]] && [ "$has_hdmi" = false ]; then
+        continue
+    fi
+    sinks+=("$node")
+done <<< "$raw_sinks"
 
 if [ "${#sinks[@]}" -le 1 ]; then
     exit 0

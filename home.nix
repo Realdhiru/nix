@@ -223,6 +223,18 @@
         {
           matches = [
             {
+              device.name = "~bluez_card.*"
+            }
+          ]
+          actions = {
+            update-props = {
+              "session.dont-restore-off-profile" = true
+            }
+          }
+        }
+        {
+          matches = [
+            {
               node.name = "~bluez_output.*"
             }
           ]
@@ -249,6 +261,18 @@
       ]
 
       monitor.alsa.rules = [
+        {
+          matches = [
+            {
+              device.name = "~alsa_card.*"
+            }
+          ]
+          actions = {
+            update-props = {
+              "session.dont-restore-off-profile" = true
+            }
+          }
+        }
         {
           matches = [
             {
@@ -288,12 +312,40 @@
             }
           }
         }
+        {
+          matches = [
+            {
+              node.name = "~alsa_output.*Speaker.*"
+            }
+          ]
+          actions = {
+            update-props = {
+              priority.session = 1000
+              priority.driver = 1000
+            }
+          }
+        }
+        {
+          matches = [
+            {
+              node.name = "~alsa_output.*HDMI.*"
+            }
+          ]
+          actions = {
+            update-props = {
+              priority.session = 500
+              priority.driver = 500
+            }
+          }
+        }
       ]
 
       wireplumber.settings = {
         "linking.allow-moving-streams" = true
         "linking.follow-default-target" = true
         "bluetooth.autoswitch-to-headset-profile" = false
+        "bluetooth.profile-preference" = "quality"
+        "bluetooth.use-persistent-storage" = false
       }
     '';
   };

@@ -167,11 +167,18 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
     node_desc=$(echo "$inspect_out" | awk -F'"' '/node\.description/ {print $2}')
 
     if [[ "$node_name" == *"effect_input"* ]]; then
-        driver_id=$(echo "$inspect_out" | awk -F'"' '/node\.driver-id/ {print $2}')
-        if [ -n "$driver_id" ]; then
-            driver_inspect=$(timeout 0.5 wpctl inspect "$driver_id" 2>/dev/null)
-            node_name=$(echo "$driver_inspect" | awk -F'"' '/node\.name/ {print $2}')
-            node_desc=$(echo "$driver_inspect" | awk -F'"' '/device\.profile\.description|node\.nick|node\.description/ {print $2; exit}')
+        active_target=$(pw-link -l 2>/dev/null | awk '/effect_output.eq10:output_FL/ {getline; sub(/^[ |>-]+/, ""); sub(/:playback_FL.*/, ""); print; exit}' || echo "")
+        if [ -n "$active_target" ]; then
+            node_name="$active_target"
+            if [[ "$node_name" == *"Speaker"* ]]; then
+                node_desc="Speaker"
+            elif [[ "$node_name" == *"bluez"* ]]; then
+                node_desc="OnePlus Nord Buds 3"
+            elif [[ "$node_name" == *"Headphone"* ]]; then
+                node_desc="Headphones"
+            else
+                node_desc="$node_name"
+            fi
         fi
     fi
 
