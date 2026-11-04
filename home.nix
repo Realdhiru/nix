@@ -408,8 +408,8 @@
                   "Low Cutoff (Hz)"      = 50.0
                   "Air Depth"            = 0.95
                   "Transient Protection" = 0.0
-                  "Release (ms)"         = 40.0
-                  "Reverb Duck (dB)"     = 5.0
+                  "Release (ms)"         = 120.0
+                  "Reverb Duck (dB)"     = 0.0
                 }
               }
 

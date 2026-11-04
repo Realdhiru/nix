@@ -49,8 +49,8 @@ apply_preset_params() {
     \"spectral_karaoke:Low Cutoff (Hz)\" 50.0 \
     \"spectral_karaoke:Air Depth\" 0.95 \
     \"spectral_karaoke:Transient Protection\" 0.0 \
-    \"spectral_karaoke:Release (ms)\" 40.0 \
-    \"spectral_karaoke:Reverb Duck (dB)\" 5.0 \
+    \"spectral_karaoke:Release (ms)\" 120.0 \
+    \"spectral_karaoke:Reverb Duck (dB)\" 0.0 \
   ] }" >/dev/null 2>&1 || true
 }
 
@@ -109,6 +109,7 @@ load_state
 case "$cmd" in
   on)
     if [ "$cur_enabled" = "true" ]; then
+      apply_preset_params
       echo "Karaoke is already active"
       exit 0
     fi
