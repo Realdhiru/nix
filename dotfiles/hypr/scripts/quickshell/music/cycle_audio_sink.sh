@@ -77,15 +77,6 @@ fi
 pw-link effect_output.eq10:output_FL "${next_name}:playback_FL" 2>/dev/null || true
 pw-link effect_output.eq10:output_FR "${next_name}:playback_FR" 2>/dev/null || true
 
-# 3. Unmute and restore volume if muted on target sink
-vol_status=$(wpctl get-volume "$next_id" 2>/dev/null || echo "")
-if [[ "$vol_status" == *"[MUTED]"* ]]; then
-    wpctl set-mute "$next_id" 0 2>/dev/null || true
-fi
-vol_val=$(echo "$vol_status" | awk '{print $2}')
-if [ "$vol_val" = "0.00" ]; then
-    wpctl set-volume "$next_id" 0.40 2>/dev/null || true
-fi
 
 # 4. Notify user
 notify-send -a "Audio" -t 1500 -u low "$display_desc" 2>/dev/null || true

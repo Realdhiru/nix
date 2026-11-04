@@ -46,8 +46,8 @@ case "$preset" in
     ;;
   trim)
     delta_db="${2:-0}"
-    cur_allowance=$(timeout 2 pw-dump "$id" 2>/dev/null | jq -r '.[].info.params.Props[]?.params[]? // empty' 2>/dev/null | grep -A 1 '^addAllowance:Add$' | tail -n 1 || echo "-0.5")
-    [ -n "$cur_allowance" ] || cur_allowance="-0.5"
+    cur_allowance=$(timeout 2 pw-dump "$id" 2>/dev/null | jq -r '.[].info.params.Props[]?.params[]? // empty' 2>/dev/null | grep -A 1 '^addAllowance:Add$' | tail -n 1 || echo "-3.0")
+    [ -n "$cur_allowance" ] || cur_allowance="-3.0"
     new_allowance=$(awk -v a="$cur_allowance" -v d="$delta_db" 'BEGIN { res = a + d; if (res < -12.0) res = -12.0; if (res > 6.0) res = 6.0; printf "%.2f", res }')
     timeout 2 pw-cli s "$id" Props "{ params = [ \"addAllowance:Add\" $new_allowance ] }" >/dev/null 2>&1 || true
     echo "Karaoke adaptive allowance trimmed by ${delta_db} dB: ${cur_allowance} -> ${new_allowance} LU"
