@@ -80,12 +80,23 @@ local function get_tiled_windows_on_workspace(ws_id, exclude_addr)
     return list
 end
 
+local function is_any_window_fullscreen(ws_id)
+    local target_ws = ws_id or get_current_workspace_id()
+    if not target_ws then return false end
+    for _, w in ipairs(hl.get_windows()) do
+        if w.workspace and w.workspace.id == target_ws and w.fullscreen and w.fullscreen ~= 0 then
+            return true
+        end
+    end
+    return false
+end
+
 -- 3. Space-Filling Scaling & Boundary Normalization
 -- Prevents windows from collapsing into slivers and prevents Hyprland from centering columns
 local function sync_workspace_layout(ws_id, exclude_addr)
     if is_syncing then return end
     local target_ws_id = ws_id or get_current_workspace_id()
-    if not target_ws_id then return end
+    if not target_ws_id or is_any_window_fullscreen(target_ws_id) then return end
 
     local is_scrolling = false
     for _, ws in ipairs(hl.get_workspaces()) do
@@ -184,13 +195,13 @@ end
 -- 4. Dynamic Resizing (Keyboard & Mouse Wheel)
 local function smart_resize(dx, dy)
     local ws_id = get_current_workspace_id()
-    if not ws_id or (dy ~= 0 and dx == 0) then
+    if not ws_id or is_any_window_fullscreen(ws_id) or (dy ~= 0 and dx == 0) then
         hl.dispatch(hl.dsp.window.resize({ x = dx, y = dy, relative = true }))
         return
     end
 
     local active_win = hl.get_active_window()
-    if not active_win or active_win.floating then
+    if not active_win or active_win.floating or (active_win.fullscreen and active_win.fullscreen ~= 0) then
         hl.dispatch(hl.dsp.window.resize({ x = dx, y = dy, relative = true }))
         return
     end
@@ -244,7 +255,7 @@ end
 -- 5. Bounded Ribbon Navigation (Mouse Wheel)
 local function scroll_ribbon_left()
     local ws_id = get_current_workspace_id()
-    if not ws_id then return end
+    if not ws_id or is_any_window_fullscreen(ws_id) then return end
     local wins = get_tiled_windows_on_workspace(ws_id)
     if #wins <= 1 then return end
 
@@ -270,7 +281,7 @@ end
 
 local function scroll_ribbon_right()
     local ws_id = get_current_workspace_id()
-    if not ws_id then return end
+    if not ws_id or is_any_window_fullscreen(ws_id) then return end
     local wins = get_tiled_windows_on_workspace(ws_id)
     if #wins <= 1 then return end
 
@@ -329,26 +340,59 @@ hl.bind(mainMod .. " + ALT + mouse_down", scroll_ribbon_right, { description = "
 hl.bind(mainMod .. " + ALT + mouse_up", scroll_ribbon_left, { description = "scroll ribbon left with mouse wheel" })
 
 -- 7. Fullscreen Inhibit & Lifecycle Events
-local function sync_fullscreen_inhibit()
+local is_gesture_disabled = false
+
+local function sync_fullscreen_inhibit(target_win)
     local win = hl.get_active_window()
-    local is_fs = win and win.fullscreen and win.fullscreen ~= 0
+    local is_fs = (win and win.fullscreen and win.fullscreen ~= 0)
+
+    if not is_fs and target_win and type(target_win) == "userdata" and target_win.fullscreen and target_win.fullscreen ~= 0 then
+        is_fs = true
+    end
+
+    if not is_fs then
+        local ws_id = get_current_workspace_id()
+        if ws_id and is_any_window_fullscreen(ws_id) then
+            is_fs = true
+        end
+    end
+
     pcall(function()
         hl.dispatch(hl.dsp.layout(is_fs and "inhibit_scroll true" or "inhibit_scroll false"))
     end)
+
+    if is_fs then
+        if not is_gesture_disabled then
+            pcall(function()
+                hl.gesture({ fingers = 3, direction = "horizontal", action = "unset" })
+            end)
+            is_gesture_disabled = true
+        end
+    else
+        if is_gesture_disabled then
+            pcall(function()
+                hl.gesture({ fingers = 3, direction = "horizontal", action = "scroll_move" })
+            end)
+            is_gesture_disabled = false
+        end
+    end
 end
 
 hl.on("window.open", function(w)
     local ws_id = (w and w.workspace and w.workspace.id)
+    sync_fullscreen_inhibit(w)
     sync_workspace_layout(ws_id)
 end)
 
 hl.on("window.close", function(w)
     local ws_id = (w and w.workspace and w.workspace.id)
     local addr = (w and w.address)
+    sync_fullscreen_inhibit()
     sync_workspace_layout(ws_id, addr)
 end)
 
 hl.on("window.destroy", function()
+    sync_fullscreen_inhibit()
     sync_workspace_layout()
 end)
 
@@ -362,12 +406,13 @@ hl.on("workspace.special_active", function()
     sync_workspace_layout()
 end)
 
-hl.on("window.fullscreen", function()
-    sync_fullscreen_inhibit()
+hl.on("window.fullscreen", function(w)
+    sync_fullscreen_inhibit(w)
+    sync_workspace_layout()
 end)
 
-hl.on("window.active", function()
-    sync_fullscreen_inhibit()
+hl.on("window.active", function(w)
+    sync_fullscreen_inhibit(w)
 end)
 
 -- Initial state sync on load
