@@ -9,8 +9,8 @@ Item {
     id: root
     focus: true
 
-    property real layoutWidth: 720
-    property real layoutHeight: 640
+    property real layoutWidth: 740
+    property real layoutHeight: 630
     width: s(layoutWidth)
     height: s(layoutHeight)
 
@@ -21,6 +21,22 @@ Item {
     function s(val) { return scaler.s(val); }
 
     Theme { id: mocha }
+
+    // Dynamic hardware info (fetched once on start, portable across any machine)
+    property string hostSpec: "Linux Workstation"
+
+    Process {
+        id: sysinfoProc
+        command: ["bash", "-c", "echo \"$(uname -n) • $(sed -n 's/^model name[[:blank:]]*: //p' /proc/cpuinfo | head -n1 | sed -E 's/\\((R|TM)\\)//g; s/[[:space:]]+/ /g') • Linux $(uname -r | cut -d- -f1)\""]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (this.text && this.text.trim().length > 0) {
+                    root.hostSpec = this.text.trim();
+                }
+            }
+        }
+    }
 
     // Modes state tracking
     property bool wpKillActive: false
@@ -54,12 +70,14 @@ Item {
         }
     }
 
-    // Top process monitor list & broadcast check (gated to run only while visible)
+    // Top process monitor model
     ListModel { id: processModel }
+
+    readonly property string procScriptPath: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/dashboard/proc_top.sh"
 
     Process {
         id: psPoller
-        command: ["bash", "-c", "[ -f \"${XDG_RUNTIME_DIR:-/run/user/$UID}/pw_broadcast_active\" ] && echo '__BC_ON__' || echo '__BC_OFF__'; ps -eo pid,comm,%cpu,%mem --sort=-%cpu | head -n 7 | tail -n +2 | awk '{printf \"%s\\t%s\\t%s\\t%s\\n\", $1, $2, $3, $4}'"]
+        command: ["bash", root.procScriptPath]
         running: false
         stdout: SplitParser {
             splitMarker: "\n"
@@ -78,7 +96,7 @@ Item {
                 if (parts.length >= 4) {
                     processModel.append({
                         "pid": parts[0],
-                        "name": parts[1].replace(/^\./, "").replace(/-wrapp$/, ""),
+                        "name": parts[1],
                         "cpu": parts[2],
                         "mem": parts[3]
                     });
@@ -91,24 +109,29 @@ Item {
         id: pollTimer
         interval: 2000
         repeat: true
-        running: root.visible
-        onTriggered: {
-            processModel.clear();
-            psPoller.running = false;
-            psPoller.running = true;
-        }
+        running: false
+        onTriggered: root.refreshProcesses()
     }
 
-    // Lifecycle subscription to SysData telemetry
+    function refreshProcesses() {
+        processModel.clear();
+        psPoller.running = false;
+        psPoller.running = true;
+    }
+
+    // Cached widget lifecycle contract
+    function showWidget() {
+        SysData.subscribe();
+        modesFileView.reload();
+        root.parseModesJson(modesFileView.text());
+        root.refreshProcesses();
+        pollTimer.restart();
+        root.forceActiveFocus();
+    }
+
     onVisibleChanged: {
         if (visible) {
-            SysData.subscribe();
-            modesFileView.reload();
-            root.parseModesJson(modesFileView.text());
-            processModel.clear();
-            psPoller.running = true;
-            pollTimer.restart();
-            root.forceActiveFocus();
+            root.showWidget();
         } else {
             SysData.unsubscribe();
             pollTimer.stop();
@@ -117,18 +140,13 @@ Item {
     }
 
     Component.onCompleted: {
-        if (visible) {
-            SysData.subscribe();
-            modesFileView.reload();
-            root.parseModesJson(modesFileView.text());
-            psPoller.running = true;
-            pollTimer.restart();
-            root.forceActiveFocus();
-        }
+        if (visible) root.showWidget();
     }
 
     Component.onDestruction: {
         SysData.unsubscribe();
+        pollTimer.stop();
+        psPoller.running = false;
     }
 
     Keys.onPressed: (event) => {
@@ -139,86 +157,157 @@ Item {
     }
 
     function closeWidget() {
-        Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh close"]);
+        Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
     }
 
-    // Main Card Surface
+    function formatRate(bytesPerSec) {
+        if (!bytesPerSec || bytesPerSec <= 0) return "0.0 KB/s";
+        if (bytesPerSec < 1024) return bytesPerSec.toFixed(1) + " B/s";
+        let kb = bytesPerSec / 1024;
+        if (kb < 1024) return kb.toFixed(1) + " KB/s";
+        let mb = kb / 1024;
+        return mb.toFixed(2) + " MB/s";
+    }
+
+    // =========================================================================
+    // Visual Card Structure (Guaranteed Anti-Bleed & High-Contrast WCAG AA)
+    // =========================================================================
+
+    // Solid foundation layer: guarantees wallpaper artwork never bleeds through
+    Rectangle {
+        id: antiBleedBase
+        anchors.fill: mainCard
+        radius: mainCard.radius
+        color: mocha.mantle
+        opacity: Config.isSolidMode ? 1.0 : (mocha.isLightMode ? 0.98 : 0.92)
+        z: -1
+    }
+
     Rectangle {
         id: mainCard
         anchors.fill: parent
         radius: root.s(16)
-        color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, Config.effectivePopupOpacity)
-        border.width: Config.borderWidth
-        border.color: (Config.borderWidth > 0 && Config.borderOpacity > 0)
-            ? Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, Config.borderOpacity)
-            : Qt.rgba(255, 255, 255, Config.glassSpecular)
+        color: Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.65)
+        border.width: root.s(1)
+        border.color: Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.45)
         clip: true
 
         Behavior on color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
         Behavior on border.color { ColorAnimation { duration: Motion.fadeMs; easing.type: Motion.fadeEasing } }
 
-        // Anti-bleed base layer
+        // Subtle ambient radial glow
         Rectangle {
-            anchors.fill: parent
-            radius: parent.radius
-            color: Qt.rgba(mocha.crust.r, mocha.crust.g, mocha.crust.b, Config.antiBleedOpacity)
-            z: -1
+            width: parent.width * 0.75
+            height: width
+            radius: width / 2
+            anchors.centerIn: parent
+            opacity: 0.04
+            color: mocha.mauve
         }
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: root.s(20)
+            anchors.margins: root.s(22)
             spacing: root.s(16)
 
-            // Header Row
+            // =================================================================
+            // Header Section
+            // =================================================================
             RowLayout {
                 Layout.fillWidth: true
                 spacing: root.s(12)
 
-                Text {
-                    text: "󰄛"
-                    font.family: "Iosevka Nerd Font"
-                    font.pixelSize: root.s(22)
-                    color: mocha.mauve
+                Rectangle {
+                    width: root.s(36)
+                    height: root.s(36)
+                    radius: root.s(10)
+                    color: Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.16)
+                    border.width: root.s(1)
+                    border.color: Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.35)
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "󰍛"
+                        font.family: "Iosevka Nerd Font"
+                        font.pixelSize: root.s(20)
+                        color: mocha.mauve
+                    }
                 }
 
                 ColumnLayout {
-                    spacing: 0
+                    spacing: root.s(2)
                     Layout.fillWidth: true
 
-                    Text {
-                        text: "System Dashboard"
-                        font.family: "JetBrains Mono"
-                        font.weight: Font.Bold
-                        font.pixelSize: root.s(16)
-                        color: mocha.text
+                    RowLayout {
+                        spacing: root.s(8)
+                        Text {
+                            text: "System Monitor"
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: root.s(16)
+                            color: mocha.text
+                        }
+
+                        // Live activity badge
+                        Rectangle {
+                            height: root.s(18)
+                            width: liveRow.implicitWidth + root.s(12)
+                            radius: root.s(9)
+                            color: Qt.rgba(mocha.green.r, mocha.green.g, mocha.green.b, 0.15)
+                            border.width: root.s(1)
+                            border.color: Qt.rgba(mocha.green.r, mocha.green.g, mocha.green.b, 0.35)
+
+                            RowLayout {
+                                id: liveRow
+                                anchors.centerIn: parent
+                                spacing: root.s(4)
+
+                                Rectangle {
+                                    width: root.s(6)
+                                    height: root.s(6)
+                                    radius: width / 2
+                                    color: mocha.green
+                                }
+
+                                Text {
+                                    text: "LIVE"
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Bold
+                                    font.pixelSize: root.s(9)
+                                    color: mocha.green
+                                }
+                            }
+                        }
                     }
 
                     Text {
-                        text: "ASUS Vivobook OLED • Core i5-13500H • Intel Iris Xe"
+                        text: root.hostSpec
                         font.family: "JetBrains Mono"
                         font.weight: Font.Medium
                         font.pixelSize: root.s(11)
                         color: mocha.subtext0
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
                 }
 
                 // Close Button
                 Rectangle {
-                    width: root.s(28)
-                    height: root.s(28)
-                    radius: width / 2
-                    color: closeMa.containsMouse ? mocha.surface2 : "transparent"
+                    width: root.s(30)
+                    height: root.s(30)
+                    radius: root.s(8)
+                    color: closeMa.containsMouse ? Qt.rgba(mocha.red.r, mocha.red.g, mocha.red.b, 0.18) : Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.40)
                     border.width: root.s(1)
-                    border.color: closeMa.containsMouse ? mocha.red : mocha.surface1
+                    border.color: closeMa.containsMouse ? mocha.red : Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.40)
                     Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
+                    Behavior on border.color { ColorAnimation { duration: Motion.fadeMs } }
 
                     Text {
                         anchors.centerIn: parent
                         text: "󰅖"
                         font.family: "Iosevka Nerd Font"
-                        font.pixelSize: root.s(14)
-                        color: closeMa.containsMouse ? mocha.red : mocha.overlay1
+                        font.pixelSize: root.s(13)
+                        color: closeMa.containsMouse ? mocha.red : mocha.subtext0
                     }
 
                     MouseArea {
@@ -231,235 +320,226 @@ Item {
                 }
             }
 
-            // Modes Overview & Control Strip
-            ColumnLayout {
+            // =================================================================
+            // Modes Quick Controls Strip
+            // =================================================================
+            RowLayout {
                 Layout.fillWidth: true
                 spacing: root.s(8)
 
-                Text {
-                    text: "ACTIVE MODES & TOGGLES"
-                    font.family: "JetBrains Mono"
-                    font.weight: Font.Bold
-                    font.pixelSize: root.s(10)
-                    color: mocha.overlay1
+                // 1. Wallpaper Kill
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: root.s(34)
+                    radius: root.s(8)
+                    color: root.wpKillActive ? Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.18) : (wpMa.containsMouse ? mocha.surface1 : mocha.surface0)
+                    border.width: root.s(1)
+                    border.color: root.wpKillActive ? mocha.mauve : (wpMa.containsMouse ? mocha.surface2 : Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35))
+                    Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
+
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: root.s(6)
+
+                        Text {
+                            text: "󰸉"
+                            font.family: "Iosevka Nerd Font"
+                            font.pixelSize: root.s(13)
+                            color: root.wpKillActive ? mocha.mauve : mocha.subtext1
+                        }
+
+                        Text {
+                            text: "No Wallpaper"
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: root.s(10)
+                            color: root.wpKillActive ? mocha.text : mocha.subtext0
+                        }
+                    }
+
+                    MouseArea {
+                        id: wpMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/mode_ctl.sh", "toggle", "wallpaper-kill"])
+                    }
                 }
 
-                RowLayout {
+                // 2. Gaming Mode
+                Rectangle {
                     Layout.fillWidth: true
-                    spacing: root.s(8)
+                    Layout.preferredHeight: root.s(34)
+                    radius: root.s(8)
+                    color: root.gamingActive ? Qt.rgba(mocha.red.r, mocha.red.g, mocha.red.b, 0.18) : (gameMa.containsMouse ? mocha.surface1 : mocha.surface0)
+                    border.width: root.s(1)
+                    border.color: root.gamingActive ? mocha.red : (gameMa.containsMouse ? mocha.surface2 : Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35))
+                    Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
 
-                    // 1. Wallpaper Kill
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: root.s(36)
-                        radius: root.s(10)
-                        color: root.wpKillActive ? Qt.rgba(mocha.mauve.r, mocha.mauve.g, mocha.mauve.b, 0.25) : mocha.surface0
-                        border.width: root.s(1)
-                        border.color: root.wpKillActive ? mocha.mauve : (wpMa.containsMouse ? mocha.surface2 : mocha.surface1)
-                        Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: root.s(6)
 
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: root.s(6)
-
-                            Text {
-                                text: "󰸉"
-                                font.family: "Iosevka Nerd Font"
-                                font.pixelSize: root.s(14)
-                                color: root.wpKillActive ? mocha.mauve : mocha.subtext1
-                            }
-
-                            Text {
-                                text: "No Wallpaper"
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Bold
-                                font.pixelSize: root.s(11)
-                                color: root.wpKillActive ? mocha.text : mocha.subtext0
-                            }
+                        Text {
+                            text: "󰊖"
+                            font.family: "Iosevka Nerd Font"
+                            font.pixelSize: root.s(13)
+                            color: root.gamingActive ? mocha.red : mocha.subtext1
                         }
 
-                        MouseArea {
-                            id: wpMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/mode_ctl.sh toggle wallpaper-kill"])
+                        Text {
+                            text: "Gaming"
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: root.s(10)
+                            color: root.gamingActive ? mocha.text : mocha.subtext0
                         }
                     }
 
-                    // 2. Gaming Mode
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: root.s(36)
-                        radius: root.s(10)
-                        color: root.gamingActive ? Qt.rgba(mocha.red.r, mocha.red.g, mocha.red.b, 0.25) : mocha.surface0
-                        border.width: root.s(1)
-                        border.color: root.gamingActive ? mocha.red : (gameMa.containsMouse ? mocha.surface2 : mocha.surface1)
-                        Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
+                    MouseArea {
+                        id: gameMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/mode_ctl.sh", "toggle", "gaming"])
+                    }
+                }
 
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: root.s(6)
+                // 3. Power Saver
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: root.s(34)
+                    radius: root.s(8)
+                    color: root.powerSaverActive ? Qt.rgba(mocha.green.r, mocha.green.g, mocha.green.b, 0.18) : (psMa.containsMouse ? mocha.surface1 : mocha.surface0)
+                    border.width: root.s(1)
+                    border.color: root.powerSaverActive ? mocha.green : (psMa.containsMouse ? mocha.surface2 : Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35))
+                    Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
 
-                            Text {
-                                text: "󰊖"
-                                font.family: "Iosevka Nerd Font"
-                                font.pixelSize: root.s(14)
-                                color: root.gamingActive ? mocha.red : mocha.subtext1
-                            }
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: root.s(6)
 
-                            Text {
-                                text: "Gaming"
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Bold
-                                font.pixelSize: root.s(11)
-                                color: root.gamingActive ? mocha.text : mocha.subtext0
-                            }
+                        Text {
+                            text: "󰌪"
+                            font.family: "Iosevka Nerd Font"
+                            font.pixelSize: root.s(13)
+                            color: root.powerSaverActive ? mocha.green : mocha.subtext1
                         }
 
-                        MouseArea {
-                            id: gameMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/mode_ctl.sh toggle gaming"])
+                        Text {
+                            text: "Power Saver"
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: root.s(10)
+                            color: root.powerSaverActive ? mocha.text : mocha.subtext0
                         }
                     }
 
-                    // 3. Power Saver
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: root.s(36)
-                        radius: root.s(10)
-                        color: root.powerSaverActive ? Qt.rgba(mocha.green.r, mocha.green.g, mocha.green.b, 0.25) : mocha.surface0
-                        border.width: root.s(1)
-                        border.color: root.powerSaverActive ? mocha.green : (psMa.containsMouse ? mocha.surface2 : mocha.surface1)
-                        Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
+                    MouseArea {
+                        id: psMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/mode_ctl.sh", "toggle", "power-saver"])
+                    }
+                }
 
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: root.s(6)
+                // 4. Coffee
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: root.s(34)
+                    radius: root.s(8)
+                    color: root.coffeeActive ? Qt.rgba(mocha.yellow.r, mocha.yellow.g, mocha.yellow.b, 0.18) : (coffeeMa.containsMouse ? mocha.surface1 : mocha.surface0)
+                    border.width: root.s(1)
+                    border.color: root.coffeeActive ? mocha.yellow : (coffeeMa.containsMouse ? mocha.surface2 : Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35))
+                    Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
 
-                            Text {
-                                text: "󰌪"
-                                font.family: "Iosevka Nerd Font"
-                                font.pixelSize: root.s(14)
-                                color: root.powerSaverActive ? mocha.green : mocha.subtext1
-                            }
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: root.s(6)
 
-                            Text {
-                                text: "Power Saver"
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Bold
-                                font.pixelSize: root.s(11)
-                                color: root.powerSaverActive ? mocha.text : mocha.subtext0
-                            }
+                        Text {
+                            text: "󰅶"
+                            font.family: "Iosevka Nerd Font"
+                            font.pixelSize: root.s(13)
+                            color: root.coffeeActive ? mocha.yellow : mocha.subtext1
                         }
 
-                        MouseArea {
-                            id: psMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/mode_ctl.sh toggle power-saver"])
+                        Text {
+                            text: "Coffee"
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: root.s(10)
+                            color: root.coffeeActive ? mocha.text : mocha.subtext0
                         }
                     }
 
-                    // 4. Coffee (Idle Inhibit)
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: root.s(36)
-                        radius: root.s(10)
-                        color: root.coffeeActive ? Qt.rgba(mocha.yellow.r, mocha.yellow.g, mocha.yellow.b, 0.25) : mocha.surface0
-                        border.width: root.s(1)
-                        border.color: root.coffeeActive ? mocha.yellow : (coffeeMa.containsMouse ? mocha.surface2 : mocha.surface1)
-                        Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
+                    MouseArea {
+                        id: coffeeMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: SysData.setCoffee(!root.coffeeActive)
+                    }
+                }
 
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: root.s(6)
+                // 5. Broadcast
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: root.s(34)
+                    radius: root.s(8)
+                    color: root.broadcastActive ? Qt.rgba(mocha.blue.r, mocha.blue.g, mocha.blue.b, 0.18) : (bcMa.containsMouse ? mocha.surface1 : mocha.surface0)
+                    border.width: root.s(1)
+                    border.color: root.broadcastActive ? mocha.blue : (bcMa.containsMouse ? mocha.surface2 : Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35))
+                    Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
 
-                            Text {
-                                text: "󰅶"
-                                font.family: "Iosevka Nerd Font"
-                                font.pixelSize: root.s(14)
-                                color: root.coffeeActive ? mocha.yellow : mocha.subtext1
-                            }
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: root.s(6)
 
-                            Text {
-                                text: "Coffee"
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Bold
-                                font.pixelSize: root.s(11)
-                                color: root.coffeeActive ? mocha.text : mocha.subtext0
-                            }
+                        Text {
+                            text: "󰍫"
+                            font.family: "Iosevka Nerd Font"
+                            font.pixelSize: root.s(13)
+                            color: root.broadcastActive ? mocha.blue : mocha.subtext1
                         }
 
-                        MouseArea {
-                            id: coffeeMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: SysData.setCoffee(!root.coffeeActive)
+                        Text {
+                            text: "Broadcast"
+                            font.family: "JetBrains Mono"
+                            font.weight: Font.Bold
+                            font.pixelSize: root.s(10)
+                            color: root.broadcastActive ? mocha.text : mocha.subtext0
                         }
                     }
 
-                    // 5. Audio Broadcast
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: root.s(36)
-                        radius: root.s(10)
-                        color: root.broadcastActive ? Qt.rgba(mocha.blue.r, mocha.blue.g, mocha.blue.b, 0.25) : mocha.surface0
-                        border.width: root.s(1)
-                        border.color: root.broadcastActive ? mocha.blue : (bcMa.containsMouse ? mocha.surface2 : mocha.surface1)
-                        Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
-
-                        RowLayout {
-                            anchors.centerIn: parent
-                            spacing: root.s(6)
-
-                            Text {
-                                text: "󰍫"
-                                font.family: "Iosevka Nerd Font"
-                                font.pixelSize: root.s(14)
-                                color: root.broadcastActive ? mocha.blue : mocha.subtext1
-                            }
-
-                            Text {
-                                text: "Broadcast"
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Bold
-                                font.pixelSize: root.s(11)
-                                color: root.broadcastActive ? mocha.text : mocha.subtext0
-                            }
-                        }
-
-                        MouseArea {
-                            id: bcMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Quickshell.execDetached(["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/toggle_multi_sink.sh"])
-                        }
+                    MouseArea {
+                        id: bcMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/toggle_multi_sink.sh"])
                     }
                 }
             }
 
-            // Real-Time Hardware Telemetry Grid (2x2)
+            // =================================================================
+            // Telemetry Cards Grid (2x2)
+            // =================================================================
             GridLayout {
                 Layout.fillWidth: true
                 columns: 2
                 columnSpacing: root.s(12)
                 rowSpacing: root.s(12)
 
-                // Card 1: CPU
+                // 1. CPU Card
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: root.s(72)
-                    radius: root.s(12)
+                    Layout.preferredHeight: root.s(70)
+                    radius: root.s(10)
                     color: mocha.surface0
                     border.width: root.s(1)
-                    border.color: mocha.surface1
+                    border.color: Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35)
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -469,10 +549,10 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             Text {
-                                text: "󰍛 CPU Usage"
+                                text: "󰍛 CPU Load"
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: root.s(12)
+                                font.pixelSize: root.s(11)
                                 color: mocha.text
                             }
                             Item { Layout.fillWidth: true }
@@ -480,8 +560,8 @@ Item {
                                 text: SysData.cpu + "%  •  " + SysData.temp + "°C"
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: root.s(12)
-                                color: mocha.blue
+                                font.pixelSize: root.s(11)
+                                color: SysData.cpu > 80 ? mocha.red : (SysData.cpu > 50 ? mocha.yellow : mocha.blue)
                             }
                         }
 
@@ -489,7 +569,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: root.s(6)
                             radius: height / 2
-                            color: mocha.surface2
+                            color: Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.40)
 
                             Rectangle {
                                 width: Math.max(0, Math.min(parent.width, parent.width * (SysData.cpu / 100.0)))
@@ -502,14 +582,14 @@ Item {
                     }
                 }
 
-                // Card 2: RAM
+                // 2. RAM Card
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: root.s(72)
-                    radius: root.s(12)
+                    Layout.preferredHeight: root.s(70)
+                    radius: root.s(10)
                     color: mocha.surface0
                     border.width: root.s(1)
-                    border.color: mocha.surface1
+                    border.color: Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35)
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -519,10 +599,10 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             Text {
-                                text: "󰘚 Memory (RAM)"
+                                text: "󰘚 Memory"
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: root.s(12)
+                                font.pixelSize: root.s(11)
                                 color: mocha.text
                             }
                             Item { Layout.fillWidth: true }
@@ -530,8 +610,8 @@ Item {
                                 text: SysData.ramGb.toFixed(1) + " GB  (" + SysData.ramPercent + "%)"
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: root.s(12)
-                                color: mocha.mauve
+                                font.pixelSize: root.s(11)
+                                color: SysData.ramPercent > 85 ? mocha.red : mocha.mauve
                             }
                         }
 
@@ -539,7 +619,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: root.s(6)
                             radius: height / 2
-                            color: mocha.surface2
+                            color: Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.40)
 
                             Rectangle {
                                 width: Math.max(0, Math.min(parent.width, parent.width * (SysData.ramPercent / 100.0)))
@@ -552,14 +632,14 @@ Item {
                     }
                 }
 
-                // Card 3: Battery & Power
+                // 3. Battery Card
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: root.s(72)
-                    radius: root.s(12)
+                    Layout.preferredHeight: root.s(70)
+                    radius: root.s(10)
                     color: mocha.surface0
                     border.width: root.s(1)
-                    border.color: mocha.surface1
+                    border.color: Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35)
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -572,15 +652,15 @@ Item {
                                 text: (SysData.acOnline ? "󰂄 Battery (AC Connected)" : "󰁹 Battery (Discharging)")
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: root.s(12)
+                                font.pixelSize: root.s(11)
                                 color: mocha.text
                             }
                             Item { Layout.fillWidth: true }
                             Text {
-                                text: SysData.batCapacity + "%  •  " + (SysData.batWattsText || "")
+                                text: SysData.batCapacity + "%"
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: root.s(12)
+                                font.pixelSize: root.s(11)
                                 color: SysData.batCapacity <= 20 ? mocha.red : mocha.green
                             }
                         }
@@ -589,7 +669,7 @@ Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: root.s(6)
                             radius: height / 2
-                            color: mocha.surface2
+                            color: Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.40)
 
                             Rectangle {
                                 width: Math.max(0, Math.min(parent.width, parent.width * (SysData.batCapacity / 100.0)))
@@ -602,14 +682,14 @@ Item {
                     }
                 }
 
-                // Card 4: Network & I/O
+                // 4. Network I/O Card
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: root.s(72)
-                    radius: root.s(12)
+                    Layout.preferredHeight: root.s(70)
+                    radius: root.s(10)
                     color: mocha.surface0
                     border.width: root.s(1)
-                    border.color: mocha.surface1
+                    border.color: Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35)
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -622,15 +702,15 @@ Item {
                                 text: "󰖩 Network I/O"
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: root.s(12)
+                                font.pixelSize: root.s(11)
                                 color: mocha.text
                             }
                             Item { Layout.fillWidth: true }
                             Text {
-                                text: (SysData.onBattery ? "60Hz" : "120Hz") + " • OLED 2.8K"
+                                text: (SysData.onBattery ? "60Hz" : "120Hz") + " • Active"
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: root.s(11)
+                                font.pixelSize: root.s(10)
                                 color: mocha.teal
                             }
                         }
@@ -638,18 +718,18 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             Text {
-                                text: "↓ " + (SysData.netRx > 0 ? SysData.netRx.toFixed(1) : "0.0") + " KB/s"
+                                text: "↓ " + root.formatRate(SysData.netRx)
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: root.s(12)
+                                font.pixelSize: root.s(11)
                                 color: mocha.peach
                             }
                             Item { Layout.fillWidth: true }
                             Text {
-                                text: "↑ " + (SysData.netTx > 0 ? SysData.netTx.toFixed(1) : "0.0") + " KB/s"
+                                text: "↑ " + root.formatRate(SysData.netTx)
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
-                                font.pixelSize: root.s(12)
+                                font.pixelSize: root.s(11)
                                 color: mocha.sapphire
                             }
                         }
@@ -657,7 +737,9 @@ Item {
                 }
             }
 
-            // Task Manager Top Processes Table
+            // =================================================================
+            // Top Active Tasks Table
+            // =================================================================
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -666,142 +748,165 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     Text {
-                        text: "TOP ACTIVE TASKS"
+                        text: "TOP ACTIVE PROCESSES"
                         font.family: "JetBrains Mono"
                         font.weight: Font.Bold
                         font.pixelSize: root.s(10)
-                        color: mocha.overlay1
+                        color: mocha.subtext1
                     }
                     Item { Layout.fillWidth: true }
                     Text {
-                        text: "Auto-refresh: 2s"
+                        text: "Refresh: 2s • ESC to exit"
                         font.family: "JetBrains Mono"
                         font.pixelSize: root.s(10)
-                        color: mocha.overlay0
+                        color: mocha.overlay1
                     }
                 }
 
-                // Table Header
+                // Table Header Container
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: root.s(26)
+                    Layout.preferredHeight: root.s(28)
                     radius: root.s(6)
-                    color: mocha.surface0
+                    color: mocha.surface1
+                    border.width: root.s(1)
+                    border.color: Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35)
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: root.s(12)
-                        anchors.rightMargin: root.s(12)
+                        anchors.leftMargin: root.s(14)
+                        anchors.rightMargin: root.s(14)
                         spacing: root.s(8)
 
-                        Text { Layout.preferredWidth: root.s(220); text: "NAME"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(10); color: mocha.overlay2 }
-                        Text { Layout.preferredWidth: root.s(80); text: "PID"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(10); color: mocha.overlay2 }
-                        Text { Layout.preferredWidth: root.s(80); text: "CPU %"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(10); color: mocha.overlay2; horizontalAlignment: Text.AlignRight }
-                        Text { Layout.preferredWidth: root.s(80); text: "MEM %"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(10); color: mocha.overlay2; horizontalAlignment: Text.AlignRight }
+                        Text { Layout.preferredWidth: root.s(230); text: "NAME"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(10); color: mocha.subtext0 }
+                        Text { Layout.preferredWidth: root.s(70); text: "PID"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(10); color: mocha.subtext0 }
+                        Text { Layout.preferredWidth: root.s(80); text: "CPU %"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(10); color: mocha.subtext0; horizontalAlignment: Text.AlignRight }
+                        Text { Layout.preferredWidth: root.s(80); text: "MEM %"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(10); color: mocha.subtext0; horizontalAlignment: Text.AlignRight }
                         Item { Layout.fillWidth: true }
-                        Text { Layout.preferredWidth: root.s(60); text: "ACTION"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(10); color: mocha.overlay2; horizontalAlignment: Text.AlignCenter }
+                        Text { Layout.preferredWidth: root.s(70); text: "ACTION"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(10); color: mocha.subtext0; horizontalAlignment: Text.AlignCenter }
                     }
                 }
 
-                // Process ListView
-                ListView {
-                    id: procList
+                // Process Table Body
+                Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    radius: root.s(8)
+                    color: mocha.surface0
+                    border.width: root.s(1)
+                    border.color: Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35)
                     clip: true
-                    spacing: root.s(4)
-                    model: processModel
 
-                    delegate: Rectangle {
-                        width: procList.width
-                        height: root.s(32)
-                        radius: root.s(6)
-                        color: rowMa.containsMouse ? mocha.surface1 : "transparent"
-                        border.width: root.s(1)
-                        border.color: rowMa.containsMouse ? mocha.surface2 : "transparent"
-                        Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
+                    ListView {
+                        id: procList
+                        anchors.fill: parent
+                        anchors.margins: root.s(4)
+                        clip: true
+                        spacing: root.s(2)
+                        model: processModel
 
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: root.s(12)
-                            anchors.rightMargin: root.s(12)
-                            spacing: root.s(8)
+                        delegate: Rectangle {
+                            width: procList.width
+                            height: root.s(32)
+                            radius: root.s(6)
+                            color: rowMa.containsMouse ? mocha.surface1 : "transparent"
+                            Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
 
-                            Text {
-                                Layout.preferredWidth: root.s(220)
-                                text: model.name || ""
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Bold
-                                font.pixelSize: root.s(11)
-                                color: mocha.text
-                                elide: Text.ElideRight
-                            }
-
-                            Text {
-                                Layout.preferredWidth: root.s(80)
-                                text: model.pid || ""
-                                font.family: "JetBrains Mono"
-                                font.pixelSize: root.s(11)
-                                color: mocha.subtext0
-                            }
-
-                            Text {
-                                Layout.preferredWidth: root.s(80)
-                                text: (model.cpu || "0.0") + "%"
-                                font.family: "JetBrains Mono"
-                                font.weight: Font.Bold
-                                font.pixelSize: root.s(11)
-                                color: parseFloat(model.cpu) > 10.0 ? mocha.red : mocha.blue
-                                horizontalAlignment: Text.AlignRight
-                            }
-
-                            Text {
-                                Layout.preferredWidth: root.s(80)
-                                text: (model.mem || "0.0") + "%"
-                                font.family: "JetBrains Mono"
-                                font.pixelSize: root.s(11)
-                                color: mocha.subtext0
-                                horizontalAlignment: Text.AlignRight
-                            }
-
-                            Item { Layout.fillWidth: true }
-
-                            Rectangle {
-                                Layout.preferredWidth: root.s(22)
-                                Layout.preferredHeight: root.s(22)
-                                radius: root.s(4)
-                                color: killMa.containsMouse ? mocha.red : mocha.surface1
-                                Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: root.s(10)
+                                anchors.rightMargin: root.s(10)
+                                spacing: root.s(8)
 
                                 Text {
-                                    anchors.centerIn: parent
-                                    text: "󰅖"
-                                    font.family: "Iosevka Nerd Font"
+                                    Layout.preferredWidth: root.s(230)
+                                    text: model.name || ""
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Bold
                                     font.pixelSize: root.s(11)
-                                    color: killMa.containsMouse ? mocha.crust : mocha.overlay1
+                                    color: mocha.text
+                                    elide: Text.ElideRight
                                 }
 
-                                MouseArea {
-                                    id: killMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        let targetPid = model.pid;
-                                        if (targetPid) {
-                                            Quickshell.execDetached(["kill", "-15", targetPid]);
-                                            processModel.remove(index);
+                                Text {
+                                    Layout.preferredWidth: root.s(70)
+                                    text: model.pid || ""
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: root.s(11)
+                                    color: mocha.subtext0
+                                }
+
+                                Text {
+                                    Layout.preferredWidth: root.s(80)
+                                    text: (model.cpu || "0.0") + "%"
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Bold
+                                    font.pixelSize: root.s(11)
+                                    color: parseFloat(model.cpu) > 40 ? mocha.red : (parseFloat(model.cpu) > 15 ? mocha.yellow : mocha.blue)
+                                    horizontalAlignment: Text.AlignRight
+                                }
+
+                                Text {
+                                    Layout.preferredWidth: root.s(80)
+                                    text: (model.mem || "0.0") + "%"
+                                    font.family: "JetBrains Mono"
+                                    font.pixelSize: root.s(11)
+                                    color: mocha.mauve
+                                    horizontalAlignment: Text.AlignRight
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                // Kill Process Pill
+                                Rectangle {
+                                    Layout.preferredWidth: root.s(56)
+                                    Layout.preferredHeight: root.s(22)
+                                    radius: root.s(5)
+                                    color: killMa.containsMouse ? Qt.rgba(mocha.red.r, mocha.red.g, mocha.red.b, 0.22) : Qt.rgba(mocha.surface2.r, mocha.surface2.g, mocha.surface2.b, 0.35)
+                                    border.width: root.s(1)
+                                    border.color: killMa.containsMouse ? mocha.red : "transparent"
+                                    Behavior on color { ColorAnimation { duration: Motion.fadeMs } }
+                                    Behavior on border.color { ColorAnimation { duration: Motion.fadeMs } }
+
+                                    RowLayout {
+                                        anchors.centerIn: parent
+                                        spacing: root.s(3)
+
+                                        Text {
+                                            text: "󰅖"
+                                            font.family: "Iosevka Nerd Font"
+                                            font.pixelSize: root.s(10)
+                                            color: killMa.containsMouse ? mocha.red : mocha.subtext0
+                                        }
+
+                                        Text {
+                                            text: "End"
+                                            font.family: "JetBrains Mono"
+                                            font.weight: Font.Bold
+                                            font.pixelSize: root.s(10)
+                                            color: killMa.containsMouse ? mocha.red : mocha.subtext0
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: killMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            Quickshell.execDetached(["kill", "-15", model.pid]);
+                                            root.refreshProcesses();
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        MouseArea {
-                            id: rowMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            z: -1
+                            MouseArea {
+                                id: rowMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.NoButton
+                            }
                         }
                     }
                 }
