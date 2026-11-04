@@ -75,7 +75,7 @@ in
     slurp
     grimblast
     gpu-screen-recorder-gtk
-    tesseract
+    tesseract-fast
 
     # Media & Display
     (mpv.override { scripts = [ mpvScripts.mpris ]; })
