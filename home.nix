@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ./modules/home/audio.nix
     ./modules/home/desktop-state.nix
     ./modules/home/shell.nix
     ./modules/home/spicetify.nix
@@ -351,7 +352,6 @@
           capture.props = {
             node.name        = "effect_input.eq10"
             media.class      = "Audio/Sink"
-            priority.driver  = 2200
             priority.session = 2200
           }
           playback.props = {
@@ -369,7 +369,8 @@
   # L' = G*(M' + ks*S), R' = G*(M' - ks*S)
   # Wet path: karL/karR -> fastLookaheadLimiter (LADSPA 1913, limit=-1.0 dB, 5ms lookahead) -> finalL/finalR:In 2
   # Dry path: inL/inR -> delayL/delayR (builtin delay 5ms) -> finalL/finalR:In 1
-  xdg.configFile."pipewire/pipewire.conf.d/60-karaoke.conf".text = ''
+  xdg.configFile."pipewire/pipewire.conf.d/60-karaoke.conf" = lib.mkIf config.desktop.audio.karaoke.enable {
+    text = ''
     context.modules = [
       { name = libpipewire-module-filter-chain
         args = {
@@ -507,8 +508,7 @@
           capture.props = {
             node.name        = "effect_input.karaoke"
             media.class      = Audio/Sink
-            priority.driver  = 2300
-            priority.session = 2300
+            priority.session = 2100
           }
           playback.props = {
             node.name     = "effect_output.karaoke"
@@ -519,6 +519,7 @@
       }
     ]
   '';
+  };
 
   # WebRTC Echo-Cancellation, Noise Suppression & AGC module for internal stereo mic
   xdg.configFile."pipewire/pipewire.conf.d/60-echo-cancel.conf".text = ''

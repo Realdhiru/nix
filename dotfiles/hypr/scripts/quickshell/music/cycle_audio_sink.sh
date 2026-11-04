@@ -27,9 +27,3 @@ fi
 
 pw-link effect_output.eq10:output_FL "${next_target}:playback_FL" 2>/dev/null || true
 pw-link effect_output.eq10:output_FR "${next_target}:playback_FR" 2>/dev/null || true
-
-# Also set physical default in wireplumber if node id is found
-target_id=$(pw-cli ls Node 2>/dev/null | awk -v name="$next_target" '/id [0-9]+/ {id=$2} $0 ~ name {gsub(/,/, "", id); print id; exit}')
-if [ -n "$target_id" ]; then
-    wpctl set-default "$target_id" 2>/dev/null || true
-fi

@@ -52,11 +52,8 @@ get_physical_sink_id() {
 
 case "${1:-}" in
     vol-up)
-        phys=$(get_physical_sink_id)
-        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 &
-        [ -n "$phys" ] && wpctl set-mute "$phys" 0 &
-        wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+
-        wait
+        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
+        wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+
         read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
         icon="audio-volume-high"
         (( pct < 30 )) && icon="audio-volume-low"
@@ -64,11 +61,8 @@ case "${1:-}" in
         notify_osd 9990 "$icon" "Volume" "${pct}%"
         ;;
     vol-down)
-        phys=$(get_physical_sink_id)
-        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 &
-        [ -n "$phys" ] && wpctl set-mute "$phys" 0 &
+        wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
         wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
-        wait
         read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
         icon="audio-volume-high"
         (( pct < 30 )) && icon="audio-volume-low"
@@ -77,10 +71,6 @@ case "${1:-}" in
         ;;
     vol-mute)
         wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
-        phys=$(get_physical_sink_id)
-        if [ -n "$phys" ]; then
-            wpctl set-mute "$phys" toggle &
-        fi
         read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
         if [ "$mute" = "muted" ]; then
             notify_osd 9990 "audio-volume-muted" "Volume" "${pct}% (Muted)"
