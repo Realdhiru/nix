@@ -336,6 +336,7 @@ Item {
             let c = window.getCleanName(window.activeWallpaperName);
             if (c !== "") window.appliedWallCleanName = c;
             window.refreshActiveWallpapers();
+            window.syncActiveWallpaperFocus();
         }
     }
 
@@ -347,6 +348,52 @@ Item {
             let cur = (activeWallWatcher.text() || "").trim();
             if (!cur) {
                 window.reloadActiveWallpaperPath();
+                window.syncActiveWallpaperFocus();
+            }
+        }
+    }
+
+    function syncActiveWallpaperFocus() {
+        if (!window.activeWallpaperName) return;
+        window.targetWallName = window.activeWallpaperName;
+
+        let cleanActive = window.getCleanName(window.activeWallpaperName);
+        let targetModel = window.getModelForFilter(window.currentFilter);
+        let foundIdx = -1;
+
+        if (targetModel && targetModel.count > 0) {
+            for (let i = 0; i < targetModel.count; i++) {
+                let fn = targetModel.get(i).fileName || "";
+                if (fn === window.activeWallpaperName || (cleanActive && window.getCleanName(fn) === cleanActive)) {
+                    foundIdx = i;
+                    break;
+                }
+            }
+        }
+
+        if (foundIdx === -1 && window.currentFilter !== "All" && window.currentFilter !== "Search") {
+            let cat = window.getWallpaperCategory(window.activeWallpaperName);
+            if (cat !== "" && window.isFilterVisible(cat)) {
+                window.currentFilter = cat;
+            } else {
+                window.currentFilter = "All";
+            }
+            targetModel = window.getModelForFilter(window.currentFilter);
+            if (targetModel && targetModel.count > 0) {
+                for (let i = 0; i < targetModel.count; i++) {
+                    let fn = targetModel.get(i).fileName || "";
+                    if (fn === window.activeWallpaperName || (cleanActive && window.getCleanName(fn) === cleanActive)) {
+                        foundIdx = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (foundIdx !== -1) {
+            view.currentIndex = foundIdx;
+            if (window.visible && view.width > 0) {
+                view.positionViewAtIndex(foundIdx, ListView.Center);
             }
         }
     }
@@ -540,6 +587,9 @@ Item {
         let returningFromSearch = (window._lastFilter === "Search" && window.currentFilter !== "Search");
         window._lastFilter = window.currentFilter;
         Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/state_ctl.sh", "set", "ui.wallpaperFilter", window.currentFilter]);
+        if (window.currentFilter !== "" && window.currentFilter !== "Search") {
+            Quickshell.execDetached(["bash", "-c", "mkdir -p ~/.local/state/desktop/wallpaper && echo '" + window.currentFilter + "' > ~/.local/state/desktop/wallpaper/picker_filter.txt"]);
+        }
         
         if (returningFromSearch) window.searchIndexRestored = false;
         
@@ -975,7 +1025,7 @@ Item {
         }
 
         let p = window.reloadActiveWallpaperPath();
-        let activeWall = window.targetWallName !== "" ? window.targetWallName : window.activeWallpaperName;
+        let activeWall = window.activeWallpaperName !== "" ? window.activeWallpaperName : window.targetWallName;
         if (activeWall === "" && targetModel.count > 0) {
             let itm0 = targetModel.get(0);
             if (itm0 && itm0.fileName) {
@@ -991,6 +1041,25 @@ Item {
             if (fn === activeWall || (cleanActive && window.getCleanName(fn) === cleanActive)) {
                 foundIdx = i;
                 break;
+            }
+        }
+
+        if (foundIdx === -1 && window.currentFilter !== "All" && window.currentFilter !== "Search") {
+            let cat = window.getWallpaperCategory(activeWall);
+            if (cat !== "" && window.isFilterVisible(cat)) {
+                window.currentFilter = cat;
+            } else {
+                window.currentFilter = "All";
+            }
+            targetModel = window.getModelForFilter(window.currentFilter);
+            if (targetModel && targetModel.count > 0) {
+                for (let i = 0; i < targetModel.count; i++) {
+                    let fn = targetModel.get(i).fileName || "";
+                    if (fn === activeWall || (cleanActive && window.getCleanName(fn) === cleanActive)) {
+                        foundIdx = i;
+                        break;
+                    }
+                }
             }
         }
 
@@ -1024,18 +1093,17 @@ Item {
         if (!window.currentFilter) {
             window.currentFilter = "All";
         }
-        if (!window.targetWallName) {
-            let p = window.reloadActiveWallpaperPath();
-            if (p !== "") {
-                let parts = p.split("/");
-                let fname = parts[parts.length - 1];
-                if (fname !== "") {
-                    window.targetWallName = fname;
-                }
-            } else if (window.activeWallpaperName !== "") {
-                window.targetWallName = window.activeWallpaperName;
+        let p = window.reloadActiveWallpaperPath();
+        if (p !== "") {
+            let parts = p.split("/");
+            let fname = parts[parts.length - 1];
+            if (fname !== "") {
+                window.targetWallName = fname;
             }
+        } else if (window.activeWallpaperName !== "") {
+            window.targetWallName = window.activeWallpaperName;
         }
+        window.initialFocusSet = false;
         window.applyFilters(true);
         view.forceActiveFocus();
         centerOnActiveTimer.restart();
@@ -1334,10 +1402,8 @@ Item {
         let targetModel = window.getModelForFilter(window.currentFilter);
         if (!targetModel || targetModel.count === 0) return;
         
-        let nextIndex = view.currentIndex + direction;
-        if (nextIndex >= 0 && nextIndex < targetModel.count) {
-            view.currentIndex = nextIndex;
-        }
+        let nextIndex = (view.currentIndex + direction + targetModel.count) % targetModel.count;
+        view.currentIndex = nextIndex;
     }
 
     function cycleFilter(direction) {
@@ -1427,6 +1493,11 @@ Item {
         onActivated: window.deleteCurrentWallpaper()
     }
     Shortcut { 
+        sequence: "\\"
+        enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
+        onActivated: window.toggleFavoriteCurrentWallpaper()
+    }
+    Shortcut { 
         sequence: "F"
         enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
         onActivated: window.toggleFavoriteCurrentWallpaper()
@@ -1451,18 +1522,36 @@ Item {
     readonly property var activeModel: window.getModelForFilter(window.currentFilter)
 
     readonly property string filterStateFile: Quickshell.env("HOME") + "/.local/state/desktop/wallpaper/picker_filter.txt"
+    readonly property string stateJsonFile: Quickshell.env("HOME") + "/.local/state/desktop/quickshell/state.json"
+
+    FileView {
+        id: stateJsonView
+        path: window.stateJsonFile
+        watchChanges: false
+        onLoadedChanged: {
+            try {
+                let raw = (typeof stateJsonView.text === "function" ? stateJsonView.text() : stateJsonView.text) || "";
+                if (raw) {
+                    let parsed = JSON.parse(raw);
+                    let saved = parsed.ui && parsed.ui.wallpaperFilter ? parsed.ui.wallpaperFilter.trim() : "";
+                    if (saved !== "" && saved !== "Search" && window.isFilterVisible(saved)) {
+                        window.currentFilter = saved;
+                        return;
+                    }
+                }
+            } catch(e) {}
+            let raw2 = (typeof filterStateView.text === "function" ? filterStateView.text() : filterStateView.text) || "";
+            let saved2 = raw2.trim();
+            if (saved2 !== "" && saved2 !== "Search" && window.isFilterVisible(saved2)) {
+                window.currentFilter = saved2;
+            }
+        }
+    }
 
     FileView {
         id: filterStateView
         path: window.filterStateFile
         watchChanges: false
-        onLoadedChanged: {
-            let raw = (typeof filterStateView.text === "function" ? filterStateView.text() : filterStateView.text) || "";
-            let saved = raw.trim();
-            if (saved !== "" && saved !== "Search" && window.isFilterVisible(saved)) {
-                window.currentFilter = saved;
-            }
-        }
     }
 
     readonly property string favoritesFile: Quickshell.env("HOME") + "/.local/share/wallpaper_favorites.txt"

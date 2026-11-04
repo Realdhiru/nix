@@ -217,33 +217,23 @@ hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(scripts .. "reload.sh"), { descriptio
 -- 7. Quickshell & Widgets
 -- ======================================================
 
+-- Essential Daily Widgets (2-Button: SUPER + <key>)
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle network"), { description = "toggle network widget" })
-hl.bind(mainMod .. " + ALT + F", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle focustime"),
-    { description = "toggle focustime widget" })
-hl.bind(mainMod .. " + CTRL + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle monitors"),
-    { description = "toggle monitors widget" })
 hl.bind(mainMod .. " + U", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle battery"), { description = "toggle battery widget" })
+hl.bind(mainMod .. " + V", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle clipboard"), { description = "toggle clipboard widget" })
+hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle music"), { description = "toggle music widget" })
+hl.bind(mainMod .. " + F", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle focustime"), { description = "toggle focustime widget" })
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(scripts .. "quickshell/toggle_theme_mode.sh"), { description = "toggle quickshell theme mode" })
+
+-- Secondary Widgets (3-Button: SUPER + SHIFT + <key>)
 hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle wallpaper"),
     { description = "toggle wallpaper widget" })
-hl.bind(mainMod .. " + SHIFT + backslash", hl.dsp.exec_cmd(scripts .. "wallpaper.sh fav"),
-    { description = "toggle wallpaper favorite" })
-hl.bind(mainMod .. " + V", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle clipboard"),
-    { description = "toggle clipboard widget" })
-hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle music"),
-    { description = "toggle music widget" })
-hl.bind(mainMod .. " + CTRL + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle calendar"),
+hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle calendar"),
     { description = "toggle calendar widget" })
-
-hl.bind(mainMod .. " + CTRL + V", hl.dsp.exec_cmd(scripts .. "toggle_multi_sink.sh"),
-    { description = "toggle multi-sink audio broadcast" })
-hl.bind(mainMod .. " + CTRL + SHIFT + V", hl.dsp.exec_cmd(scripts .. "fix_audio.sh"),
-    { description = "recover audio subsystem" })
-hl.bind(mainMod .. " + CTRL + SHIFT + S", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle sunset"),
+hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle monitors"),
+    { description = "toggle monitors widget" })
+hl.bind(mainMod .. " + SHIFT + A", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle sunset"),
     { description = "toggle sunset screen tint" })
-hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(scripts .. "quickshell/toggle_theme_mode.sh"),
-    { description = "toggle quickshell theme mode" })
-hl.bind(mainMod .. " + CTRL + SHIFT + Q", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle quickshell"),
-    { description = "toggle quickshell overlay" })
 
 -- Toggle Active Bar Only (SUPER + CTRL + ALT in any press order)
 local bar_toggle_combos = {
@@ -271,34 +261,17 @@ hl.bind(mainMod .. " + ALT + Down", hl.dsp.exec_cmd(scripts .. "qs_manager.sh po
     { description = "position topbar left" })
 
 -- ======================================================
--- 8. Web Apps (SUPER + SHIFT + Letter)
+-- 8. Applications & Web Apps (SUPER + ALT + Letter)
 -- ======================================================
 
-hl.bind(mainMod .. " + SHIFT + C",
-    launch_brave_app({ class = "chatgpt", name = "chatgpt", url = "https://chat.openai.com" }),
-    { description = "launch ChatGPT web app" })
+hl.bind(mainMod .. " + ALT + G", hl.dsp.exec_cmd(scripts .. "launch_antigravity.sh"),
+    { description = "launch Antigravity new window" })
 
-hl.bind(mainMod .. " + SHIFT + A",
-    launch_brave_app({ class = "claude", url = "https://claude.ai/new" }),
-    { description = "launch Claude web app" })
-
-hl.bind(mainMod .. " + CTRL + SHIFT + A",
-    launch_brave_app({ incognito = true, class = "claude", url = "https://claude.ai/new" }),
-    { description = "launch Claude (incognito) web app" })
-
-hl.bind(mainMod .. " + SHIFT + Q",
+hl.bind(mainMod .. " + ALT + W",
     launch_brave_app({ class = "whatsapp", url = "https://web.whatsapp.com" }),
     { description = "launch WhatsApp web app" })
 
-hl.bind(mainMod .. " + SHIFT + N",
-    launch_brave_app({ class = "notion", url = "https://www.notion.so/02917993852a4825ab25a38c938de4f8" }),
-    { description = "launch Notion web app" })
-
-hl.bind(mainMod .. " + SHIFT + T",
-    launch_brave_app({ class = "todo", name = "todo", url = "https://to-do.live.com/tasks/inbox" }),
-    { description = "launch Microsoft To-Do web app" })
-
-hl.bind(mainMod .. " + SHIFT + Y",
+hl.bind(mainMod .. " + ALT + Y",
     launch_brave_app({
         profile = "youtube",
         class = "youtube",
@@ -306,6 +279,26 @@ hl.bind(mainMod .. " + SHIFT + Y",
         extra_flags = "--use-gl=angle --use-angle=gl --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder --enable-zero-copy",
     }),
     { description = "launch YouTube web app" })
+
+hl.bind(mainMod .. " + ALT + C",
+    launch_brave_app({ class = "chatgpt", name = "chatgpt", url = "https://chat.openai.com" }),
+    { description = "launch ChatGPT web app" })
+
+hl.bind(mainMod .. " + ALT + A",
+    launch_brave_app({ class = "claude", url = "https://claude.ai/new" }),
+    { description = "launch Claude web app" })
+
+hl.bind(mainMod .. " + CTRL + ALT + A",
+    launch_brave_app({ incognito = true, class = "claude", url = "https://claude.ai/new" }),
+    { description = "launch Claude (incognito) web app" })
+
+hl.bind(mainMod .. " + ALT + N",
+    launch_brave_app({ class = "notion", url = "https://www.notion.so/02917993852a4825ab25a38c938de4f8" }),
+    { description = "launch Notion web app" })
+
+hl.bind(mainMod .. " + ALT + D",
+    launch_brave_app({ class = "todo", name = "todo", url = "https://to-do.live.com/tasks/inbox" }),
+    { description = "launch Microsoft To-Do web app" })
 
 -- ======================================================
 -- 9. Window Management & Geometry
