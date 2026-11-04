@@ -128,10 +128,13 @@ hl.window_rule({ match = { title = "^(Picture-in-Picture|Picture in picture)$" }
 
 hl.window_rule({ match = { class = "^(polkit-gnome-authentication-agent-1)$" }, float = true, center = true, pin = true })
 hl.window_rule({ match = { class = "^(nm-connection-editor)$" }, float = true, center = true, size = { 700, 500 } })
-hl.window_rule({ match = { class = "^(xdg-desktop-portal-gtk|org\\.freedesktop\\.impl\\.portal\\.desktop\\.kde)$" }, float = true, center = true, size = { 900, 600 } })
+hl.window_rule({ match = { class = "^(xdg-desktop-portal-gtk|org\\.freedesktop\\.impl\\.portal\\.desktop\\.kde)$" }, float = true, center = true, pin = true, size = { 900, 600 } })
 hl.window_rule({ match = { class = "^(org\\.kde\\.kcalc|gnome-calculator)$" }, float = true, center = true })
 hl.window_rule({ match = { class = "^(filelight)$" }, float = true, center = true, size = { 950, 650 } })
 hl.window_rule({ match = { class = "^(lxqt-archiver)$" }, float = true, center = true, size = { 850, 550 } })
+hl.window_rule({ match = { class = "^(hyprland-share-picker)$" }, float = true, center = true, pin = true, size = { 650, 400 } })
+hl.window_rule({ match = { title = "^(Select what to share.*)$" }, float = true, center = true, pin = true, size = { 650, 400 } })
+hl.window_rule({ match = { title = "^(Choose what to share.*|Share your screen.*|Screen Sharing.*)$" }, float = true, center = true, pin = true, size = { 650, 400 } })
 
 -- ======================================================
 -- Image Viewers (Popup modal for photo openers)
