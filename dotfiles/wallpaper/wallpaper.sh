@@ -251,6 +251,12 @@ cmd_fav() {
     fi
 }
 
+cmd_cycle() {
+    local cycle_sh="$SCRIPT_DIR/../hypr/scripts/cycle_wallpaper.sh"
+    [ -f "$cycle_sh" ] || cycle_sh="$HOME/.config/hypr/scripts/cycle_wallpaper.sh"
+    exec "$cycle_sh" "$@"
+}
+
 # -----------------------------------------------------------------------------
 # Dispatcher
 # -----------------------------------------------------------------------------
@@ -264,8 +270,11 @@ case "$CMD" in
     clean)  cmd_clean "$@" ;;
     search) cmd_search "$@" ;;
     fav|toggle-fav) cmd_fav "$@" ;;
+    cycle)  cmd_cycle "$@" ;;
+    next)   cmd_cycle "next" ;;
+    prev)   cmd_cycle "prev" ;;
     *)
-        echo "Usage: $0 {set|boot|kill|ensure|thumb|watch|clean|search|fav} [args...]" >&2
+        echo "Usage: $0 {set|boot|kill|ensure|thumb|watch|clean|search|fav|cycle|next|prev} [args...]" >&2
         exit 1
         ;;
 esac

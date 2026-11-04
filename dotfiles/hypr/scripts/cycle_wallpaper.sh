@@ -5,12 +5,17 @@ set -euo pipefail
 DIR="${1:-next}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-CACHE_DIR="$HOME/.cache"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 INDEX_FILE="$CACHE_DIR/quickshell/wallpaper_index.json"
 PATHS_FILE="$CACHE_DIR/quickshell/wallpaper_paths.txt"
 TARGET_TXT="$CACHE_DIR/target_wallpaper.txt"
-STATE_WALL_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/wallpaper"
+DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
+STATE_WALL_DIR="$DESKTOP_STATE_DIR/wallpaper"
+STATE_QS_DIR="$DESKTOP_STATE_DIR/quickshell"
 CURRENT_TXT="$STATE_WALL_DIR/current_wallpaper.txt"
+FAV_FILE="${XDG_DATA_HOME:-$HOME/.local/share}/wallpaper_favorites.txt"
+STATE_JSON="$STATE_QS_DIR/state.json"
+FILTER_TXT="$STATE_WALL_DIR/picker_filter.txt"
 
 # Drop incoming repeat triggers while an application pass is in progress
 CYCLE_LOCK="$CACHE_DIR/cycle_wallpaper.lock"
@@ -30,7 +35,7 @@ if [ -f "$INDEX_FILE" ] && { [ ! -s "$PATHS_FILE" ] || [ "$INDEX_FILE" -nt "$PAT
       def type_rank:
         (.fileName | ascii_downcase) as $fn |
         if ($fn | endswith(".gif")) then 1
-        elif (.isVideo == true or ($fn | test("\\.(mp4|mkv|webm)$"))) then 2
+        elif (.isVideo == true or ($fn | test("\\.(mp4|mkv|mov|webm)$"))) then 2
         else 0 end;
       .items
       | sort_by(
@@ -66,9 +71,34 @@ if [ -z "$CUR_PATH" ] && [ -f "$CURRENT_TXT" ] && [ -s "$CURRENT_TXT" ]; then
 fi
 CUR_NAME="$(basename "$CUR_PATH" 2>/dev/null || echo "")"
 
+# Read active filter from QuickShell state (SSOT)
+FILTER="All"
+if [ -f "$STATE_JSON" ]; then
+    FILTER=$(jq -r '.ui.wallpaperFilter // "All"' "$STATE_JSON" 2>/dev/null || echo "All")
+elif [ -f "$FILTER_TXT" ]; then
+    FILTER=$(cat "$FILTER_TXT" 2>/dev/null || echo "All")
+fi
+
+CANDIDATES=""
+if [[ "$FILTER" =~ ^(Favorites|Fav)$ ]] && [ -s "$FAV_FILE" ]; then
+    CANDIDATES=$(awk 'NR==FNR { fav[$0]=1; next } fav[$0]' "$FAV_FILE" "$PATHS_FILE" 2>/dev/null || true)
+elif [[ "$FILTER" =~ ^(GIFs|gif|GIF)$ ]]; then
+    CANDIDATES=$(grep -i '\.gif$' "$PATHS_FILE" 2>/dev/null || true)
+elif [[ "$FILTER" =~ ^(Videos|video|Vid)$ ]]; then
+    CANDIDATES=$(grep -iE '\.(mp4|mkv|mov|webm)$' "$PATHS_FILE" 2>/dev/null || true)
+elif [ "$FILTER" != "All" ] && [ "$FILTER" != "Search" ] && [ -n "$FILTER" ]; then
+    FILTER_LOWER="${FILTER,,}"
+    CANDIDATES=$(grep -i "/Wallpapers/${FILTER_LOWER}/" "$PATHS_FILE" 2>/dev/null || true)
+fi
+
+# Fallback to all paths if candidates list is empty
+if [ -z "$CANDIDATES" ] && [ -s "$PATHS_FILE" ]; then
+    CANDIDATES=$(cat "$PATHS_FILE" 2>/dev/null || true)
+fi
+
 TARGET_PATH=""
-if [ -s "$PATHS_FILE" ]; then
-    TARGET_PATH=$(awk -v cur="$CUR_PATH" -v cur_name="$CUR_NAME" -v dir="$DIR" '
+if [ -n "$CANDIDATES" ]; then
+    TARGET_PATH=$(echo "$CANDIDATES" | awk -v cur="$CUR_PATH" -v cur_name="$CUR_NAME" -v dir="$DIR" '
         {
             paths[NR] = $0
             if ($0 == cur || (cur_name != "" && $0 ~ ("/" cur_name "$"))) {
@@ -78,12 +108,15 @@ if [ -s "$PATHS_FILE" ]; then
         END {
             total = NR
             if (total == 0) exit 1
-            if (!cur_idx) cur_idx = 1
             step = (dir == "prev" ? -1 : 1)
-            next_idx = ((cur_idx - 1 + step + total) % total) + 1
+            if (!cur_idx) {
+                next_idx = (step == 1 ? 1 : total)
+            } else {
+                next_idx = ((cur_idx - 1 + step + total) % total) + 1
+            }
             print paths[next_idx]
         }
-    ' "$PATHS_FILE" 2>/dev/null || true)
+    ' 2>/dev/null || true)
 fi
 
 # Fallback to jq index if paths file is unavailable
@@ -97,7 +130,7 @@ if [ -z "$TARGET_PATH" ] && [ -f "$INDEX_FILE" ]; then
       def type_rank:
         (.fileName | ascii_downcase) as $fn |
         if ($fn | endswith(".gif")) then 1
-        elif (.isVideo == true or ($fn | test("\\.(mp4|mkv|webm)$"))) then 2
+        elif (.isVideo == true or ($fn | test("\\.(mp4|mkv|mov|webm)$"))) then 2
         else 0 end;
 
       ($cur_name | clean_name | ascii_downcase) as $clean_cur_name |
