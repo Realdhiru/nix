@@ -381,13 +381,13 @@
               { type = builtin label = copy name = inL }
               { type = builtin label = copy name = inR }
 
-              # Dry path delay compensation to match spectral karaoke (1024 samples = 21.33ms) + limiter (5ms) = 26.33ms
+              # Dry path delay compensation to match spectral karaoke (1024 samples = 21.33ms)
               { type = builtin label = delay name = delayL
                 config = { "max-delay" = 0.1 }
-                control = { "Delay (s)" = 0.026333 } }
+                control = { "Delay (s)" = 0.021333 } }
               { type = builtin label = delay name = delayR
                 config = { "max-delay" = 0.1 }
-                control = { "Delay (s)" = 0.026333 } }
+                control = { "Delay (s)" = 0.021333 } }
 
               # Native C Spectral Per-Bin Karaoke LADSPA Plugin
               { type = ladspa
@@ -404,7 +404,7 @@
                 }
               }
 
-              # Fast Lookahead Limiter (Steve Harris SWH LADSPA 1913)
+              # Fast Lookahead Limiter (Steve Harris SWH LADSPA 1913) - Master Output Speaker Protection
               { type = ladspa
                 name = limiter
                 plugin = "${pkgs.ladspaPlugins}/lib/ladspa/fast_lookahead_limiter_1913.so"
@@ -448,17 +448,15 @@
               { output = "inL:Out" input = "delayL:In" }
               { output = "inR:Out" input = "delayR:In" }
 
-              # Wet path through Spectral Karaoke plugin and limiter
+              # Wet path through Spectral Karaoke plugin
               { output = "inL:Out" input = "spectral_karaoke:Input L" }
               { output = "inR:Out" input = "spectral_karaoke:Input R" }
-              { output = "spectral_karaoke:Output L" input = "limiter:Input 1" }
-              { output = "spectral_karaoke:Output R" input = "limiter:Input 2" }
 
-              # Selectors: In 1 = delayed dry, In 2 = limited wet
-              { output = "delayL:Out"        input = "finalL:In 1" }
-              { output = "limiter:Output 1"   input = "finalL:In 2" }
-              { output = "delayR:Out"        input = "finalR:In 1" }
-              { output = "limiter:Output 2"   input = "finalR:In 2" }
+              # Selectors: In 1 = delayed dry, In 2 = wet karaoke
+              { output = "delayL:Out"                input = "finalL:In 1" }
+              { output = "spectral_karaoke:Output L" input = "finalL:In 2" }
+              { output = "delayR:Out"                input = "finalR:In 1" }
+              { output = "spectral_karaoke:Output R" input = "finalR:In 2" }
 
               # Left Equalizer Chain
               { output = "finalL:Out"        input = "eq_band_1_l:In" }
@@ -471,6 +469,7 @@
               { output = "eq_band_7_l:Out"   input = "eq_band_8_l:In" }
               { output = "eq_band_8_l:Out"   input = "eq_band_9_l:In" }
               { output = "eq_band_9_l:Out"   input = "eq_band_10_l:In" }
+              { output = "eq_band_10_l:Out"  input = "limiter:Input 1" }
 
               # Right Equalizer Chain
               { output = "finalR:Out"        input = "eq_band_1_r:In" }
@@ -483,9 +482,10 @@
               { output = "eq_band_7_r:Out"   input = "eq_band_8_r:In" }
               { output = "eq_band_8_r:Out"   input = "eq_band_9_r:In" }
               { output = "eq_band_9_r:Out"   input = "eq_band_10_r:In" }
+              { output = "eq_band_10_r:Out"  input = "limiter:Input 2" }
             ]
             inputs  = [ "inL:In" "inR:In" ]
-            outputs = [ "eq_band_10_l:Out" "eq_band_10_r:Out" ]
+            outputs = [ "limiter:Output 1" "limiter:Output 2" ]
           }
           audio.channels = 2
           audio.position = [ FL FR ]

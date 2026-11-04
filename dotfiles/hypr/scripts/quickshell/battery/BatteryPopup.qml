@@ -985,7 +985,7 @@ FocusScope {
 
                                                 Rectangle {
                                                     height: parent.height
-                                                    width: parent.width * (window.sysVolume / 100)
+                                                    width: parent.width * Math.min(1.0, (window.sysVolume / 100))
                                                     radius: window.s(9)
                                                     opacity: window.sysMuted ? 0.5 : (volMa.containsMouse ? 1.0 : 0.85)
                                                     Behavior on opacity { NumberAnimation { duration: 200 } }

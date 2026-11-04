@@ -53,7 +53,7 @@ get_physical_sink_id() {
 case "${1:-}" in
     vol-up)
         wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
-        wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+
+        wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+
         read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
         icon="audio-volume-high"
         (( pct < 30 )) && icon="audio-volume-low"
