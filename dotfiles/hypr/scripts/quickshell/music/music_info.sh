@@ -40,6 +40,48 @@ format_time() {
     fi
 }
 
+get_active_playback_device() {
+    local target_sink="@DEFAULT_AUDIO_SINK@"
+    local inspect_out node_name node_desc active_target target_desc
+    
+    inspect_out=$(timeout 0.5 wpctl inspect "$target_sink" 2>/dev/null)
+    node_name=$(echo "$inspect_out" | awk -F'"' '/node\.name/ {print $2}')
+    node_desc=$(echo "$inspect_out" | awk -F'"' '/node\.description/ {print $2}')
+
+    if [[ "$node_name" == *"effect_input"* ]]; then
+        active_target=$(pw-link -l 2>/dev/null | awk '/effect_output.eq10:output_FL/ {getline; sub(/^[ |>-]+/, ""); sub(/:playback_FL.*/, ""); print; exit}' || echo "")
+        if [ -n "$active_target" ]; then
+            node_name="$active_target"
+            target_desc=$(pw-dump Node 2>/dev/null | jq -r --arg name "$node_name" '.[] | select(.info.props["node.name"] == $name) | .info.props["node.description"] // empty' 2>/dev/null | head -n 1 || echo "")
+            if [[ "$node_name" == *"Speaker"* ]]; then
+                node_desc="Laptop Speaker"
+            elif [ -n "$target_desc" ]; then
+                node_desc="$target_desc"
+            elif [[ "$node_name" == *"Headphone"* ]]; then
+                node_desc="Headphones"
+            else
+                node_desc="$node_name"
+            fi
+        fi
+    fi
+
+    local dev_icon="󰓃"
+    local dev_name="Laptop Speaker"
+
+    if [[ "$node_name" == *"bluez"* ]]; then
+        dev_icon="󰂯"
+        [ -n "$node_desc" ] && dev_name="$node_desc" || dev_name="Bluetooth"
+    elif [[ "$node_name" == *"usb"* ]]; then
+        dev_icon="󰓃"; dev_name="USB Audio"
+    elif [[ "$node_name" == *"Speaker"* || "$node_name" == *"pci"* ]]; then
+        dev_icon="󰓃"; dev_name="${node_desc:-Laptop Speaker}"
+    elif [ -n "$node_desc" ]; then
+        dev_name="$node_desc"
+    fi
+
+    echo "$dev_icon|$dev_name"
+}
+
 if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
 
     rawUrl=$($PT metadata mpris:artUrl 2>/dev/null)
@@ -159,39 +201,7 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
 
     player_raw=$($PT status -f "{{playerName}}" 2>/dev/null | head -n 1)
     player_nice="${player_raw^}"
-
-    dev_icon="󰓃"; dev_name="Speaker"
-    target_sink="@DEFAULT_AUDIO_SINK@"
-    inspect_out=$(timeout 0.5 wpctl inspect "$target_sink" 2>/dev/null)
-    node_name=$(echo "$inspect_out" | awk -F'"' '/node\.name/ {print $2}')
-    node_desc=$(echo "$inspect_out" | awk -F'"' '/node\.description/ {print $2}')
-
-    if [[ "$node_name" == *"effect_input"* ]]; then
-        active_target=$(pw-link -l 2>/dev/null | awk '/effect_output.eq10:output_FL/ {getline; sub(/^[ |>-]+/, ""); sub(/:playback_FL.*/, ""); print; exit}' || echo "")
-        if [ -n "$active_target" ]; then
-            node_name="$active_target"
-            if [[ "$node_name" == *"Speaker"* ]]; then
-                node_desc="Speaker"
-            elif [[ "$node_name" == *"bluez"* ]]; then
-                node_desc="OnePlus Nord Buds 3"
-            elif [[ "$node_name" == *"Headphone"* ]]; then
-                node_desc="Headphones"
-            else
-                node_desc="$node_name"
-            fi
-        fi
-    fi
-
-    if [[ "$node_name" == *"bluez"* ]]; then
-        dev_icon="󰂯"
-        [ -n "$node_desc" ] && dev_name="$node_desc" || dev_name="Bluetooth"
-    elif [[ "$node_name" == *"usb"* ]]; then
-        dev_icon="󰓃"; dev_name="USB Audio"
-    elif [[ "$node_name" == *"pci"* ]]; then
-        dev_icon="󰓃"; dev_name="${node_desc:-Speaker}"
-    elif [ -n "$node_desc" ]; then
-        dev_name="$node_desc"
-    fi
+    IFS='|' read -r dev_icon dev_name < <(get_active_playback_device)
 
     finalArtUrl="${displayArt}"
 
@@ -251,6 +261,7 @@ else
     last_len_str=$(format_time "$last_len_sec")
     last_time_str="${last_pos_str} / ${last_len_str}"
 
+    IFS='|' read -r dev_icon dev_name < <(get_active_playback_device)
     finalArtUrl="${PLACEHOLDER}"
 
     jq -n -c \
@@ -259,6 +270,8 @@ else
     --arg len_str "$last_len_str" \
     --arg time_str "$last_time_str" \
     --arg percent "$last_percent" \
+    --arg devIcon "$dev_icon" \
+    --arg devName "$dev_name" \
     '{
         title: "Not Playing",
         artist: "",
@@ -272,8 +285,8 @@ else
         blur: $placeholder,
         grad: "linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)",
         textColor: "#cdd6f4",
-        deviceIcon: "󰓃",
-        deviceName: "Speaker",
+        deviceIcon: $devIcon,
+        deviceName: $devName,
         artUrl: $placeholder,
         artReady: "false"
     }'

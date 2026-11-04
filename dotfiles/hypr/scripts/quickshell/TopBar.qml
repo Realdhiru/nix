@@ -935,7 +935,7 @@ Variants {
                                 Image {
                                     Layout.alignment: Qt.AlignVCenter
                                     visible: notifLayout.n && notifLayout.n.iconPath !== ""
-                                    source: notifLayout.n && notifLayout.n.iconPath !== "" ? notifLayout.n.iconPath : ""
+                                    source: notifLayout.n && notifLayout.n.iconPath !== "" ? (notifLayout.n.iconPath.indexOf("/") !== -1 ? notifLayout.n.iconPath : "image://icon/" + notifLayout.n.iconPath) : ""
                                     sourceSize: Qt.size(barWindow.s(20), barWindow.s(20))
                                     fillMode: Image.PreserveAspectFit
                                     asynchronous: true

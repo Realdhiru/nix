@@ -249,7 +249,7 @@ Variants {
                     Image {
                         Layout.alignment: Qt.AlignVCenter
                         visible: toastWindow.n && toastWindow.n.iconPath !== ""
-                        source: toastWindow.n && toastWindow.n.iconPath !== "" ? toastWindow.n.iconPath : ""
+                        source: toastWindow.n && toastWindow.n.iconPath !== "" ? (toastWindow.n.iconPath.indexOf("/") !== -1 ? toastWindow.n.iconPath : "image://icon/" + toastWindow.n.iconPath) : ""
                         sourceSize: Qt.size(toastWindow.s(20), toastWindow.s(20))
                         fillMode: Image.PreserveAspectFit
                         asynchronous: true

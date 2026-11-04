@@ -22,20 +22,12 @@ get_icon() {
 
 get_audio_profile() {
     local mac="$1"
-    local cards_data="$2"
-    local mac_us="${mac//:/_}"
+    local active
+    active=$(pw-dump Device 2>/dev/null | jq -r --arg mac "$mac" '.[] | select(.info.props["api.bluez5.address"] == $mac) | .info.params.Profile[]?.name // empty' 2>/dev/null | head -n 1 || echo "")
     
-    local active=$(echo "$cards_data" | awk -v mac="$mac_us" '
-        tolower($0) ~ "name:.*"tolower(mac) { found=1 }
-        found && tolower($0) ~ "active profile:" { 
-            sub(/.*Active Profile: /, ""); print; exit 
-        }
-        found && /^$/ { exit }
-    ')
-    
-    if [[ -z "$active" || "$active" == "off" ]]; then echo "None"; return; fi
     if [[ "$active" == *"a2dp"* ]]; then echo "Hi-Fi (A2DP)"; return; fi
     if [[ "$active" == *"headset"* || "$active" == *"hfp"* ]]; then echo "Headset (HFP)"; return; fi
+    if [[ -z "$active" || "$active" == "off" ]]; then echo "Connected"; return; fi
     
     echo "Connected"
 }
@@ -90,18 +82,17 @@ get_status() {
                 info=$(timeout 0.5 bluetoothctl info "$mac" 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g')
                 icon_type=$(echo "$info" | awk -F': ' '/Icon:/ {print $2}')
                 icon=$(get_icon "$icon_type" "$name")
-                profile=$(get_audio_profile "$mac" "$cached_cards")
                 
                 CACHE_NAME="$name"
                 CACHE_ICON="$icon"
-                CACHE_PROFILE="$profile"
-                declare -p CACHE_NAME CACHE_ICON CACHE_PROFILE > "$CACHE_FILE"
+                declare -p CACHE_NAME CACHE_ICON > "$CACHE_FILE"
             fi
             
+            profile=$(get_audio_profile "$mac")
             bat=$(timeout 0.5 bluetoothctl info "$mac" 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g' | awk -F'[(|)]' '/Battery Percentage:/ {print $2}')
             [ -z "$bat" ] && bat="0"
 
-            connected_list_objs+=("{\"id\":\"$mac\",\"name\":\"$CACHE_NAME\",\"mac\":\"$mac\",\"icon\":\"$CACHE_ICON\",\"battery\":\"$bat\",\"profile\":\"$CACHE_PROFILE\"}")
+            connected_list_objs+=("{\"id\":\"$mac\",\"name\":\"$CACHE_NAME\",\"mac\":\"$mac\",\"icon\":\"$CACHE_ICON\",\"battery\":\"$bat\",\"profile\":\"$profile\"}")
         done
 
         if [ ${#connected_list_objs[@]} -gt 0 ]; then
@@ -173,8 +164,10 @@ toggle_power() {
 connect_dev() {
     local mac="$1"
     timeout 2 bluetoothctl trust "$mac" > /dev/null 2>&1
-    timeout 10 bluetoothctl pair "$mac" > /dev/null 2>&1
-    timeout 8 bluetoothctl connect "$mac" > /dev/null 2>&1
+    if ! timeout 1 bluetoothctl info "$mac" 2>/dev/null | grep -q "Paired: yes"; then
+        timeout 10 bluetoothctl pair "$mac" > /dev/null 2>&1 || true
+    fi
+    timeout 8 bluetoothctl connect "$mac" > /dev/null 2>&1 || true
 }
 
 disconnect_dev() {
