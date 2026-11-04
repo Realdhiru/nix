@@ -1313,9 +1313,6 @@ Item {
 
         property bool isActivePreset: {
             if (!root.eqData || !root.eqData.preset) return false;
-            if (name === "Karaoke") {
-                return root.eqData.preset.indexOf("Karaoke") !== -1;
-            }
             return root.eqData.preset === name;
         }
         property bool isHovered: hoverMa.containsMouse

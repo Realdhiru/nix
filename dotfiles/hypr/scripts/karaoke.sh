@@ -2,6 +2,9 @@
 # karaoke [on|off|toggle|Gentle|Standard|Hard|Max]
 set -eu
 
+exec 201>"${XDG_RUNTIME_DIR:-/run/user/1000}/karaoke.lock"
+flock 201
+
 id=$(timeout 2 pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.karaoke"/ {gsub(/,/, "", id); print id; exit}' || true)
 [ -n "$id" ] || { echo "effect_input.karaoke not found" >&2; exit 0; }
 
