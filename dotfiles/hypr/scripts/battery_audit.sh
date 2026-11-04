@@ -430,10 +430,12 @@ case "${1:-report}" in
         run_daemon
         ;;
     start)
+        script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
         if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE" 2>/dev/null)" 2>/dev/null; then
             echo "Daemon already running (PID $(cat "$PID_FILE"))."
         else
-            nohup bash "$0" daemon >/dev/null 2>&1 &
+            nohup bash "$script_path" daemon </dev/null >/dev/null 2>&1 &
+            disown
             echo "Battery audit daemon started in background."
         fi
         ;;
