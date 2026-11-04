@@ -45,28 +45,59 @@ apply_preset_params() {
   local nid
   nid=$(get_eq_node_id)
   timeout 2 pw-cli s "$nid" Props "{ params = [ \
-    \"spectral_karaoke:Depth\" 0.95 \
-    \"spectral_karaoke:Low Cutoff (Hz)\" 140.0 \
-    \"spectral_karaoke:Air Depth\" 0.15 \
-    \"spectral_karaoke:Transient Protection\" 0.60 \
-    \"spectral_karaoke:Release (ms)\" 70.0 \
-    \"spectral_karaoke:Reverb Duck (dB)\" 3.0 \
+    \"spectral_karaoke:Depth\" 1.0 \
+    \"spectral_karaoke:Low Cutoff (Hz)\" 50.0 \
+    \"spectral_karaoke:Air Depth\" 0.95 \
+    \"spectral_karaoke:Transient Protection\" 0.0 \
+    \"spectral_karaoke:Release (ms)\" 40.0 \
+    \"spectral_karaoke:Reverb Duck (dB)\" 5.0 \
   ] }" >/dev/null 2>&1 || true
 }
 
 update_eq_preset() {
   local p="$1"
   if [ -f "$EQ_STATE" ]; then
-    local cur_p
-    cur_p=$(jq -r '.preset // "Off"' "$EQ_STATE" 2>/dev/null || echo "Off")
-    if [ "$p" = "Off" ]; then
-      if [ "$cur_p" = "Karaoke" ]; then
-        local tmp="${EQ_STATE}.tmp.$$"
-        jq -c '.preset = "Off"' "$EQ_STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$EQ_STATE"
+    local tmp="${EQ_STATE}.tmp.$$"
+    if [ "$p" = "Karaoke" ]; then
+      jq -c '.b1=0 | .b2=0 | .b3=0 | .b4=-2 | .b5=-4 | .b6=-6 | .b7=-4 | .b8=-2 | .b9=0 | .b10=1 | .preset="Karaoke" | .pending=false' "$EQ_STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$EQ_STATE"
+      local nid
+      nid=$(get_eq_node_id 2>/dev/null || true)
+      if [ -n "$nid" ]; then
+        pw-cli s "$nid" Props "{ params = [ \
+          \"eq_band_1_l:Gain\" 0 \"eq_band_1_r:Gain\" 0 \
+          \"eq_band_2_l:Gain\" 0 \"eq_band_2_r:Gain\" 0 \
+          \"eq_band_3_l:Gain\" 0 \"eq_band_3_r:Gain\" 0 \
+          \"eq_band_4_l:Gain\" -2 \"eq_band_4_r:Gain\" -2 \
+          \"eq_band_5_l:Gain\" -4 \"eq_band_5_r:Gain\" -4 \
+          \"eq_band_6_l:Gain\" -6 \"eq_band_6_r:Gain\" -6 \
+          \"eq_band_7_l:Gain\" -4 \"eq_band_7_r:Gain\" -4 \
+          \"eq_band_8_l:Gain\" -2 \"eq_band_8_r:Gain\" -2 \
+          \"eq_band_9_l:Gain\" 0 \"eq_band_9_r:Gain\" 0 \
+          \"eq_band_10_l:Gain\" 1 \"eq_band_10_r:Gain\" 1 \
+        ] }" >/dev/null 2>&1 || true
       fi
-    else
-      local tmp="${EQ_STATE}.tmp.$$"
-      jq -c --arg p "$p" '.preset = $p' "$EQ_STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$EQ_STATE"
+    elif [ "$p" = "Off" ]; then
+      local cur_p
+      cur_p=$(jq -r '.preset // "Off"' "$EQ_STATE" 2>/dev/null || echo "Off")
+      if [ "$cur_p" = "Karaoke" ]; then
+        jq -c '.b1=0 | .b2=0 | .b3=0 | .b4=0 | .b5=0 | .b6=0 | .b7=0 | .b8=0 | .b9=0 | .b10=0 | .preset="Off" | .pending=false' "$EQ_STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$EQ_STATE"
+        local nid
+        nid=$(get_eq_node_id 2>/dev/null || true)
+        if [ -n "$nid" ]; then
+          pw-cli s "$nid" Props "{ params = [ \
+            \"eq_band_1_l:Gain\" 0 \"eq_band_1_r:Gain\" 0 \
+            \"eq_band_2_l:Gain\" 0 \"eq_band_2_r:Gain\" 0 \
+            \"eq_band_3_l:Gain\" 0 \"eq_band_3_r:Gain\" 0 \
+            \"eq_band_4_l:Gain\" 0 \"eq_band_4_r:Gain\" 0 \
+            \"eq_band_5_l:Gain\" 0 \"eq_band_5_r:Gain\" 0 \
+            \"eq_band_6_l:Gain\" 0 \"eq_band_6_r:Gain\" 0 \
+            \"eq_band_7_l:Gain\" 0 \"eq_band_7_r:Gain\" 0 \
+            \"eq_band_8_l:Gain\" 0 \"eq_band_8_r:Gain\" 0 \
+            \"eq_band_9_l:Gain\" 0 \"eq_band_9_r:Gain\" 0 \
+            \"eq_band_10_l:Gain\" 0 \"eq_band_10_r:Gain\" 0 \
+          ] }" >/dev/null 2>&1 || true
+        fi
+      fi
     fi
   fi
 }

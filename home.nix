@@ -404,12 +404,12 @@
                 plugin = "${pkgs.ladspa-spectral-karaoke}/lib/ladspa/spectral_karaoke.so"
                 label = spectral_karaoke
                 control = {
-                  "Depth"                = 0.85
-                  "Low Cutoff (Hz)"      = 150.0
-                  "Air Depth"            = 0.20
-                  "Transient Protection" = 0.50
-                  "Release (ms)"         = 80.0
-                  "Reverb Duck (dB)"     = 2.5
+                  "Depth"                = 1.0
+                  "Low Cutoff (Hz)"      = 50.0
+                  "Air Depth"            = 0.95
+                  "Transient Protection" = 0.0
+                  "Release (ms)"         = 40.0
+                  "Reverb Duck (dB)"     = 5.0
                 }
               }
 
