@@ -2,7 +2,7 @@
 
 ## 2026-11-04 — Scrolling Layout Proportional Resizing
 
-- **Dwindle-Style Proportional Resizing & Border Settle in Scrolling Layout ([`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), [`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Implemented smart proportional window resizing for scrolling mode (`SUPER + SHIFT + Arrows`) matching dwindle split adjustments, balanced 2-window splits so both windows always fill the monitor without being pushed offscreen, removed disruptive `fit all` on window focus that wiped manual tweaks, and enabled smooth active column resizing across the ribbon.
+- **Battery Drainage Pattern Analyzer & Non-Intrusive Scrolling Resizing ([`battery_audit.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/battery_audit.sh), [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh), [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), [`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua), [`startup.lua`](file:///home/realdhiru/nix/dotfiles/hypr/startup.lua))**: Implemented intelligent continuous battery drainage pattern analyzer (`power.sh battery-audit`) attributing real-time energy (Wh) per app, detecting power spikes, and diagnosing balanced-mode hardware efficiency; removed redundant `Super + F` notes special workspace bind; purged recursive focus-jumping and event cascades in scrolling layout to restore smooth, non-compressing dynamic window resizing.
 
 ## 2026-11-03 — Wallpaper State Reliability & Hyprsunset Responsiveness
 

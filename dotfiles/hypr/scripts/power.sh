@@ -394,6 +394,12 @@ cmd_display() {
     esac
 }
 
+cmd_battery_audit() {
+    local audit_script="$SCRIPT_DIR/battery_audit.sh"
+    [ -x "$audit_script" ] || audit_script="$HOME/.config/hypr/scripts/battery_audit.sh"
+    exec bash "$audit_script" "${1:-report}"
+}
+
 # -----------------------------------------------------------------------------
 # ROUTER
 # -----------------------------------------------------------------------------
@@ -406,8 +412,9 @@ case "$CMD" in
     display)  cmd_display "$@" ;;
     dpms)     cmd_display "$@" ;;
     profile)  cmd_profile "$@" ;;
+    battery-audit|audit) cmd_battery_audit "$@" ;;
     *)
-        echo "Usage: power.sh [lock|suspend|resume|lid close|lid open|inhibit|display <off|on|toggle>|profile <performance|balanced|power-saver>]" >&2
+        echo "Usage: power.sh [lock|suspend|resume|lid close|lid open|inhibit|display <off|on|toggle>|profile <performance|balanced|power-saver>|battery-audit [report|status|start|stop|reset]]" >&2
         exit 1
         ;;
 esac

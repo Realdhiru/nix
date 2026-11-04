@@ -325,51 +325,25 @@ local function smart_resize(dx, dy)
         return
     end
 
-    local wins = {}
-    for _, w in ipairs(hl.get_windows()) do
-        if w.mapped and not w.floating and w.workspace and w.workspace.id == ws.id then
-            local ww = (w.size and w.size.x) or 0
-            if ww > 50 then table.insert(wins, w) end
+    local delta_frac = (dx > 0) and 0.04 or -0.04
+    pcall(function()
+        hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", delta_frac)))
+        local wins = {}
+        for _, w in ipairs(hl.get_windows()) do
+            if w.mapped and not w.floating and w.workspace and w.workspace.id == ws.id then
+                local ww = (w.size and w.size.x) or 0
+                if ww > 50 then table.insert(wins, w) end
+            end
         end
-    end
-    table.sort(wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
-
-    if #wins <= 1 then
-        return
-    elseif #wins == 2 then
-        local w1, w2 = wins[1], wins[2]
-        local total_w = (w1.size and w1.size.x or 0) + (w2.size and w2.size.x or 0)
-        if total_w <= 0 then total_w = 1376 end
-        local f1 = (w1.size and w1.size.x or 683) / total_w
-        local step = 0.03
-        local f1_new
-        if active_win.address == w1.address then
-            f1_new = (dx > 0) and (f1 + step) or (f1 - step)
-        else
-            f1_new = (dx > 0) and (f1 - step) or (f1 + step)
-        end
-        f1_new = math.max(0.15, math.min(0.85, f1_new))
-        local f2_new = 1.0 - f1_new
-
-        pcall(function()
-            hl.dispatch(hl.dsp.focus({ window = w1 }))
-            hl.dispatch(hl.dsp.layout("colresize " .. string.format("%.3f", f1_new)))
-            hl.dispatch(hl.dsp.focus({ window = w2 }))
-            hl.dispatch(hl.dsp.layout("colresize " .. string.format("%.3f", f2_new)))
-            hl.dispatch(hl.dsp.focus({ window = active_win }))
-        end)
-    else
-        -- 3+ windows: smoothly resize active column (+/-0.03 fraction)
-        local delta_frac = (dx > 0) and 0.03 or -0.03
-        pcall(function()
-            hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", delta_frac)))
+        table.sort(wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
+        if #wins > 0 then
             local first = wins[1]
             local cur_x = (first.at and first.at.x)
             if cur_x and cur_x > 52 then
                 hl.dispatch(hl.dsp.layout("move " .. tostring(52 - cur_x)))
             end
-        end)
-    end
+        end
+    end)
 end
 
 hl.bind(mainMod .. " + SHIFT + Right", function() smart_resize(30, 0) end,
@@ -422,7 +396,6 @@ hl.bind(mainMod .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:mag
 hl.bind(mainMod .. " + D", hl.dsp.workspace.toggle_special("music"), { description = "toggle music special workspace" })
 hl.bind(mainMod .. " + SHIFT + D", hl.dsp.window.move({ workspace = "special:music" }),
     { description = "move window to music special workspace" })
-hl.bind(mainMod .. " + F", hl.dsp.workspace.toggle_special("notes"), { description = "toggle notes special workspace" })
 
 -- ======================================================
 -- 11. Rarely Used: Cursor Zoom & Gestures

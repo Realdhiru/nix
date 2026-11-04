@@ -114,29 +114,6 @@ local function clamp_ribbon_margins(ws_id)
     local wins = get_tiled_windows_on_workspace(target_ws_id)
     if #wins == 0 then return end
 
-    -- 2 windows side-by-side: normalize widths so they always share 100% of the screen like dwindle
-    if #wins == 2 then
-        local w1, w2 = wins[1], wins[2]
-        local w1_w = (w1.size and w1.size.x) or 0
-        local w2_w = (w2.size and w2.size.x) or 0
-        local total = w1_w + w2_w
-        if total > 0 and (total > 1395 or total < 1355) then
-            local f1 = w1_w / total
-            f1 = math.max(0.15, math.min(0.85, f1))
-            local f2 = 1.0 - f1
-            local active_win = hl.get_active_window()
-            pcall(function()
-                hl.dispatch(hl.dsp.focus({ window = w1 }))
-                hl.dispatch(hl.dsp.layout("colresize " .. string.format("%.3f", f1)))
-                hl.dispatch(hl.dsp.focus({ window = w2 }))
-                hl.dispatch(hl.dsp.layout("colresize " .. string.format("%.3f", f2)))
-                if active_win then
-                    hl.dispatch(hl.dsp.focus({ window = active_win }))
-                end
-            end)
-        end
-    end
-
     local first = wins[1]
     local cur_x = (first.at and first.at.x)
 

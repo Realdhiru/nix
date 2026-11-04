@@ -20,4 +20,5 @@ hl.on("hyprland.start", function()
     -- KDE Connect: autostart disabled per user request
     -- hl.exec_cmd("kdeconnect-indicator")
     hl.exec_cmd(scripts .. "quickshell/music/equalizer.sh --init")
+    hl.exec_cmd(scripts .. "battery_audit.sh start")
 end)
