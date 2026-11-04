@@ -46,6 +46,22 @@
       PCIE_ASPM_ON_BAT = "powersupersave";
       PCIE_ASPM_ON_SAV = "powersupersave";
 
+      # NVMe Autonomous Power State Transitions (APST) on battery (~1.5W-2W SSD controller savings)
+      NVME_APST_CHAR_ENABLE_ON_BAT = 1;
+      AHCI_RUNTIME_PM_ON_BAT       = "auto";
+      AHCI_RUNTIME_PM_TIMEOUT      = 15;
+
+      # Disable kernel NMI watchdog on battery to eliminate timer interrupts across all 12 cores,
+      # allowing CPU package to enter deep C8/C10 sleep states
+      NMI_WATCHDOG = 0;
+
+      # Sched powersave packs low-load tasks onto fewer cores so idle cores stay asleep
+      SCHED_POWERSAVE_ON_BAT = 1;
+
+      # Intel Iris Xe GPU Dynamic Frequency (downclocks when idle, full 1.45GHz burst on demand)
+      INTEL_GPU_MIN_FREQ_ON_BAT   = 100;
+      INTEL_GPU_BOOST_FREQ_ON_BAT = 1450;
+
       # Enable USB autosuspend on battery, while denylist protects user-specified peripherals
       USB_AUTOSUSPEND = 1;
       USB_AUTOSUSPEND_DISABLE_ON_AC = 1;

@@ -312,6 +312,8 @@ hl.bind(mainMod .. " + G", hl.dsp.window.pin(), { description = "pin active wind
 hl.bind(mainMod .. " + W", hl.dsp.window.float(), { description = "toggle window floating" })
 hl.bind(mainMod .. " + P", hl.dsp.window.pseudo(), { description = "toggle pseudo-tiling" })
 
+local is_resizing_pair = false
+
 local function smart_resize(dx, dy)
     local ws = hl.get_active_workspace()
     if not ws or ws.tiled_layout ~= "scrolling" or (dy ~= 0 and dx == 0) then
@@ -325,24 +327,49 @@ local function smart_resize(dx, dy)
         return
     end
 
+    local wins = {}
+    for _, w in ipairs(hl.get_windows()) do
+        if w.mapped and not w.floating and w.workspace and w.workspace.id == ws.id then
+            local ww = (w.size and w.size.x) or 0
+            local wh = (w.size and w.size.y) or 0
+            if ww > 50 and wh > 50 then table.insert(wins, w) end
+        end
+    end
+    table.sort(wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
+
+    -- Dynamic 2-window screen-filling resize (behaves dynamically like Dwindle mode):
+    -- Expanding one window simultaneously shrinks the other, keeping both 100% visible
+    -- and flush to screen margins without creating ribbon overflow.
+    if #wins == 2 and not is_resizing_pair then
+        local w1 = wins[1]
+        local w2 = wins[2]
+        local is_w1 = (active_win.address == w1.address)
+        local other = is_w1 and w2 or w1
+
+        local delta = (dx > 0) and 0.04 or -0.04
+        -- Safe minimum guard: prevent either window from collapsing below 320px
+        local cur_self_w = (active_win.size and active_win.size.x) or 720
+        local cur_other_w = (other.size and other.size.x) or 720
+
+        if (delta < 0 and cur_self_w <= 320) or (delta > 0 and cur_other_w <= 320) then
+            return
+        end
+
+        is_resizing_pair = true
+        pcall(function()
+            hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", delta)))
+            hl.dispatch(hl.dsp.focus({ window = other.address }))
+            hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", -delta)))
+            hl.dispatch(hl.dsp.focus({ window = active_win.address }))
+        end)
+        is_resizing_pair = false
+        return
+    end
+
+    -- 1 or 3+ windows: standard proportional column resize along ribbon
     local delta_frac = (dx > 0) and 0.04 or -0.04
     pcall(function()
         hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", delta_frac)))
-        local wins = {}
-        for _, w in ipairs(hl.get_windows()) do
-            if w.mapped and not w.floating and w.workspace and w.workspace.id == ws.id then
-                local ww = (w.size and w.size.x) or 0
-                if ww > 50 then table.insert(wins, w) end
-            end
-        end
-        table.sort(wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
-        if #wins > 0 then
-            local first = wins[1]
-            local cur_x = (first.at and first.at.x)
-            if cur_x and cur_x > 52 then
-                hl.dispatch(hl.dsp.layout("move " .. tostring(52 - cur_x)))
-            end
-        end
     end)
 end
 
@@ -359,6 +386,7 @@ hl.bind(mainMod .. " + Z", hl.dsp.window.drag(), { mouse = true, description = "
 hl.bind(mainMod .. " + X", hl.dsp.window.resize(), { mouse = true, description = "hold to resize window" })
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "drag window with mouse" })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "resize window with mouse" })
+
 local function scroll_ribbon_left()
     local ws = hl.get_active_workspace()
     if not ws or ws.tiled_layout ~= "scrolling" then return end
@@ -373,17 +401,81 @@ local function scroll_ribbon_left()
     if #wins == 0 then return end
     local first = wins[1]
     local first_x = (first.at and first.at.x) or 0
-    -- If already at or past the leftmost margin (52px), disallow scrolling left into empty void
-    if first_x >= 50 then
-        if first_x > 52 then
-            hl.dispatch(hl.dsp.layout("move " .. tostring(52 - first_x)))
+
+    -- Left margin is 12px (gaps_out). If already at or to the right of margin,
+    -- scrolling left would create empty void. Clamp flush and stop.
+    if first_x >= 12 then
+        if first_x > 12 then
+            pcall(function() hl.dispatch(hl.dsp.layout("move " .. tostring(12 - first_x))) end)
         end
         return
     end
+
+    -- Scroll ribbon left by one column towards start
     hl.dispatch(hl.dsp.layout("move -col"))
+    -- Post-check: clamp flush to 12px if overshot past left margin
+    pcall(function()
+        local post_wins = {}
+        for _, w in ipairs(hl.get_windows()) do
+            if w.mapped and not w.floating and w.workspace and w.workspace.id == ws.id then
+                if (w.size and w.size.x or 0) > 50 then table.insert(post_wins, w) end
+            end
+        end
+        table.sort(post_wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
+        if #post_wins > 0 and post_wins[1].at and post_wins[1].at.x > 12 then
+            hl.dispatch(hl.dsp.layout("move " .. tostring(12 - post_wins[1].at.x)))
+        end
+    end)
 end
 
-hl.bind(mainMod .. " + ALT + mouse_down", hl.dsp.layout("move +col"), { description = "scroll ribbon right with mouse wheel" })
+local function scroll_ribbon_right()
+    local ws = hl.get_active_workspace()
+    if not ws or ws.tiled_layout ~= "scrolling" then return end
+    local wins = {}
+    for _, w in ipairs(hl.get_windows()) do
+        if w.mapped and not w.floating and w.workspace and w.workspace.id == ws.id then
+            local ww = (w.size and w.size.x) or 0
+            if ww > 50 then table.insert(wins, w) end
+        end
+    end
+    table.sort(wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
+    if #wins == 0 then return end
+
+    local last = wins[#wins]
+    local last_right = ((last.at and last.at.x) or 0) + ((last.size and last.size.x) or 0)
+    local right_margin = 1440 - 12 -- logical monitor width minus gaps_out
+
+    -- If rightmost window is already at or inside the right screen margin,
+    -- scrolling right would expose empty void. Clamp flush and stop.
+    if last_right <= right_margin then
+        if last_right < right_margin and #wins > 1 then
+            pcall(function() hl.dispatch(hl.dsp.layout("move " .. tostring(right_margin - last_right))) end)
+        end
+        return
+    end
+
+    -- Scroll ribbon right by one column
+    hl.dispatch(hl.dsp.layout("move +col"))
+    -- Post-check: clamp flush if overshot past right margin
+    pcall(function()
+        local post_wins = {}
+        for _, w in ipairs(hl.get_windows()) do
+            if w.mapped and not w.floating and w.workspace and w.workspace.id == ws.id then
+                if (w.size and w.size.x or 0) > 50 then table.insert(post_wins, w) end
+            end
+        end
+        table.sort(post_wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
+        if #post_wins > 0 then
+            local u_last = post_wins[#post_wins]
+            local u_right = ((u_last.at and u_last.at.x) or 0) + ((u_last.size and u_last.size.x) or 0)
+            if u_right < right_margin and #post_wins > 1 then
+                hl.dispatch(hl.dsp.layout("move " .. tostring(right_margin - u_right)))
+            end
+        end
+    end)
+end
+
+hl.bind(mainMod .. " + ALT + mouse_down", scroll_ribbon_right, { description = "scroll ribbon right with mouse wheel" })
 hl.bind(mainMod .. " + ALT + mouse_up", scroll_ribbon_left, { description = "scroll ribbon left with mouse wheel" })
 
 -- ======================================================

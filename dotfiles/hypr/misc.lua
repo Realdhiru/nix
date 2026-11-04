@@ -21,7 +21,7 @@ hl.config({
 
     scrolling = {
         column_width = 0.5,
-        focus_fit_method = 1,
+        focus_fit_method = 0,
         follow_focus = true,
         fullscreen_on_one_column = true,
         direction = "right",
@@ -103,8 +103,9 @@ local function sync_window_scale(ws_id, exclude_addr)
     end
 end
 
--- Strictly clamps ribbon margins: ensures leftmost window never drifts into screen void (x > 52),
--- while preserving free scroll framing across the ribbon.
+-- Strictly clamps ribbon margins on window lifecycle/workspace switch:
+-- Ensures leftmost window never drifts past the screen margin (x > 12) into void,
+-- while preserving free scroll framing across the ribbon during normal window interaction.
 local function clamp_ribbon_margins(ws_id)
     local active_ws = hl.get_active_workspace()
     local target_ws_id = ws_id or (active_ws and active_ws.id)
@@ -117,9 +118,9 @@ local function clamp_ribbon_margins(ws_id)
     local first = wins[1]
     local cur_x = (first.at and first.at.x)
 
-    -- Left margin clamp: leftmost window must NEVER exceed x = 52 (zero left void)
-    if cur_x and cur_x > 52 then
-        local delta = cur_x - 52
+    -- Left margin clamp: leftmost window must NEVER exceed x = 12 (gaps_out)
+    if cur_x and cur_x > 12 then
+        local delta = cur_x - 12
         pcall(function()
             hl.dispatch(hl.dsp.layout("move " .. tostring(-delta)))
         end)
@@ -172,7 +173,9 @@ end)
 
 hl.on("window.active", function()
     sync_fullscreen_inhibit()
-    clamp_ribbon_margins()
+    -- NOTE: Never call clamp_ribbon_margins() on window.active!
+    -- Doing so interrupts free scroll framing and forcibly jerks the ribbon away
+    -- from the user's preferred scroll location whenever any window receives focus.
 end)
 
 sync_window_scale()

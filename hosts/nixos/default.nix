@@ -57,7 +57,7 @@
     settings = {
       connectivity = {
         uri = "http://connectivity-check.ubuntu.com/check_network_status.txt";
-        interval = 30;
+        interval = 300;
       };
     };
     dispatcherScripts = [
