@@ -323,9 +323,10 @@
                 key = substr($0, RSTART + 8, RLENGTH - 8)
                 gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
                 scope = in_submap ? "submap" : "root"
-                seen[scope ":" key]++
-                if (seen[scope ":" key] > 1) {
-                  print "Duplicate bind in " scope ": " key
+                mode = (/release[[:space:]]*=[[:space:]]*true/) ? "release" : "press"
+                seen[scope ":" mode ":" key]++
+                if (seen[scope ":" mode ":" key] > 1) {
+                  print "Duplicate bind in " scope " (" mode "): " key
                   dup = 1
                 }
               }
