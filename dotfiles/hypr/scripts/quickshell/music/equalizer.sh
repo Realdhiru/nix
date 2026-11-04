@@ -60,10 +60,10 @@ fi
 case $cmd in
 "--init")
     if [ ! -f "$STATE_FILE" ]; then
-        save_preset 0 0 0 0 0 0 0 0 0 0 "Flat"
+        save_preset 0 0 0 0 0 0 0 0 0 0 "Off"
     fi
     apply_eq
-    CUR_PRESET=$(jq -r '.preset // "Flat"' "$STATE_FILE" 2>/dev/null || echo "Flat")
+    CUR_PRESET=$(jq -r '.preset // "Off"' "$STATE_FILE" 2>/dev/null || echo "Off")
     case "$CUR_PRESET" in
         "Karaoke"*) "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" on 2>/dev/null || true ;;
         *)          "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" off 2>/dev/null || true ;;
@@ -71,14 +71,14 @@ case $cmd in
     ;;
 "get")
     if [ -f "$STATE_FILE" ]; then
-        cat "$STATE_FILE" 2>/dev/null || echo '{"b1":0,"b2":0,"b3":0,"b4":0,"b5":0,"b6":0,"b7":0,"b8":0,"b9":0,"b10":0,"preset":"Flat","pending":false}'
+        cat "$STATE_FILE" 2>/dev/null || echo '{"b1":0,"b2":0,"b3":0,"b4":0,"b5":0,"b6":0,"b7":0,"b8":0,"b9":0,"b10":0,"preset":"Off","pending":false}'
     else
-        echo '{"b1":0,"b2":0,"b3":0,"b4":0,"b5":0,"b6":0,"b7":0,"b8":0,"b9":0,"b10":0,"preset":"Flat","pending":false}'
+        echo '{"b1":0,"b2":0,"b3":0,"b4":0,"b5":0,"b6":0,"b7":0,"b8":0,"b9":0,"b10":0,"preset":"Off","pending":false}'
     fi
     ;;
 "set_band")
     tmp=$(cat "$STATE_FILE" 2>/dev/null)
-    [ -z "$tmp" ] && tmp='{"b1":0,"b2":0,"b3":0,"b4":0,"b5":0,"b6":0,"b7":0,"b8":0,"b9":0,"b10":0,"preset":"Flat","pending":false}'
+    [ -z "$tmp" ] && tmp='{"b1":0,"b2":0,"b3":0,"b4":0,"b5":0,"b6":0,"b7":0,"b8":0,"b9":0,"b10":0,"preset":"Off","pending":false}'
     updated=$(echo "$tmp" | jq -c --argjson val "$arg2" ".b$arg1 = \$val | .preset = \"Custom\" | .pending = false")
     echo "$updated" > "$STATE_FILE"
     EQ_NODE_ID=$(get_node_id)
@@ -95,7 +95,7 @@ case $cmd in
     ;;
 "preset")
     case $arg1 in
-        "Flat")    save_preset 0 0 0 0 0 0 0 0 0 0 "Flat" ;;
+        "Off"|"Flat") save_preset 0 0 0 0 0 0 0 0 0 0 "Off" ;;
         "Bass")    save_preset 3 4 2 0 -1 0 1 1 1 1 "Bass" ;;
         "Karaoke") save_preset 0 0 0 0 -2 -3 -2 0 1 1 "Karaoke" ;;
         "Vocal")   save_preset -3 -2 -1 1 3 4 3 2 1 0 "Vocal" ;;

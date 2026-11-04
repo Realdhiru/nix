@@ -26,7 +26,7 @@ Item {
         }
     }
 
-    property var presetList: ["Flat", "Bass", "Karaoke", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
+    property var presetList: ["Off", "Bass", "Karaoke", "Vocal", "Pop", "Rock", "Jazz", "Classic"]
 
     Keys.onPressed: (event) => {
         if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
@@ -87,7 +87,7 @@ Item {
     property var eqData: {
         "b1": 0, "b2": 0, "b3": 0, "b4": 0, "b5": 0,
         "b6": 0, "b7": 0, "b8": 0, "b9": 0, "b10": 0,
-        "preset": "Flat", "pending": false
+        "preset": "Off", "pending": false
     }
     property bool karaokeActive: false
 
@@ -253,6 +253,7 @@ Item {
 
     function applyPresetOptimistically(presetName) {
         var presets = {
+            "Off": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             "Flat": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             "Bass": [3, 4, 2, 0, -1, 0, 1, 1, 1, 1],
             "Karaoke": [0, 0, 0, 0, -2, -3, -2, 0, 1, 1],
@@ -928,7 +929,7 @@ Item {
                                 }
                             }
                         }
-                        Text { text: root.eqData.preset || "Flat"; color: root.subtext0; font.family: "JetBrains Mono"; font.pixelSize: root.s(14); font.bold: true; Layout.leftMargin: root.s(15) }
+                        Text { text: root.eqData.preset || "Off"; color: root.subtext0; font.family: "JetBrains Mono"; font.pixelSize: root.s(14); font.bold: true; Layout.leftMargin: root.s(15) }
                     }
 
                     Item {
@@ -1287,7 +1288,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: root.s(10)
                             Repeater {
-                                model: ["Flat", "Bass", "Karaoke", "Vocal"]
+                                model: ["Off", "Bass", "Karaoke", "Vocal"]
                                 delegate: PresetButton { name: modelData }
                             }
                         }
@@ -1340,7 +1341,7 @@ Item {
             cursorShape: Qt.PointingHandCursor
             onClicked: {
                 if (parent.name === "Karaoke" && parent.isActivePreset) {
-                    root.applyPresetOptimistically("Flat");
+                    root.applyPresetOptimistically("Off");
                 } else {
                     root.applyPresetOptimistically(parent.name);
                 }
