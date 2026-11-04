@@ -227,10 +227,6 @@ hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd(scripts .. "qs_manager.sh tog
     { description = "toggle music widget" })
 hl.bind(mainMod .. " + CTRL + N", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle calendar"),
     { description = "toggle calendar widget" })
-hl.bind(mainMod .. " + CTRL + D", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle dashboard"),
-    { description = "toggle system dashboard" })
-hl.bind("CTRL + SHIFT + Escape", hl.dsp.exec_cmd(scripts .. "qs_manager.sh toggle dashboard"),
-    { description = "toggle task manager dashboard" })
 
 hl.bind(mainMod .. " + CTRL + V", hl.dsp.exec_cmd(scripts .. "toggle_multi_sink.sh"),
     { description = "toggle multi-sink audio broadcast" })
