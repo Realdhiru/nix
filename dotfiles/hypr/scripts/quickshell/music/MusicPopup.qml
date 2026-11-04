@@ -1348,19 +1348,11 @@ FocusScope {
             id: hoverMa
             anchors.fill: parent
             hoverEnabled: true
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: Qt.PointingHandCursor
-            onClicked: (mouse) => {
+            onClicked: {
                 if (parent.name === "Karaoke") {
-                    if (mouse.button === Qt.RightButton) {
-                        root.execCmd("$HOME/.config/hypr/scripts/karaoke.sh cycle");
-                        return;
-                    }
-                    if (parent.isActivePreset) {
-                        root.applyPresetOptimistically("Off");
-                    } else {
-                        root.applyPresetOptimistically("Karaoke");
-                    }
+                    root.execCmd("karaoke cycle");
+                    root.applyPresetOptimistically("Karaoke");
                 } else {
                     root.applyPresetOptimistically(parent.name);
                 }

@@ -42,17 +42,25 @@ case "$preset" in
     
     if [ "$(awk -v g="$cur_gain2" 'BEGIN { print (g < 0.5) ? 1 : 0 }')" -eq 1 ]; then
       next_preset="Standard"
+      apply_preset_params "$next_preset"
+      set_mix 0.0 1.0
+      notify-send -a "Karaoke" -u low "Karaoke: $next_preset" 2>/dev/null || true
     else
       next_preset=$(awk -v d="$cur_depth" 'BEGIN {
-        if (d < 0.75) print "Standard";
+        if (d < 0.75) print "Off";
         else if (d < 0.90) print "Hard";
         else if (d < 0.98) print "Max";
         else print "Gentle";
       }')
+      if [ "$next_preset" = "Off" ]; then
+        set_mix 1.0 0.0
+        notify-send -a "Karaoke" -u low "Karaoke OFF" 2>/dev/null || true
+      else
+        apply_preset_params "$next_preset"
+        set_mix 0.0 1.0
+        notify-send -a "Karaoke" -u low "Karaoke: $next_preset" 2>/dev/null || true
+      fi
     fi
-    apply_preset_params "$next_preset"
-    set_mix 0.0 1.0
-    notify-send -a "Karaoke" -u low "Karaoke: $next_preset" 2>/dev/null || true
     ;;
   toggle)
     cur_gain2=$(timeout 2 pw-dump "$id" 2>/dev/null | jq -r '.[].info.params.Props[]?.params[]? // empty' 2>/dev/null | grep -A 1 '^finalL:Gain 2$' | tail -n 1 || echo "0.0")
