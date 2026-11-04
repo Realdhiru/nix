@@ -109,8 +109,22 @@ local function sync_window_scale(ws_id, exclude_addr)
     end
 end
 
+local function get_left_margin()
+    local home = os.getenv("HOME") or ""
+    local desktop_state = os.getenv("DESKTOP_STATE_DIR") or ((os.getenv("XDG_STATE_HOME") or (home .. "/.local/state")) .. "/desktop")
+    local f = io.open(desktop_state .. "/quickshell/state.json", "r")
+    if f then
+        local content = f:read("*a")
+        f:close()
+        if content and content:match('"topbarPosition"%s*:%s*"left"') then
+            return 52
+        end
+    end
+    return 12
+end
+
 -- Strictly clamps ribbon margins on window lifecycle/workspace switch:
--- Ensures leftmost window never drifts past the screen margin (x > 12) into void,
+-- Ensures leftmost window never drifts past the screen margin (52px or 12px) into void,
 -- while preserving free scroll framing across the ribbon during normal window interaction.
 local function clamp_ribbon_margins(ws_id)
     local active_ws = hl.get_active_workspace()
@@ -123,10 +137,11 @@ local function clamp_ribbon_margins(ws_id)
 
     local first = wins[1]
     local cur_x = (first.at and first.at.x)
+    local left_margin = get_left_margin()
 
-    -- Left margin clamp: leftmost window must NEVER exceed x = 12 (gaps_out)
-    if cur_x and cur_x > 12 then
-        local delta = cur_x - 12
+    -- Left margin clamp: leftmost window must NEVER exceed left_margin (into void)
+    if cur_x and cur_x > left_margin then
+        local delta = cur_x - left_margin
         pcall(function()
             hl.dispatch(hl.dsp.layout("move " .. tostring(-delta)))
         end)

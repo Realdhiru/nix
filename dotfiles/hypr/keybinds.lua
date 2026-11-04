@@ -337,36 +337,64 @@ local function smart_resize(dx, dy)
     end
     table.sort(wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
 
-    -- Dynamic 2-window screen-filling resize (behaves dynamically like Dwindle mode):
-    -- Expanding one window simultaneously shrinks the other, keeping both 100% visible
-    -- and flush to screen margins without creating ribbon overflow.
-    if #wins == 2 and not is_resizing_pair then
-        local w1 = wins[1]
-        local w2 = wins[2]
-        local is_w1 = (active_win.address == w1.address)
-        local other = is_w1 and w2 or w1
-
-        local delta = (dx > 0) and 0.04 or -0.04
-        -- Safe minimum guard: prevent either window from collapsing below 320px
-        local cur_self_w = (active_win.size and active_win.size.x) or 720
-        local cur_other_w = (other.size and other.size.x) or 720
-
-        if (delta < 0 and cur_self_w <= 320) or (delta > 0 and cur_other_w <= 320) then
-            return
+    -- Dynamic screen-filling resize (behaves dynamically like Dwindle mode):
+    -- Expanding/compressing one window simultaneously adjusts the adjacent neighbor,
+    -- keeping the screen filled and flush to margins without empty void spaces.
+    if #wins >= 2 and not is_resizing_pair then
+        local active_idx = nil
+        for i, w in ipairs(wins) do
+            if w.address == active_win.address then
+                active_idx = i
+                break
+            end
         end
 
-        is_resizing_pair = true
-        pcall(function()
-            hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", delta)))
-            hl.dispatch(hl.dsp.focus({ window = "address:" .. other.address }))
-            hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", -delta)))
-            hl.dispatch(hl.dsp.focus({ window = "address:" .. active_win.address }))
-        end)
-        is_resizing_pair = false
-        return
+        if active_idx then
+            local other = nil
+            local delta = (dx > 0) and 0.04 or -0.04
+
+            -- Dynamic partner selection:
+            -- If on leftmost window (idx 1): partner is right neighbor (idx 2)
+            -- If on middle or right window (idx > 1): partner is leftist neighbor (idx - 1)
+            -- This ensures compressing a middle window dynamically expands the leftist window,
+            -- keeping the left screen margin fixed with ZERO empty space.
+            if active_idx == 1 then
+                other = wins[2]
+            else
+                other = wins[active_idx - 1]
+            end
+
+            if other then
+                local cur_self_w = (active_win.size and active_win.size.x) or 720
+                local cur_other_w = (other.size and other.size.x) or 720
+
+                -- Safe minimum guard: prevent either window from collapsing below 320px
+                if (delta < 0 and cur_self_w <= 320) or (delta > 0 and cur_other_w <= 320) then
+                    return
+                end
+
+                is_resizing_pair = true
+                pcall(function()
+                    hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", delta)))
+                    hl.dispatch(hl.dsp.focus({ window = "address:" .. other.address }))
+                    hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", -delta)))
+                    hl.dispatch(hl.dsp.focus({ window = "address:" .. active_win.address }))
+                end)
+                is_resizing_pair = false
+
+                -- Margin guard: ensure leftmost window never drifts past left margin (52px)
+                local first = wins[1]
+                if first and first.at and first.at.x > 52 then
+                    pcall(function()
+                        hl.dispatch(hl.dsp.layout("move " .. tostring(52 - first.at.x)))
+                    end)
+                end
+                return
+            end
+        end
     end
 
-    -- 1 or 3+ windows: standard proportional column resize along ribbon
+    -- 1 window: standard column resize along ribbon
     local delta_frac = (dx > 0) and 0.04 or -0.04
     pcall(function()
         hl.dispatch(hl.dsp.layout(string.format("colresize %+0.02f", delta_frac)))
