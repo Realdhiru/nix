@@ -8,7 +8,7 @@ import Quickshell
 import Quickshell.Io
 import "../"
 
-Item {
+FocusScope {
     id: root
     focus: true
 

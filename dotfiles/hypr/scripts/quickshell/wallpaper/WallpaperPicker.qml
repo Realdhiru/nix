@@ -7,8 +7,9 @@ import Quickshell
 import Quickshell.Io
 import "../"
 
-Item {
+FocusScope {
     id: window
+    focus: true
     width: Screen.width
     height: parent ? parent.height : Screen.height
 
@@ -2027,6 +2028,7 @@ Item {
                     anchors.fill: parent
                     enabled: delegateRoot.matchesFilter
                     onClicked: {
+                        view.forceActiveFocus();
                         view.currentIndex = index;
                         window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo);
                     }

@@ -99,7 +99,18 @@ PanelWindow {
 
     WlrLayershell.namespace: "qs-master"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: masterWindow.isVisible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: masterWindow.isWindowActive ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+
+    HyprlandFocusGrab {
+        id: focusGrab
+        active: masterWindow.isWindowActive
+        windows: [ masterWindow ]
+        onCleared: {
+            if (masterWindow.isWindowActive) {
+                switchWidget("hidden", "");
+            }
+        }
+    }
 
     anchors {
         top: true
@@ -233,7 +244,13 @@ PanelWindow {
 
     property bool isVisible: false
     property bool isWindowActive: false
-    onIsWindowActiveChanged: Config.isPopupOpen = isWindowActive
+    onIsWindowActiveChanged: {
+        Config.isPopupOpen = isWindowActive;
+        if (isWindowActive && widgetStack.currentItem) {
+            widgetStack.forceActiveFocus();
+            widgetStack.currentItem.forceActiveFocus();
+        }
+    }
     property string activeArg: ""
     property bool disableMorph: false
     property int switchGeneration: 0
@@ -391,22 +408,6 @@ PanelWindow {
 
     onGlobalUiScaleChanged: { handleNativeScreenChange(); }
 
-    Timer {
-        id: focusTimer
-        interval: 50
-        onTriggered: {
-            if (masterWindow.isVisible && widgetStack.currentItem) {
-                widgetStack.forceActiveFocus();
-                widgetStack.currentItem.forceActiveFocus();
-            }
-        }
-    }
-
-    onIsVisibleChanged: {
-        if (isVisible) focusTimer.restart();
-        else focusTimer.stop();
-    }
-
     Item {
         x: masterWindow.animX
         y: masterWindow.animY
@@ -450,7 +451,14 @@ PanelWindow {
             }
         }
 
-        MouseArea { anchors.fill: parent }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                if (widgetStack.currentItem) {
+                    widgetStack.currentItem.forceActiveFocus();
+                }
+            }
+        }
 
         Item {
             anchors.fill: parent
@@ -662,6 +670,7 @@ PanelWindow {
                 widgetStack.replace(targetObj, {});
             }
             if (targetObj.showWidget) targetObj.showWidget();
+            targetObj.forceActiveFocus();
         } else {
             if (immediate) {
                 widgetStack.replace(t.comp, props, StackView.Immediate);
@@ -669,8 +678,6 @@ PanelWindow {
                 widgetStack.replace(t.comp, props);
             }
         }
-
-        focusTimer.restart();
     }
 
     Item {

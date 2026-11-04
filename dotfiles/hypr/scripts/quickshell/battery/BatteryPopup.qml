@@ -7,8 +7,9 @@ import Quickshell.Io
 import Quickshell.Services.Pipewire
 import "../"
 
-Item {
+FocusScope {
     id: window
+    focus: true
 
     property real layoutWidth
     property real layoutHeight
