@@ -359,6 +359,8 @@
         "bluetooth.use-persistent-storage" = false
         "device.routes.mute-on-bluetooth-playback-removed" = false
         "device.routes.mute-on-alsa-playback-removed" = false
+        "device.routes.default-sink-volume" = 1.0
+        "session.suspend-timeout-seconds" = 0
       }
     '';
   };
@@ -406,12 +408,12 @@
                 plugin = "${pkgs.ladspa-spectral-karaoke}/lib/ladspa/spectral_karaoke.so"
                 label = spectral_karaoke
                 control = {
-                  "Depth"                = 0.99
-                  "Low Cutoff (Hz)"      = 100.0
-                  "Air Depth"            = 0.05
-                  "Transient Protection" = 0.10
-                  "Release (ms)"         = 40.0
-                  "Reverb Duck (dB)"     = 4.0
+                  "Depth"                = 0.96
+                  "Low Cutoff (Hz)"      = 150.0
+                  "Air Depth"            = 0.15
+                  "Transient Protection" = 0.40
+                  "Release (ms)"         = 70.0
+                  "Reverb Duck (dB)"     = 0.0
                 }
               }
 

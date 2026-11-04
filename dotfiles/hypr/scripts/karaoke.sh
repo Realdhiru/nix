@@ -45,12 +45,12 @@ apply_preset_params() {
   local nid
   nid=$(get_eq_node_id)
   timeout 2 pw-cli s "$nid" Props "{ params = [ \
-    \"spectral_karaoke:Depth\" 0.99 \
-    \"spectral_karaoke:Low Cutoff (Hz)\" 100.0 \
-    \"spectral_karaoke:Air Depth\" 0.05 \
-    \"spectral_karaoke:Transient Protection\" 0.10 \
-    \"spectral_karaoke:Release (ms)\" 40.0 \
-    \"spectral_karaoke:Reverb Duck (dB)\" 4.0 \
+    \"spectral_karaoke:Depth\" 0.96 \
+    \"spectral_karaoke:Low Cutoff (Hz)\" 150.0 \
+    \"spectral_karaoke:Air Depth\" 0.15 \
+    \"spectral_karaoke:Transient Protection\" 0.40 \
+    \"spectral_karaoke:Release (ms)\" 70.0 \
+    \"spectral_karaoke:Reverb Duck (dB)\" 0.0 \
   ] }" >/dev/null 2>&1 || true
 }
 
