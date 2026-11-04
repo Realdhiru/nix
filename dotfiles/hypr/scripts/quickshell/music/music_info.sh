@@ -71,6 +71,8 @@ get_active_playback_device() {
     if [[ "$node_name" == *"bluez"* ]]; then
         dev_icon="󰂯"
         [ -n "$node_desc" ] && dev_name="$node_desc" || dev_name="Bluetooth"
+    elif [[ "$node_name" == *"Headphone"* || "$node_name" == *"headset"* ]]; then
+        dev_icon="󰋋"; dev_name="${node_desc:-Headphones}"
     elif [[ "$node_name" == *"usb"* ]]; then
         dev_icon="󰓃"; dev_name="USB Audio"
     elif [[ "$node_name" == *"Speaker"* || "$node_name" == *"pci"* ]]; then

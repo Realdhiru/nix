@@ -1,43 +1,91 @@
 #!/usr/bin/env bash
-# Fast PipeWire audio sink cycler (pure bash + pw-link + wpctl)
+# Robust audio output switcher (Speaker <-> Bluetooth / Headphones)
+set -euo pipefail
+
+EQ_OUT_ID=$(pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_output.eq10"/ {gsub(/,/, "", id); print id; exit}' || true)
+[ -n "$EQ_OUT_ID" ] || exit 0
 
 has_hdmi=false
 if grep -q "^connected" /sys/class/drm/card*-HDMI*/status 2>/dev/null; then
     has_hdmi=true
 fi
 
-raw_sinks=$(pw-link -i 2>/dev/null | grep ':playback_FL' | grep -v 'effect_input' || true)
-sinks=()
-while IFS= read -r line; do
-    [ -z "$line" ] && continue
-    node="${line%:playback_FL}"
-    if [[ "$node" == *"HiFi__HDMI"* ]] && [ "$has_hdmi" = false ]; then
-        continue
-    fi
-    sinks+=("$node")
-done <<< "$raw_sinks"
+# Discover all physical audio sinks from PipeWire
+all_sinks=$(pw-dump Node 2>/dev/null | jq -c --arg has_hdmi "$has_hdmi" '
+  [ .[] | select(
+      .info.props["media.class"] == "Audio/Sink" and
+      (.info.props["node.name"] | startswith("effect_input") | not) and
+      (($has_hdmi == "true") or (.info.props["node.name"] | test("HiFi__HDMI") | not))
+    ) | {
+      id: .id,
+      name: .info.props["node.name"],
+      desc: (.info.props["node.description"] // .info.props["node.name"]),
+      is_external: (
+        (.info.props["node.name"] | test("bluez|Headphone|headset|usb"; "i")) or
+        ((.info.props["node.description"] // "") | test("Bluetooth|Headphone|Headset|Buds|AirPods|Earbuds"; "i"))
+      )
+    }
+  ]
+')
 
-if [ "${#sinks[@]}" -le 1 ]; then
+num_sinks=$(echo "$all_sinks" | jq 'length')
+if [ "$num_sinks" -le 1 ]; then
+    notify-send -a "Audio" -t 1500 -u low "Laptop Speaker" 2>/dev/null || true
     exit 0
 fi
 
-cur_target=$(pw-link -l 2>/dev/null | awk '/effect_output.eq10:output_FL/ {getline; sub(/^[ |>-]+/, ""); sub(/:playback_FL.*/, ""); print; exit}')
+# Find currently linked sink
+cur_target_name=$(pw-link -l 2>/dev/null | awk '/effect_output.eq10:output_FL/ {getline; sub(/^[ |>-]+/, ""); sub(/:playback_FL.*/, ""); print; exit}' || echo "")
 
-cur_idx=0
-for i in "${!sinks[@]}"; do
-    if [ "${sinks[$i]}" = "$cur_target" ]; then
-        cur_idx=$i
-        break
+ext_sink=$(echo "$all_sinks" | jq -c '[ .[] | select(.is_external == true) ] | .[0] // empty')
+speaker_sink=$(echo "$all_sinks" | jq -c '[ .[] | select(.is_external == false) ] | .[0] // empty')
+
+target_sink=""
+
+if [ -n "$ext_sink" ] && [ -n "$speaker_sink" ]; then
+    cur_is_ext=$(echo "$ext_sink" | jq -r --arg name "$cur_target_name" 'if .name == $name then "true" else "false" end')
+    if [ "$cur_is_ext" = "true" ]; then
+        target_sink="$speaker_sink"
+    else
+        target_sink="$ext_sink"
     fi
-done
-
-next_idx=$(( (cur_idx + 1) % ${#sinks[@]} ))
-next_target="${sinks[$next_idx]}"
-
-if [ -n "$cur_target" ]; then
-    pw-link -d effect_output.eq10:output_FL "${cur_target}:playback_FL" 2>/dev/null || true
-    pw-link -d effect_output.eq10:output_FR "${cur_target}:playback_FR" 2>/dev/null || true
+else
+    cur_idx=$(echo "$all_sinks" | jq -r --arg name "$cur_target_name" 'map(.name == $name) | index(true) // 0')
+    next_idx=$(( (cur_idx + 1) % num_sinks ))
+    target_sink=$(echo "$all_sinks" | jq -c ".[$next_idx]")
 fi
 
-pw-link effect_output.eq10:output_FL "${next_target}:playback_FL" 2>/dev/null || true
-pw-link effect_output.eq10:output_FR "${next_target}:playback_FR" 2>/dev/null || true
+next_id=$(echo "$target_sink" | jq -r '.id')
+next_name=$(echo "$target_sink" | jq -r '.name')
+next_desc=$(echo "$target_sink" | jq -r '.desc')
+
+if [[ "$next_name" == *"Speaker"* ]]; then
+    display_desc="Laptop Speaker"
+else
+    display_desc="$next_desc"
+fi
+
+# 1. Update PipeWire metadata so WirePlumber manages and respects target routing
+pw-metadata -n default "$EQ_OUT_ID" target.node "$next_id" 2>/dev/null || true
+
+# 2. Re-link audio ports immediately
+if [ -n "$cur_target_name" ] && [ "$cur_target_name" != "$next_name" ]; then
+    pw-link -d effect_output.eq10:output_FL "${cur_target_name}:playback_FL" 2>/dev/null || true
+    pw-link -d effect_output.eq10:output_FR "${cur_target_name}:playback_FR" 2>/dev/null || true
+fi
+
+pw-link effect_output.eq10:output_FL "${next_name}:playback_FL" 2>/dev/null || true
+pw-link effect_output.eq10:output_FR "${next_name}:playback_FR" 2>/dev/null || true
+
+# 3. Unmute and restore volume if muted on target sink
+vol_status=$(wpctl get-volume "$next_id" 2>/dev/null || echo "")
+if [[ "$vol_status" == *"[MUTED]"* ]]; then
+    wpctl set-mute "$next_id" 0 2>/dev/null || true
+fi
+vol_val=$(echo "$vol_status" | awk '{print $2}')
+if [ "$vol_val" = "0.00" ]; then
+    wpctl set-volume "$next_id" 0.40 2>/dev/null || true
+fi
+
+# 4. Notify user
+notify-send -a "Audio" -t 1500 -u low "$display_desc" 2>/dev/null || true

@@ -631,6 +631,16 @@ Item {
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             root.execCmd("bash " + Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/music/cycle_audio_sink.sh");
+                                            refreshDeviceTimer.restart();
+                                        }
+                                    }
+
+                                    Timer {
+                                        id: refreshDeviceTimer
+                                        interval: 150
+                                        onTriggered: {
+                                            musicProc.running = false;
+                                            musicProc.running = true;
                                         }
                                     }
                                 }
