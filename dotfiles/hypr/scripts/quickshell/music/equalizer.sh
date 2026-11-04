@@ -106,7 +106,7 @@ case $cmd in
     esac
     apply_eq
     case "$arg1" in
-        "Karaoke") "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" Standard 2>/dev/null || true ;;
+        "Karaoke") "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" on 2>/dev/null || true ;;
         *)         "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" off 2>/dev/null || true ;;
     esac
     ;;

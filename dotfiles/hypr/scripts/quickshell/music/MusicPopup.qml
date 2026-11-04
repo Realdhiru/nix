@@ -1351,8 +1351,11 @@ FocusScope {
             cursorShape: Qt.PointingHandCursor
             onClicked: {
                 if (parent.name === "Karaoke") {
-                    root.execCmd("karaoke cycle");
-                    root.applyPresetOptimistically("Karaoke");
+                    if (parent.isActivePreset) {
+                        root.execCmd("karaoke cycle");
+                    } else {
+                        root.applyPresetOptimistically("Karaoke");
+                    }
                 } else {
                     root.applyPresetOptimistically(parent.name);
                 }

@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# karaoke [on|off|toggle|Gentle|Standard|Hard|Max|trim]
+# karaoke [on|off|toggle|cycle|status|Gentle|Standard|Hard|Max|trim]
 set -eu
 
 exec 201>"${XDG_RUNTIME_DIR:-/run/user/1000}/karaoke.lock"
 flock 201
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/audio"
+KARAOKE_STATE="${STATE_DIR}/karaoke.json"
+EQ_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/quickshell/music/eq_state.json"
+mkdir -p "$STATE_DIR"
 
 id=$(timeout 2 pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.eq10"/ {gsub(/,/, "", id); print id; exit}' || true)
 if [ -z "$id" ]; then
@@ -12,7 +17,26 @@ if [ -z "$id" ]; then
     exit 0
 fi
 
-preset="${1:-Standard}"
+load_state() {
+  if [ -f "$KARAOKE_STATE" ]; then
+    cur_enabled=$(jq -r '.enabled // false' "$KARAOKE_STATE" 2>/dev/null || echo "false")
+    cur_mode=$(jq -r '.mode // "Standard"' "$KARAOKE_STATE" 2>/dev/null || echo "Standard")
+  else
+    cur_enabled="false"
+    cur_mode="Standard"
+  fi
+  case "$cur_mode" in
+    "Gentle"|"Standard"|"Hard"|"Max") ;;
+    *) cur_mode="Standard" ;;
+  esac
+}
+
+save_state() {
+  local en="$1"
+  local md="$2"
+  local tmp="${KARAOKE_STATE}.tmp.$$"
+  jq -n -c --argjson en "$en" --arg md "$md" '{"enabled": $en, "mode": $md}' > "$tmp" 2>/dev/null && mv "$tmp" "$KARAOKE_STATE"
+}
 
 set_mix() {
   timeout 2 pw-cli s "$id" Props "{ params = [ \"finalL:Gain 1\" $1 \"finalL:Gain 2\" $2 \"finalR:Gain 1\" $1 \"finalR:Gain 2\" $2 ] }" >/dev/null 2>&1 || true
@@ -35,44 +59,98 @@ apply_preset_params() {
   esac
 }
 
-case "$preset" in
+update_eq_preset() {
+  local p="$1"
+  if [ -f "$EQ_STATE" ]; then
+    local tmp="${EQ_STATE}.tmp.$$"
+    jq -c --arg p "$p" '.preset = $p' "$EQ_STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$EQ_STATE"
+  fi
+}
+
+cmd="${1:-cycle}"
+
+load_state
+
+case "$cmd" in
   cycle)
-    cur_gain2=$(timeout 2 pw-dump "$id" 2>/dev/null | jq -r '.[].info.params.Props[]?.params[]? // empty' 2>/dev/null | grep -A 1 '^finalL:Gain 2$' | tail -n 1 || echo "0.0")
-    cur_depth=$(timeout 2 pw-dump "$id" 2>/dev/null | jq -r '.[].info.params.Props[]?.params[]? // empty' 2>/dev/null | grep -A 1 '^spectral_karaoke:Depth$' | tail -n 1 || echo "0.85")
-    
-    if [ "$(awk -v g="$cur_gain2" 'BEGIN { print (g < 0.5) ? 1 : 0 }')" -eq 1 ]; then
-      next_preset="Standard"
-      apply_preset_params "$next_preset"
+    if [ "$cur_enabled" != "true" ]; then
+      next_mode="Standard"
       set_mix 0.0 1.0
-      notify-send -a "Karaoke" -u low "Karaoke: $next_preset" 2>/dev/null || true
+      apply_preset_params "$next_mode"
+      save_state true "$next_mode"
+      update_eq_preset "Karaoke"
+      notify-send -a "Karaoke" -u low "Karaoke: $next_mode" 2>/dev/null || true
+      echo "Karaoke: $next_mode"
     else
-      next_preset=$(awk -v d="$cur_depth" 'BEGIN {
-        if (d < 0.75) print "Off";
-        else if (d < 0.90) print "Hard";
-        else if (d < 0.98) print "Max";
-        else print "Gentle";
-      }')
-      if [ "$next_preset" = "Off" ]; then
+      case "$cur_mode" in
+        "Standard") next_mode="Hard" ;;
+        "Hard")     next_mode="Max" ;;
+        "Max")      next_mode="Gentle" ;;
+        "Gentle")   next_mode="Off" ;;
+        *)          next_mode="Standard" ;;
+      esac
+
+      if [ "$next_mode" = "Off" ]; then
         set_mix 1.0 0.0
+        save_state false "$cur_mode"
+        update_eq_preset "Off"
         notify-send -a "Karaoke" -u low "Karaoke OFF" 2>/dev/null || true
+        echo "Karaoke OFF"
       else
-        apply_preset_params "$next_preset"
         set_mix 0.0 1.0
-        notify-send -a "Karaoke" -u low "Karaoke: $next_preset" 2>/dev/null || true
+        apply_preset_params "$next_mode"
+        save_state true "$next_mode"
+        update_eq_preset "Karaoke"
+        notify-send -a "Karaoke" -u low "Karaoke: $next_mode" 2>/dev/null || true
+        echo "Karaoke: $next_mode"
       fi
     fi
     ;;
+
   toggle)
-    cur_gain2=$(timeout 2 pw-dump "$id" 2>/dev/null | jq -r '.[].info.params.Props[]?.params[]? // empty' 2>/dev/null | grep -A 1 '^finalL:Gain 2$' | tail -n 1 || echo "0.0")
-    if [ "$(awk -v g="$cur_gain2" 'BEGIN { print (g > 0.5) ? 1 : 0 }')" -eq 1 ]; then
+    if [ "$cur_enabled" = "true" ]; then
       set_mix 1.0 0.0
+      save_state false "$cur_mode"
+      update_eq_preset "Off"
       notify-send -a "Karaoke" -u low "Karaoke OFF" 2>/dev/null || true
+      echo "Karaoke OFF"
     else
-      apply_preset_params "Standard"
+      target_mode="${cur_mode:-Standard}"
       set_mix 0.0 1.0
-      notify-send -a "Karaoke" -u low "Karaoke: Standard" 2>/dev/null || true
+      apply_preset_params "$target_mode"
+      save_state true "$target_mode"
+      update_eq_preset "Karaoke"
+      notify-send -a "Karaoke" -u low "Karaoke: $target_mode" 2>/dev/null || true
+      echo "Karaoke: $target_mode"
     fi
     ;;
+
+  on)
+    if [ "$cur_enabled" = "true" ]; then
+      echo "Karaoke is already active: $cur_mode"
+    else
+      target_mode="${cur_mode:-Standard}"
+      set_mix 0.0 1.0
+      apply_preset_params "$target_mode"
+      save_state true "$target_mode"
+      update_eq_preset "Karaoke"
+      notify-send -a "Karaoke" -u low "Karaoke: $target_mode" 2>/dev/null || true
+      echo "Karaoke: $target_mode"
+    fi
+    ;;
+
+  off)
+    set_mix 1.0 0.0
+    save_state false "$cur_mode"
+    update_eq_preset "Off"
+    notify-send -a "Karaoke" -u low "Karaoke OFF" 2>/dev/null || true
+    echo "Karaoke OFF"
+    ;;
+
+  status)
+    echo "enabled=$cur_enabled mode=$cur_mode"
+    ;;
+
   trim)
     delta="${2:-0}"
     cur_depth=$(timeout 2 pw-dump "$id" 2>/dev/null | jq -r '.[].info.params.Props[]?.params[]? // empty' 2>/dev/null | grep -A 1 '^spectral_karaoke:Depth$' | tail -n 1 || echo "0.85")
@@ -81,15 +159,21 @@ case "$preset" in
     timeout 2 pw-cli s "$id" Props "{ params = [ \"spectral_karaoke:Depth\" $new_depth ] }" >/dev/null 2>&1 || true
     echo "Karaoke depth trimmed by ${delta}: ${cur_depth} -> ${new_depth}"
     ;;
-  off)
-    set_mix 1.0 0.0
-    notify-send -a "Karaoke" -u low "Karaoke OFF" 2>/dev/null || true
-    ;;
-  on|"Gentle"|"Light"|"Standard"|"Hard"|"Max"|"Max vocal"|"MaxVocal")
-    apply_preset_params "$preset"
+
+  Gentle|Light|Standard|Hard|Max|"Max vocal"|MaxVocal)
+    normalized="$cmd"
+    case "$cmd" in
+      Light) normalized="Gentle" ;;
+      "Max vocal"|MaxVocal) normalized="Max" ;;
+    esac
+    apply_preset_params "$normalized"
     set_mix 0.0 1.0
-    notify-send -a "Karaoke" -u low "Karaoke: $preset" 2>/dev/null || true
+    save_state true "$normalized"
+    update_eq_preset "Karaoke"
+    notify-send -a "Karaoke" -u low "Karaoke: $normalized" 2>/dev/null || true
+    echo "Karaoke: $normalized"
     ;;
+
   *)
     exit 0
     ;;
