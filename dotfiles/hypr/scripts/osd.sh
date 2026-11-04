@@ -50,10 +50,30 @@ get_physical_sink_id() {
     fi
 }
 
+get_volume_ceiling() {
+    local phys_id name
+    phys_id=$(get_physical_sink_id)
+    if [ -n "$phys_id" ]; then
+        name=$(pw-dump "$phys_id" 2>/dev/null | jq -r '.[].info.props["node.name"] // empty' 2>/dev/null || true)
+        if [[ "$name" == *"Speaker"* ]]; then
+            # Safe thermal ceiling for internal laptop speaker: 120% (+1.6 dB)
+            echo "1.20"
+            return
+        fi
+    fi
+    # External gear (Bluetooth, Headphones, DAC): 150% (+3.5 dB)
+    echo "1.50"
+}
+
 case "${1:-}" in
     vol-up)
         wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
-        wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+
+        limit=$(get_volume_ceiling)
+        wpctl set-volume -l "$limit" @DEFAULT_AUDIO_SINK@ 5%+
+        cur_raw=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print $2}')
+        if [ "$(awk -v c="${cur_raw:-1.0}" -v l="$limit" 'BEGIN { print (c > l) ? 1 : 0 }')" -eq 1 ]; then
+            wpctl set-volume @DEFAULT_AUDIO_SINK@ "$limit"
+        fi
         read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
         icon="audio-volume-high"
         (( pct < 30 )) && icon="audio-volume-low"
@@ -62,7 +82,12 @@ case "${1:-}" in
         ;;
     vol-down)
         wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
+        limit=$(get_volume_ceiling)
         wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+        cur_raw=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print $2}')
+        if [ "$(awk -v c="${cur_raw:-1.0}" -v l="$limit" 'BEGIN { print (c > l) ? 1 : 0 }')" -eq 1 ]; then
+            wpctl set-volume @DEFAULT_AUDIO_SINK@ "$limit"
+        fi
         read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
         icon="audio-volume-high"
         (( pct < 30 )) && icon="audio-volume-low"
@@ -70,6 +95,11 @@ case "${1:-}" in
         notify_osd 9990 "$icon" "Volume" "${pct}%"
         ;;
     vol-mute)
+        limit=$(get_volume_ceiling)
+        cur_raw=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print $2}')
+        if [ "$(awk -v c="${cur_raw:-1.0}" -v l="$limit" 'BEGIN { print (c > l) ? 1 : 0 }')" -eq 1 ]; then
+            wpctl set-volume @DEFAULT_AUDIO_SINK@ "$limit"
+        fi
         wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
         read -r pct mute < <(get_audio_info @DEFAULT_AUDIO_SINK@)
         if [ "$mute" = "muted" ]; then
