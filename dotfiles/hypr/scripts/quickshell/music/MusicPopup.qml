@@ -256,7 +256,7 @@ FocusScope {
             "Off": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             "Flat": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             "Bass": [6, 7, 5, 2, -2, -3, -3, -2, -2, -1],
-            "Karaoke": [0, 0, 0, -2, -4, -6, -4, -2, 0, 1],
+            "Karaoke": [2, 2, 1, 0, -1, -2, -1, 0, 1, 2],
             "Treble": [-3, -2, -1, 0, 1, 2, 4, 5, 6, 5],
             "Vocal": [-2, -1, 1, 3, 5, 5, 4, 2, 1, 0],
             "Pop": [3, 4, 3, -1, -1, 1, 3, 4, 3, 2],
@@ -1350,15 +1350,7 @@ FocusScope {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: {
-                if (parent.name === "Karaoke") {
-                    if (parent.isActivePreset) {
-                        root.applyPresetOptimistically("Off");
-                    } else {
-                        root.applyPresetOptimistically("Karaoke");
-                    }
-                } else {
-                    root.applyPresetOptimistically(parent.name);
-                }
+                root.applyPresetOptimistically(parent.name);
             }
         }
     }

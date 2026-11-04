@@ -55,10 +55,10 @@ get_active_playback_device() {
             target_desc=$(pw-dump Node 2>/dev/null | jq -r --arg name "$node_name" '.[] | select(.info.props["node.name"] == $name) | .info.props["node.description"] // empty' 2>/dev/null | head -n 1 || echo "")
             if [[ "$node_name" == *"Speaker"* ]]; then
                 node_desc="Laptop Speaker"
+            elif [[ "$node_name" == *"Headphone"* || "$node_name" == *"headset"* ]]; then
+                node_desc="Wired Headphones"
             elif [ -n "$target_desc" ]; then
                 node_desc="$target_desc"
-            elif [[ "$node_name" == *"Headphone"* ]]; then
-                node_desc="Headphones"
             else
                 node_desc="$node_name"
             fi
@@ -72,11 +72,11 @@ get_active_playback_device() {
         dev_icon="󰂯"
         [ -n "$node_desc" ] && dev_name="$node_desc" || dev_name="Bluetooth"
     elif [[ "$node_name" == *"Headphone"* || "$node_name" == *"headset"* ]]; then
-        dev_icon="󰋋"; dev_name="${node_desc:-Headphones}"
+        dev_icon="󰋋"; dev_name="Wired Headphones"
     elif [[ "$node_name" == *"usb"* ]]; then
-        dev_icon="󰓃"; dev_name="USB Audio"
+        dev_icon="󰋋"; dev_name="USB Audio"
     elif [[ "$node_name" == *"Speaker"* || "$node_name" == *"pci"* ]]; then
-        dev_icon="󰓃"; dev_name="${node_desc:-Laptop Speaker}"
+        dev_icon="󰓃"; dev_name="Laptop Speaker"
     elif [ -n "$node_desc" ]; then
         dev_name="$node_desc"
     fi

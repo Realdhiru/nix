@@ -43,6 +43,10 @@ switch_to_profile() {
     local prof_name="$2"
     local desc="$3"
 
+    local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/audio"
+    mkdir -p "$state_dir"
+    date +%s > "$state_dir/manual_cycle_ts"
+
     if [ -n "$ALSA_CARD_ID" ]; then
         wpctl set-profile "$ALSA_CARD_ID" "$prof_idx" 2>/dev/null || true
     fi
@@ -85,6 +89,9 @@ elif [[ "$cur_target_name" == *"Headphone"* ]]; then
     ext_id=$(echo "$first_ext" | jq -r '.id')
     ext_name=$(echo "$first_ext" | jq -r '.name')
     ext_desc=$(echo "$first_ext" | jq -r '.desc')
+    local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/audio"
+    mkdir -p "$state_dir"
+    date +%s > "$state_dir/manual_cycle_ts"
 
     pw-metadata -n default "$EQ_OUT_ID" target.node "$ext_id" 2>/dev/null || true
     if [ -n "$cur_target_name" ] && [ "$cur_target_name" != "$ext_name" ]; then

@@ -616,8 +616,7 @@ Variants {
 
                                     Item {
                                          id: cavaVisualizer
-                                         anchors.bottom: mediaInfoColumn.bottom
-                                         anchors.bottomMargin: Math.round(timeText.implicitHeight - timeText.baselineOffset)
+                                         anchors.verticalCenter: parent.verticalCenter
                                          readonly property int barCount: 8
                                          readonly property int segCount: 8
                                          readonly property real barW: barWindow.s(8)
@@ -673,7 +672,7 @@ Variants {
                                         id: mediaInfoColumn
                                         spacing: barWindow.s(2)
                                         anchors.verticalCenter: parent.verticalCenter
-                                        width: Math.max(timeMetrics.width + barWindow.s(2), barWindow.s(81))
+                                        width: Math.max(timeMetrics.width + barWindow.s(6), barWindow.s(90))
 
                                         TextMetrics {
                                             id: titleMetrics
@@ -683,6 +682,7 @@ Variants {
                                         TextMetrics {
                                             id: timeMetrics
                                             font: timeText.font
+                                            text: barWindow.displayTime
                                         }
 
                                         Item {
