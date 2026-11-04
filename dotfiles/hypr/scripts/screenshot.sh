@@ -25,7 +25,6 @@ case "$MODE" in
         trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
         if [ -n "$trimmed" ]; then
             printf '%s' "$text" | wl-copy -n --type "text/plain;charset=utf-8"
-            notify-send -a "OCR" "Copied to clipboard" 2>/dev/null || true
         else
             notify-send -a "OCR" "No text found" 2>/dev/null || true
         fi
@@ -43,8 +42,5 @@ esac
 
 if [ -f "$FILE" ]; then
     wl-copy --type image/png < "$FILE" 2>/dev/null || true
-    notify-send -a "Screenshot" -i "$FILE" "Captured to clipboard" 2>/dev/null || true
-else
-    notify-send -a "Screenshot" -u critical "Capture Failed" 2>/dev/null || true
 fi
 

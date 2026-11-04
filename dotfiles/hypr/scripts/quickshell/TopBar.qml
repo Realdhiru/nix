@@ -1195,14 +1195,6 @@ Variants {
                                         id: batLayoutRow
                                         anchors.centerIn: parent
                                         spacing: barWindow.s(6)
-                                        Text {
-                                            visible: SysData.coffeeActive
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            text: "󰛊"
-                                            font.family: "Iosevka Nerd Font"
-                                            font.pixelSize: barWindow.s(14)
-                                            color: mocha.crust
-                                        }
                                         Text { anchors.verticalCenter: parent.verticalCenter; text: barWindow.isDesktop ? "" : barWindow.batIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.isDesktop ? barWindow.s(18) : barWindow.s(16); color: mocha.crust; Behavior on color { ColorAnimation { duration: 300 } } }
                                         Text {
                                             anchors.verticalCenter: parent.verticalCenter

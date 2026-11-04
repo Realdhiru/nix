@@ -2,7 +2,9 @@
 
 ## 2026-11-04 — Scrolling Layout Proportional Resizing
 
-- **System-Wide Notification & Failure Feedback Coverage**: Added consistent 1–3 word notifications across silent scripts, toggles, and failure branches (`record.sh`, `toggle_theme_mode.sh`, `mode_ctl.sh`, `qs_manager.sh`, `cycle_wallpaper.sh`, `launch_antigravity.sh`, `screenshot.sh`, `rotate_display.sh`, `kdeconnect_toggle.sh`, `cycle_audio_sink.sh`, `karaoke.sh`, `power.sh`, `reload.sh`); and resolved destroyed notification toast in `fix_audio.sh` by removing redundant QuickShell SIGKILL during graph refresh.
+- **Notification Cleanup & Battery Pill Coffee Icon Removal ([`screenshot.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/screenshot.sh), [`qs_manager.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/qs_manager.sh), [`TopBar.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/TopBar.qml), [`launch_antigravity.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/launch_antigravity.sh))**: Removed standard screenshot notifications preserving only OCR "No text found" failure alerts; purged bar position toast in `qs_manager.sh`; reverted unrequested launch notifications in `launch_antigravity.sh`; and removed the coffee mode icon from the TopBar battery pill.
+
+- **System-Wide Notification & Failure Feedback Coverage**: Added consistent 1–3 word notifications across silent scripts, toggles, and failure branches (`record.sh`, `toggle_theme_mode.sh`, `mode_ctl.sh`, `cycle_wallpaper.sh`, `rotate_display.sh`, `kdeconnect_toggle.sh`, `cycle_audio_sink.sh`, `power.sh`, `reload.sh`); and resolved destroyed notification toast in `fix_audio.sh` by removing redundant QuickShell SIGKILL during graph refresh.
 
 - **Fullscreen Scrolling Inhibit & Dynamic Gesture Suppression ([`scrolling.lua`](file:///home/realdhiru/nix/dotfiles/hypr/scrolling.lua), [`system.md`](file:///home/realdhiru/nix/docs/system.md))**: Dynamically unsets trackpad 3-finger horizontal gestures (`hl.gesture unset`) and blocks wheel navigation and resizing when any window on the workspace is fullscreen, eliminating visual tape shifting and snap-backs with seamless restoration on fullscreen exit.
 

@@ -2,6 +2,7 @@
 # Robust audio output switcher (Speaker <-> Bluetooth / Headphones)
 set -euo pipefail
 
+EQ_OUT_ID=$(pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_output.eq10"/ {gsub(/,/, "", id); print id; exit}' || echo "")
 if [ -z "$EQ_OUT_ID" ]; then
     notify-send -a "Audio" -u low "Equalizer Offline" 2>/dev/null || true
     exit 0

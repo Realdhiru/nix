@@ -80,7 +80,6 @@ fi
 
 if [[ "$ACTION" == "position" && ("$TARGET" == "topbar" || "$TARGET" == "bar") ]]; then
     "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "position" "topbar" "$SUBTARGET" >/dev/null 2>&1 || "$QS_BIN" ipc -p "$SHELL_QML_PATH" call topbar setPosition "$SUBTARGET" >/dev/null 2>&1
-    notify-send -a "TopBar" "Position: ${SUBTARGET^}" 2>/dev/null || true
     exit 0
 fi
 
