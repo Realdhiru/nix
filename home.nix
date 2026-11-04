@@ -127,16 +127,25 @@
   # Universal Hardware Acceleration Wrapper for Brave & Web Apps:
   # Injects VA-API zero-copy and ANGLE GL flags into the PATH wrapper, ensuring
   # hardware decoding on Intel/AMD/Nvidia without relying on unparsed flags.conf.
-  # Disables DownloadBubble detached popup subsurfaces to prevent out-of-screen Wayland anchor bugs.
+  # Dynamically suppresses detached DownloadBubble popup subsurfaces via partial_view_enabled
+  # profile preferences to prevent out-of-screen Wayland anchor offset bugs in app and multi-window modes.
   home.file.".local/bin/brave" = {
     executable = true;
     text = ''
       #!/usr/bin/env bash
+      for pref in "$HOME/.config/BraveSoftware/Brave-Browser/"*"/Preferences"; do
+        if [ -f "$pref" ] && command -v jq >/dev/null 2>&1; then
+          if jq -e '.download_bubble.partial_view_enabled != false' "$pref" >/dev/null 2>&1; then
+            tmp="$pref.tmp.$$"
+            jq '.download_bubble.partial_view_enabled = false' "$pref" > "$tmp" && mv -f "$tmp" "$pref"
+          fi
+        fi
+      done
+
       exec /run/current-system/sw/bin/brave \
         --use-gl=angle \
         --use-angle=gl \
         --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder,WaylandWindowDecorations \
-        --disable-features=DownloadBubble,DownloadBubbleV2 \
         --enable-zero-copy \
         "$@"
     '';

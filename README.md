@@ -26,7 +26,7 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
     <td width="50%" align="center">
       <b>Wallpaper Picker & Downloader</b><br/>
       <img src="docs/assets/wallpaper_carousel.webp" alt="Wallpaper Picker" width="100%" /><br/>
-      <sub>3D parallax carousel with wallpaper browsing, favorites tracking (`SUPER + SHIFT + \`), online search & download, and instant switching.</sub>
+      <sub>3D parallax carousel with wallpaper browsing, favorites tracking (`\`), online search & download, and instant switching.</sub>
     </td>
     <td width="50%" align="center">
       <b>Network Manager</b><br/>
@@ -87,14 +87,35 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 
 | Component | Software | Description |
 | :--- | :--- | :--- |
-| **OS & Packages** | [NixOS](https://nixos.org) (Unstable) + [Flakes](https://wiki.nixos.org/wiki/Flakes) | Atomic, fully declarative system configuration |
-| **Compositor** | [Hyprland](https://hyprland.org) | Wayland dynamic tiling compositor with native Niri-style continuous scrolling ribbon layout |
-| **Desktop Shell** | [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) (Qt6 / QML) | Event-driven topbar, circular battery dial, MPRIS music & popups |
+| **OS & Packages** | [NixOS](https://nixos.org) (Unstable) + [Flakes](https://wiki.nixos.org/wiki/Flakes) | Atomic, fully declarative system configuration with automated rollback gates |
+| **Compositor** | [Hyprland](https://hyprland.org) | Wayland dynamic compositor with continuous scrolling ribbon (`scrolling.lua`) & Dwindle mode parity (`SUPER + F10`) |
+| **Desktop Shell** | [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) (Qt6 / QML) | Event-driven UI with exclusive focus grab (`WlrKeyboardFocus`), liquid glassmorphism & zero polling overhead |
 | **Theming** | [Wallust](https://codeberg.org/explosion-mental/wallust) | Sub-millisecond wallpaper-derived color extraction across UI, terminals & GTK |
-| **Audio Engine** | [PipeWire](https://pipewire.org) (`filter-chain`) | Low-latency audio routing with native 10-band C DSP equalizer & mid/side adaptive karaoke processor |
-| **Power Engine** | [TLP 1.9.1](https://linrunner.de/tlp/) | Firmware battery threshold (80%), dynamic platform profiles & deep C-states |
+| **Audio Engine** | [PipeWire](https://pipewire.org) (`filter-chain`) | Low-latency audio routing with 10-band C DSP equalizer, spectral vocal subtraction LADSPA plugin, & smart volume ceilings |
+| **Power Engine** | [TLP 1.9.1](https://linrunner.de/tlp/) | Firmware battery threshold (80%), dynamic platform profiles, deep C-states, & 802.11 Wi-Fi power-save |
 | **Launchers** | [Fuzzel](https://codeberg.org/dnkl/fuzzel) | Frosted glass app launcher, instant file search & emoji/glyph picker |
 | **Knowledge Base** | [Obsidian](https://obsidian.md) | Native Wayland markdown second-brain vault with interactive graph view |
+
+---
+
+## ⌨️ Desktop Keybindings
+
+Standardized keybind conventions organized into distinct functional tiers:
+
+| Tier | Keybinding | Action |
+| :--- | :--- | :--- |
+| **Daily Core** | `SUPER + A` / `SUPER + SPACE` | App Launcher / Instant File Search |
+| | `SUPER + T` / `SUPER + B` / `SUPER + E` / `SUPER + C` | Terminal (Alacritty) / Browser / File Manager / Editor |
+| | `SUPER + Q` | Close focused window gracefully (`Actions::closeWindow`) |
+| | `SUPER + F10` | Toggle dual layout (Dwindle $\leftrightarrow$ Continuous Scrolling Ribbon) |
+| **Daily Widgets** | `SUPER + N` / `SUPER + U` / `SUPER + V` / `SUPER + M` / `SUPER + F` | Toggle Network / Battery / Clipboard / Music / Focus Timer |
+| | `SUPER + L` | Toggle Light / Dark quickshell theme mode |
+| **Secondary Widgets** | `SUPER + SHIFT + W` / `SUPER + SHIFT + N` / `SUPER + SHIFT + M` / `SUPER + SHIFT + A` | Toggle Wallpaper Picker / Calendar / Display Manager / Sunset Tint |
+| | `SUPER + SHIFT + X` | Fast offline OCR region capture to clipboard |
+| | `\` (in Wallpaper Picker) | Toggle favorite wallpaper |
+| **Web Applications** | `SUPER + ALT + W` / `Y` / `C` / `A` / `N` / `D` / `G` | Launch WhatsApp / YouTube / ChatGPT / Claude / Notion / To-Do / Antigravity |
+| **Hardware & Recovery**| `SUPER + F6` / `SUPER + F7` / `SUPER + F8` | Fix Audio Graph / Recover Bluetooth Daemon / Restart Wi-Fi Radio |
+| | `SUPER + R` | Instant live reload of compositor, quickshell, and themes |
 
 ---
 
