@@ -103,6 +103,7 @@ case $cmd in
         "Karaoke")        save_preset 4 4 2 0 -2 -3 -2 1 2 2 "Karaoke" ;;
         "Karaoke Gentle") save_preset 2 2 1 0 -1 -2 -1 1 1 1 "Karaoke Gentle" ;;
         "Karaoke Hard")   save_preset 5 5 3 0 -3 -4 -3 1 3 3 "Karaoke Hard" ;;
+        "Karaoke Max")    save_preset 5 5 3 0 -4 -5 -4 1 3 3 "Karaoke Max" ;;
         "Vocal")          save_preset -3 -2 -1 1 3 4 3 2 1 0 "Vocal" ;;
         "Pop")            save_preset 2 3 1 -1 0 2 3 3 2 2 "Pop" ;;
         "Rock")           save_preset 4 3 1 -2 -1 1 2 3 4 3 "Rock" ;;
@@ -114,6 +115,7 @@ case $cmd in
         "Karaoke")        "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" Standard 2>/dev/null || true ;;
         "Karaoke Gentle") "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" Gentle 2>/dev/null || true ;;
         "Karaoke Hard")   "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" Hard 2>/dev/null || true ;;
+        "Karaoke Max")    "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" Max 2>/dev/null || true ;;
         *)                "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" off 2>/dev/null || true ;;
     esac
     ;;

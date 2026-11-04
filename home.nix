@@ -393,7 +393,7 @@
 
               # Dynamic loudness allowance adder (control offset in LU)
               { type = builtin label = linear name = addAllowance
-                control = { "Mult" = 1.0 "Add" = -1.5 } }
+                control = { "Mult" = 1.0 "Add" = -0.5 } }
 
               # Mid / Side decomposition
               { type = builtin label = mixer name = mid
@@ -421,9 +421,9 @@
               # Dynamic gain calculator: Gain = 10^((Target - WetLUFS)/20)
               { type = ebur128 label = lufs2gain name = l2g }
 
-              # Safe gain clamping: min ~0.7x, max ~2.5x (+8 dB)
+              # Safe gain clamping: min ~0.7x, max ~3.5x (+11 dB)
               { type = builtin label = clamp name = gainClamp
-                control = { "Min" = 0.7 "Max" = 2.5 } }
+                control = { "Min" = 0.7 "Max" = 3.5 } }
 
               # Dynamic amplifiers
               { type = builtin label = linear name = ampL control = { "Add" = 0.0 } }
