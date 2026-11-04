@@ -40,6 +40,7 @@ fi
         exit 0
     fi
 
+    OUT_FILE="$TARGET_DIR/rec_$(date +%Y%m%d_%H%M%S).mp4"
     # Launch recorder in the background to capture its exact PID
     gpu-screen-recorder \
       -w region \
@@ -49,14 +50,19 @@ fi
       -a default_output \
       -q high \
       -tune performance \
-      -o "$TARGET_DIR/rec_$(date +%Y%m%d_%H%M).mp4" >/dev/null 2>&1 &
+      -o "$OUT_FILE" >/dev/null 2>&1 &
     
     REC_PID=$!
     echo "$REC_PID" > "$PID_FILE.tmp" && mv -f "$PID_FILE.tmp" "$PID_FILE"
+    notify-send -a "Recorder" -t 1500 "Recording Started" 2>/dev/null || true
     
     # Suspend subshell until the recorder exits (naturally or via SIGINT)
     wait "$REC_PID" 2>/dev/null
+    STATUS=$?
     
     # Atomic cleanup: Resets the Quickshell TopBar indicator instantly
     truncate -s 0 "$PID_FILE"
+    if [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 130 ]; then
+        notify-send -a "Recorder" -u critical "Recording Failed" 2>/dev/null || true
+    fi
 ) &

@@ -161,6 +161,8 @@ fi
 if [ -n "$TARGET_PATH" ] && [ -f "$TARGET_PATH" ]; then
     echo "$TARGET_PATH" > "$TARGET_TXT" 2>/dev/null || true
     FORCE_CYCLE=1 "$SCRIPT_DIR/set_wallpaper.sh" "$TARGET_PATH" "none" "0.0" "120"
+else
+    notify-send -a "Wallpaper" -u low "No Wallpapers Found" 2>/dev/null || true
 fi
 
 flock -u 9 2>/dev/null || true

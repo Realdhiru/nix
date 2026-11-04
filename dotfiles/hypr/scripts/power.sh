@@ -347,6 +347,7 @@ cmd_profile() {
 
     # 5. Modes Engine SSOT sync (only if not called internally by mode_ctl.sh)
     if [ "${CALLER_IS_MODE_CTL:-false}" != "true" ]; then
+        notify-send -a "Power" -u low "${prof^} Mode" 2>/dev/null || true
         local mode_ctl="$SCRIPT_DIR/mode_ctl.sh"
         [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
         if [ "$prof" = "power-saver" ] || [ "$prof" = "quiet" ]; then

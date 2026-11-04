@@ -13,15 +13,18 @@ if pw-cli info 0 >/dev/null 2>&1 && systemctl --user is-active --quiet pipewire 
     fi
 
     # Notify user
-    notify-send -a "Audio" "Audio graph refreshed" 2>/dev/null || true
-
-    # Re-sync Quickshell widget state
-    "$HOME/nix/dotfiles/hypr/scripts/qs_manager.sh" reload 2>/dev/null || true
+    notify-send -a "Audio" "Audio Graph Refreshed" 2>/dev/null || true
 else
     # Core daemon dead/hung: full service restart
     systemctl --user restart pipewire pipewire-pulse wireplumber
     sleep 1
     "$HOME/nix/dotfiles/hypr/scripts/quickshell/music/equalizer.sh" --init 2>/dev/null || true
-    notify-send -a "Audio" "Audio stack restarted" 2>/dev/null || true
     "$HOME/nix/dotfiles/hypr/scripts/qs_manager.sh" reload 2>/dev/null || true
+    for _ in {1..20}; do
+        if busctl --user status org.freedesktop.Notifications >/dev/null 2>&1; then
+            break
+        fi
+        sleep 0.1
+    done
+    notify-send -a "Audio" "Audio Stack Restarted" 2>/dev/null || true
 fi

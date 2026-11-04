@@ -449,6 +449,13 @@ case "$ACTION" in
         recompute_and_apply "$prior_saver" "$prior_computed"
         new_val=$(jq -r --arg m "$MODE" '.active[$m]' "$MODES_JSON")
         release_lock
+        if [ "$MODE" = "power-saver" ]; then
+            if [ "$new_val" = "true" ]; then
+                notify-send -a "Power" "Power-Saver ON" 2>/dev/null || true
+            else
+                notify-send -a "Power" "Power-Saver OFF" 2>/dev/null || true
+            fi
+        fi
         echo "$new_val"
         ;;
 

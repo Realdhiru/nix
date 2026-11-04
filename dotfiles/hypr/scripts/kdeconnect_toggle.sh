@@ -30,6 +30,9 @@ else
         nohup kdeconnect-indicator >/dev/null 2>&1 &
     elif command -v kdeconnectd >/dev/null 2>&1; then
         nohup kdeconnectd >/dev/null 2>&1 &
+    else
+        notify-send -a "KDE Connect" -u critical "Not Installed"
+        exit 1
     fi
     # After daemon starts, check neighbour table for non-router link-local IPv6, refresh discovery
     (

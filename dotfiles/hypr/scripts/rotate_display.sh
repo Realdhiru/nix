@@ -15,7 +15,11 @@ if command -v hyprctl >/dev/null 2>&1; then
     MONITOR=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.monitor // empty' 2>/dev/null || true)
     [ -n "$MONITOR" ] || MONITOR=$(hyprctl monitors -j 2>/dev/null | jq -r '.[0].name // empty' 2>/dev/null || true)
 fi
-[ -n "$MONITOR" ] || exit 1
+
+if [ -z "$MONITOR" ]; then
+    notify-send -a "Display" -u critical "No Monitor Found" 2>/dev/null || true
+    exit 1
+fi
 
 # Current transform from hyprctl
 CUR=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$MONITOR" '.[] | select(.name == $m) | .transform // 0' 2>/dev/null || true)

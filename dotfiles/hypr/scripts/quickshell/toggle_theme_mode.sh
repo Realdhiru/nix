@@ -17,9 +17,11 @@ CURRENT=$("$STATE_CTL" get ui.themeMode)
 if [ "$CURRENT" = "light" ]; then
     "$STATE_CTL" set ui.themeMode "dark"
     MESSAGE="QuickShell visibility boost OFF"
+    notify-send -a "Theme" "Dark Mode" 2>/dev/null || true
 else
     "$STATE_CTL" set ui.themeMode "light"
     MESSAGE="QuickShell visibility boost ON"
+    notify-send -a "Theme" "Light Mode" 2>/dev/null || true
 fi
 
 source "$TERMINAL_OPACITY"

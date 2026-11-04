@@ -31,3 +31,11 @@ QS_MANAGER="$HOME/nix/dotfiles/hypr/scripts/qs_manager.sh"
 
 sleep 0.2
 bash "$QS_MANAGER" reload >/dev/null 2>&1 || true
+
+for _ in {1..20}; do
+    if busctl --user status org.freedesktop.Notifications >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.1
+done
+notify-send -a "System" "Reloaded" 2>/dev/null || true

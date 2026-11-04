@@ -5,8 +5,11 @@ set -eu
 exec 201>"${XDG_RUNTIME_DIR:-/run/user/1000}/karaoke.lock"
 flock 201
 
-id=$(timeout 2 pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.eq10"/ {gsub(/,/, "", id); print id; exit}' || true)
-[ -n "$id" ] || { echo "effect_input.eq10 not found" >&2; exit 0; }
+if [ -z "$id" ]; then
+    notify-send -a "Karaoke" -u low "Equalizer Offline" 2>/dev/null || true
+    echo "effect_input.eq10 not found" >&2
+    exit 0
+fi
 
 preset="${1:-Standard}"
 
@@ -54,10 +57,12 @@ case "$preset" in
     ;;
   off)
     set_mix 1.0 0.0
+    notify-send -a "Karaoke" -u low "Karaoke OFF" 2>/dev/null || true
     ;;
   on|"Gentle"|"Light"|"Standard"|"Hard"|"Max"|"Max vocal"|"MaxVocal")
     apply_preset_params "$preset"
     set_mix 0.0 1.0
+    notify-send -a "Karaoke" -u low "Karaoke: $preset" 2>/dev/null || true
     ;;
   *)
     exit 0

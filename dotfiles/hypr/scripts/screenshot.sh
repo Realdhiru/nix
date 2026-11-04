@@ -12,6 +12,10 @@ case "$MODE" in
         grim "$FILE"
         ;;
     ocr)
+        if ! command -v tesseract >/dev/null 2>&1; then
+            notify-send -a "OCR" -u critical "Tesseract Missing" 2>/dev/null || true
+            exit 1
+        fi
         geom="$(slurp 2>/dev/null)" || exit 0
         [ -z "$geom" ] && exit 0
         text="$(grim -g "$geom" -t ppm - 2>/dev/null \
@@ -40,5 +44,7 @@ esac
 if [ -f "$FILE" ]; then
     wl-copy --type image/png < "$FILE" 2>/dev/null || true
     notify-send -a "Screenshot" -i "$FILE" "Captured to clipboard" 2>/dev/null || true
+else
+    notify-send -a "Screenshot" -u critical "Capture Failed" 2>/dev/null || true
 fi
 
