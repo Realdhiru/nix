@@ -13,7 +13,7 @@ Behavior rules only. The single always-loaded file for this repository.
 - **State Location**: Persistent state lives in `${XDG_STATE_HOME:-$HOME/.local/state}/desktop/` (subfolders by area). Regenerable data goes in `~/.cache`.
 - **Modes**: Modes must be a state window rules read, not an imperatively flushed reload. Conflicting modes preempt automatically in a single atomic pass.
 - **State Settle**: State settle belongs in event signals, never in timers or polling loops.
-- **Verification & Git**: "Verified" requires pasted raw output. Finish tasks with `nix flake check`, then `rebuild "<commit message>"`. Run the flake check; it enforces the rules. Commit only the task's files with a clear message; push ONLY when explicitly told. One agent session per repo. QuickShell reloads only via IPC or `qs_manager.sh reload`.
+- **Verification & Git**: "Verified" requires pasted raw output. Finish tasks with `nix flake check`, then `rebuild "<commit message>"`. Run the flake check; it enforces the rules. Always state whether `rebuild` is required to apply changes. Commit only the task's files with a clear message; push ONLY when explicitly told. One agent session per repo. QuickShell reloads only via IPC or `qs_manager.sh reload`.
 - **Docs Maintenance**: Automatically update wrong or newly relevant docs and CHANGELOG (one line per change) without prompting or bloating; keep concise. When user states a rule/preference, add one concise line here, remove duplicates, and keep under ~40 lines.
 
 ## 2. Router: When to Read Other Docs

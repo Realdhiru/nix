@@ -36,6 +36,24 @@ apply_preset_params() {
 }
 
 case "$preset" in
+  cycle)
+    cur_gain2=$(timeout 2 pw-dump "$id" 2>/dev/null | jq -r '.[].info.params.Props[]?.params[]? // empty' 2>/dev/null | grep -A 1 '^finalL:Gain 2$' | tail -n 1 || echo "0.0")
+    cur_depth=$(timeout 2 pw-dump "$id" 2>/dev/null | jq -r '.[].info.params.Props[]?.params[]? // empty' 2>/dev/null | grep -A 1 '^spectral_karaoke:Depth$' | tail -n 1 || echo "0.85")
+    
+    if [ "$(awk -v g="$cur_gain2" 'BEGIN { print (g < 0.5) ? 1 : 0 }')" -eq 1 ]; then
+      next_preset="Standard"
+    else
+      next_preset=$(awk -v d="$cur_depth" 'BEGIN {
+        if (d < 0.75) print "Standard";
+        else if (d < 0.90) print "Hard";
+        else if (d < 0.98) print "Max";
+        else print "Gentle";
+      }')
+    fi
+    apply_preset_params "$next_preset"
+    set_mix 0.0 1.0
+    notify-send -a "Karaoke" -u low "Karaoke: $next_preset" 2>/dev/null || true
+    ;;
   toggle)
     cur_gain2=$(timeout 2 pw-dump "$id" 2>/dev/null | jq -r '.[].info.params.Props[]?.params[]? // empty' 2>/dev/null | grep -A 1 '^finalL:Gain 2$' | tail -n 1 || echo "0.0")
     if [ "$(awk -v g="$cur_gain2" 'BEGIN { print (g > 0.5) ? 1 : 0 }')" -eq 1 ]; then
