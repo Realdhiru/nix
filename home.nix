@@ -357,8 +357,8 @@
         "bluetooth.autoswitch-to-headset-profile" = false
         "bluetooth.profile-preference" = "quality"
         "bluetooth.use-persistent-storage" = false
-        "device.routes.mute-on-bluetooth-playback-removed" = true
-        "device.routes.mute-on-alsa-playback-removed" = true
+        "device.routes.mute-on-bluetooth-playback-removed" = false
+        "device.routes.mute-on-alsa-playback-removed" = false
       }
     '';
   };
