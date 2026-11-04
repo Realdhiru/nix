@@ -14,13 +14,8 @@ hl.config({
     },
     gestures = {
         workspace_swipe_forever = true,
-        scrolling = {
-            move_snap_to_grid = true,
-            move_snap_cursor = true,
-        },
     },
 })
-hl.gesture({ fingers = 3, direction = "horizontal", action = "scroll_move" })
 hl.gesture({ fingers = 4, direction = "horizontal", action = "workspace" })
 -- Dedicated configuration for KDE Connect virtual pointer:
 -- Disables non-linear adaptive acceleration curve to prevent erratic flinging/jitter over Wi-Fi

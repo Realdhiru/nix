@@ -194,9 +194,7 @@ end)
 
 hl.on("window.active", function()
     sync_fullscreen_inhibit()
-    -- NOTE: Never call clamp_ribbon_margins() on window.active!
-    -- Doing so interrupts free scroll framing and forcibly jerks the ribbon away
-    -- from the user's preferred scroll location whenever any window receives focus.
+    clamp_ribbon_margins()
 end)
 
 sync_window_scale()

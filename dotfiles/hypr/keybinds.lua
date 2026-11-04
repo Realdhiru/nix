@@ -415,6 +415,20 @@ hl.bind(mainMod .. " + X", hl.dsp.window.resize(), { mouse = true, description =
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "drag window with mouse" })
 hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "resize window with mouse" })
 
+local function get_left_margin()
+    local home = os.getenv("HOME") or ""
+    local desktop_state = os.getenv("DESKTOP_STATE_DIR") or ((os.getenv("XDG_STATE_HOME") or (home .. "/.local/state")) .. "/desktop")
+    local f = io.open(desktop_state .. "/quickshell/state.json", "r")
+    if f then
+        local content = f:read("*a")
+        f:close()
+        if content and content:match('"topbarPosition"%s*:%s*"left"') then
+            return 52
+        end
+    end
+    return 12
+end
+
 local function scroll_ribbon_left()
     local ws = hl.get_active_workspace()
     if not ws or ws.tiled_layout ~= "scrolling" then return end
@@ -426,22 +440,24 @@ local function scroll_ribbon_left()
         end
     end
     table.sort(wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
-    if #wins == 0 then return end
+    if #wins <= 1 then return end
+
     local first = wins[1]
     local first_x = (first.at and first.at.x) or 0
+    local left_margin = get_left_margin()
 
-    -- Left margin is 12px (gaps_out). If already at or to the right of margin,
-    -- scrolling left would create empty void. Clamp flush and stop.
-    if first_x >= 12 then
-        if first_x > 12 then
-            pcall(function() hl.dispatch(hl.dsp.layout("move " .. tostring(12 - first_x))) end)
+    -- Strict left bound: leftmost window must NEVER exceed left_margin into void.
+    -- If already at or to the right of margin, scrolling left is forbidden.
+    if first_x >= left_margin then
+        if first_x > left_margin then
+            pcall(function() hl.dispatch(hl.dsp.layout("move " .. tostring(left_margin - first_x))) end)
         end
         return
     end
 
     -- Scroll ribbon left by one column towards start
     hl.dispatch(hl.dsp.layout("move -col"))
-    -- Post-check: clamp flush to 12px if overshot past left margin
+    -- Post-check: clamp flush to left_margin if overshot
     pcall(function()
         local post_wins = {}
         for _, w in ipairs(hl.get_windows()) do
@@ -450,8 +466,8 @@ local function scroll_ribbon_left()
             end
         end
         table.sort(post_wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
-        if #post_wins > 0 and post_wins[1].at and post_wins[1].at.x > 12 then
-            hl.dispatch(hl.dsp.layout("move " .. tostring(12 - post_wins[1].at.x)))
+        if #post_wins > 0 and post_wins[1].at and post_wins[1].at.x > left_margin then
+            hl.dispatch(hl.dsp.layout("move " .. tostring(left_margin - post_wins[1].at.x)))
         end
     end)
 end
@@ -467,11 +483,22 @@ local function scroll_ribbon_right()
         end
     end
     table.sort(wins, function(a, b) return ((a.at and a.at.x) or 0) < ((b.at and b.at.x) or 0) end)
-    if #wins == 0 then return end
+    if #wins <= 1 then return end
 
+    local first = wins[1]
     local last = wins[#wins]
+    local first_x = (first.at and first.at.x) or 0
     local last_right = ((last.at and last.at.x) or 0) + ((last.size and last.size.x) or 0)
+    local left_margin = get_left_margin()
     local right_margin = 1440 - 12 -- logical monitor width minus gaps_out
+
+    -- If all windows already fit completely on screen, scrolling right is forbidden
+    if first_x >= left_margin and last_right <= right_margin then
+        if first_x > left_margin then
+            pcall(function() hl.dispatch(hl.dsp.layout("move " .. tostring(left_margin - first_x))) end)
+        end
+        return
+    end
 
     -- If rightmost window is already at or inside the right screen margin,
     -- scrolling right would expose empty void. Clamp flush and stop.
