@@ -13,4 +13,4 @@ sleep 1
 # Re-sync Quickshell widget state
 "$HOME/nix/dotfiles/hypr/scripts/qs_manager.sh" reload 2>/dev/null || true
 
-notify-send -a "Audio" -t 2000 -u low "Audio stack recovered"
+notify-send -a "Audio" -t 2000 -u low "Audio stack recovered" 2>/dev/null || true

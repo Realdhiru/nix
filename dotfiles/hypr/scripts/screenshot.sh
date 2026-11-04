@@ -19,12 +19,9 @@ case "$MODE" in
             | tr -d '\f')"
         trimmed="${text#"${text%%[![:space:]]*}"}"
         trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
-        if [ -z "$trimmed" ]; then
-            notify-send -a "OCR" "No text"
-            exit 0
+        if [ -n "$trimmed" ]; then
+            printf '%s' "$text" | wl-copy -n --type "text/plain;charset=utf-8"
         fi
-        printf '%s' "$text" | wl-copy -n --type "text/plain;charset=utf-8"
-        notify-send -a "OCR" "Copied to clipboard"
         exit 0
         ;;
     freeze)
