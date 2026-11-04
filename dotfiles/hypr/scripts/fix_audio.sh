@@ -12,6 +12,17 @@ if pw-cli info 0 >/dev/null 2>&1 && systemctl --user is-active --quiet pipewire 
         wpctl set-default "$EQ_ID" 2>/dev/null || true
     fi
 
+    # Ensure physical sinks and ALSA hardware switches are unmuted
+    for nid in $(pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "alsa_output.*"/ {gsub(/,/, "", id); print id}'); do
+        wpctl set-mute "$nid" 0 2>/dev/null || true
+    done
+    if command -v amixer >/dev/null 2>&1; then
+        amixer -c 0 sset Master unmute >/dev/null 2>&1 || true
+        amixer -c 0 sset Headphone unmute >/dev/null 2>&1 || true
+        amixer -c 0 sset Speaker unmute >/dev/null 2>&1 || true
+        amixer -c 0 sset 'Auto-Mute Mode' Disabled >/dev/null 2>&1 || true
+    fi
+
     # Notify user
     notify-send -a "Audio" "Audio Graph Refreshed" 2>/dev/null || true
 else

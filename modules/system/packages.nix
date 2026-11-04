@@ -100,6 +100,7 @@ in
 
     # Audio & Networking
     pwvucontrol
+    alsa-utils
     networkmanagerapplet
     blueman
 

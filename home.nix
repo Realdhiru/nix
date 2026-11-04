@@ -279,6 +279,8 @@
           actions = {
             update-props = {
               "session.dont-restore-off-profile" = true
+              "api.acp.auto-profile" = true
+              "api.acp.auto-port" = true
             }
           }
         }
