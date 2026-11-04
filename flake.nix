@@ -225,6 +225,7 @@
               dotfiles/hypr/scripts/exit.sh|\
               dotfiles/hypr/scripts/fix_audio.sh|\
               dotfiles/hypr/scripts/fuzzel_menu.sh|\
+              dotfiles/hypr/scripts/launch_antigravity.sh|\
               dotfiles/hypr/scripts/qs_manager.sh|\
               dotfiles/hypr/scripts/quickshell/music/music_info.sh|\
               dotfiles/hypr/scripts/quickshell/music/player_control.sh|\
