@@ -27,10 +27,15 @@ case "$MODE" in
         exit 0
         ;;
     freeze)
-        grimblast --freeze save area "$FILE" >/dev/null 2>&1
+        # Instant freeze: wayfreeze freezes display, slurp picks region, grim captures
+        geom="$(wayfreeze --after-freeze-cmd 'slurp' 2>/dev/null)" || exit 0
+        [ -z "$geom" ] && exit 0
+        grim -g "$geom" "$FILE"
         ;;
     area|*)
-        grimblast save area "$FILE" >/dev/null 2>&1
+        geom="$(slurp 2>/dev/null)" || exit 0
+        [ -z "$geom" ] && exit 0
+        grim -g "$geom" "$FILE"
         ;;
 esac
 

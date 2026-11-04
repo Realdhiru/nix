@@ -74,6 +74,7 @@ in
     grim
     slurp
     grimblast
+    wayfreeze
     gpu-screen-recorder-gtk
     tesseract-fast
 
