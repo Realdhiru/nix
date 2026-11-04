@@ -108,11 +108,7 @@ Item {
     Process {
         id: fetchProc
         running: false
-        command: [
-            "bash",
-            "-c",
-            `export QS_CACHE_SYSDATA="${Caching.getCacheDir('sysdata')}"; bash "${root.scriptPath}"`
-        ]
+        command: ["bash", root.scriptPath]
         stdout: StdioCollector {
             onStreamFinished: {
                 let text = this.text ? this.text.trim() : "";

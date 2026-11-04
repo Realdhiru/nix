@@ -59,6 +59,12 @@
         uri = "http://connectivity-check.ubuntu.com/check_network_status.txt";
         interval = 300;
       };
+      connection = {
+        "wifi.powersave" = 3;
+      };
+      device = {
+        "wifi.scan-rand-mac-address" = "no";
+      };
     };
     dispatcherScripts = [
       {
@@ -95,8 +101,8 @@
           SAVED_PROFILES=$(${pkgs.networkmanager}/bin/nmcli -t -f NAME,TYPE connection show | ${pkgs.gawk}/bin/awk -F: '$2=="802-11-wireless"{print $1}')
           [ -n "$SAVED_PROFILES" ] || exit 0
 
-          # Find currently broadcasting SSIDs sorted by signal strength (descending)
-          CANDIDATES=$(${pkgs.networkmanager}/bin/nmcli -t -f SSID,SIGNAL dev wifi list 2>/dev/null | sort -t: -k2 -nr | cut -d: -f1 | awk '!seen[$0]++')
+          # Find currently broadcasting SSIDs from cached list without triggering active RF scan
+          CANDIDATES=$(${pkgs.networkmanager}/bin/nmcli -t -f SSID,SIGNAL dev wifi list --rescan no 2>/dev/null | sort -t: -k2 -nr | cut -d: -f1 | awk '!seen[$0]++')
 
           for candidate in $CANDIDATES; do
             [ -n "$candidate" ] || continue

@@ -241,9 +241,7 @@
               dotfiles/wallpaper/backend/set.sh|\
               dotfiles/wallpaper/backend/watcher.sh|\
               scripts/health-check.sh|\
-              scripts/measure-notif-latency.sh|\
-              scripts/selftest-modes.sh|\
-              scripts/test-ac-trigger.sh) ;;
+              scripts/selftest-modes.sh) ;;
               *)
                 echo "FAIL: Unauthorized sleep found in $f"
                 fail=1

@@ -53,6 +53,14 @@
   };
   services.blueman.enable = true;
 
+  # Disable idle background daemons; blueman-manager remains available on-demand
+  systemd.user.services = {
+    blueman-applet.enable = false;
+    gvfs-afc-volume-monitor.enable = false;
+    gvfs-goa-volume-monitor.enable = false;
+    gvfs-gphoto2-volume-monitor.enable = false;
+  };
+
   # File manager integration.
   services.gvfs.enable = true;
 

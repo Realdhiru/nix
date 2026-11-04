@@ -2,8 +2,8 @@
 
 CACHE_FILE="/tmp/qs_sys_fetcher_cache.txt"
 
-# 1. Read instantaneous current values
-read -r _ u n s i io ir so st g gn <<< "$(grep '^cpu ' /proc/stat)"
+# 1. Read instantaneous current values directly from /proc/stat
+read -r _ u n s i io ir so st g gn < /proc/stat
 
 # Sum rx/tx from the interface actually carrying the default route, not a
 # name-prefix guess. The old heuristic (any interface starting with 'e' or
@@ -89,25 +89,40 @@ RAM_GB_INT=$(( USED_MEM * 10 / 1048576 ))
 RAM_GB="$(( RAM_GB_INT / 10 )).$(( RAM_GB_INT % 10 ))"
 
 # --- Temperature Calculation (Snapshot) ---
+TEMP_NODE="/tmp/qs_hwmon_temp_path.txt"
 TEMP_RAW=""
-for hwmon in /sys/class/hwmon/hwmon*; do
-    if [ -f "$hwmon/name" ]; then
-        hwmon_name=$(cat "$hwmon/name" 2>/dev/null)
-        if [[ "$hwmon_name" =~ ^(coretemp|k10temp|zenpower|cpu_thermal|bcm2835_thermal)$ ]]; then
-            if [ -f "$hwmon/temp1_input" ]; then
-                TEMP_RAW=$(cat "$hwmon/temp1_input" 2>/dev/null)
-                break
+
+# 1. Fast path: read directly from cached valid sensor node
+if [ -f "$TEMP_NODE" ]; then
+    read -r cached_node < "$TEMP_NODE" 2>/dev/null || true
+    if [ -n "$cached_node" ] && [ -f "$cached_node" ]; then
+        read -r TEMP_RAW < "$cached_node" 2>/dev/null || true
+    fi
+fi
+
+# 2. Discovery path: run only on first boot or if cached node went missing
+if [ -z "$TEMP_RAW" ]; then
+    for hwmon in /sys/class/hwmon/hwmon*; do
+        if [ -f "$hwmon/name" ]; then
+            read -r hwmon_name < "$hwmon/name" 2>/dev/null || continue
+            if [[ "$hwmon_name" =~ ^(coretemp|k10temp|zenpower|cpu_thermal|bcm2835_thermal)$ ]]; then
+                if [ -f "$hwmon/temp1_input" ]; then
+                    read -r TEMP_RAW < "$hwmon/temp1_input" 2>/dev/null || true
+                    echo "$hwmon/temp1_input" > "$TEMP_NODE"
+                    break
+                fi
             fi
         fi
-    fi
-done
+    done
+fi
 
 if [ -z "$TEMP_RAW" ]; then
     for tz in /sys/class/thermal/thermal_zone*; do
         if [ -f "$tz/type" ]; then
-            tz_type=$(cat "$tz/type" 2>/dev/null)
+            read -r tz_type < "$tz/type" 2>/dev/null || continue
             if [[ "$tz_type" =~ ^(x86_pkg_temp|cpu_thermal|cpu-thermal)$ ]]; then
-                TEMP_RAW=$(cat "$tz/temp" 2>/dev/null)
+                read -r TEMP_RAW < "$tz/temp" 2>/dev/null || true
+                echo "$tz/temp" > "$TEMP_NODE"
                 break
             fi
         fi
@@ -115,7 +130,13 @@ if [ -z "$TEMP_RAW" ]; then
 fi
 
 if [ -z "$TEMP_RAW" ]; then
-    TEMP_RAW=$(cat /sys/class/hwmon/hwmon0/temp1_input 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)
+    if [ -f /sys/class/hwmon/hwmon0/temp1_input ]; then
+        read -r TEMP_RAW < /sys/class/hwmon/hwmon0/temp1_input 2>/dev/null || true
+    elif [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+        read -r TEMP_RAW < /sys/class/thermal/thermal_zone0/temp 2>/dev/null || true
+    else
+        TEMP_RAW=0
+    fi
 fi
 
 if [ "$TEMP_RAW" -gt 1000 ]; then TEMP=$((TEMP_RAW / 1000)); else TEMP=$TEMP_RAW; fi

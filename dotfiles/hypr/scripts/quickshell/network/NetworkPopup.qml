@@ -931,9 +931,13 @@ FocusScope {
         // Gate polling: do not run background polls while popup is hidden or a connection handshake is active
         running: window.isPopupActive && window.connectingId === "" && !connectProcess.running; repeat: true
         onTriggered: {
-            if (!ethPoller.running) ethPoller.running = true;
-            if (!wifiPoller.running) wifiPoller.running = true;
-            if (!btPoller.running) btPoller.running = true;
+            if (window.activeMode === "eth") {
+                if (!ethPoller.running) ethPoller.running = true;
+            } else if (window.activeMode === "wifi") {
+                if (!wifiPoller.running) wifiPoller.running = true;
+            } else if (window.activeMode === "bt") {
+                if (!btPoller.running) btPoller.running = true;
+            }
         }
     }
 
