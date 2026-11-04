@@ -255,7 +255,7 @@ FocusScope {
         var presets = {
             "Off": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             "Flat": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            "Bass": [6, 7, 5, 2, -2, -3, -3, -2, -2, -1],
+            "Bass": [3, 6, 4, -1, 0, 0, 1, 2, 2, 1],
             "Karaoke": [2, 2, 1, 0, -1, -2, -1, 0, 1, 2],
             "Treble": [-3, -2, -1, 0, 1, 2, 4, 5, 6, 5],
             "Vocal": [-2, -1, 1, 3, 5, 5, 4, 2, 1, 0],
@@ -345,11 +345,27 @@ FocusScope {
         stdout: StdioCollector {
             onStreamFinished: {
                 if (this.text) {
-                    if (Date.now() - root.lastEqUpdate < 2000) return;
+                    if (Date.now() - root.lastEqUpdate < 2500) return;
 
                     var outStr = this.text.trim();
                     if (outStr.length > 0) {
-                        try { root.eqData = JSON.parse(outStr); } catch(e) {}
+                        try {
+                            var parsed = JSON.parse(outStr);
+                            var changed = false;
+                            if (root.eqData.preset !== parsed.preset || root.eqData.pending !== parsed.pending) {
+                                changed = true;
+                            } else {
+                                for (var b = 1; b <= 10; b++) {
+                                    if (root.eqData["b" + b] !== parsed["b" + b]) {
+                                        changed = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (changed) {
+                                root.eqData = parsed;
+                            }
+                        } catch(e) {}
                     }
                 }
             }

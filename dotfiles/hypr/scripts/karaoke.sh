@@ -55,25 +55,26 @@ apply_preset_params() {
 }
 
 update_eq_preset() {
+  [ "${no_eq:-}" = "--no-eq" ] && return 0
   local p="$1"
   if [ -f "$EQ_STATE" ]; then
     local tmp="${EQ_STATE}.tmp.$$"
     if [ "$p" = "Karaoke" ]; then
-      jq -c '.b1=0 | .b2=0 | .b3=0 | .b4=-2 | .b5=-4 | .b6=-6 | .b7=-4 | .b8=-2 | .b9=0 | .b10=1 | .preset="Karaoke" | .pending=false' "$EQ_STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$EQ_STATE"
+      jq -c '.b1=2 | .b2=2 | .b3=1 | .b4=0 | .b5=-1 | .b6=-2 | .b7=-1 | .b8=0 | .b9=1 | .b10=2 | .preset="Karaoke" | .pending=false' "$EQ_STATE" > "$tmp" 2>/dev/null && mv "$tmp" "$EQ_STATE"
       local nid
       nid=$(get_eq_node_id 2>/dev/null || true)
       if [ -n "$nid" ]; then
         pw-cli s "$nid" Props "{ params = [ \
-          \"eq_band_1_l:Gain\" 0 \"eq_band_1_r:Gain\" 0 \
-          \"eq_band_2_l:Gain\" 0 \"eq_band_2_r:Gain\" 0 \
-          \"eq_band_3_l:Gain\" 0 \"eq_band_3_r:Gain\" 0 \
-          \"eq_band_4_l:Gain\" -2 \"eq_band_4_r:Gain\" -2 \
-          \"eq_band_5_l:Gain\" -4 \"eq_band_5_r:Gain\" -4 \
-          \"eq_band_6_l:Gain\" -6 \"eq_band_6_r:Gain\" -6 \
-          \"eq_band_7_l:Gain\" -4 \"eq_band_7_r:Gain\" -4 \
-          \"eq_band_8_l:Gain\" -2 \"eq_band_8_r:Gain\" -2 \
-          \"eq_band_9_l:Gain\" 0 \"eq_band_9_r:Gain\" 0 \
-          \"eq_band_10_l:Gain\" 1 \"eq_band_10_r:Gain\" 1 \
+          \"eq_band_1_l:Gain\" 2 \"eq_band_1_r:Gain\" 2 \
+          \"eq_band_2_l:Gain\" 2 \"eq_band_2_r:Gain\" 2 \
+          \"eq_band_3_l:Gain\" 1 \"eq_band_3_r:Gain\" 1 \
+          \"eq_band_4_l:Gain\" 0 \"eq_band_4_r:Gain\" 0 \
+          \"eq_band_5_l:Gain\" -1 \"eq_band_5_r:Gain\" -1 \
+          \"eq_band_6_l:Gain\" -2 \"eq_band_6_r:Gain\" -2 \
+          \"eq_band_7_l:Gain\" -1 \"eq_band_7_r:Gain\" -1 \
+          \"eq_band_8_l:Gain\" 0 \"eq_band_8_r:Gain\" 0 \
+          \"eq_band_9_l:Gain\" 1 \"eq_band_9_r:Gain\" 1 \
+          \"eq_band_10_l:Gain\" 2 \"eq_band_10_r:Gain\" 2 \
         ] }" >/dev/null 2>&1 || true
       fi
     elif [ "$p" = "Off" ]; then
@@ -103,6 +104,7 @@ update_eq_preset() {
 }
 
 cmd="${1:-toggle}"
+no_eq="${2:-}"
 
 load_state
 
