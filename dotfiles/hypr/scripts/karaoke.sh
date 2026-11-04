@@ -10,12 +10,16 @@ KARAOKE_STATE="${STATE_DIR}/karaoke.json"
 EQ_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/quickshell/music/eq_state.json"
 mkdir -p "$STATE_DIR"
 
-id=$(timeout 2 pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.eq10"/ {gsub(/,/, "", id); print id; exit}' || true)
-if [ -z "$id" ]; then
+get_eq_node_id() {
+  local nid
+  nid=$(timeout 2 pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.eq10"/ {gsub(/,/, "", id); print id; exit}' || true)
+  if [ -z "$nid" ]; then
     notify-send -a "Karaoke" -u low "Equalizer Offline" 2>/dev/null || true
     echo "effect_input.eq10 not found" >&2
     exit 0
-fi
+  fi
+  echo "$nid"
+}
 
 load_state() {
   if [ -f "$KARAOKE_STATE" ]; then
@@ -32,11 +36,15 @@ save_state() {
 }
 
 set_mix() {
-  timeout 2 pw-cli s "$id" Props "{ params = [ \"finalL:Gain 1\" $1 \"finalL:Gain 2\" $2 \"finalR:Gain 1\" $1 \"finalR:Gain 2\" $2 ] }" >/dev/null 2>&1 || true
+  local nid
+  nid=$(get_eq_node_id)
+  timeout 2 pw-cli s "$nid" Props "{ params = [ \"finalL:Gain 1\" $1 \"finalL:Gain 2\" $2 \"finalR:Gain 1\" $1 \"finalR:Gain 2\" $2 ] }" >/dev/null 2>&1 || true
 }
 
 apply_preset_params() {
-  timeout 2 pw-cli s "$id" Props "{ params = [ \
+  local nid
+  nid=$(get_eq_node_id)
+  timeout 2 pw-cli s "$nid" Props "{ params = [ \
     \"spectral_karaoke:Depth\" 0.95 \
     \"spectral_karaoke:Low Cutoff (Hz)\" 140.0 \
     \"spectral_karaoke:Air Depth\" 0.15 \
@@ -69,27 +77,27 @@ load_state
 
 case "$cmd" in
   on)
+    if [ "$cur_enabled" = "true" ]; then
+      echo "Karaoke is already active"
+      exit 0
+    fi
     set_mix 0.0 1.0
     apply_preset_params
     save_state true
     update_eq_preset "Karaoke"
-    if [ "$cur_enabled" != "true" ]; then
-      notify-send -a "Karaoke" -u low "Karaoke ON" 2>/dev/null || true
-      echo "Karaoke ON"
-    else
-      echo "Karaoke is already active"
-    fi
+    notify-send -a "Karaoke" -u low "Karaoke ON" 2>/dev/null || true
+    echo "Karaoke ON"
     ;;
 
   off)
-    set_mix 1.0 0.0
     if [ "$cur_enabled" = "true" ]; then
+      set_mix 1.0 0.0
       save_state false
       update_eq_preset "Off"
       notify-send -a "Karaoke" -u low "Karaoke OFF" 2>/dev/null || true
       echo "Karaoke OFF"
     else
-      save_state false
+      exit 0
     fi
     ;;
 
