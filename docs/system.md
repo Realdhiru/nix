@@ -65,7 +65,16 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
   - `SUPER + CTRL + U` invokes `power.sh inhibit` to acquire `systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity`.
   - `restore_state.sh` checks state and automatically re-engages the inhibitor across QuickShell reloads, Hyprland restarts, and cold boots until explicitly toggled off.
   - In `hypridle.conf`, idle timers enforce DPMS off at 120s, lock at 150s, and suspend at 1800s (30m) with `ignore_dbus_inhibit = false` and `ignore_systemd_inhibit = false`.
-- **Power Button Screen Toggle**: Physical power button (`XF86PowerOff`) bound to `power.sh display toggle` with locked Hyprland dispatcher. `key_press_enables_dpms = true` and `mouse_move_enables_dpms = true` restore display instantly on input.
+- **Continuous Battery Drainage Pattern Analyzer (`battery_audit.sh`, `power.sh battery-audit`)**:
+  - Samples real-time power draw directly from `/sys/class/power_supply/BAT0/power_now` every 15s during battery discharge.
+  - Samples process CPU times over the interval to calculate time-series proportional energy attribution in Watt-hours ($Wh$) per application.
+  - Detects power surges ($>16\text{W}$) with timestamps and offending processes.
+- **Zero-Overhead Balanced Hardware Energy Optimizations (`power.nix`, `default.nix`)**:
+  - NVMe APST enabled (`NVME_APST_CHAR_ENABLE_ON_BAT = 1`), allowing PCIe Gen4 SSD to drop into autonomous low-power states (<50mW) when idle.
+  - Kernel NMI watchdog disabled on battery (`NMI_WATCHDOG = 0`), eliminating periodic timer interrupts across all 12 cores / 16 threads and unlocking deep $PC8/PC10$ package sleep.
+  - Process packing (`SCHED_POWERSAVE_ON_BAT = 1`) packs background tasks onto fewer cores so unused cores remain asleep.
+  - Intel Iris Xe dynamic frequency scaling (100MHz idle downclocking with full 1.45GHz burst on demand).
+  - NetworkManager connectivity check interval set to 300s, eliminating 30s periodic Wi-Fi radio and CPU wakeups.
 
 ## 6. Wayland, Compositor & Application Integration
 - **Native Wayland Environment**: `NIXOS_OZONE_WL = "1"` and `--ozone-platform-hint=wayland` exported globally for Chromium and Electron apps.
@@ -84,7 +93,10 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 - **HiDPI Toolkit Scaling**: `GDK_SCALE = "2"`, `QT_AUTO_SCREEN_SCALE_FACTOR = "1"`, `QT_ENABLE_HIGHDPI_SCALING = "1"` in `env.lua`. Chromium download bubbles disabled in favor of in-window progress to avoid detached subsurface coordinate misplacement.
 - **Dynamic Scrolling Ribbon Architecture (`misc.lua`, `toggle_layout.sh`)**:
   - Toggled atomically via `SUPER + F10` between Dwindle and Scrolling layouts.
-  - Native space-filling scaling: 1 window takes 100% full scale (`fullscreen_on_one_column = true`); 2 windows split 50% each side-by-side ($x = 52$ and $x = 745\text{px}$); 3+ windows open as 50% columns along the continuous scrolling ribbon with touchpad swipe (`gestures:scrolling:move_snap_to_grid`) and mouse wheel navigation (`SUPER + ALT + Wheel`).
+  - Native space-filling scaling: 1 window takes 100% full scale (`fullscreen_on_one_column = true`); 2 windows split 50% each side-by-side ($x = 12\text{px}$ and $x = 726\text{px}$); 3+ windows open as 50% columns along the continuous scrolling ribbon with touchpad swipe (`gestures:scrolling:move_snap_to_grid`) and mouse wheel navigation (`SUPER + ALT + Wheel`).
+  - **Dynamic 2-Window Sizing (Dwindle Mode Parity)**: When 2 windows are tiled, resizing one window (`SUPER + SHIFT + Left/Right`) dynamically shrinks the adjacent window, keeping both 100% visible on screen without pushing windows offscreen, protected by a 320px minimum size threshold.
+  - **Niri-Style Ribbon Framing (`focus_fit_method = 1`)**: Focus never forces windows to center. On-screen side windows remain completely static when focused, allowing seamless work on multiple side-by-side windows. Off-screen columns slide smoothly to the nearest viewport edge only when navigated to.
+  - **Bounded Ribbon Margins**: Left scroll stops cleanly at the $12\text{px}$ left margin and right scroll stops at $1428\text{px}$, preventing ribbon drift into empty black void while preserving free scroll positioning.
   - Scale recovery on close ($3+ \rightarrow 2 \rightarrow 1$) operates natively via `layoutmsg fit all` hooked to `window.destroy`, eliminating imperative resize hacks, left-side void space, and collapsed sliver surfaces.
 
 ## 7. Operational Discipline & Safety Rules
