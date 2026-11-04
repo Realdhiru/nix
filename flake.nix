@@ -219,6 +219,7 @@
           while IFS= read -r line; do
             f=$(printf '%s\n' "$line" | cut -d: -f1)
             case "$f" in
+              dotfiles/hypr/scripts/battery_audit.sh|\
               dotfiles/hypr/scripts/exit.sh|\
               dotfiles/hypr/scripts/fix_audio.sh|\
               dotfiles/hypr/scripts/fuzzel_menu.sh|\
