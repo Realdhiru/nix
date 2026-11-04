@@ -1,21 +1,16 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-echo "Stopping user-space audio infrastructure..."
-systemctl --user stop pipewire pipewire-pulse wireplumber
+# Clean recovery of PipeWire user-space audio stack without touching kernel modules
+systemctl --user restart pipewire pipewire-pulse wireplumber
 
-echo "Forcefully killing lingering sound processes..."
-fuser -k /dev/snd/* >/dev/null 2>&1
+# Wait briefly for PipeWire daemon socket registration
 sleep 1
 
-echo "Reloading ALSA/Intel kernel sound modules..."
-sudo modprobe -r snd_hda_intel snd_soc_avs 2>/dev/null
-sudo modprobe snd_hda_intel
+# Re-initialize native equalizer pipeline to known-good baseline
+"$HOME/nix/dotfiles/hypr/scripts/quickshell/music/equalizer.sh" --init 2>/dev/null || true
 
-echo "Reinitializing sound daemons..."
-systemctl --user start pipewire pipewire-pulse wireplumber
-sleep 2
+# Re-sync Quickshell widget state
+"$HOME/nix/dotfiles/hypr/scripts/qs_manager.sh" reload 2>/dev/null || true
 
-echo "Syncing native PipeWire equalizer pipeline..."
-~/nix/dotfiles/hypr/scripts/quickshell/music/equalizer.sh --init
-
-echo "Audio stack successfully recovered!"
+notify-send -a "Audio" -t 2000 -u low "Audio stack recovered"
