@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-04 — Scrolling Layout Proportional Resizing
+
+- **Dwindle-Style Proportional Resizing & Border Settle in Scrolling Layout ([`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), [`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua))**: Implemented smart proportional window resizing for scrolling mode (`SUPER + SHIFT + Arrows`) matching dwindle split adjustments, balanced 2-window splits so both windows always fill the monitor without being pushed offscreen, removed disruptive `fit all` on window focus that wiped manual tweaks, and enabled smooth active column resizing across the ribbon.
+
 ## 2026-11-03 — Wallpaper State Reliability & Hyprsunset Responsiveness
 
 - **Free Ribbon Scrolling & Left-Margin Void Protection ([`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua), [`keybinds.lua`](file:///home/realdhiru/nix/dotfiles/hypr/keybinds.lua), [`README.md`](file:///home/realdhiru/nix/README.md))**: Unlocked free, uninhibited rightward ribbon scrolling (`move +col`), preserved continuous free scroll framing without auto-snapping focused windows, strictly guarded the leftmost margin from drifting past $x = 52\text{px}$ into empty void space, and purged the keybindings section from the GitHub README.
