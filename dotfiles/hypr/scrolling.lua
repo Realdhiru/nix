@@ -46,15 +46,15 @@ local function get_left_margin()
 end
 
 local function get_current_workspace_id()
-    local win = hl.get_active_window()
-    if win and win.workspace and win.workspace.id then
-        return win.workspace.id
-    end
-    -- Check if any special workspace is currently active on any monitor
+    -- Check if any special workspace is currently active on any monitor FIRST
     for _, mon in ipairs(hl.get_monitors()) do
         if mon.special_workspace and mon.special_workspace.id and mon.special_workspace.id ~= 0 then
             return mon.special_workspace.id
         end
+    end
+    local win = hl.get_active_window()
+    if win and win.workspace and win.workspace.id then
+        return win.workspace.id
     end
     local ws = hl.get_active_workspace()
     return ws and ws.id
@@ -123,10 +123,14 @@ local function sync_workspace_layout(ws_id, exclude_addr)
 
     is_syncing = true
     pcall(function()
+        local active_win = hl.get_active_window()
+        local active_ws = active_win and active_win.workspace and active_win.workspace.id
+
         if count == 1 then
             -- 1 window: spans 100% full usable screen, flush to left margin
-            hl.dispatch(hl.dsp.focus({ window = "address:" .. first.address }))
-            hl.dispatch(hl.dsp.layout("colresize 1.0"))
+            if active_ws == target_ws_id and active_win and active_win.address == first.address then
+                hl.dispatch(hl.dsp.layout("colresize 1.0"))
+            end
             if cur_x and cur_x ~= left_margin then
                 hl.dispatch(hl.dsp.layout("move " .. tostring(left_margin - cur_x)))
             end
@@ -139,7 +143,6 @@ local function sync_workspace_layout(ws_id, exclude_addr)
             local w2_w = (w2.size and w2.size.x) or 683
             local total_usable = 1366 -- 1440 - 52 (left) - 12 (right) - 10 (gap)
 
-            local active_win = hl.get_active_window()
             local active_addr = active_win and active_win.address
             local active_w = (active_addr == w2.address) and w2_w or w1_w
             local frac_active = active_w / total_usable
@@ -155,12 +158,14 @@ local function sync_workspace_layout(ws_id, exclude_addr)
                 frac_w2 = 1.0 - frac_w1
             end
 
-            hl.dispatch(hl.dsp.focus({ window = "address:" .. w1.address }))
-            hl.dispatch(hl.dsp.layout(string.format("colresize %.02f", frac_w1)))
-            hl.dispatch(hl.dsp.focus({ window = "address:" .. w2.address }))
-            hl.dispatch(hl.dsp.layout(string.format("colresize %.02f", frac_w2)))
-            if active_addr then
-                hl.dispatch(hl.dsp.focus({ window = "address:" .. active_addr }))
+            if active_ws == target_ws_id then
+                hl.dispatch(hl.dsp.focus({ window = "address:" .. w1.address }))
+                hl.dispatch(hl.dsp.layout(string.format("colresize %.02f", frac_w1)))
+                hl.dispatch(hl.dsp.focus({ window = "address:" .. w2.address }))
+                hl.dispatch(hl.dsp.layout(string.format("colresize %.02f", frac_w2)))
+                if active_addr then
+                    hl.dispatch(hl.dsp.focus({ window = "address:" .. active_addr }))
+                end
             end
 
             local post_wins = get_tiled_windows_on_workspace(target_ws_id)
@@ -172,11 +177,16 @@ local function sync_workspace_layout(ws_id, exclude_addr)
             end
         else
             -- 3+ windows: enforce minimum column width (320px / 0.25) to prevent sliver collapse
-            for _, w in ipairs(wins) do
-                local ww = (w.size and w.size.x) or 0
-                if ww < 320 then
-                    hl.dispatch(hl.dsp.focus({ window = "address:" .. w.address }))
-                    hl.dispatch(hl.dsp.layout("colresize 0.333"))
+            if active_ws == target_ws_id then
+                for _, w in ipairs(wins) do
+                    local ww = (w.size and w.size.x) or 0
+                    if ww < 320 then
+                        hl.dispatch(hl.dsp.focus({ window = "address:" .. w.address }))
+                        hl.dispatch(hl.dsp.layout("colresize 0.333"))
+                    end
+                end
+                if active_addr then
+                    hl.dispatch(hl.dsp.focus({ window = "address:" .. active_addr }))
                 end
             end
             local post_wins = get_tiled_windows_on_workspace(target_ws_id)
@@ -398,12 +408,10 @@ end)
 
 hl.on("workspace.active", function()
     sync_fullscreen_inhibit()
-    sync_workspace_layout()
 end)
 
 hl.on("workspace.special_active", function()
     sync_fullscreen_inhibit()
-    sync_workspace_layout()
 end)
 
 hl.on("window.fullscreen", function(w)
