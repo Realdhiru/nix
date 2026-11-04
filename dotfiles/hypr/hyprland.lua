@@ -6,6 +6,7 @@ require("rules")
 require("input")
 require("appearance")
 require("misc")
+require("scrolling")
 
 -- 1. Universal catch-all rule: any unknown monitor works with zero config
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })

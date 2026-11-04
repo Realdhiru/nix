@@ -35,6 +35,10 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
   - Managed by `mode_ctl.sh` as the order-independent Single Source of Truth (`$DESKTOP_STATE_DIR/modes/modes.json`).
   - Wallpaper kill turns off wallpaper surfaces and compositor blur/shadow, and sets solid window opacity (`opacity_solid = true`).
   - Restoring recovers transparent window glass and active wallpaper dynamically without `hyprctl reload`.
+- **Carousel & Keybind Cycling Parity**:
+  - Keybind cycler (`cycle_wallpaper.sh`) adheres to the active category filter in `${XDG_STATE_HOME:-$HOME/.local/state}/desktop/quickshell/state.json` (`ui.wallpaperFilter`) with fallback to `picker_filter.txt`, filtering candidates with circular index wrapping.
+  - QuickShell `WallpaperPicker.qml` watches `current_wallpaper.txt` via `activeWallWatcher` and `lastWallWatcher`, dynamically keeping the carousel centered on the active wallpaper and switching category filters automatically if external cycling moves outside the current filter.
+
 
 ## 4. Audio & Media Pipeline
 - **Native PipeWire 10-Band Equalizer & Karaoke DSP**: Filter chain (`libpipewire-module-filter-chain`) biquad equalizer sink (`effect_input.eq10`, Q = 1.414, virtual sink priority 2200) and mid/side adaptive vocal suppressor (`effect_input.karaoke`, priority 2100). All audio applications stream through the EQ sink, which cascades into physical endpoints or chains dynamically from karaoke. Stripped `priority.driver` prevents graph buffer starvation and eliminates xruns.
@@ -92,9 +96,10 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
   - `SUPER + 1..0` focuses the Nth workspace of the currently focused monitor; `SUPER + SHIFT + 1..0` moves the active window to the Nth workspace of that monitor.
   - `SUPER + CTRL + Left/Right` shifts relative to the focused monitor (`m-1`/`m+1`). Single-monitor or mirrored setups use a single unified 1..10 workspace block.
 - **HiDPI Toolkit Scaling**: `GDK_SCALE = "2"`, `QT_AUTO_SCREEN_SCALE_FACTOR = "1"`, `QT_ENABLE_HIGHDPI_SCALING = "1"` in `env.lua`. Chromium download bubbles disabled in favor of in-window progress to avoid detached subsurface coordinate misplacement.
-- **Dynamic Scrolling Ribbon Architecture (`misc.lua`, `toggle_layout.sh`)**:
+- **Dynamic Scrolling Ribbon Architecture (`scrolling.lua`, `toggle_layout.sh`)**:
   - Toggled atomically via `SUPER + F10` between Dwindle and Scrolling layouts.
   - Native space-filling scaling: 1 window takes 100% full scale (`fullscreen_on_one_column = true`); 2 windows split side-by-side filling the usable screen ($x = 52\text{px}$ or $12\text{px}$ to $x = 1428\text{px}$) without centering; 3+ windows open along the continuous scrolling ribbon with free touchpad swipe (`move_snap_to_grid = false`) and mouse wheel navigation (`SUPER + ALT + Wheel`).
+  - Unified across all workspaces: Special workspaces (`special:magic`, `special:music`) follow the exact same space-filling and left-margin pinning rules without centering or window squashing.
   - **Dynamic Neighbor Sizing (Dwindle Mode Parity)**: Resizing any window via keyboard (`SUPER + SHIFT + Left/Right`), mouse wheel (`SUPER + SHIFT + Wheel`), or mouse drag release (`SUPER + X` / `SUPER + RMB`) dynamically adjusts adjacent neighbors to fill the screen flush to monitor margins (52px or 12px) with zero empty void and zero unwanted centering.
   - **Cross-Mode Layout Memory**: Window geometries and custom proportions are captured to `$STATE_DIR/ws_<id>_<mode>.json` across `SUPER + F10` layout toggles. Switching from Dwindle preserves split ratios in Scrolling (and stacks vertical pairs into single columns), and switching back restores exact Dwindle split sizes rather than resetting to 50/50.
   - **Niri-Style Ribbon Framing (`focus_fit_method = 1`)**: Focus never forces windows to center. On-screen side windows remain completely static when focused, allowing seamless work on multiple side-by-side windows. Off-screen columns slide smoothly to the nearest viewport edge only when navigated to.
