@@ -49,7 +49,17 @@ get_active_playback_device() {
     node_desc=$(echo "$inspect_out" | awk -F'"' '/node\.description/ {print $2}')
 
     if [[ "$node_name" == *"effect_input"* ]]; then
-        active_target=$(pw-link -l 2>/dev/null | awk '/effect_output.eq10:output_FL/ {getline; sub(/^[ |>-]+/, ""); sub(/:playback_FL.*/, ""); print; exit}' || echo "")
+        active_target=$(pw-link -l 2>/dev/null | awk '/effect_output.eq10:output_FL/ {
+            while ((getline line) > 0) {
+                if (line !~ /^[ |>-]+/) break;
+                sub(/^[ |>-]+/, "", line);
+                sub(/:playback_FL.*/, "", line);
+                if (line !~ /cava|echo[-_]cancel/ && line != "") {
+                    print line;
+                    exit;
+                }
+            }
+        }' || echo "")
         if [ -n "$active_target" ]; then
             node_name="$active_target"
             target_desc=$(pw-dump Node 2>/dev/null | jq -r --arg name "$node_name" '.[] | select(.info.props["node.name"] == $name) | .info.props["node.description"] // empty' 2>/dev/null | head -n 1 || echo "")

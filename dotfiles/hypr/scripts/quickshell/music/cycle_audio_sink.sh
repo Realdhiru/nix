@@ -19,7 +19,7 @@ fi
 ext_sinks=$(pw-dump Node 2>/dev/null | jq -c --arg has_hdmi "$has_hdmi" '
   [ .[] | select(
       .info.props["media.class"] == "Audio/Sink" and
-      (.info.props["node.name"] | startswith("effect_input") | not) and
+      (.info.props["node.name"] | test("effect_input|cava|echo"; "i") | not) and
       (($has_hdmi == "true") or (.info.props["node.name"] | test("HiFi__HDMI") | not)) and
       (
         (.info.props["node.name"] | test("bluez|usb"; "i")) or
@@ -33,8 +33,18 @@ ext_sinks=$(pw-dump Node 2>/dev/null | jq -c --arg has_hdmi "$has_hdmi" '
   ]
 ')
 
-# Find currently linked sink
-cur_target_name=$(pw-link -l 2>/dev/null | awk '/effect_output.eq10:output_FL/ {getline; sub(/^[ |>-]+/, ""); sub(/:playback_FL.*/, ""); print; exit}' || echo "")
+# Find currently linked sink (skipping visualizers like cava)
+cur_target_name=$(pw-link -l 2>/dev/null | awk '/effect_output.eq10:output_FL/ {
+    while ((getline line) > 0) {
+        if (line !~ /^[ |>-]+/) break;
+        sub(/^[ |>-]+/, "", line);
+        sub(/:playback_FL.*/, "", line);
+        if (line !~ /cava|echo[-_]cancel/ && line != "") {
+            print line;
+            exit;
+        }
+    }
+}' || echo "")
 
 num_ext=$(echo "$ext_sinks" | jq 'length')
 
@@ -93,6 +103,7 @@ elif [[ "$cur_target_name" == *"Headphone"* ]]; then
     mkdir -p "$state_dir"
     date +%s > "$state_dir/manual_cycle_ts"
 
+    wpctl set-mute "$ext_id" 0 2>/dev/null || true
     pw-metadata -n default "$EQ_OUT_ID" target.node "$ext_id" 2>/dev/null || true
     if [ -n "$cur_target_name" ] && [ "$cur_target_name" != "$ext_name" ]; then
         pw-link -d effect_output.eq10:output_FL "${cur_target_name}:playback_FL" 2>/dev/null || true
