@@ -1352,7 +1352,7 @@ FocusScope {
             onClicked: {
                 if (parent.name === "Karaoke") {
                     if (parent.isActivePreset) {
-                        root.execCmd("karaoke cycle");
+                        root.applyPresetOptimistically("Off");
                     } else {
                         root.applyPresetOptimistically("Karaoke");
                     }
