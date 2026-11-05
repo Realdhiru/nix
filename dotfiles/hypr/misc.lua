@@ -24,8 +24,9 @@ hl.config({
         scroll_event_delay = 0,
     },
 
-    -- Cursor: Keeps mouse strictly centered inside the magnified viewport
+    -- Cursor: Prevents inconsistent cursor focus warping and keeps mouse centered in magnified viewport
     cursor = {
+        no_warps = true,
         zoom_rigid = true,
         zoom_detached_camera = false,
     },

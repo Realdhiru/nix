@@ -12,7 +12,7 @@ hl.config({
     scrolling = {
         column_width = 0.5,
         focus_fit_method = 1,              -- 1 = Minimal scroll to edge; never forcibly centers focused column
-        follow_focus = 1,                  -- Follows focus on click/navigation
+        follow_focus = 0,                  -- 0 = Ribbon stays steady; does not scroll or jump on click or hover focus
         fullscreen_on_one_column = true,  -- Single window fills 100% monitor width
         direction = "right",
         wrap_focus = true,
@@ -167,14 +167,6 @@ local function sync_workspace_layout(ws_id, exclude_addr)
                     hl.dispatch(hl.dsp.focus({ window = "address:" .. active_addr }))
                 end
             end
-
-            local post_wins = get_tiled_windows_on_workspace(target_ws_id)
-            if #post_wins > 0 and post_wins[1].at then
-                local post_x = post_wins[1].at.x
-                if post_x ~= left_margin then
-                    hl.dispatch(hl.dsp.layout("move " .. tostring(left_margin - post_x)))
-                end
-            end
         else
             -- 3+ windows: enforce minimum column width (320px / 0.25) to prevent sliver collapse
             if active_ws == target_ws_id then
@@ -187,14 +179,6 @@ local function sync_workspace_layout(ws_id, exclude_addr)
                 end
                 if active_addr then
                     hl.dispatch(hl.dsp.focus({ window = "address:" .. active_addr }))
-                end
-            end
-            local post_wins = get_tiled_windows_on_workspace(target_ws_id)
-            if #post_wins > 0 and post_wins[1].at then
-                local post_x = post_wins[1].at.x
-                -- If leftmost window sits past left margin into void space, clamp it flush
-                if post_x > (left_margin + 6) then
-                    hl.dispatch(hl.dsp.layout("move " .. tostring(left_margin - post_x)))
                 end
             end
         end
