@@ -101,24 +101,53 @@ The desktop audio architecture routes all client audio through a unified virtual
 
 ---
 
-## 3. Acoustic Equalizer Presets Engineering
+## 3. Complete Preset Engineering & Acoustic Curves
 
-All three core presets are engineered to provide an authentic **live concert / stage venue** atmosphere:
+All system presets are engineered with precise decibel targets across the 10-band biquad peaking equalizer ($Q = 1.414$) to achieve their specific sonic targets:
 
-| Band | Frequency | **Bass** (Concert Arena) | **Karaoke** (Detail Revealing) | **Vocal** (Raw Live Stage) |
-| :---: | :---: | :---: | :---: | :---: |
-| **B1** | 31 Hz | **+5 dB** | **+3 dB** | **-1 dB** |
-| **B2** | 63 Hz | **+7 dB** | **+3 dB** | **0 dB** |
-| **B3** | 125 Hz | **+4 dB** | **+2 dB** | **+1 dB** |
-| **B4** | 250 Hz | **0 dB** | **+1 dB** | **+3 dB** |
-| **B5** | 500 Hz | **0 dB** | **-1 dB** | **+5 dB** |
-| **B6** | 1 kHz | **+1 dB** | **-2 dB** | **+4 dB** |
-| **B7** | 2 kHz | **+2 dB** | **0 dB** | **+3 dB** |
-| **B8** | 4 kHz | **+2 dB** | **+2 dB** | **+2 dB** |
-| **B9** | 8 kHz | **+2 dB** | **+3 dB** | **+2 dB** |
-| **B10** | 16 kHz | **+1 dB** | **+3 dB** | **+1 dB** |
+| Band | Frequency | **Bass** (Concert) | **Karaoke** (Detail) | **Vocal** (Live Stage) | **Rock** (Punch) | **Pop** (Vibrant) | **Jazz** (Warm) | **Classic** (Hall) | **Treble** (Air) |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **B1** | 31 Hz | **+5 dB** | **+3 dB** | **-1 dB** | **+4 dB** | **+3 dB** | **+2 dB** | **+3 dB** | **-3 dB** |
+| **B2** | 63 Hz | **+7 dB** | **+3 dB** | **0 dB** | **+4 dB** | **+4 dB** | **+3 dB** | **+3 dB** | **-2 dB** |
+| **B3** | 125 Hz | **+4 dB** | **+2 dB** | **+1 dB** | **+3 dB** | **+3 dB** | **+3 dB** | **+2 dB** | **-1 dB** |
+| **B4** | 250 Hz | **0 dB** | **+1 dB** | **+3 dB** | **0 dB** | **-1 dB** | **+2 dB** | **0 dB** | **0 dB** |
+| **B5** | 500 Hz | **0 dB** | **-1 dB** | **+5 dB** | **-1 dB** | **-1 dB** | **+2 dB** | **0 dB** | **+1 dB** |
+| **B6** | 1 kHz | **+1 dB** | **-2 dB** | **+4 dB** | **+1 dB** | **+1 dB** | **+2 dB** | **+1 dB** | **+2 dB** |
+| **B7** | 2 kHz | **+2 dB** | **0 dB** | **+3 dB** | **+3 dB** | **+3 dB** | **+1 dB** | **+2 dB** | **+4 dB** |
+| **B8** | 4 kHz | **+2 dB** | **+2 dB** | **+2 dB** | **+4 dB** | **+4 dB** | **+2 dB** | **+3 dB** | **+5 dB** |
+| **B9** | 8 kHz | **+2 dB** | **+3 dB** | **+2 dB** | **+4 dB** | **+3 dB** | **+3 dB** | **+4 dB** | **+6 dB** |
+| **B10** | 16 kHz | **+1 dB** | **+3 dB** | **+1 dB** | **+3 dB** | **+2 dB** | **+2 dB** | **+3 dB** | **+5 dB** |
 
-### Preset Characteristics:
-1. **Bass Mode**: Replicates standing in front of festival line-array subwoofers. Deep, uncompressed low-end (`+7 dB @ 63 Hz`) with natural uncolored midrange (`0 dB @ 250–500 Hz`) and subtle venue acoustic air (`+2 dB @ 2–8 kHz`).
-2. **Karaoke Mode**: Designed for musicians replicating band parts and sing-along. Center vocals are cleanly removed while buried backing details, arpeggios, and hi-hats are pulled forward (`+2 to +3 dB @ 4–16 kHz`).
-3. **Vocal Mode**: Intimate, raw, live stage performance. Tones down deep sub-bass to create room for warm chest resonance (`+3 dB @ 250 Hz`) and vocal presence (`+5 dB @ 500 Hz, +4 dB @ 1 kHz`).
+### Preset Acoustic Signatures:
+1. **Bass Mode**: Designed for massive live concert feel without muddiness. Delivers deep sub-bass impact (+7 dB @ 63 Hz, +5 dB @ 31 Hz) while leaving mid frequencies clean (0 dB @ 250–500 Hz) and opening the top end (+2 dB @ 2–8 kHz) for venue ambiance.
+2. **Karaoke Mode**: Designed for musicians learning instrumental parts and sing-alongs. Center vocals are cancelled via the LADSPA wet filter while hidden backing instruments, subtle arpeggios, and high-frequency textures are boosted (+2 to +3 dB from 4–16 kHz).
+3. **Vocal Mode**: An open, raw, intimate stage performance curve. Cuts sub-bass (-1 dB @ 31 Hz) to prevent masking, while boosting chest warmth (+3 dB @ 250 Hz) and vocal presence (+5 dB @ 500 Hz, +4 dB @ 1 kHz).
+4. **Rock Mode**: Aggressive V-curve with heavy kick/bass punch (+4 dB @ 31–63 Hz), tight mid scoop (-1 dB @ 500 Hz), and sharp electric guitar/cymbal crunch (+4 dB @ 4–8 kHz).
+5. **Pop Mode**: Bright and radio-ready with lifted bass (+4 dB @ 63 Hz) and crisp, airy vocals (+4 dB @ 4 kHz).
+6. **Jazz Mode**: Warm, velvety, rounded response with full lower mids (+2 to +3 dB across 125–1000 Hz) and rolled-off extremes.
+7. **Classic Mode**: Simulates a symphonic concert hall with spacious lower octave warmth and high string sparkle (+4 dB @ 8 kHz).
+8. **Treble Mode**: Analytical, ultra-bright presentation for speech intelligibility and high cymbal detail (+6 dB @ 8 kHz).
+
+---
+
+## 4. Complete System Audio Stack & Configuration Reference
+
+### 4.1 Underlying Software Stack
+- **Audio Server**: PipeWire (`0.3.x`) running as a low-latency multimedia routing framework.
+- **Session Manager**: WirePlumber managing node endpoints, dynamic device routes, and ALSA profiles.
+- **DSP Engine**: Native PipeWire `libpipewire-module-filter-chain` executing LADSPA and built-in biquad filters directly in real-time audio threads.
+- **Karaoke DSP Plugin**: Custom C LADSPA plugin (`spectral_karaoke.so`, Unique ID `4899`) compiled with `-O3 -mavx2 -ffast-math`.
+- **Master Speaker Protection**: Steve Harris LADSPA 1913 (`fast_lookahead_limiter_1913.so`) with -0.2 dB ceiling and 0.10s release.
+- **Microphone Enhancement**: PipeWire `libpipewire-module-echo-cancel` with WebRTC AEC, AGC, and noise suppression (`60-echo-cancel.conf`).
+- **Control Interface**:
+  - `equalizer.sh`: IPC interface controlling PipeWire filter-chain node parameters via `pw-cli s <node_id> Props`.
+  - `karaoke.sh`: Toggles mixer routing between dry path (`finalL:Gain 1 = 1.0, Gain 2 = 0.0`) and wet karaoke path (`finalL:Gain 1 = 0.0, Gain 2 = 1.0`).
+  - `MusicPopup.qml`: QuickShell QML user interface featuring animated biquad EQ sliders, glowing multi-band canvas lightning effects, optimistic UI updates, and keyboard shortcuts (`Left`/`Right` arrow keys to cycle presets).
+
+### 4.2 Why this Stack was Chosen (vs Alternatives)
+- **Why Native PipeWire Filter-Chain instead of EasyEffects?**
+  EasyEffects is a heavy GTK/Rust application that runs a separate persistent daemon, consumes significant RAM (150MB+), and introduces IPC delay and occasional crashes during PipeWire stream switches. The native PipeWire filter chain runs directly inside PipeWire's processing thread with 0 additional processes, 0 MB extra RSS, and microsecond latency.
+- **Why Custom LADSPA C Plugin instead of Mid-Side Inversion?**
+  Basic mid-side ($L - R$) cancellation destroys all center information including mono bass, kick drums, and centered guitar solos, resulting in a thin, hollow, phase-cancelled mess. Our spectral LADSPA plugin operates in the frequency domain with STFT (1024-point FFT), isolating center vocals by phase correlation ($m = \psi^8$) only between 200 Hz and 4.2 kHz, leaving all stereo instruments, bass, and kick drums 100% untouched.
+- **Why Built-in Biquad Filters instead of External Graphic EQ?**
+  PipeWire's built-in `bq_peaking` filters run with zero external library overhead and zero memory allocation. Gain changes can be updated atomically on the fly via `pw-cli` without interrupting or clicking audio playback.
