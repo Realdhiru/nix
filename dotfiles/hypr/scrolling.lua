@@ -423,6 +423,8 @@ hl.on("window.active", function(w)
     sync_fullscreen_inhibit(w)
 end)
 
--- Initial state sync on load
-sync_fullscreen_inhibit()
-sync_workspace_layout()
+-- Initial state sync on load (guarded to prevent no-monitor layout dispatch on cold boot)
+if #hl.get_monitors() > 0 then
+    pcall(sync_fullscreen_inhibit)
+    pcall(sync_workspace_layout)
+end

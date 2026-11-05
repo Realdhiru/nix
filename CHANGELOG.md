@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-05 — Hyprland Cold Boot Overlay Fix, PipeWire Quantum Bounds & Agent Rules
+
+- **Hyprland Cold Boot Error Elimination & Audio Underrun Declarative Config ([`scrolling.lua`](file:///home/realdhiru/nix/dotfiles/hypr/scrolling.lua), [`hyprland.lua`](file:///home/realdhiru/nix/dotfiles/hypr/hyprland.lua), [`home.nix`](file:///home/realdhiru/nix/home.nix), [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md))**: Eliminated the startup red error banner `=[C]:-1: No monitor, can't find ws to target` by guarding initial `sync_workspace_layout()` to execute only when valid active monitors are mapped, fixed dispatcher syntax in `hyprland.lua`, declaratively baked ALSA headroom and PipeWire quantum bounds into `home.nix` to eliminate broken pipe audio buffer underruns and CPU spin, and added mandatory user design/architecture rules to `AGENTS.md`.
+
 ## 2026-11-05 — Audio Output Synchronization, Karaoke Stage Presence & External Device Watcher
 
 - **Arrow Key Equalizer Switching & Speaker Unplug Burst Elimination ([`MusicPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/music/MusicPopup.qml), [`home.nix`](file:///home/realdhiru/nix/home.nix), [`karaoke.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/karaoke.sh), [`system.md`](file:///home/realdhiru/nix/docs/system.md))**: Added `focusPolicy: Qt.NoFocus` to timeline and equalizer sliders so left/right arrow keys reliably cycle presets without stealing timeline focus; eliminated split-second speaker audio bursts on device unplug via `node.drain-on-empty = false` and `session.suspend-timeout-seconds = 0`; and rebalanced spectral karaoke parameters (`Depth = 0.96`, `Reverb Duck = 0 dB`, `Low Cutoff = 150 Hz`) for clean vocal isolation without acoustic compression or muted instruments.

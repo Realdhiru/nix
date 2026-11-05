@@ -351,6 +351,19 @@
             }
           }
         }
+        {
+          matches = [
+            {
+              node.name = "~alsa_output.*"
+            }
+          ]
+          actions = {
+            update-props = {
+              "api.alsa.disable-mmap" = true
+              "api.alsa.headroom" = 1024
+            }
+          }
+        }
       ]
 
       wireplumber.settings = {
@@ -363,6 +376,18 @@
         "device.routes.mute-on-alsa-playback-removed" = false
         "device.routes.default-sink-volume" = 1.0
         "session.suspend-timeout-seconds" = 0
+      }
+    '';
+  };
+
+  # PipeWire: Quantum bounds to eliminate buffer underruns on Intel SOF DSP
+  xdg.configFile."pipewire/pipewire.conf.d/10-quantum.conf" = {
+    force = true;
+    text = ''
+      context.properties = {
+          default.clock.min-quantum = 512
+          default.clock.max-quantum = 2048
+          default.clock.quantum = 1024
       }
     '';
   };

@@ -246,7 +246,9 @@ hl.on("monitor.removed", function(m)
     if external_count == 0 then
         hl.monitor({ output = known_internal_name, disabled = false, position = "0x0" })
         for ws = 11, 20 do
-            hl.dispatch("moveworkspacetomonitor", string.format("%d %s", ws, known_internal_name))
+            pcall(function()
+                hl.dispatch(hl.dsp.workspace.move_to_monitor({ workspace = ws, monitor = known_internal_name }))
+            end)
         end
     end
     apply_layout()
