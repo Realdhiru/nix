@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2026-11-05 — Mode Switching Fault Resilience & Wallpaper Kill Debounce Fix
+
+- **Wallpaper Kill Throttle Healing & Mode Failure Notification Pipeline ([`wallpaper.sh`](file:///home/realdhiru/nix/dotfiles/wallpaper/wallpaper.sh), [`mode_ctl.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/mode_ctl.sh), [`toggle_gaming_mode.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/toggle_gaming_mode.sh), [`power.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/power.sh))**: Eliminated wallpaper kill lockups caused by clock skew/future timestamp persistence in `wallpaper_kill_throttle` by checking bounds (`diff >= 0 && diff < 180ms`), and unified all desktop modes (Wallpaper Kill, Gaming, Power-Saver, Coffee) with explicit error handling and critical failure/blocked notifications when a mode fails to engage or is obstructed.
+
 ## 2026-11-05 — Hyprland Cold Boot Overlay Fix, PipeWire Quantum Bounds & Agent Rules
 
 - **Hyprland Cold Boot Error Elimination & Audio Underrun Declarative Config ([`scrolling.lua`](file:///home/realdhiru/nix/dotfiles/hypr/scrolling.lua), [`hyprland.lua`](file:///home/realdhiru/nix/dotfiles/hypr/hyprland.lua), [`home.nix`](file:///home/realdhiru/nix/home.nix), [`AGENTS.md`](file:///home/realdhiru/nix/AGENTS.md))**: Eliminated the startup red error banner `=[C]:-1: No monitor, can't find ws to target` by guarding initial `sync_workspace_layout()` to execute only when valid active monitors are mapped, fixed dispatcher syntax in `hyprland.lua`, declaratively baked ALSA headroom and PipeWire quantum bounds into `home.nix` to eliminate broken pipe audio buffer underruns and CPU spin, and added mandatory user design/architecture rules to `AGENTS.md`.

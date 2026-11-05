@@ -107,8 +107,9 @@ cmd_kill() {
         now=$(date +%s%N)
         local last
         last=$(cat "$throttle_lock" 2>/dev/null || echo 0)
-        # 180ms debounce threshold between kill/revive passes
-        if [ $((now - last)) -lt 180000000 ]; then
+        local diff=$((now - last))
+        # 180ms debounce threshold; if diff is negative (clock skew/reboot) ignore stale lock
+        if [ "$diff" -ge 0 ] && [ "$diff" -lt 180000000 ]; then
             return 0
         fi
     fi
@@ -124,16 +125,20 @@ cmd_kill() {
 
     if [ "$is_killed" = "true" ]; then
         # TOGGLE BACK ON:
-        notify-send -a "Wallpaper" -u low "ON"
-        bash "$mode_ctl" set wallpaper-kill false
+        if bash "$mode_ctl" set wallpaper-kill false; then
+            notify-send -a "Wallpaper" -u low "ON"
+        else
+            notify-send -a "Wallpaper" -u critical "Failed"
+            return 1
+        fi
         return 0
     fi
 
     # TOGGLE OFF:
     if ! bash "$mode_ctl" can-enable wallpaper-kill; then
+        notify-send -a "Wallpaper" -u critical "Blocked"
         return 0
     fi
-    notify-send -a "Wallpaper" -u low "OFF"
     # 1. Preserve current wallpaper before killing
     if [ -s "$CURRENT_TXT" ]; then
         local prev_cur
@@ -144,7 +149,12 @@ cmd_kill() {
     fi
 
     # 2. Engage wallpaper-kill mode via mode_ctl.sh (handles surfaces, rules, and neutral theme)
-    bash "$mode_ctl" set wallpaper-kill true
+    if bash "$mode_ctl" set wallpaper-kill true; then
+        notify-send -a "Wallpaper" -u low "OFF"
+    else
+        notify-send -a "Wallpaper" -u critical "Failed"
+        return 1
+    fi
 }
 
 # -----------------------------------------------------------------------------

@@ -404,6 +404,7 @@ case "$ACTION" in
         else
             rm -f "$tmp_json"
             release_lock
+            notify-send -a "System" -u critical "Failed"
             exit 1
         fi
 
@@ -443,6 +444,7 @@ case "$ACTION" in
         else
             rm -f "$tmp_json"
             release_lock
+            notify-send -a "System" -u critical "Failed"
             exit 1
         fi
 

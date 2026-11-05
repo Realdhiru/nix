@@ -285,14 +285,16 @@ cmd_inhibit() {
             ;;
     esac
 
-    # Dispatch notification immediately (<10ms) before executing mode switch
-    if [ "$do_enable" = true ]; then
-        notify-send -a "Power" -r 9991 -t 1200 -u low -i "appointment-soon" "Coffee ON"
+    if bash "$mode_ctl" set coffee "$do_enable"; then
+        if [ "$do_enable" = true ]; then
+            notify-send -a "Power" -r 9991 -t 1200 -u low -i "appointment-soon" "Coffee ON"
+        else
+            notify-send -a "Power" -r 9991 -t 1200 -u low -i "appointment-missed" "Coffee OFF"
+        fi
     else
-        notify-send -a "Power" -r 9991 -t 1200 -u low -i "appointment-missed" "Coffee OFF"
+        notify-send -a "Power" -u critical "Failed"
+        return 1
     fi
-
-    bash "$mode_ctl" set coffee "$do_enable" 2>/dev/null || true
 }
 
 cmd_profile() {

@@ -14,13 +14,22 @@ if [ -s "$MODES_JSON" ]; then
 fi
 
 if [ "$CUR_STATE" = "true" ]; then
-    notify-send -a "Game Mode" -u low "OFF"
-    bash "$MODE_CTL" set gaming false
+    if bash "$MODE_CTL" set gaming false; then
+        notify-send -a "Game Mode" -u low "OFF"
+    else
+        notify-send -a "Game Mode" -u critical "Failed"
+        exit 1
+    fi
 else
     # Check if blocked by conflicting active mode
     if ! bash "$MODE_CTL" can-enable gaming; then
+        notify-send -a "Game Mode" -u critical "Blocked"
         exit 0
     fi
-    notify-send -a "Game Mode" -u normal "ON"
-    bash "$MODE_CTL" set gaming true
+    if bash "$MODE_CTL" set gaming true; then
+        notify-send -a "Game Mode" -u normal "ON"
+    else
+        notify-send -a "Game Mode" -u critical "Failed"
+        exit 1
+    fi
 fi
