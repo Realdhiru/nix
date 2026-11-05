@@ -488,4 +488,12 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - *Shortcut Leaking in Preloaded Components:* `Main.qml` preloads popup components into memory during startup with `visible: false`. In Qt Quick, a top-level `Shortcut` without an explicit `enabled` expression remains active application-wide regardless of item visibility or focus, intercepting keys (e.g. `Tab`, `Left`, `Right`) meant for active user applications.
   - *Repeater Destruction/Insertion Collision:* Calling `listModel.clear()` emits row removal signals, queuing asynchronous delegate destruction via `destroyObjectLater`. If `listModel.append()` or `syncModel()` immediately repopulates items within the exact same event loop cycle, Qt Quick's `QQuickRepeater::modelUpdated` and `initItem` attempt sibling stacking (`item->stackBefore(after)`). Looking up sibling positions in `parentPrivate->childItems` dereferences invalidated pointers, triggering a fatal `SIGSEGV` in Qt 6. In-place reconciliation via `syncModel()` (modifying existing items and appending only true additions) maintains model item stability with zero desync crashes.
 
+### ADR-076: Scrolling Ribbon Focus Stability & Cursor Warp Suppression
+- **Decision:** In [`scrolling.lua`](file:///home/realdhiru/nix/dotfiles/hypr/scrolling.lua), set `scrolling.follow_focus = 0` and eliminate programmatic `move (left_margin - post_x)` layout snapping in `sync_workspace_layout()` for multi-window ribbons. In [`misc.lua`](file:///home/realdhiru/nix/dotfiles/hypr/misc.lua), declare `cursor.no_warps = true`.
+- **Rationale:** 
+  - *Ribbon Snapping on Layer Shell / Sidebar Clicks:* Clicking on the Quickshell left sidebar or toggling side panels shifts focus to/from layer shell surfaces. With `follow_focus = 1` or forced position clamping in `sync_workspace_layout()`, Hyprland and Lua layout normalization forcibly re-snapped the continuous ribbon back to `left_margin`, destroying kinetic scroll position. Setting `follow_focus = 0` and preserving scrolled coordinates ensures the continuous ribbon remains strictly where the user positioned it.
+  - *Erratic Mouse Focus Warping:* Default Hyprland cursor warping (`cursor:no_warps = false`) jumps the mouse pointer when compositor focus transitions across tiled columns or secondary widgets. Setting `cursor.no_warps = true` keeps the cursor stationary and predictable during focus switches and layout adjustments.
+
+
+
 
