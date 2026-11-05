@@ -436,9 +436,9 @@
                 label = spectral_karaoke
                 control = {
                   "Depth"                = 0.96
-                  "Low Cutoff (Hz)"      = 160.0
+                  "Low Cutoff (Hz)"      = 200.0
                   "Air Depth"            = 0.10
-                  "Transient Protection" = 0.50
+                  "Transient Protection" = 0.0
                   "Release (ms)"         = 60.0
                   "Reverb Duck (dB)"     = 0.0
                 }
@@ -451,8 +451,8 @@
                 label = fastLookaheadLimiter
                 control = {
                   "Input gain (dB)"  = 0.0
-                  "Limit (dB)"       = -1.0
-                  "Release time (s)" = 0.50
+                  "Limit (dB)"       = -0.2
+                  "Release time (s)" = 0.10
                 }
               }
 

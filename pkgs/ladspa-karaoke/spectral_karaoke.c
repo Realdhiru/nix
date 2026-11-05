@@ -252,26 +252,6 @@ static void run_spectral_karaoke(LADSPA_Handle instance, unsigned long sample_co
             fft(l_real, l_imag, N, 0);
             fft(r_real, r_imag, N, 0);
 
-            // Transient detection via broadband spectral flux on center mid channel
-            float flux = 0.0f;
-            for (int k = 0; k < NUM_BINS; k++) {
-                float mr = 0.5f * (l_real[k] + r_real[k]);
-                float mi = 0.5f * (l_imag[k] + r_imag[k]);
-                float mag = sqrtf(mr * mr + mi * mi);
-                float diff = mag - plugin->prev_mag_m[k];
-                if (diff > 0.0f) flux += diff;
-                plugin->prev_mag_m[k] = mag;
-            }
-
-            float flux_thresh = plugin->flux_env * 2.5f + 0.1f;
-            plugin->flux_env += 0.1f * (flux - plugin->flux_env);
-            if (flux > flux_thresh && flux > 0.5f) {
-                plugin->transient_counter = (int)(0.040f * fs / (float)H);
-            } else if (plugin->transient_counter > 0) {
-                plugin->transient_counter--;
-            }
-            float trans_scale = (plugin->transient_counter > 0) ? (1.0f - plugin->trans_prot_cur) : 1.0f;
-
             for (int k = 0; k < NUM_BINS; k++) {
                 float freq = (float)k * df;
                 float lr_dot = l_real[k] * r_real[k] + l_imag[k] * r_imag[k];
@@ -287,22 +267,24 @@ static void run_spectral_karaoke(LADSPA_Handle instance, unsigned long sample_co
                 // are preserved with zero attenuation, while center vocals are targeted.
                 float m = powf(psi, 8.0f);
 
-                // Vocal formants primarily occupy 180 Hz to 4200 Hz.
-                // Roll off vocal cancellation above 4200 Hz so electric guitar harmonics and bite are unaffected.
+                // Pure static frequency shape for vocals (200 Hz to 4200 Hz):
+                // Bass (< 200 Hz) is 100% immune from modulation or attenuation.
+                // High treble (> 4200 Hz) preserves instrument harmonics and acoustic air.
                 float shape = 1.0f;
-                if (freq < plugin->f_lo_cur * 0.8f) {
+                if (freq < plugin->f_lo_cur * 0.85f) {
                     shape = 0.0f;
-                } else if (freq < plugin->f_lo_cur * 1.2f) {
-                    float t = (freq - plugin->f_lo_cur * 0.8f) / (plugin->f_lo_cur * 0.4f);
+                } else if (freq < plugin->f_lo_cur * 1.15f) {
+                    float t = (freq - plugin->f_lo_cur * 0.85f) / (plugin->f_lo_cur * 0.30f);
                     shape = 0.5f * (1.0f - cosf(PI * t));
-                } else if (freq > 4200.0f && freq < 8000.0f) {
-                    float t = (freq - 4200.0f) / 3800.0f;
+                } else if (freq > 4200.0f && freq < 7500.0f) {
+                    float t = (freq - 4200.0f) / 3300.0f;
                     shape = 1.0f - (1.0f - plugin->air_depth_cur) * t;
-                } else if (freq >= 8000.0f) {
+                } else if (freq >= 7500.0f) {
                     shape = plugin->air_depth_cur;
                 }
 
-                float target_g = plugin->depth_cur * shape * m * trans_scale;
+                // Smooth static target per bin: no dynamic broadband envelope pumping
+                float target_g = plugin->depth_cur * shape * m;
                 if (target_g > plugin->g_smooth[k]) {
                     plugin->g_smooth[k] += alpha_att * (target_g - plugin->g_smooth[k]);
                 } else {

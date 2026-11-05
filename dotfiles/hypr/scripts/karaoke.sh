@@ -46,9 +46,9 @@ apply_preset_params() {
   nid=$(get_eq_node_id)
   timeout 2 pw-cli s "$nid" Props "{ params = [ \
     \"spectral_karaoke:Depth\" 0.96 \
-    \"spectral_karaoke:Low Cutoff (Hz)\" 160.0 \
+    \"spectral_karaoke:Low Cutoff (Hz)\" 200.0 \
     \"spectral_karaoke:Air Depth\" 0.10 \
-    \"spectral_karaoke:Transient Protection\" 0.50 \
+    \"spectral_karaoke:Transient Protection\" 0.0 \
     \"spectral_karaoke:Release (ms)\" 60.0 \
     \"spectral_karaoke:Reverb Duck (dB)\" 0.0 \
   ] }" >/dev/null 2>&1 || true
