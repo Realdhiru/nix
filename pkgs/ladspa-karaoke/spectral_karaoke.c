@@ -272,8 +272,6 @@ static void run_spectral_karaoke(LADSPA_Handle instance, unsigned long sample_co
             }
             float trans_scale = (plugin->transient_counter > 0) ? (1.0f - plugin->trans_prot_cur) : 1.0f;
 
-            float m_corr[NUM_BINS];
-
             for (int k = 0; k < NUM_BINS; k++) {
                 float freq = (float)k * df;
                 float lr_dot = l_real[k] * r_real[k] + l_imag[k] * r_imag[k];
@@ -285,19 +283,22 @@ static void run_spectral_karaoke(LADSPA_Handle instance, unsigned long sample_co
                 if (psi < 0.0f) psi = 0.0f;
                 if (psi > 1.0f) psi = 1.0f;
 
-                float m = powf(psi, 4.0f);
-                m_corr[k] = m;
+                // Sharper center isolation (psi^8) so panned instruments (electric guitars, cymbals, synths)
+                // are preserved with zero attenuation, while center vocals are targeted.
+                float m = powf(psi, 8.0f);
 
+                // Vocal formants primarily occupy 180 Hz to 4200 Hz.
+                // Roll off vocal cancellation above 4200 Hz so electric guitar harmonics and bite are unaffected.
                 float shape = 1.0f;
                 if (freq < plugin->f_lo_cur * 0.8f) {
                     shape = 0.0f;
                 } else if (freq < plugin->f_lo_cur * 1.2f) {
                     float t = (freq - plugin->f_lo_cur * 0.8f) / (plugin->f_lo_cur * 0.4f);
                     shape = 0.5f * (1.0f - cosf(PI * t));
-                } else if (freq > 5000.0f && freq < 10000.0f) {
-                    float t = (freq - 5000.0f) / 5000.0f;
+                } else if (freq > 4200.0f && freq < 8000.0f) {
+                    float t = (freq - 4200.0f) / 3800.0f;
                     shape = 1.0f - (1.0f - plugin->air_depth_cur) * t;
-                } else if (freq >= 10000.0f) {
+                } else if (freq >= 8000.0f) {
                     shape = plugin->air_depth_cur;
                 }
 
@@ -320,9 +321,9 @@ static void run_spectral_karaoke(LADSPA_Handle instance, unsigned long sample_co
                 mr *= (1.0f - g);
                 mi *= (1.0f - g);
 
-                // Side ducking in 500 - 4000 Hz, proportional to center vocal presence
-                if (freq >= 500.0f && freq <= 4000.0f) {
-                    float duck_lin = (1.0f - powf(10.0f, -plugin->duck_db_cur / 20.0f)) * m_corr[k];
+                // Side ducking in 500 - 3500 Hz only if configured and center vocal is strongly detected
+                if (plugin->duck_db_cur > 0.01f && freq >= 500.0f && freq <= 3500.0f) {
+                    float duck_lin = (1.0f - powf(10.0f, -plugin->duck_db_cur / 20.0f)) * m;
                     sr *= (1.0f - duck_lin);
                     si *= (1.0f - duck_lin);
                 }

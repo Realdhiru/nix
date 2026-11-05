@@ -436,10 +436,10 @@
                 label = spectral_karaoke
                 control = {
                   "Depth"                = 0.96
-                  "Low Cutoff (Hz)"      = 150.0
-                  "Air Depth"            = 0.15
-                  "Transient Protection" = 0.40
-                  "Release (ms)"         = 70.0
+                  "Low Cutoff (Hz)"      = 160.0
+                  "Air Depth"            = 0.10
+                  "Transient Protection" = 0.50
+                  "Release (ms)"         = 60.0
                   "Reverb Duck (dB)"     = 0.0
                 }
               }
