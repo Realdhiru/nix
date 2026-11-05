@@ -54,16 +54,18 @@ The desktop audio architecture routes all client audio through a unified virtual
 
 ---
 
-### Issue 2: Instrument & Bass Compression in Karaoke Mode
-* **Problem**: When Karaoke mode was engaged, acoustic instruments (flute, guitar, bass, kick drums) sounded compressed, squeezed, and choked.
+### Issue 2: Lead Vocal Removal vs Side Harmonies & Uncompressed Instrumental Dynamics
+* **User Requirement & Target**:
+  1. **Dead-Center Lead Vocal & Crowd Elimination**: Lead singer, spoken vocals, and center noise must be completely removed (`Depth = 0.99`, `Low Cutoff = 100 Hz`).
+  2. **Harmonies & Instruments Preserved**: Stereo backing harmonies (panned left/right), electric/acoustic guitars, synths, and flutes must remain 100% audible and untouched.
+  3. **Zero Digital Pumping / Sidechain Squeezing**: Completely eliminate side reverb ducking (`Reverb Duck = 0.0 dB`) and transient suppression (`Transient Protection = 0.0`) so instruments sound free, open, and naturally live.
 * **Root Causes**:
-  1. **Broadband Transient Pumping**: `spectral_karaoke.c` calculated broadband spectral flux on the mid channel. Whenever a transient hit (kick, snare, guitar strum), `trans_scale` throttled gain across the *entire spectrum*, acting like an aggressive sidechain compressor.
-  2. **Low-End Interference**: The low-cutoff filter was set to 160 Hz with a wide transition window down to 128 Hz, allowing bass fundamentals and kick drum sustain to trigger center attenuation.
-  3. **Master Limiter Squashing**: The lookahead limiter was configured with `Limit = -1.0 dB` and a slow `Release = 0.50s`. Boosted EQ bands hit the limiter ceiling and remained pinned down for 500ms.
-* **Fix**:
-  - Completely removed the broadband flux detector from `spectral_karaoke.c`. Center attenuation operates purely per-bin based on phase correlation ($m = \psi^8$), with zero dynamic envelope pumping.
-  - Raised `Low Cutoff` to **200 Hz** with a tight transition (`170 Hz`). All sub-bass, bass guitar notes, and kick drums are 100% immune from the karaoke filter.
-  - Relaxed the limiter in `home.nix` to a transparent `-0.2 dB` ceiling with a fast `0.10s` release.
+  1. Setting `Reverb Duck = 4.0 dB` artificially ducked side channels by 4 dB whenever center energy hit, which squashed stereo instruments and backing harmonies, giving a cold, compressed, digital feeling.
+  2. When `Low Cutoff` was previously tested at 200 Hz, male vocal fundamentals (120–180 Hz) escaped cancellation and bled through.
+* **Final Engineered Fix**:
+  - `Low Cutoff` tuned to **100 Hz**: Deeply cuts all lead vocal formants and speech, while granting immunity to sub-bass fundamentals (< 100 Hz).
+  - `Depth` set to **0.99** with **0.05** Air Depth: Deep vocal elimination without harsh treble remnants.
+  - `Reverb Duck` set to **0.0 dB** and `Transient Protection` to **0.0**: Eliminates all side-channel compression; stereo instruments and wide harmonies breathe freely with full live stage acoustics.
 
 ---
 

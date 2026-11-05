@@ -41,6 +41,11 @@ set_mix() {
   timeout 2 pw-cli s "$nid" Props "{ params = [ \"finalL:Gain 1\" $1 \"finalL:Gain 2\" $2 \"finalR:Gain 1\" $1 \"finalR:Gain 2\" $2 ] }" >/dev/null 2>&1 || true
 }
 
+# USER PREFERENCES:
+# - Lead singer, speech, and mono crowd noise are eliminated via dead-center phase cut (Depth 0.99, Low Cutoff 100 Hz).
+# - Stereo backing harmonies (panned left/right) and instruments (guitars, synths, flutes) are preserved 100%.
+# - Zero reverb ducking (0.0 dB) and zero transient protection (0.0) to eliminate all artificial digital compression and pumping.
+# - Acoustic venue warmth and hidden backing textures are elevated via the live stage EQ curve.
 apply_preset_params() {
   local nid
   nid=$(get_eq_node_id)
