@@ -81,37 +81,64 @@ switch_to_profile() {
     notify-send -a "Audio" -t 1500 -u low "$desc" 2>/dev/null || true
 }
 
-# If no external Bluetooth/USB audio devices are connected
-if [ "$num_ext" -eq 0 ]; then
-    if [[ "$cur_target_name" == *"Headphone"* ]]; then
-        switch_to_profile 2 "Speaker" "Laptop Speaker"
-    else
-        switch_to_profile 1 "Headphones" "Wired Headphones"
-    fi
-    exit 0
+# Check if 3.5mm wired headphones are physically plugged in
+jack_connected=false
+if [ -n "$ALSA_CARD_ID" ]; then
+    jack_avail=$(pw-dump Device 2>/dev/null | jq -r '
+      [ .[] | select(.info.props["device.name"] | test("alsa_card")) | .info.params.Route[]? | select(.name == "[Out] Headphones") | .available ] | .[0] // "unknown"
+    ')
+    [ "$jack_avail" = "yes" ] && jack_connected=true
 fi
 
-# External Bluetooth / USB sink is connected: cycle Speaker -> Headphones -> Bluetooth/USB
-if [[ "$cur_target_name" == *"Speaker"* ]]; then
-    switch_to_profile 1 "Headphones" "Wired Headphones"
-elif [[ "$cur_target_name" == *"Headphone"* ]]; then
+# Build list of cycle candidates in priority order: Speaker, Headphones (if plugged), External Sinks (Bluetooth, USB)
+# Decision tree based on currently linked endpoint
+if [ "$num_ext" -gt 0 ]; then
     first_ext=$(echo "$ext_sinks" | jq -c '.[0]')
     ext_id=$(echo "$first_ext" | jq -r '.id')
     ext_name=$(echo "$first_ext" | jq -r '.name')
     ext_desc=$(echo "$first_ext" | jq -r '.desc')
-    local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/audio"
-    mkdir -p "$state_dir"
-    date +%s > "$state_dir/manual_cycle_ts"
 
-    wpctl set-mute "$ext_id" 0 2>/dev/null || true
-    pw-metadata -n default "$EQ_OUT_ID" target.node "$ext_id" 2>/dev/null || true
-    if [ -n "$cur_target_name" ] && [ "$cur_target_name" != "$ext_name" ]; then
-        pw-link -d effect_output.eq10:output_FL "${cur_target_name}:playback_FL" 2>/dev/null || true
-        pw-link -d effect_output.eq10:output_FR "${cur_target_name}:playback_FR" 2>/dev/null || true
+    if [[ "$cur_target_name" == *"Speaker"* ]]; then
+        if [ "$jack_connected" = "true" ]; then
+            switch_to_profile 1 "Headphones" "Headphones"
+        else
+            # Directly switch to external bluetooth/usb device
+            state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/audio"
+            mkdir -p "$state_dir"
+            date +%s > "$state_dir/manual_cycle_ts"
+
+            wpctl set-mute "$ext_id" 0 2>/dev/null || true
+            pw-metadata -n default "$EQ_OUT_ID" target.node "$ext_id" 2>/dev/null || true
+            if [ -n "$cur_target_name" ] && [ "$cur_target_name" != "$ext_name" ]; then
+                pw-link -d effect_output.eq10:output_FL "${cur_target_name}:playback_FL" 2>/dev/null || true
+                pw-link -d effect_output.eq10:output_FR "${cur_target_name}:playback_FR" 2>/dev/null || true
+            fi
+            pw-link effect_output.eq10:output_FL "${ext_name}:playback_FL" 2>/dev/null || true
+            pw-link effect_output.eq10:output_FR "${ext_name}:playback_FR" 2>/dev/null || true
+            notify-send -a "Audio" -t 1500 -u low "$ext_desc" 2>/dev/null || true
+        fi
+    elif [[ "$cur_target_name" == *"Headphone"* ]]; then
+        state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/audio"
+        mkdir -p "$state_dir"
+        date +%s > "$state_dir/manual_cycle_ts"
+
+        wpctl set-mute "$ext_id" 0 2>/dev/null || true
+        pw-metadata -n default "$EQ_OUT_ID" target.node "$ext_id" 2>/dev/null || true
+        if [ -n "$cur_target_name" ] && [ "$cur_target_name" != "$ext_name" ]; then
+            pw-link -d effect_output.eq10:output_FL "${cur_target_name}:playback_FL" 2>/dev/null || true
+            pw-link -d effect_output.eq10:output_FR "${cur_target_name}:playback_FR" 2>/dev/null || true
+        fi
+        pw-link effect_output.eq10:output_FL "${ext_name}:playback_FL" 2>/dev/null || true
+        pw-link effect_output.eq10:output_FR "${ext_name}:playback_FR" 2>/dev/null || true
+        notify-send -a "Audio" -t 1500 -u low "$ext_desc" 2>/dev/null || true
+    else
+        switch_to_profile 2 "Speaker" "Laptop Speaker"
     fi
-    pw-link effect_output.eq10:output_FL "${ext_name}:playback_FL" 2>/dev/null || true
-    pw-link effect_output.eq10:output_FR "${ext_name}:playback_FR" 2>/dev/null || true
-    notify-send -a "Audio" -t 1500 -u low "$ext_desc" 2>/dev/null || true
 else
-    switch_to_profile 2 "Speaker" "Laptop Speaker"
+    # No external Bluetooth/USB: cycle between Speaker and Headphones (if connected or manual toggle)
+    if [[ "$cur_target_name" == *"Headphone"* ]]; then
+        switch_to_profile 2 "Speaker" "Laptop Speaker"
+    else
+        switch_to_profile 1 "Headphones" "Headphones"
+    fi
 fi

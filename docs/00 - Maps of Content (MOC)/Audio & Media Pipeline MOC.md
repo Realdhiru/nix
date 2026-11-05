@@ -22,6 +22,11 @@ Low-latency audio routing, DSP equalization, and media player telemetry.
    - In-tree C DSP biquad filter chain ($Q = 1.414$).
    - Sub-millisecond gain adjustments via direct `pw-cli` calls.
 
+3. [[Audio Engineering & DSP Architecture]]
+   - Master technical reference covering all audio engineering decisions.
+   - Comprehensive root-cause breakdowns, fixes, and acoustic preset engineering (Bass, Karaoke, Vocal).
+   - Dynamic device detection, uncompressed spectral karaoke, and zero-leak buffer draining.
+
 3. [[MPV MPRIS Pipeline]]
    - Declarative C plugin compilation for MPV media playback tracking.
    - Preventing garbage collection deletion of store plugins via declarative Home Manager symlinks.
