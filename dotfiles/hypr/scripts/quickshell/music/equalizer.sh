@@ -65,8 +65,8 @@ case $cmd in
     apply_eq
     CUR_PRESET=$(jq -r '.preset // "Off"' "$STATE_FILE" 2>/dev/null || echo "Off")
     case "$CUR_PRESET" in
-        "Karaoke"*) "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" on 2>/dev/null || true ;;
-        *)          "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" off 2>/dev/null || true ;;
+        "Karaoke"*) "$(dirname "${BASH_SOURCE[0]}")/karaoke.sh" on 2>/dev/null || true ;;
+        *)          "$(dirname "${BASH_SOURCE[0]}")/karaoke.sh" off 2>/dev/null || true ;;
     esac
     ;;
 "get")
@@ -85,13 +85,13 @@ case $cmd in
     if [ -n "$EQ_NODE_ID" ]; then
         pw-cli s "$EQ_NODE_ID" Props "{ \"params\": [ \"eq_band_${arg1}_l:Gain\", $arg2, \"eq_band_${arg1}_r:Gain\", $arg2 ] }" >/dev/null 2>&1
     fi
-    "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" off 2>/dev/null || true
+    "$(dirname "${BASH_SOURCE[0]}")/karaoke.sh" off 2>/dev/null || true
     ;;
 "apply")
     tmp=$(cat "$STATE_FILE" 2>/dev/null)
     [ -n "$tmp" ] && echo "$tmp" | jq -c ".pending = false" > "$STATE_FILE"
     apply_eq
-    "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" off 2>/dev/null || true
+    "$(dirname "${BASH_SOURCE[0]}")/karaoke.sh" off 2>/dev/null || true
     ;;
 "preset")
     case $arg1 in
@@ -107,8 +107,8 @@ case $cmd in
     esac
     apply_eq
     case "$arg1" in
-        "Karaoke") "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" on --no-eq 2>/dev/null || true ;;
-        *)         "$(dirname "${BASH_SOURCE[0]}")/../../karaoke.sh" off --no-eq 2>/dev/null || true ;;
+        "Karaoke") "$(dirname "${BASH_SOURCE[0]}")/karaoke.sh" on --no-eq 2>/dev/null || true ;;
+        *)         "$(dirname "${BASH_SOURCE[0]}")/karaoke.sh" off --no-eq 2>/dev/null || true ;;
     esac
     ;;
 esac

@@ -238,6 +238,9 @@
           actions = {
             update-props = {
               "session.dont-restore-off-profile" = true
+              "bluez5.auto-connect" = [ "a2dp_sink" ]
+              "bluez5.hw-volume" = [ "a2dp_sink" ]
+              "device.routes.default-sink-volume" = 1.0
             }
           }
         }
@@ -369,6 +372,7 @@
       wireplumber.settings = {
         "linking.allow-moving-streams" = true
         "linking.follow-default-target" = true
+        "device.restore-profile" = false
         "bluetooth.autoswitch-to-headset-profile" = false
         "bluetooth.profile-preference" = "quality"
         "bluetooth.use-persistent-storage" = false
