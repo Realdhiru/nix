@@ -494,6 +494,13 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
   - *Ribbon Snapping on Layer Shell / Sidebar Clicks:* Clicking on the Quickshell left sidebar or toggling side panels shifts focus to/from layer shell surfaces. With `follow_focus = 1` or forced position clamping in `sync_workspace_layout()`, Hyprland and Lua layout normalization forcibly re-snapped the continuous ribbon back to `left_margin`, destroying kinetic scroll position. Setting `follow_focus = 0` and preserving scrolled coordinates ensures the continuous ribbon remains strictly where the user positioned it.
   - *Erratic Mouse Focus Warping:* Default Hyprland cursor warping (`cursor:no_warps = false`) jumps the mouse pointer when compositor focus transitions across tiled columns or secondary widgets. Setting `cursor.no_warps = true` keeps the cursor stationary and predictable during focus switches and layout adjustments.
 
+### ADR-077: Scrolling Layout Isolation & Dwindle Parity Guards
+- **Decision:** In [`scrolling.lua`](file:///home/realdhiru/nix/dotfiles/hypr/scrolling.lua), centralize layout detection in `is_scrolling_layout(ws_id)` and guard all layout-specific dispatches (`inhibit_scroll`, `colresize`, and `move +/-col` across lifecycle hooks, window resize, ribbon scrolling, and workspace sync) so that scrolling layout dispatches only execute when the active workspace's layout is explicitly `"scrolling"`. Non-scrolling layouts (e.g. `dwindle`) fall back natively to standard compositor window resizing (`hl.dsp.window.resize`).
+- **Rationale:** 
+  - *Hyprland C++ Dispatcher Error Escalation:* In Hyprland's Lua plugin architecture, `hl.dispatch(hl.dsp.layout(...))` delegates to the compositor's active layout engine. When Hyprland is in `dwindle` mode (or any non-scrolling layout), unrecognized layout commands (such as `inhibit_scroll false` or `colresize`) trigger an uncatchable C++ runtime error (`=[C]:-1: Unknown dwindle layoutmsg...`) that bypasses Lua's `pcall` and manifests as an intrusive yellow compositor notification banner on every window or workspace event (`window.open`, `window.close`, `window.active`, `workspace.active`).
+  - *Layout Parity Invariant:* Proactively checking `is_scrolling_layout(ws_id)` before emitting any scrolling layout message prevents invalid layout dispatch attempts at the root, completely eliminating runtime errors while allowing tandem resizing keybindings and mouse wheel actions to gracefully fall back to native window resizing in Dwindle mode.
+
+
 
 
 

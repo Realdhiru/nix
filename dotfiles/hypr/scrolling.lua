@@ -91,27 +91,29 @@ local function is_any_window_fullscreen(ws_id)
     return false
 end
 
+local function is_scrolling_layout(ws_id)
+    local target_ws = ws_id or get_current_workspace_id()
+    if target_ws then
+        local ws = hl.get_workspace(target_ws)
+        if ws and ws.tiled_layout and ws.tiled_layout ~= "" then
+            return ws.tiled_layout == "scrolling"
+        end
+        for _, w in ipairs(hl.get_workspaces()) do
+            if w.id == target_ws and w.tiled_layout and w.tiled_layout ~= "" then
+                return w.tiled_layout == "scrolling"
+            end
+        end
+    end
+    local gen = hl.get_config("general:layout")
+    return gen == "scrolling"
+end
+
 -- 3. Space-Filling Scaling & Boundary Normalization
 -- Prevents windows from collapsing into slivers and prevents Hyprland from centering columns
 local function sync_workspace_layout(ws_id, exclude_addr)
     if is_syncing then return end
     local target_ws_id = ws_id or get_current_workspace_id()
-    if not target_ws_id or is_any_window_fullscreen(target_ws_id) then return end
-
-    local is_scrolling = false
-    for _, ws in ipairs(hl.get_workspaces()) do
-        if ws.id == target_ws_id then
-            is_scrolling = (ws.tiled_layout == "scrolling")
-            break
-        end
-    end
-    if not is_scrolling then
-        local active_ws = hl.get_active_workspace()
-        if active_ws and active_ws.id == target_ws_id and active_ws.tiled_layout == "scrolling" then
-            is_scrolling = true
-        end
-    end
-    if not is_scrolling then return end
+    if not target_ws_id or not is_scrolling_layout(target_ws_id) or is_any_window_fullscreen(target_ws_id) then return end
 
     local wins = get_tiled_windows_on_workspace(target_ws_id, exclude_addr)
     local count = #wins
@@ -200,6 +202,11 @@ local function smart_resize(dx, dy)
         return
     end
 
+    if not is_scrolling_layout(ws_id) then
+        hl.dispatch(hl.dsp.window.resize({ x = dx, y = dy, relative = true }))
+        return
+    end
+
     local wins = get_tiled_windows_on_workspace(ws_id)
     if #wins <= 1 then
         local delta_frac = (dx > 0) and 0.04 or -0.04
@@ -249,7 +256,7 @@ end
 -- 5. Bounded Ribbon Navigation (Mouse Wheel)
 local function scroll_ribbon_left()
     local ws_id = get_current_workspace_id()
-    if not ws_id or is_any_window_fullscreen(ws_id) then return end
+    if not ws_id or not is_scrolling_layout(ws_id) or is_any_window_fullscreen(ws_id) then return end
     local wins = get_tiled_windows_on_workspace(ws_id)
     if #wins <= 1 then return end
 
@@ -275,7 +282,7 @@ end
 
 local function scroll_ribbon_right()
     local ws_id = get_current_workspace_id()
-    if not ws_id or is_any_window_fullscreen(ws_id) then return end
+    if not ws_id or not is_scrolling_layout(ws_id) or is_any_window_fullscreen(ws_id) then return end
     local wins = get_tiled_windows_on_workspace(ws_id)
     if #wins <= 1 then return end
 
@@ -337,6 +344,17 @@ hl.bind(mainMod .. " + ALT + mouse_up", scroll_ribbon_left, { description = "scr
 local is_gesture_disabled = false
 
 local function sync_fullscreen_inhibit(target_win)
+    local ws_id = get_current_workspace_id()
+    if not ws_id or not is_scrolling_layout(ws_id) then
+        if is_gesture_disabled then
+            pcall(function()
+                hl.gesture({ fingers = 3, direction = "horizontal", action = "scroll_move" })
+            end)
+            is_gesture_disabled = false
+        end
+        return
+    end
+
     local win = hl.get_active_window()
     local is_fs = (win and win.fullscreen and win.fullscreen ~= 0)
 
@@ -345,8 +363,7 @@ local function sync_fullscreen_inhibit(target_win)
     end
 
     if not is_fs then
-        local ws_id = get_current_workspace_id()
-        if ws_id and is_any_window_fullscreen(ws_id) then
+        if is_any_window_fullscreen(ws_id) then
             is_fs = true
         end
     end
