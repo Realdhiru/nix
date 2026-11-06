@@ -1,4 +1,4 @@
-{ lib, pkgs, user ? {}, ... }:
+{ lib, pkgs, ... }:
 {
   # Generic sysctl kernel writeback (safe for all machines)
   boot.kernel.sysctl = {
@@ -51,8 +51,7 @@
       AHCI_RUNTIME_PM_ON_BAT       = "auto";
       AHCI_RUNTIME_PM_TIMEOUT      = 15;
 
-      # Disable kernel NMI watchdog on battery to eliminate timer interrupts across all 12 cores,
-      # allowing CPU package to enter deep C8/C10 sleep states
+      # Disable the kernel NMI watchdog system-wide; TLP has no per-profile NMI setting.
       NMI_WATCHDOG = 0;
 
       # Sched powersave packs low-load tasks onto fewer cores so idle cores stay asleep
@@ -60,13 +59,12 @@
 
       # Intel Iris Xe GPU Dynamic Frequency (downclocks when idle, full 1.45GHz burst on demand)
       INTEL_GPU_MIN_FREQ_ON_BAT   = 100;
+      INTEL_GPU_MAX_FREQ_ON_BAT   = 1450;
       INTEL_GPU_BOOST_FREQ_ON_BAT = 1450;
 
-      # Enable USB autosuspend on battery, while denylist protects user-specified peripherals
-      USB_AUTOSUSPEND = 1;
-      USB_AUTOSUSPEND_DISABLE_ON_AC = 1;
-      USB_EXCLUDE_BTUSB = 1;
-      USB_DENYLIST = user.usbDenylist or "";
+      # boot.kernelParams keeps USB autosuspend disabled globally for the webcam;
+      # keep TLP aligned so it does not re-enable autosuspend on battery.
+      USB_AUTOSUSPEND = 0;
 
       # Wi-Fi Power Save
       WIFI_PWR_ON_AC  = "off";

@@ -587,7 +587,7 @@ FocusScope {
             }
             if (window.hasPendingOrganize) {
                 window.hasPendingOrganize = false;
-                Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; python3 ~/Pictures/Wallpapers/scripts/auto_organize.py"]);
+                Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; if command -v python3 >/dev/null 2>&1 && [ -f \"$HOME/Pictures/Wallpapers/scripts/auto_organize.py\" ]; then python3 \"$HOME/Pictures/Wallpapers/scripts/auto_organize.py\"; fi"]);
             } else {
                 Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
             }
@@ -892,7 +892,11 @@ FocusScope {
                 # 2. Also remove if auto_organize.py already moved it to a subfolder
                 for cat_file in "$SRC_DIR"/*/"$FILE_NAME"; do
                     if [ -f "$cat_file" ]; then
-                        python3 "$SRC_DIR/scripts/auto_organize.py" --delete "$cat_file" 2>/dev/null || gio trash "$cat_file" 2>/dev/null || rm -f "$cat_file"
+                        if command -v python3 >/dev/null 2>&1 && [ -f "$SRC_DIR/scripts/auto_organize.py" ]; then
+                            python3 "$SRC_DIR/scripts/auto_organize.py" --delete "$cat_file" 2>/dev/null || gio trash "$cat_file" 2>/dev/null || rm -f "$cat_file"
+                        else
+                            gio trash "$cat_file" 2>/dev/null || rm -f "$cat_file"
+                        fi
                     fi
                 done
 
@@ -941,7 +945,11 @@ FocusScope {
             fi
 
             if [ -n "$REAL_PATH" ] && [ -f "$REAL_PATH" ]; then
-                python3 "$HOME/Pictures/Wallpapers/scripts/auto_organize.py" --delete "$REAL_PATH" || gio trash "$REAL_PATH" 2>/dev/null || rm -f "$REAL_PATH"
+                if command -v python3 >/dev/null 2>&1 && [ -f "$HOME/Pictures/Wallpapers/scripts/auto_organize.py" ]; then
+                    python3 "$HOME/Pictures/Wallpapers/scripts/auto_organize.py" --delete "$REAL_PATH" || gio trash "$REAL_PATH" 2>/dev/null || rm -f "$REAL_PATH"
+                else
+                    gio trash "$REAL_PATH" 2>/dev/null || rm -f "$REAL_PATH"
+                fi
             fi
 
             rm -f "$FLAT_PATH"
@@ -1565,8 +1573,8 @@ FocusScope {
     ListModel { id: searchProxyModel }
     readonly property var activeModel: window.getModelForFilter(window.currentFilter)
 
-    readonly property string filterStateFile: Quickshell.env("HOME") + "/.local/state/desktop/wallpaper/picker_filter.txt"
-    readonly property string stateJsonFile: Quickshell.env("HOME") + "/.local/state/desktop/quickshell/state.json"
+    readonly property string filterStateFile: Caching.wallpaperStateDir + "/picker_filter.txt"
+    readonly property string stateJsonFile: Caching.stateJsonFile
 
     FileView {
         id: stateJsonView
@@ -2716,7 +2724,7 @@ FocusScope {
 
     Component.onDestruction: {
         if (window.hasPendingOrganize) {
-            Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; python3 ~/Pictures/Wallpapers/scripts/auto_organize.py &"]);
+            Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; if command -v python3 >/dev/null 2>&1 && [ -f \"$HOME/Pictures/Wallpapers/scripts/auto_organize.py\" ]; then python3 \"$HOME/Pictures/Wallpapers/scripts/auto_organize.py\" & fi"]);
         } else {
             Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
         }

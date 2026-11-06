@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-11-07 — Power, Display State, and Configuration Ownership
+
+- **Power Policy and Diagnostics**: Kept TLP as the sole hardware profile writer, made its Intel GPU battery limit explicit, aligned its USB autosuspend setting with the retained webcam stability workaround, and documented the locked Balanced profile and system-wide NMI watchdog setting.
+- **Monitor and Desktop State**: Unified monitor layout and power-refresh writes under `$DESKTOP_STATE_DIR/monitors/intent.json`, select refresh from Hyprland's available modes, and moved QuickShell state readers to canonical state paths.
+- **Lower Background Work and Clear Ownership**: Reduced FocusTime JSON writes to app changes or 15-second intervals while retaining one-second accounting, changed battery audit sampling to 60 seconds with timestamp-based totals, gated CAVA by visible TopBar playback, and moved PipeWire/WirePlumber declarations to `modules/home/audio.nix`.
+- **Rebuild Safety and Validation**: Removed staging/commit behavior from `rebuild`, added guarded external wallpaper organizer calls to the language guard, and clarified that those calls remain a user decision. Flake checks and the dry build pass; switching is pending because this session cannot use `sudo`.
+
 ## 2026-11-07 — Scrolling Layout Isolation & Dwindle Parity Guards
 
 - **Scrolling Layout Dispatch Isolation & Dwindle Parity ([`scrolling.lua`](file:///home/realdhiru/nix/dotfiles/hypr/scrolling.lua), [`system.md`](file:///home/realdhiru/nix/docs/system.md), [`decisions.md`](file:///home/realdhiru/nix/docs/decisions.md))**: Eliminated the recurring yellow Hyprland runtime error banner `=[C]:-1: Unknown dwindle layoutmsg: inhibit_scroll false` by introducing `is_scrolling_layout(ws_id)` to guard all scrolling-specific layout dispatches (`inhibit_scroll`, `colresize`, and `move +/-col`) across lifecycle events, fullscreen inhibit, ribbon scrolling, and smart resizing, gracefully falling back to native compositor resizing in Dwindle layout mode.

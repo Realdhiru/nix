@@ -21,13 +21,30 @@
   xdg.configFile."environment.d/desktop_state.conf".text =
     "DESKTOP_STATE_DIR=${config.desktop.stateDir}\n";
 
-  # Host-specific declarative monitor override (Samsung 2.8K OLED panel)
-  # Dynamic refresh-rate-by-power-source: derives target resolution and available
-  # refresh rates directly from the panel's hardware EDID detailed timings (no hardcoded rates).
-  # 60Hz on battery / 120Hz on AC enforced declaratively across startup, hotplug, and compositor reloads.
+  # Host-specific refresh policy for the Samsung panel. Available modes come
+  # from Hyprland; monitors/intent.json remains the authority for layout,
+  # resolution, scale, transform, and placement.
   xdg.configFile."hypr-local/monitors.lua" = {
     force = true;
     text = ''
+      local hyprctl = "${pkgs.hyprland}/bin/hyprctl"
+      local jq = "${pkgs.jq}/bin/jq"
+      local flock = "${pkgs.util-linux}/bin/flock"
+      local output_name = "eDP-1"
+      local output_desc = "Samsung Display Corp. 0x4180"
+      local display_key = "desc:" .. output_desc
+      local desktop_state = os.getenv("DESKTOP_STATE_DIR") or ((os.getenv("XDG_STATE_HOME") or (os.getenv("HOME") .. "/.local/state")) .. "/desktop")
+      local monitors_dir = desktop_state .. "/monitors"
+      local intent_file = monitors_dir .. "/intent.json"
+      local lock_file = intent_file .. ".lock"
+      local tmp_file = intent_file .. ".tmp"
+
+      local function shell_quote(value)
+          local quote = string.char(39)
+          local replacement = quote .. string.char(92) .. quote .. quote
+          return quote .. tostring(value):gsub(quote, replacement) .. quote
+      end
+
       local function is_ac_online()
           for _, path in ipairs({
               "/sys/class/power_supply/AC0/online",
@@ -39,88 +56,106 @@
               if f then
                   local v = f:read("*l")
                   f:close()
-                  if v and v:match("1") then return true end
+                  if v == "1" then return true end
               end
           end
           return false
       end
 
-      local function get_edid_modes(edid_bytes)
+      local function read_intent()
+          local query = string.format(
+              "%s -r --arg key %s --arg name %s '[(.layout // \"extend\"), (.displays[$key].mode // .displays[$name].mode // \"\"), (.displays[$key].scale // .displays[$name].scale // \"\"), (.displays[$key].transform // .displays[$name].transform // \"\")] | @tsv' %s 2>/dev/null",
+              shell_quote(jq), shell_quote(display_key), shell_quote(output_name), shell_quote(intent_file)
+          )
+          local pipe = io.popen(query, "r")
+          if not pipe then return "extend", "", "", "" end
+          local line = pipe:read("*l") or ""
+          pipe:close()
+          local layout, mode, scale, transform = line:match("([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)")
+          return layout or "extend", mode or "", scale or "", transform or ""
+      end
+
+      local function get_available_modes()
+          local command = string.format(
+              "%s monitors all -j 2>/dev/null | %s -r '.[] | select(.name == \"%s\" or .description == \"%s\") | .availableModes[]?'",
+              shell_quote(hyprctl), shell_quote(jq), output_name, output_desc
+          )
+          local pipe = io.popen(command, "r")
+          if not pipe then return {} end
           local modes = {}
-          if not edid_bytes or #edid_bytes < 128 then return modes end
-          for _, offset in ipairs({54, 72, 90, 108}) do
-              local b1 = string.byte(edid_bytes, offset + 1)
-              local b2 = string.byte(edid_bytes, offset + 2)
-              if b1 and b2 and (b1 ~= 0 or b2 ~= 0) then
-                  local pix_clk = (b1 + b2 * 256) * 10000
-                  local b3 = string.byte(edid_bytes, offset + 3)
-                  local b4 = string.byte(edid_bytes, offset + 4)
-                  local b5 = string.byte(edid_bytes, offset + 5)
-                  local b6 = string.byte(edid_bytes, offset + 6)
-                  local b7 = string.byte(edid_bytes, offset + 7)
-                  local b8 = string.byte(edid_bytes, offset + 8)
-
-                  local h_act = b3 + (math.floor(b5 / 16) * 256)
-                  local h_blank = b4 + ((b5 % 16) * 256)
-                  local v_act = b6 + (math.floor(b8 / 16) * 256)
-                  local v_blank = b7 + ((b8 % 16) * 256)
-
-                  local h_total = h_act + h_blank
-                  local v_total = v_act + v_blank
-                  if h_total > 0 and v_total > 0 then
-                      local rr = pix_clk / (h_total * v_total)
-                      table.insert(modes, { width = h_act, height = v_act, rr = rr })
-                  end
+          for line in pipe:lines() do
+              local w, h, rate = line:match("^(%d+)x(%d+)@([%d%.]+)Hz$")
+              if w and h and rate then
+                  table.insert(modes, { width = tonumber(w), height = tonumber(h), rate = tonumber(rate) })
               end
           end
+          pipe:close()
           return modes
       end
 
-      local function resolve_mode()
-          local edid_paths = {
-              "/sys/class/drm/card1-eDP-1/edid",
-              "/sys/class/drm/card0-eDP-1/edid",
-          }
-          local modes = {}
-          for _, path in ipairs(edid_paths) do
-              local f = io.open(path, "rb")
-              if f then
-                  local content = f:read("*a")
-                  f:close()
-                  modes = get_edid_modes(content)
-                  if #modes > 0 then break end
+      local function parse_mode(mode)
+          if not mode or mode == "" then return nil, nil end
+          local w, h = mode:match("^(%d+)x(%d+)@")
+          return tonumber(w), tonumber(h)
+      end
+
+      local function choose_mode(modes, width, height, target_rate)
+          local chosen, fallback
+          for _, mode in ipairs(modes) do
+              if mode.width == width and mode.height == height then
+                  if not fallback or mode.rate < fallback.rate then fallback = mode end
+                  if mode.rate <= target_rate and (not chosen or mode.rate > chosen.rate) then
+                      chosen = mode
+                  end
               end
           end
-
-          if #modes == 0 then
-              return "preferred"
-          end
-
-          local max_mode = modes[1]
-          local min_mode = modes[1]
-          for _, m in ipairs(modes) do
-              if m.rr > max_mode.rr then max_mode = m end
-              if m.rr < min_mode.rr then min_mode = m end
-          end
-
-          local chosen = is_ac_online() and max_mode or min_mode
-          return string.format("%dx%d@%d", chosen.width, chosen.height, math.floor(chosen.rr + 0.5))
+          chosen = chosen or fallback
+          if not chosen then return nil end
+          return string.format("%dx%d@%d", chosen.width, chosen.height, math.floor(chosen.rate + 0.5))
       end
 
-      local target_mode = resolve_mode()
-      local function get_transform()
-          local state_dir = os.getenv("DESKTOP_STATE_DIR") or ((os.getenv("XDG_STATE_HOME") or (os.getenv("HOME") .. "/.local/state")) .. "/desktop")
-          local f = io.open(state_dir .. "/monitors/transform.txt", "r")
-          if f then
-              local t = f:read("*l")
-              f:close()
-              return tonumber(t) or 0
-          end
-          return 0
+      local layout, saved_mode, saved_scale, saved_transform = read_intent()
+      local active_output
+      for _, monitor in ipairs(hl.get_monitors()) do
+          if monitor.name == output_name then active_output = monitor end
       end
-      local t = get_transform()
-      hl.monitor({ output = "desc:Samsung Display Corp. 0x4180", mode = target_mode, position = "0x0", scale = 2, bitdepth = 10, transform = t })
-      hl.monitor({ output = "eDP-1", mode = target_mode, position = "0x0", scale = 2, bitdepth = 10, transform = t })
+
+      local modes = get_available_modes()
+      if #modes == 0 then return end
+
+      local width, height = parse_mode(saved_mode)
+      if not width and active_output then
+          width, height = tonumber(active_output.width), tonumber(active_output.height)
+      end
+      if not width then
+          local largest
+          for _, mode in ipairs(modes) do
+              if not largest or mode.width * mode.height > largest.width * largest.height then largest = mode end
+          end
+          if largest then width, height = largest.width, largest.height end
+      end
+      if not width or not height then return end
+
+      local target_rate = is_ac_online() and 120 or 60
+      local target_mode = choose_mode(modes, width, height, target_rate)
+      if not target_mode then return end
+
+      local scale = tonumber(saved_scale) or (active_output and tonumber(active_output.scale)) or 2
+      local transform = tonumber(saved_transform) or (active_output and tonumber(active_output.transform)) or 0
+      local jq_filter = '.layout = (.layout // "extend") | .displays = (.displays // {}) | ($key) as $k | .displays[$k] = ((.displays[$k] // {scale: $scale, transform: $transform}) + {name: $name, description: $description, mode: $mode})'
+      local write_command = string.format(
+          "mkdir -p %s && (%s 9; [ -s %s ] || %s -n '{layout:\"extend\",displays:{}}' > %s; %s --arg key %s --arg name %s --arg description %s --arg mode %s --argjson scale %s --argjson transform %s '%s' %s > %s && mv -f %s %s) 9>%s",
+          shell_quote(monitors_dir), shell_quote(flock), shell_quote(intent_file), shell_quote(jq), shell_quote(intent_file),
+          shell_quote(jq), shell_quote(display_key), shell_quote(output_name), shell_quote(output_desc), shell_quote(target_mode), tostring(scale), tostring(transform),
+          jq_filter, shell_quote(intent_file), shell_quote(tmp_file), shell_quote(tmp_file), shell_quote(intent_file), shell_quote(lock_file)
+      )
+      os.execute(write_command)
+
+      -- get_monitors() contains active outputs only, so a disabled internal panel
+      -- stays disabled while an external-only layout is selected.
+      if active_output then
+          hl.monitor({ output = output_name, mode = target_mode, scale = scale, transform = transform })
+      end
     '';
   };
 
@@ -224,177 +259,6 @@
     '';
   };
 
-  # WirePlumber: Prioritize external audio devices (Bluetooth, USB DAC/headsets, Headphones) over internal speaker
-  xdg.configFile."wireplumber/wireplumber.conf.d/51-device-autoswitch.conf" = {
-    force = true;
-    text = ''
-      monitor.bluez.rules = [
-        {
-          matches = [
-            {
-              device.name = "~bluez_card.*"
-            }
-          ]
-          actions = {
-            update-props = {
-              "session.dont-restore-off-profile" = true
-              "bluez5.auto-connect" = [ "a2dp_sink" ]
-              "bluez5.hw-volume" = [ "a2dp_sink" ]
-              "device.routes.default-sink-volume" = 1.0
-            }
-          }
-        }
-        {
-          matches = [
-            {
-              node.name = "~bluez_output.*"
-            }
-          ]
-          actions = {
-            update-props = {
-              priority.session = 2150
-              priority.driver = 2150
-            }
-          }
-        }
-        {
-          matches = [
-            {
-              node.name = "~bluez_input.*"
-            }
-          ]
-          actions = {
-            update-props = {
-              priority.session = 2000
-              priority.driver = 2000
-            }
-          }
-        }
-      ]
-
-      monitor.alsa.rules = [
-        {
-          matches = [
-            {
-              device.name = "~alsa_card.*"
-            }
-          ]
-          actions = {
-            update-props = {
-              "session.dont-restore-off-profile" = true
-              "api.acp.auto-profile" = true
-              "api.acp.auto-port" = true
-            }
-          }
-        }
-        {
-          matches = [
-            {
-              node.name = "~alsa_output.*usb.*"
-            }
-          ]
-          actions = {
-            update-props = {
-              priority.session = 2150
-              priority.driver = 2150
-            }
-          }
-        }
-        {
-          matches = [
-            {
-              node.name = "~alsa_output.*Headphones.*"
-            }
-          ]
-          actions = {
-            update-props = {
-              priority.session = 2150
-              priority.driver = 2150
-            }
-          }
-        }
-        {
-          matches = [
-            {
-              node.name = "~alsa_output.*headset.*"
-            }
-          ]
-          actions = {
-            update-props = {
-              priority.session = 2150
-              priority.driver = 2150
-            }
-          }
-        }
-        {
-          matches = [
-            {
-              node.name = "~alsa_output.*Speaker.*"
-            }
-          ]
-          actions = {
-            update-props = {
-              priority.session = 1000
-              priority.driver = 1000
-              "node.drain-on-empty" = false
-              "session.suspend-timeout-seconds" = 0
-            }
-          }
-        }
-        {
-          matches = [
-            {
-              node.name = "~alsa_output.*HDMI.*"
-            }
-          ]
-          actions = {
-            update-props = {
-              priority.session = 500
-              priority.driver = 500
-            }
-          }
-        }
-        {
-          matches = [
-            {
-              node.name = "~alsa_output.*"
-            }
-          ]
-          actions = {
-            update-props = {
-              "api.alsa.disable-mmap" = true
-              "api.alsa.headroom" = 1024
-            }
-          }
-        }
-      ]
-
-      wireplumber.settings = {
-        "linking.allow-moving-streams" = true
-        "linking.follow-default-target" = true
-        "device.restore-profile" = false
-        "bluetooth.autoswitch-to-headset-profile" = false
-        "bluetooth.profile-preference" = "quality"
-        "bluetooth.use-persistent-storage" = false
-        "device.routes.mute-on-bluetooth-playback-removed" = false
-        "device.routes.mute-on-alsa-playback-removed" = false
-        "device.routes.default-sink-volume" = 1.0
-        "session.suspend-timeout-seconds" = 0
-      }
-    '';
-  };
-
-  # PipeWire: Quantum bounds to eliminate buffer underruns on Intel SOF DSP
-  xdg.configFile."pipewire/pipewire.conf.d/10-quantum.conf" = {
-    force = true;
-    text = ''
-      context.properties = {
-          default.clock.min-quantum = 512
-          default.clock.max-quantum = 2048
-          default.clock.quantum = 1024
-      }
-    '';
-  };
 
   # PCManFM-Qt: file-based config (app reads/writes this INI directly, no
   # other mechanism), so the few mixed settings live inline here.
@@ -413,164 +277,6 @@
     '';
   };
 
-  # Native Unified 10-band Equalizer and Mid-Side Karaoke filter-chain for PipeWire
-  xdg.configFile."pipewire/pipewire.conf.d/99-equalizer-sink.conf".text = ''
-    context.modules = [
-      { name = libpipewire-module-filter-chain
-        args = {
-          node.description = "PipeWire Equalizer"
-          media.name       = "PipeWire Equalizer"
-          filter.graph = {
-            nodes = [
-              { type = builtin label = copy name = inL }
-              { type = builtin label = copy name = inR }
-
-              # Dry path delay compensation to match spectral karaoke (1024 samples = 21.33ms)
-              { type = builtin label = delay name = delayL
-                config = { "max-delay" = 0.1 }
-                control = { "Delay (s)" = 0.021333 } }
-              { type = builtin label = delay name = delayR
-                config = { "max-delay" = 0.1 }
-                control = { "Delay (s)" = 0.021333 } }
-
-              # Native C Spectral Per-Bin Karaoke LADSPA Plugin
-              { type = ladspa
-                name = spectral_karaoke
-                plugin = "${pkgs.ladspa-spectral-karaoke}/lib/ladspa/spectral_karaoke.so"
-                label = spectral_karaoke
-                control = {
-                  "Depth"                = 0.96
-                  "Low Cutoff (Hz)"      = 200.0
-                  "Air Depth"            = 0.10
-                  "Transient Protection" = 0.0
-                  "Release (ms)"         = 60.0
-                  "Reverb Duck (dB)"     = 0.0
-                }
-              }
-
-              # Fast Lookahead Limiter (Steve Harris SWH LADSPA 1913) - Master Output Speaker Protection
-              { type = ladspa
-                name = limiter
-                plugin = "${pkgs.ladspaPlugins}/lib/ladspa/fast_lookahead_limiter_1913.so"
-                label = fastLookaheadLimiter
-                control = {
-                  "Input gain (dB)"  = 0.0
-                  "Limit (dB)"       = -0.2
-                  "Release time (s)" = 0.10
-                }
-              }
-
-              # Mode selector mixers: In 1 = dry, In 2 = wet karaoke
-              { type = builtin label = mixer name = finalL control = { "Gain 1" = 1.0 "Gain 2" = 0.0 } }
-              { type = builtin label = mixer name = finalR control = { "Gain 1" = 1.0 "Gain 2" = 0.0 } }
-
-              # 10-Band Equalizer stages (Stereo left & right)
-              { type = builtin name = eq_band_1_l  label = bq_peaking control = { "Freq" = 31.0   "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_2_l  label = bq_peaking control = { "Freq" = 63.0   "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_3_l  label = bq_peaking control = { "Freq" = 125.0  "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_4_l  label = bq_peaking control = { "Freq" = 250.0  "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_5_l  label = bq_peaking control = { "Freq" = 500.0  "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_6_l  label = bq_peaking control = { "Freq" = 1000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_7_l  label = bq_peaking control = { "Freq" = 2000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_8_l  label = bq_peaking control = { "Freq" = 4000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_9_l  label = bq_peaking control = { "Freq" = 8000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_10_l label = bq_peaking control = { "Freq" = 16000.0 "Q" = 1.414 "Gain" = 0.0 } }
-
-              { type = builtin name = eq_band_1_r  label = bq_peaking control = { "Freq" = 31.0   "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_2_r  label = bq_peaking control = { "Freq" = 63.0   "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_3_r  label = bq_peaking control = { "Freq" = 125.0  "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_4_r  label = bq_peaking control = { "Freq" = 250.0  "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_5_r  label = bq_peaking control = { "Freq" = 500.0  "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_6_r  label = bq_peaking control = { "Freq" = 1000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_7_r  label = bq_peaking control = { "Freq" = 2000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_8_r  label = bq_peaking control = { "Freq" = 4000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_9_r  label = bq_peaking control = { "Freq" = 8000.0 "Q" = 1.414 "Gain" = 0.0 } }
-              { type = builtin name = eq_band_10_r label = bq_peaking control = { "Freq" = 16000.0 "Q" = 1.414 "Gain" = 0.0 } }
-            ]
-            links = [
-              # Dry path to delay
-              { output = "inL:Out" input = "delayL:In" }
-              { output = "inR:Out" input = "delayR:In" }
-
-              # Wet path through Spectral Karaoke plugin
-              { output = "inL:Out" input = "spectral_karaoke:Input L" }
-              { output = "inR:Out" input = "spectral_karaoke:Input R" }
-
-              # Selectors: In 1 = delayed dry, In 2 = wet karaoke
-              { output = "delayL:Out"                input = "finalL:In 1" }
-              { output = "spectral_karaoke:Output L" input = "finalL:In 2" }
-              { output = "delayR:Out"                input = "finalR:In 1" }
-              { output = "spectral_karaoke:Output R" input = "finalR:In 2" }
-
-              # Left Equalizer Chain
-              { output = "finalL:Out"        input = "eq_band_1_l:In" }
-              { output = "eq_band_1_l:Out"   input = "eq_band_2_l:In" }
-              { output = "eq_band_2_l:Out"   input = "eq_band_3_l:In" }
-              { output = "eq_band_3_l:Out"   input = "eq_band_4_l:In" }
-              { output = "eq_band_4_l:Out"   input = "eq_band_5_l:In" }
-              { output = "eq_band_5_l:Out"   input = "eq_band_6_l:In" }
-              { output = "eq_band_6_l:Out"   input = "eq_band_7_l:In" }
-              { output = "eq_band_7_l:Out"   input = "eq_band_8_l:In" }
-              { output = "eq_band_8_l:Out"   input = "eq_band_9_l:In" }
-              { output = "eq_band_9_l:Out"   input = "eq_band_10_l:In" }
-              { output = "eq_band_10_l:Out"  input = "limiter:Input 1" }
-
-              # Right Equalizer Chain
-              { output = "finalR:Out"        input = "eq_band_1_r:In" }
-              { output = "eq_band_1_r:Out"   input = "eq_band_2_r:In" }
-              { output = "eq_band_2_r:Out"   input = "eq_band_3_r:In" }
-              { output = "eq_band_3_r:Out"   input = "eq_band_4_r:In" }
-              { output = "eq_band_4_r:Out"   input = "eq_band_5_r:In" }
-              { output = "eq_band_5_r:Out"   input = "eq_band_6_r:In" }
-              { output = "eq_band_6_r:Out"   input = "eq_band_7_r:In" }
-              { output = "eq_band_7_r:Out"   input = "eq_band_8_r:In" }
-              { output = "eq_band_8_r:Out"   input = "eq_band_9_r:In" }
-              { output = "eq_band_9_r:Out"   input = "eq_band_10_r:In" }
-              { output = "eq_band_10_r:Out"  input = "limiter:Input 2" }
-            ]
-            inputs  = [ "inL:In" "inR:In" ]
-            outputs = [ "limiter:Output 1" "limiter:Output 2" ]
-          }
-          audio.channels = 2
-          audio.position = [ FL FR ]
-          capture.props = {
-            node.name        = "effect_input.eq10"
-            media.class      = "Audio/Sink"
-            priority.session = 2500
-          }
-          playback.props = {
-            node.name    = "effect_output.eq10"
-            node.passive = true
-          }
-        }
-      }
-    ]
-  '';
-
-  # WebRTC Echo-Cancellation, Noise Suppression & AGC module for internal stereo mic
-  xdg.configFile."pipewire/pipewire.conf.d/60-echo-cancel.conf".text = ''
-    context.modules = [
-      {
-        name = libpipewire-module-echo-cancel
-        args = {
-          monitor.mode = true
-          capture.props = {
-            node.name = "echo_cancel_capture"
-            node.passive = true
-            target.object = "alsa_input.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__Mic2__source"
-          }
-          source.props = {
-            node.name = "echo_cancel_source"
-            node.description = "Clean Microphone (WebRTC Echo-Cancelled & Denoised)"
-            media.class = "Audio/Source"
-            priority.driver = 2100
-            priority.session = 2100
-          }
-        }
-      }
-    ]
-  '';
-  services.playerctld.enable = true;
 
   # Focus time tracking daemon — single authoritative lifecycle owner.
   # Previously launched via Hyprland `exec-once` + a shell supervisor loop

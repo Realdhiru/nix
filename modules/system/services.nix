@@ -2,7 +2,9 @@
 {
   networking.firewall = {
     enable = true;
-    allowedUDPPorts = [ 53 67 68 ]; # Allow DHCP & DNS for hotspot clients
+    # NetworkManager's shared hotspot interface is created at runtime and has no
+    # deterministic name in this host config, so DHCP/DNS remain global rules.
+    allowedUDPPorts = [ 53 67 68 ];
   };
 
   security.apparmor.enable = true;
@@ -89,7 +91,7 @@
   # ydotool supplies a native uinput-backed pointer device for Hyprland binds.
   programs.ydotool.enable = true;
   services.udev.extraRules = ''
-    KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0666", TAG+="uaccess", OPTIONS+="static_node=uinput"
+    KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", TAG+="uaccess", OPTIONS+="static_node=uinput"
     ACTION=="change", SUBSYSTEM=="power_supply", ATTR{online}=="*", RUN+="${pkgs.systemd}/bin/systemctl --no-block --user -M ${user.username}@ start hypr-refresh-rate.service"
   '';
 

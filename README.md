@@ -19,7 +19,7 @@
 
 ## 🌟 QuickShell Desktop Widgets & Features
 
-Custom event-driven QML widgets built natively on [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) with zero polling overhead, Wayland IPC integration, and fluid micro-animations:
+Custom QML widgets built natively on [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell), driven by Wayland events with bounded sampling for live statistics:
 
 <table>
   <tr>
@@ -89,10 +89,10 @@ Custom event-driven QML widgets built natively on [QuickShell](https://git.outfo
 | :--- | :--- | :--- |
 | **OS & Packages** | [NixOS](https://nixos.org) (Unstable) + [Flakes](https://wiki.nixos.org/wiki/Flakes) | Atomic, fully declarative system configuration with automated rollback gates |
 | **Compositor** | [Hyprland](https://hyprland.org) | Wayland dynamic compositor with continuous scrolling ribbon (`scrolling.lua`) & Dwindle mode parity (`SUPER + F10`) |
-| **Desktop Shell** | [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) (Qt6 / QML) | Event-driven UI with exclusive focus grab (`WlrKeyboardFocus`), liquid glassmorphism & zero polling overhead |
+| **Desktop Shell** | [QuickShell](https://git.outfoxxed.me/outfoxxed/quickshell) (Qt6 / QML) | Event-driven UI with exclusive focus grab (`WlrKeyboardFocus`); FocusTime and battery audit use bounded sampling |
 | **Theming** | [Wallust](https://codeberg.org/explosion-mental/wallust) | Sub-millisecond wallpaper-derived color extraction across UI, terminals & GTK |
 | **Audio Engine** | [PipeWire](https://pipewire.org) (`filter-chain`) | Low-latency audio routing with 10-band C DSP equalizer, spectral vocal subtraction LADSPA plugin, & smart volume ceilings |
-| **Power Engine** | [TLP 1.9.1](https://linrunner.de/tlp/) | Firmware battery threshold (80%), dynamic platform profiles, deep C-states, & 802.11 Wi-Fi power-save |
+| **Power Engine** | [TLP 1.10.2](https://linrunner.de/tlp/) | Firmware battery threshold (80%), TLP-owned profiles, deep C-states, & 802.11 Wi-Fi power-save |
 | **Launchers** | [Fuzzel](https://codeberg.org/dnkl/fuzzel) | Frosted glass app launcher, instant file search & emoji/glyph picker |
 | **Knowledge Base** | [Obsidian](https://obsidian.md) | Native Wayland markdown second-brain vault with interactive graph view |
 
@@ -133,11 +133,12 @@ Built for **100% portability** — clone, edit one file, and deploy on any machi
    cd ~/nix
    nixos-generate-config --show-hardware-config > hosts/nixos/hardware-configuration.nix
    ```
-   *Edit [`user.nix`](user.nix) to set your username, full name, and email.*
+   *Edit [`user.nix`](user.nix) to set your username, display name, and hostname.*
 3. **Build & Activate**:
    ```bash
-   sudo nixos-rebuild switch --flake .#nixos
+   sudo nixos-rebuild switch --flake ~/nix#nixos
    ```
+   For later changes, use `rebuild`; it builds the current tracked working tree, switches, runs the health check, and rolls back on critical failure. It never stages or commits files.
 
 ---
 
@@ -147,7 +148,7 @@ Custom shell workflows defined in [`modules/home/shell.nix`](modules/home/shell.
 
 | Command | Description |
 | :--- | :--- |
-| `rebuild [msg]` | Atomic rebuild with pre-activation compile check, health gate & automated rollback |
+| `rebuild` | Builds and switches the current tracked working tree, then runs the health gate and automatic rollback; never stages or commits |
 | `update` | Update flake inputs (`nixos-unstable`) and trigger verified rebuild |
 | `gens` | List annotated, color-coded system generations with active/stable markers |
 | `pin-stable [gen]` | Permanently pin a generation as a GC root (`/nix/var/nix/gcroots/boot-stable`) |

@@ -300,51 +300,34 @@ cmd_inhibit() {
 cmd_profile() {
     local prof="${1:-balanced}"
     local tlp_cmd="balanced"
-    local acpi_prof="balanced"
-    local asus_prof="Balanced"
 
     case "$prof" in
         performance)
             tlp_cmd="performance"
-            acpi_prof="performance"
-            asus_prof="Performance"
             ;;
         power-saver|quiet)
             tlp_cmd="power-saver"
-            acpi_prof="low-power"
-            asus_prof="Quiet"
             ;;
         balanced|*)
             prof="balanced"
             tlp_cmd="balanced"
-            acpi_prof="balanced"
-            asus_prof="Balanced"
             ;;
     esac
 
-    # 1. Universal TLP hardware authority
-    if command -v tlp >/dev/null 2>&1; then
-        sudo tlp "$tlp_cmd" >/dev/null 2>&1 || true
+    # TLP is the sole hardware authority; do not persist state if it failed.
+    if ! command -v tlp >/dev/null 2>&1 || ! sudo tlp "$tlp_cmd"; then
+        notify-send -a "Power" -u critical "Profile Failed" 2>/dev/null || true
+        return 1
     fi
 
-    # 2. Universal Linux Kernel ACPI Platform Profile (/sys/firmware/acpi/platform_profile)
-    # Supported natively by ThinkPad, Dell, HP, Framework, ASUS, Lenovo, etc.
-    if [ -w /sys/firmware/acpi/platform_profile ]; then
-        echo "$acpi_prof" > /sys/firmware/acpi/platform_profile 2>/dev/null || true
-    fi
-
-    # 3. Dynamic vendor hardware CLI hook (dynamically probed; non-ASUS machines skip seamlessly)
-    if command -v asusctl >/dev/null 2>&1; then
-        asusctl profile set "$asus_prof" >/dev/null 2>&1 || true
-    fi
-
-    # 4. Atomic profile state sync
-    mkdir -p "$DESKTOP_STATE_DIR/power"
-    echo "$prof" > "$DESKTOP_STATE_DIR/power/profile.tmp" && mv -f "$DESKTOP_STATE_DIR/power/profile.tmp" "$DESKTOP_STATE_DIR/power/profile"
+    # Atomic profile state sync, only after the hardware change succeeds.
+    mkdir -p "$DESKTOP_STATE_DIR/power" || return 1
+    printf '%s\n' "$prof" > "$DESKTOP_STATE_DIR/power/profile.tmp" || return 1
+    mv -f "$DESKTOP_STATE_DIR/power/profile.tmp" "$DESKTOP_STATE_DIR/power/profile" || return 1
     local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
     [ ! -x "$state_ctl" ] && state_ctl="$HOME/nix/dotfiles/hypr/scripts/quickshell/state_ctl.sh"
     if [ -x "$state_ctl" ]; then
-        bash "$state_ctl" set power.profile "$prof" >/dev/null 2>&1 || true
+        bash "$state_ctl" set power.profile "$prof" || return 1
     fi
 
     # 5. Modes Engine SSOT sync (only if not called internally by mode_ctl.sh)

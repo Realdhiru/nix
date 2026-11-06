@@ -286,17 +286,34 @@ Item {
         monitorsModel.setProperty(mIdx, "uiY", bestY);
     }
 
+    function monitorIntentWriteCommand(displayUpdates) {
+        let monitorsDir = Caching.desktopStateDir + "/monitors";
+        let intentFile = monitorsDir + "/intent.json";
+        let tmpFile = intentFile + ".tmp";
+        let lockFile = intentFile + ".lock";
+        let safeJson = JSON.stringify(displayUpdates).replace(/'/g, "'\\''");
+        let mergeDisplays = '.layout = (.layout // "extend") | .displays = ((.displays // {}) * $displays)';
+        return `mkdir -p '${monitorsDir}' && (flock 9; ` +
+               `if [ -s '${intentFile}' ]; then ` +
+               `jq --argjson displays '${safeJson}' '${mergeDisplays}' '${intentFile}' > '${tmpFile}'; ` +
+               `else jq -n --argjson displays '${safeJson}' '{layout: "extend", displays: $displays}' > '${tmpFile}'; fi && ` +
+               `mv -f '${tmpFile}' '${intentFile}') 9>'${lockFile}'`;
+    }
+
     function applyMonitors() {
         if (monitorsModel.count === 0) return;
         if (monitorsModel.count === 1) {
             let m = monitorsModel.get(0);
-            let monitorStr = m.name + "," + m.resW + "x" + m.resH + "@" + m.rate + ",0x0," + m.sysScale;
-            if (m.transform !== 0) monitorStr += ",transform," + m.transform;
-            let jsonArr = [{ name: m.name, resW: m.resW, resH: m.resH, rate: parseInt(m.rate), x: 0, y: 0, scale: m.sysScale, transform: m.transform }];
-            config.setSetting("monitors", jsonArr);
-            let cacheWriteCmd = "echo 'monitor=" + monitorStr + "' > ~/.cache/hypr_power_monitor.conf";
+            let description = m.description || "";
+            let key = description.length > 0 ? "desc:" + description : m.name;
+            let displayUpdates = {};
+            displayUpdates[key] = {
+                name: m.name, description: description,
+                mode: m.resW + "x" + m.resH + "@" + m.rate,
+                scale: m.sysScale, transform: m.transform, placement: "0x0"
+            };
             let evalCmd = "hyprctl eval \"hl.monitor({output='" + m.name + "',mode='" + m.resW + "x" + m.resH + "@" + m.rate + "',position='0x0',scale='" + m.sysScale + "'" + (m.transform !== 0 ? ",transform=" + m.transform : "") + "})\"";
-            config.sh(cacheWriteCmd + " ; " + evalCmd + " ; ~/.config/hypr/scripts/ensure_awww.sh --restart");
+            config.sh(config.monitorIntentWriteCommand(displayUpdates) + " && " + evalCmd + " && ~/.config/hypr/scripts/ensure_awww.sh --restart");
             Quickshell.execDetached(["notify-send", "-a", "Display", "-u", "low", "Applied", m.resW + "x" + m.resH]);
         } else {
             let rects = [];
@@ -305,7 +322,7 @@ Item {
                 let isP = m.transform === 1 || m.transform === 3;
                 let physW = Math.round((isP ? m.resH : m.resW) / m.sysScale);
                 let physH = Math.round((isP ? m.resW : m.resH) / m.sysScale);
-                rects.push({ x: m.uiX / config.monUiScale, y: m.uiY / config.monUiScale, w: physW, h: physH, resW: m.resW, resH: m.resH, name: m.name, rate: m.rate, sysScale: m.sysScale, transform: m.transform });
+                rects.push({ x: m.uiX / config.monUiScale, y: m.uiY / config.monUiScale, w: physW, h: physH, resW: m.resW, resH: m.resH, name: m.name, description: m.description || "", rate: m.rate, sysScale: m.sysScale, transform: m.transform });
             }
             function getTightSnap(pX, pY, sX, sY, sW, sH, mW, mH, t) {
                 let cx = pX; let cy = pY;
@@ -334,21 +351,20 @@ Item {
                 if (rects[i].x < finalMinX) finalMinX = rects[i].x;
                 if (rects[i].y < finalMinY) finalMinY = rects[i].y;
             }
-            let batchCmds = [], summaryString = "", jsonArr = [], confLines = [];
+            let batchCmds = [], displayUpdates = {};
             for (let i = 0; i < rects.length; i++) {
                 let r = rects[i];
                 r.x = Math.round(r.x - finalMinX);
                 r.y = Math.round(r.y - finalMinY);
-                let monitorStr = r.name + "," + r.resW + "x" + r.resH + "@" + r.rate + "," + r.x + "x" + r.y + "," + r.sysScale;
-                if (r.transform !== 0) monitorStr += ",transform," + r.transform;
-                batchCmds.push("keyword monitor " + monitorStr);
-                confLines.push("monitor=" + monitorStr);
-                summaryString += r.name + " ";
-                jsonArr.push({ name: r.name, resW: r.resW, resH: r.resH, rate: parseInt(r.rate), x: r.x, y: r.y, scale: r.sysScale, transform: r.transform });
+                batchCmds.push("keyword monitor " + r.name + "," + r.resW + "x" + r.resH + "@" + r.rate + "," + r.x + "x" + r.y + "," + r.sysScale + (r.transform !== 0 ? ",transform," + r.transform : ""));
+                let key = r.description.length > 0 ? "desc:" + r.description : r.name;
+                displayUpdates[key] = {
+                    name: r.name, description: r.description,
+                    mode: r.resW + "x" + r.resH + "@" + r.rate,
+                    scale: r.sysScale, transform: r.transform, placement: r.x + "x" + r.y
+                };
             }
-            config.setSetting("monitors", jsonArr);
-            let cacheWriteCmd = "echo -e '" + confLines.join("\\n") + "' > ~/.cache/hypr_power_monitor.conf";
-            config.sh(cacheWriteCmd + " ; hyprctl --batch '" + batchCmds.join(" ; ") + "' ; ~/.config/hypr/scripts/ensure_awww.sh --restart");
+            config.sh(config.monitorIntentWriteCommand(displayUpdates) + " && hyprctl --batch '" + batchCmds.join(" ; ") + "' && ~/.config/hypr/scripts/ensure_awww.sh --restart");
             Quickshell.execDetached(["notify-send", "-a", "Display", "-u", "low", "Layout Applied"]);
         }
     }
@@ -385,7 +401,7 @@ Item {
                         let normalizedX = (data[i].x - minX) * config.monUiScale;
                         let normalizedY = (data[i].y - minY) * config.monUiScale;
                         batch.push({
-                            name: data[i].name, resW: data[i].width, resH: data[i].height,
+                            name: data[i].name, description: data[i].description || "", resW: data[i].width, resH: data[i].height,
                             sysScale: scl, rate: Math.round(data[i].refreshRate).toString(),
                             uiX: normalizedX, uiY: normalizedY, transform: tf,
                             availableModes: JSON.stringify(data[i].availableModes || [])
@@ -405,7 +421,6 @@ Item {
     Component.onCompleted: {
         parseSettingsTextSync();
         parseAppearanceSync();
-        sh("mkdir -p ~/.cache && touch ~/.cache/hypr_power_monitor.conf");
         config.updateSolidMode();
     }
 

@@ -3,7 +3,7 @@
 # battery_audit.sh -- Intelligent Continuous Battery Drainage Pattern Analyzer
 #
 # Tracks real-time power draw from /sys/class/power_supply/BAT0, attributes energy
-# consumption (Wh) to individual applications using continuous delta-CPU/GPU tracking,
+# consumption (Wh) using CPU-time weighting; per-app Wh is modeled, not measured.
 # detects power spikes, and provides balanced-mode optimization diagnostics.
 #
 # Pure Bash + awk + jq. Zero Python, zero Node.
@@ -19,7 +19,7 @@ PREV_TICKS_FILE="$STATE_DIR/prev_ticks.tmp"
 LOCK_FILE="/tmp/battery_audit.lock"
 PID_FILE="$STATE_DIR/daemon.pid"
 
-SAMPLE_INTERVAL=15 # seconds between samples while discharging
+SAMPLE_INTERVAL=60 # seconds between samples while discharging; elapsed-time totals use actual timestamps
 IDLE_BASELINE_W=4.5 # estimated static baseline (OLED panel, motherboard, RAM)
 
 # Helper: Map comm/executable to a clean canonical app name
@@ -300,7 +300,7 @@ run_daemon() {
 
     while true; do
         sample_step 2>/dev/null || true
-        # If discharging, sample every SAMPLE_INTERVAL (15s); if plugged in, check every 45s
+        # If discharging, sample every SAMPLE_INTERVAL; if plugged in, check every 45s.
         local status
         status=$(cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo "Unknown")
         if [ "$status" = "Discharging" ]; then

@@ -1,6 +1,6 @@
 mod common;
 
-use chrono::{Datelike, Local, Timelike};
+use chrono::{Local, Timelike};
 use rusqlite::Connection;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[derive(Serialize, Clone)]
 struct LiveState {
@@ -243,6 +243,8 @@ fn main() {
     let term = Arc::new(AtomicBool::new(false));
     let _ = signal_hook::flag::register(signal_hook::consts::SIGINT, Arc::clone(&term));
     let _ = signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&term));
+    let mut last_live_write = Instant::now();
+    let mut last_live_app: Option<(String, String)> = None;
 
     while !term.load(Ordering::SeqCst) {
         thread::sleep(Duration::from_secs(1));
@@ -277,17 +279,25 @@ fn main() {
             minute_idx,
         });
 
-        // Write live state JSON
-        let live = LiveState {
-            current_app_class: cls,
-            current_app_title: title,
-            today_total,
-            last_updated: now.to_rfc3339(),
-        };
-        let tmp_file = format!("{}.tmp.{}", state_file.display(), std::process::id());
-        if let Ok(json_str) = serde_json::to_string(&live) {
-            if fs::write(&tmp_file, json_str).is_ok() {
-                let _ = fs::rename(&tmp_file, &state_file);
+        // Publish immediately when the focused app changes, then coalesce the
+        // changing live total to a 15-second update. Tick accounting stays 1s.
+        let app = (cls.clone(), title.clone());
+        if last_live_app.as_ref() != Some(&app)
+            || last_live_write.elapsed() >= Duration::from_secs(15)
+        {
+            let live = LiveState {
+                current_app_class: cls,
+                current_app_title: title,
+                today_total,
+                last_updated: now.to_rfc3339(),
+            };
+            let tmp_file = format!("{}.tmp.{}", state_file.display(), std::process::id());
+            if let Ok(json_str) = serde_json::to_string(&live) {
+                if fs::write(&tmp_file, json_str).is_ok() {
+                    let _ = fs::rename(&tmp_file, &state_file);
+                    last_live_write = Instant::now();
+                    last_live_app = Some(app);
+                }
             }
         }
 

@@ -318,7 +318,7 @@ FocusScope {
         } catch(e) {}
     }
 
-    // --- PYTHON STATS FETCHER (For History & Specific Apps) ---
+    // --- NATIVE RUST STATS FETCHER (For History & Specific Apps) ---
     Process {
         id: statsPoller
         stdout: StdioCollector {

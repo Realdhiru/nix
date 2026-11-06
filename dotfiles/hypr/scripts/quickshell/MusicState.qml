@@ -46,6 +46,7 @@ Item {
     readonly property string displayArtUrl: isMediaActive ? musicData.artUrl : ""
     readonly property bool displayArtReady: isMediaActive && musicData.artReady === "true"
     readonly property bool hasVisibleMedia: displayTitle !== ""
+    readonly property bool visualizerVisible: Config.topBarVisible && Config.topBarPosition === "top" && hasVisibleMedia && musicData.status === "Playing"
 
     // Raw ascii bar levels (0-100 each) from cava_topbar.conf, one per bar.
     property var cavaBars: [0, 0, 0, 0, 0, 0, 0, 0]
@@ -221,17 +222,15 @@ Item {
         }
     }
 
-    // Audio visualizer. Bound to status === "Playing" specifically (not
-    // just "not stopped") so it only spawns while media is genuinely
-    // playing — avoids running cava (and burning CPU on FFT of silence)
-    // during a pause. cava_topbar.conf outputs raw ascii bar levels
+    // Audio visualizer runs only while its TopBar surface is visible and
+    // media is genuinely playing. cava_topbar.conf outputs raw ascii bar levels
     // (0-100, semicolon-separated) once per frame at 30fps directly to
     // stdout — no intermediate FIFO or wrapper script needed.
     // `nice -n 10` deprioritizes it relative to everything else on the
     // system — purely cosmetic background process.
     Process {
         id: cavaProcess
-        running: root.musicData.status === "Playing"
+        running: root.visualizerVisible
         command: ["nice", "-n", "10", "cava", "-p", Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/watchers/cava_topbar.conf"]
         stdout: SplitParser {
             splitMarker: "\n"

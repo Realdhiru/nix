@@ -22,11 +22,10 @@ Open [`user.nix`](file:///home/realdhiru/nix/user.nix) in your editor:
   username    = "yourusername";      # Your Linux account username
   name        = "Your Full Name";    # Display name
   hostname    = "yourhostname";      # System hostname
-  usbDenylist = "";                  # Optional: USB vendor:product IDs to protect from TLP autosuspend (e.g., "3554:fc00")
 }
 ```
 > [!NOTE]
-> This single file configures your user identity, sudo privileges, Home Manager paths, and optional peripheral power protections. Anyone cloning this repo can freely customize these fields without creating new files or touching system modules.
+> This single file configures your user identity, sudo privileges, and Home Manager paths. Anyone cloning this repo can freely customize these fields without creating new files or touching system modules.
 
 
 ### Step 3: Generate Hardware Configuration
@@ -36,11 +35,12 @@ nixos-generate-config --show-hardware-config > ~/nix/hosts/nixos/hardware-config
 ```
 
 ### Step 4: Build and Activate
-Ensure all files are tracked by Git, then build and switch:
+For the first installation, build and switch explicitly without staging unrelated files:
 ```bash
-git add -A
-sudo nixos-rebuild switch --flake .#nixos
+sudo nixos-rebuild switch --flake ~/nix#nixos
 ```
+
+For later changes, use the `rebuild` shell function. It builds and switches the current working tree, runs the repository health check, and keeps the previous generation available for rollback; it never stages or commits files.
 
 Once the switch completes, reboot your machine:
 ```bash

@@ -140,10 +140,10 @@ cleanup_residue() {
 
 # Run initial cleanup and sync on startup
 cleanup_residue
-if [ -f "$SRC/scripts/auto_organize.py" ]; then
+if command -v python3 >/dev/null 2>&1 && [ -f "$SRC/scripts/auto_organize.py" ]; then
     python3 "$SRC/scripts/auto_organize.py" --force >/dev/null 2>&1 || true
 fi
-if [ -d "$PROJECTS_SRC" ] && [ -f "$PROJECTS_SRC/scripts/auto_organize.py" ]; then
+if command -v python3 >/dev/null 2>&1 && [ -d "$PROJECTS_SRC" ] && [ -f "$PROJECTS_SRC/scripts/auto_organize.py" ]; then
     python3 "$PROJECTS_SRC/scripts/auto_organize.py" --force >/dev/null 2>&1 || true
 fi
 if [ -x "$THUMB_SCRIPT" ]; then
@@ -171,14 +171,14 @@ stdbuf -oL inotifywait -m -r -q \
 
     # If the change occurred in Projects/Wallpapers, auto-organize that repository
     if [[ "$changed_file" == "$PROJECTS_SRC"* ]]; then
-        if [ -f "$PROJECTS_SRC/scripts/auto_organize.py" ]; then
+        if command -v python3 >/dev/null 2>&1 && [ -f "$PROJECTS_SRC/scripts/auto_organize.py" ]; then
             python3 "$PROJECTS_SRC/scripts/auto_organize.py" --force >/dev/null 2>&1 || true
         fi
     fi
 
     # If the change occurred in Pictures/Wallpapers, auto-organize desktop wallpapers & update caches
     if [[ "$changed_file" == "$SRC"* ]]; then
-        if [ -f "$SRC/scripts/auto_organize.py" ]; then
+        if command -v python3 >/dev/null 2>&1 && [ -f "$SRC/scripts/auto_organize.py" ]; then
             python3 "$SRC/scripts/auto_organize.py" --force >/dev/null 2>&1 || true
         fi
 

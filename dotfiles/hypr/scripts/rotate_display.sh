@@ -1,57 +1,74 @@
 #!/usr/bin/env bash
-#
-# rotate_display.sh -- toggle 180° rotation (transform 0 <-> 2) on the
-# focused monitor without touching mode, resolution, or refresh rate.
-#
+# Toggle 180° rotation on the focused monitor and persist it in monitor intent.
 
-set -uo pipefail
+set -euo pipefail
 
-STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/monitors"
-mkdir -p "$STATE_DIR"
-TRANSFORM_FILE="$STATE_DIR/transform.txt"
+STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/monitors"
+INTENT_FILE="$STATE_DIR/intent.json"
+LOCK_FILE="$INTENT_FILE.lock"
+TMP_FILE="$INTENT_FILE.tmp"
 
-MONITOR=""
-if command -v hyprctl >/dev/null 2>&1; then
-    MONITOR=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.monitor // empty' 2>/dev/null || true)
-    [ -n "$MONITOR" ] || MONITOR=$(hyprctl monitors -j 2>/dev/null | jq -r '.[0].name // empty' 2>/dev/null || true)
+if ! command -v hyprctl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1 || ! command -v flock >/dev/null 2>&1; then
+    notify-send -a "Display" -u critical "Display Tools Missing" 2>/dev/null || true
+    exit 1
 fi
+
+MONITOR=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.monitor // empty')
+MONITORS_JSON=$(hyprctl monitors -j)
+[ -n "$MONITOR" ] || MONITOR=$(printf '%s' "$MONITORS_JSON" | jq -r '.[0].name // empty')
 
 if [ -z "$MONITOR" ]; then
     notify-send -a "Display" -u critical "No Monitor Found" 2>/dev/null || true
     exit 1
 fi
 
-# Current transform from hyprctl
-CUR=$(hyprctl monitors -j 2>/dev/null | jq -r --arg m "$MONITOR" '.[] | select(.name == $m) | .transform // 0' 2>/dev/null || true)
+MON_INFO=$(printf '%s' "$MONITORS_JSON" | jq -r --arg m "$MONITOR" '
+    .[] | select(.name == $m) |
+    [.description // "", .scale // 1, .transform // 0, .width // 0, .height // 0, .refreshRate // 60] | @tsv
+')
+IFS=$'\t' read -r DESCRIPTION SCALE CUR WIDTH HEIGHT REFRESH <<< "$MON_INFO"
+DESCRIPTION="${DESCRIPTION:-}"
+SCALE="${SCALE:-1}"
 CUR="${CUR:-0}"
+WIDTH="${WIDTH:-0}"
+HEIGHT="${HEIGHT:-0}"
+REFRESH="${REFRESH:-60}"
 
 TARGET_ARG="${1:-toggle}"
-if [ "$TARGET_ARG" = "0" ] || [ "$TARGET_ARG" = "normal" ]; then
-    NEW=0
-elif [ "$TARGET_ARG" = "2" ] || [ "$TARGET_ARG" = "180" ] || [ "$TARGET_ARG" = "inverted" ]; then
-    NEW=2
-elif [ "$CUR" = "2" ]; then
-    NEW=0
-else
-    NEW=2
-fi
+case "$TARGET_ARG" in
+    0|normal) NEW=0 ;;
+    2|180|inverted) NEW=2 ;;
+    *)
+        if [ "$CUR" = "2" ]; then NEW=0; else NEW=2; fi
+        ;;
+esac
 
-# Persist transform state in user state dir (never git-tracked files)
-echo "$NEW" > "$TRANSFORM_FILE"
+if [ -n "$DESCRIPTION" ]; then KEY="desc:$DESCRIPTION"; else KEY="$MONITOR"; fi
+MODE="${WIDTH}x${HEIGHT}@${REFRESH%.*}"
+mkdir -p "$STATE_DIR"
 
-# Also update cache file for backwards compatibility with SysData
-CACHE_FILE="$HOME/.cache/hypr_power_monitor.conf"
-if [ -f "$CACHE_FILE" ]; then
-    if grep -q "transform," "$CACHE_FILE" 2>/dev/null; then
-        sed -i -E "s/transform,[0-9]+/transform,$NEW/g" "$CACHE_FILE"
-    else
-        sed -i "s/$/transform,$NEW/" "$CACHE_FILE"
+(
+    flock 9
+    if [ ! -s "$INTENT_FILE" ]; then
+        printf '%s\n' '{"layout":"extend","displays":{}}' > "$INTENT_FILE"
     fi
-fi
+    jq --arg key "$KEY" \
+       --arg name "$MONITOR" \
+       --arg description "$DESCRIPTION" \
+       --arg mode "$MODE" \
+       --argjson scale "$SCALE" \
+       --argjson transform "$NEW" \
+       '.layout = (.layout // "extend")
+        | .displays = (.displays // {})
+        | .displays[$key] = ((.displays[$key] // {mode: $mode, scale: $scale})
+          + {name: $name, description: $description, transform: $transform})' \
+       "$INTENT_FILE" > "$TMP_FILE"
+    mv -f "$TMP_FILE" "$INTENT_FILE"
+) 9>"$LOCK_FILE"
 
-# Apply transform cleanly by re-evaluating monitors.lua and committing properties immediately
-if command -v hyprctl >/dev/null 2>&1; then
-    hyprctl eval "dofile(os.getenv('HOME') .. '/.config/hypr-local/monitors.lua'); hl.exec_scheduled_prop_refresh_immediately()" >/dev/null 2>&1 || true
+if ! hyprctl eval "hl.monitor({output='${MONITOR}',transform=${NEW}})" >/dev/null; then
+    notify-send -a "Display" -u critical "Rotation Failed" 2>/dev/null || true
+    exit 1
 fi
 
 if [ "$NEW" = "2" ]; then
@@ -59,5 +76,3 @@ if [ "$NEW" = "2" ]; then
 else
     notify-send -a "Display" -u low -i video-display "Standard" 2>/dev/null || true
 fi
-
-exit 0

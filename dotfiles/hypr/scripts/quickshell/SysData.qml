@@ -382,22 +382,33 @@ Item {
     readonly property bool isRotated: _displayTransform === 2
 
     FileView {
-        id: monitorConfView
-        path: Quickshell.env("HOME") + "/.cache/hypr_power_monitor.conf"
+        id: monitorIntentView
+        path: Caching.desktopStateDir + "/monitors/intent.json"
         watchChanges: true
-        onLoaded: root._updateTransformFromConf()
-        onFileChanged: root._updateTransformFromConf()
+        onLoaded: root._updateTransformFromIntent()
+        onTextChanged: root._updateTransformFromIntent()
+        onFileChanged: {
+            monitorIntentView.reload();
+            root._updateTransformFromIntent();
+        }
     }
 
-    function _updateTransformFromConf() {
-        let raw = (typeof monitorConfView.text === "function") ? monitorConfView.text() : monitorConfView.text;
+    function _updateTransformFromIntent() {
+        let raw = (typeof monitorIntentView.text === "function") ? monitorIntentView.text() : monitorIntentView.text;
         let content = (raw || "").trim();
         if (!content) return;
-        let match = content.match(/transform,(\d+)/);
-        if (match) {
-            root._displayTransform = parseInt(match[1]);
-        } else {
-            root._displayTransform = 0;
+        try {
+            let intent = JSON.parse(content);
+            let displays = intent.displays || {};
+            for (let key in displays) {
+                let display = displays[key];
+                let name = display.name || "";
+                if (name.startsWith("eDP") || name.startsWith("LVDS") || name.startsWith("DSI") || name.startsWith("MIPI")) {
+                    root._displayTransform = Number(display.transform || 0);
+                    return;
+                }
+            }
+        } catch(e) {
         }
     }
 

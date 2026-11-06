@@ -536,7 +536,7 @@ FocusScope {
 
                         batch.push({
                             name: data[i].name,
-                            description: data[i].description || data[i].name,
+                            description: data[i].description || "",
                             resW: data[i].width,
                             resH: data[i].height,
                             sysScale: scl,
@@ -625,18 +625,19 @@ FocusScope {
                     description: m.description || "",
                     scale: m.sysScale,
                     transform: m.transform,
-                    mode: m.resW + "x" + m.resH + "@" + m.rate
+                    mode: m.resW + "x" + m.resH + "@" + m.rate,
+                    placement: Math.round(m.uiX / window.uiScale + window.originalLayoutOriginX) + "x" + Math.round(m.uiY / window.uiScale + window.originalLayoutOriginY)
                 };
             }
         }
 
-        let intentObj = {
-            layout: intent,
-            displays: displays
-        };
-
-        let intentJson = JSON.stringify(intentObj, null, 2);
-        let stateCmd = "mkdir -p '" + monitorsDir + "' && cat << 'EOF' > '" + tmpFile + "'\n" + intentJson + "\nEOF\nmv -f '" + tmpFile + "' '" + intentFile + "'";
+        let safeDisplays = JSON.stringify(displays).replace(/'/g, "'\\''");
+        let lockFile = intentFile + ".lock";
+        let mergeIntent = '.layout = $layout | .displays = ((.displays // {}) * $displays)';
+        let stateCmd = "mkdir -p '" + monitorsDir + "' && (flock 9; " +
+            "if [ -s '" + intentFile + "' ]; then jq --arg layout '" + intent + "' --argjson displays '" + safeDisplays + "' '" + mergeIntent + "' '" + intentFile + "' > '" + tmpFile + "'; " +
+            "else jq -n --arg layout '" + intent + "' --argjson displays '" + safeDisplays + "' '{layout: $layout, displays: $displays}' > '" + tmpFile + "'; fi && " +
+            "mv -f '" + tmpFile + "' '" + intentFile + "') 9>'" + lockFile + "'";
 
         // 2. Compositor calls: first apply individual monitor mode/scale/transform via native Lua eval, then apply_layout()
         let evalCmds = [];
@@ -652,7 +653,7 @@ FocusScope {
 
         let fullEval = evalCmds.map(lua => "hyprctl eval '" + lua.replace(/'/g, "'\\''") + "'").join(" ; ");
 
-        Quickshell.execDetached(["bash", "-c", stateCmd + " ; " + fullEval]);
+        Quickshell.execDetached(["bash", "-c", stateCmd + " && " + fullEval]);
         Quickshell.execDetached(["notify-send", "-a", "Display", "-u", "low", "Display Applied"]);
 
         window.debugLog("Executed display apply: intent=" + intent);

@@ -8,12 +8,13 @@ Machine- and user-specific facts for this physical installation. Machine-indepen
 - **GPU**: Intel Iris Xe Graphics (i915 driver, Aquamarine DRM backend).
 - **Internal Panel**: `eDP-1`, Samsung Display Corp. `0x4180` (2880x1620 @ 120Hz, 16:9, scale 2.0, 10-bit color). Pure black (`#000000`) turns OLED pixels completely off (0W).
 - **User Identity**: User credentials declared in `user.nix` (`username = "realdhiru"`, `name = "D"`, `hostname = "NixOS"`).
-- **Protected Peripherals**: `usbDenylist = "3554:fc00"` in `user.nix` protects external 2.4GHz wireless mouse receiver from TLP autosuspend on battery.
 
 ## 2. Intentional System Settings
-- **Display Refresh Rate by Power Source**: 60Hz on battery, 120Hz on AC. Defined declaratively via `hypr-local/monitors.lua` dynamically derived from hardware EDID detailed timings (`/sys/class/drm/card*-eDP-*/edid`) and AC power state. Never hardcode static refresh rates.
-- **Power Management Authority**: TLP 1.9.1 is the sole authority for hardware power profiles (`power.nix`). `asusd.service` is enabled strictly for 80% charge ceiling enforcement (`charge_control_end_threshold = 80`). `asusd.ron` platform profile switching on AC/battery is disabled (`change_platform_profile_on_battery = false`, `bat_profile = Balanced`).
+- **Display Refresh Rate by Power Source**: 60Hz on battery, 120Hz on AC. `hypr-local/monitors.lua` selects from Hyprland's `availableModes`; `$DESKTOP_STATE_DIR/monitors/intent.json` remains the authority for resolution, layout, scale, transform, and placement.
+- **Power Management Authority**: TLP 1.10.2 is the sole authority for hardware power profiles (`power.nix`). `asusd.service` is enabled strictly for 80% charge ceiling enforcement (`charge_control_end_threshold = 80`). `asusd.ron` platform profile switching on AC/battery is disabled (`change_platform_profile_on_battery = false`, `bat_profile = Balanced`).
+- **USB Camera Stability**: Keep global `usbcore.autosuspend=-1` because the history identifies a webcam streaming stability issue without a VID:PID; TLP `USB_AUTOSUSPEND=0` mirrors that choice.
 - **Balanced Battery Profile (Empirically Locked)**: `balance_performance`, Turbo `1`, platform profile `balanced`, ASPM `powersupersave`. Never throttle CPU clocks or disable boost; race-to-sleep to modern C-states ($C8/C10$) saves 3x more energy than throttling.
+- **Internal Speaker Keep-Awake**: Preserve the live speaker's `node.pause-on-idle = false` behavior and the declared `session.suspend-timeout-seconds = 0` rule. The repo does not explicitly set `pause-on-idle`; report its idle power cost without changing the behavior.
 - **Automated Profile Switching**: Disconnecting AC power unconditionally switches power profile to `balanced` and clears manual overrides. Cold boots or reloads on battery never restore `performance`.
 - **Lid Policy**: `HandleLidSwitch = "ignore"` in logind. Lid closure never suspends. Suspend is intentional (`Shift + Esc`) or automated via 30-minute idle sleep.
 - **Dark Mode**: Default system aesthetic.

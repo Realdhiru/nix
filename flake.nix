@@ -259,6 +259,33 @@
             fail=1
           fi
 
+          echo "Guard 3a: Inline Python or Node invocations"
+          inline_hits=$(grep -rnE '(^|[;&|][[:space:]]*|[[:space:]])(python([0-9.]+)?|node(js)?)[[:space:]]+[^[:space:]]' \
+            dotfiles/ scripts/ --include='*.sh' --include='*.qml' --include='*.lua' --include='*.js' 2>/dev/null \
+            | grep -vE ':[0-9]+:[[:space:]]*(#|//|/\*|\*)' || true)
+          if [ -n "$inline_hits" ]; then
+            while IFS= read -r hit; do
+              file="''${hit%%:*}"
+              remainder="''${hit#*:}"
+              line="''${remainder%%:*}"
+              source="''${remainder#*:}"
+              case "$file" in
+                dotfiles/wallpaper/backend/watcher.sh|dotfiles/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml)
+                  if [[ "$source" =~ python3[[:space:]].*auto_organize\.py ]]; then
+                    echo "ALLOW: guarded external wallpaper auto_organize.py call at $file:$line (user decision)"
+                  else
+                    echo "FAIL: Python/Node invocation outside the external wallpaper organizer at $file:$line"
+                    fail=1
+                  fi
+                  ;;
+                *)
+                  echo "FAIL: Python/Node invocation in owned code at $file:$line"
+                  fail=1
+                  ;;
+              esac
+            done <<< "$inline_hits"
+          fi
+
           echo "Guard 4: pkill or systemctl start/stop in QML"
           while IFS= read -r f; do
             if grep -nE '(pkill|systemctl[[:space:]]+(start|stop))' "$f" 2>/dev/null; then

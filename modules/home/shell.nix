@@ -1,8 +1,7 @@
 { inputs, pkgs, ... }:
 
 {
-  # anifetch backs the af() zsh function below (lost once as uncommitted
-  # code — keep this file committed via rebuild()'s git add -A).
+  # anifetch backs the af() zsh function below.
   home.packages = [ inputs.anifetch.packages.${pkgs.stdenv.hostPlatform.system}.default ];
 
   programs.zsh = {
@@ -52,40 +51,27 @@
       PROMPT_EOL_MARK=""
 
       # Rebuild safety policy (2026-08-16 i915 incident, docs/decisions.md):
-      #   record known-good -> commit -> BUILD (no activation on failure) ->
+      #   record current generation -> BUILD (no activation on failure) ->
       #   switch -> health gate -> auto-rollback on critical checks.
       # The bad generation is NEVER deleted: it stays selectable in the
       # profile and bootable via bootctl. See docs/flow.md §5–7.
       rebuild() {
         cd ~/nix || return
 
-        local start gen rev
+        local start gen flake_ref
         start=$(date -Is)
         gen=$(readlink /nix/var/nix/profiles/system)
-        rev=$(git rev-parse HEAD)
+        flake_ref="git+file://$PWD#nixos"
 
         mkdir -p "$HOME/.cache"
-        printf '%s %s %s\n' "$start" "$gen" "$rev" >> "$HOME/.cache/nix_rebuild_log"
-        git tag -f known-good >/dev/null 2>&1
+        printf '%s %s\n' "$start" "$gen" >> "$HOME/.cache/nix_rebuild_log"
 
-        git add -u
-
-        if git diff --cached --quiet && git diff --quiet; then
-          echo "Nothing to commit."
-        else
-          if [ $# -eq 0 ]; then
-            git commit -m "Update configuration"
-          else
-            git commit -m "$*"
-          fi
-        fi
-
-        if ! sudo nixos-rebuild build --flake .#nixos; then
+        if ! sudo nixos-rebuild build --no-link --flake "$flake_ref"; then
           echo "BUILD FAILED — nothing activated; still on generation $gen."
           return 1
         fi
 
-        sudo nixos-rebuild switch --flake .#nixos || {
+        sudo nixos-rebuild switch --flake "$flake_ref" || {
           echo "SWITCH FAILED — still on generation $gen (build itself was fine)."
           echo "Manual recovery: ~/nix/docs/flow.md §7"
           return 1
@@ -101,7 +87,7 @@
           echo "Rebuild: generation $new_gen active WITH WARNINGS (see log above)."
         else
           echo "=== CRITICAL health-check failure — auto-rollback ==="
-          if sudo nixos-rebuild switch --rollback --flake .#nixos; then
+          if sudo nixos-rebuild switch --rollback --flake "$flake_ref"; then
             local restored
             restored=$(readlink /nix/var/nix/profiles/system)
             if [ "$restored" = "$gen" ]; then
@@ -110,7 +96,7 @@
               echo "NOTE: profile is at $restored, expected $gen — inspect manually."
             fi
           else
-            echo "ROLLBACK COMMAND FAILED — manual: sudo nixos-rebuild switch --rollback --flake .#nixos"
+            echo "ROLLBACK COMMAND FAILED — manual: sudo nixos-rebuild switch --rollback --flake $flake_ref"
           fi
           echo "Failed generation: $new_gen (kept — still selectable/bootable)"
           echo "Restored generation: $(readlink /nix/var/nix/profiles/system)"
@@ -127,7 +113,7 @@
         git pull
         nix flake update
 
-        rebuild "flake update"
+        rebuild
       }
 
       clean() {

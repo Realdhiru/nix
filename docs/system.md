@@ -5,7 +5,7 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 ## 1. Core Architecture Pillars
 - **Declarative Nix Flakes**: System configuration managed via `flake.nix` and `flake.lock`. Pure Nix derivations over ad-hoc imperative scripts.
 - **Out-of-Store Symlinks**: Home Manager `mkOutOfStoreSymlink` targets live `~/nix/dotfiles/` for instant live updates (`SUPER + R`) without requiring full rebuilds.
-- **Event-Driven IPC (Zero Polling)**: Desktop daemons and UI widgets bind directly to kernel/daemon event signals (Hyprland socket2 in ~6ms, PipeWire in ~8ms, UPower D-Bus, `FileWatcher` for sysfs state). Periodic bash polling loops, timers, and subshell loops are strictly forbidden.
+- **Event-Driven IPC with Bounded Sampling**: Desktop daemons and UI widgets prefer kernel/daemon signals (Hyprland socket2, PipeWire, UPower D-Bus, and `FileWatcher`). FocusTime keeps one-second accounting ticks but publishes live JSON on app changes or every 15 seconds; battery audit samples every 60 seconds on battery. Unbounded polling loops in interactive QML remain forbidden.
 - **Fast Compiled Execution**: Native compiled binaries (Rust, C/C++), Qt/QML bindings, or instant POSIX C utilities (`jq`, `awk`, coreutils) in interactive paths. No Python or Node in hot paths.
 - **Dynamic Theming (SSOT)**: Semantic color tokens dynamically extracted from wallpaper via Wallust (Rust, K-Means in Lch colorspace). Hardcoded hex color literals in widgets are forbidden.
 
@@ -19,6 +19,7 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 - **Battery Telemetry SSOT**: Battery runtime sourced exclusively from `Quickshell.Services.UPower` (`UPower.displayDevice`: `energy`, `energyCapacity`, `changeRate`, `timeToFull`). Battery direction comes only from `UPower.onBattery`, never `timeToFull`.
 - **System Tray (SNI)**: Clients register once at startup and do not re-announce. `kdeconnectd` requires `kdeconnect-indicator` for SNI.
 - **Media Telemetry SSOT**: Media state lives strictly in root singleton `MusicState.qml`. Bar widgets alias it and never own separate playerctl processes, cava, or timers.
+- **Visualizer Lifecycle**: CAVA runs only while media is playing, a title is visible, and the TopBar visualizer is shown; it stops when the bar or visualizer is hidden.
 - **Styling & Tokens**: Visual properties (colors, borders, radius, fonts, motion) must derive strictly from shared tokens (`Theme.colors.*`, `Motion.qml`). Text contrast floor >= 4.5:1 (WCAG AA). Anti-bleed foundation fill (`crust` at 0.16–0.18) layered behind frosted glass cards.
 - **Unified Glass Notification Styling (SSOT)**: Notification pills in both TopBar center and Sidebar overlay (`NotifToast.qml`) bind directly to `Config.effectivePopupOpacity`. Isolated or dark opacity floors are banned. When the user tweaks appearance opacities, all bars, cards, popups, and toast notifications morph simultaneously.
 - **Notifications**: Ultra-minimal format (1–3 words max, zero sentences, no secondary body unless critical dynamic telemetry). Explicit sender app name required (`notify-send -a "<App>"`).
@@ -41,8 +42,8 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 
 
 ## 4. Audio & Media Pipeline
-- **Native PipeWire Unified 10-Band Equalizer & Karaoke Filter-Chain**: Unified filter chain (`libpipewire-module-filter-chain`) biquad equalizer sink (`effect_input.eq10`, priority 2500) incorporating in-graph mid/side adaptive vocal suppressor and 10-band stereo peaking filters. Single system-wide virtual sink eliminates secondary volume nodes, default sink switching blips, and Bluetooth handover contention. Stripped `priority.driver` prevents graph buffer starvation and eliminates xruns.
-- **Karaoke & Equalizer UI State Authority**: Equalizer presets maintain raw untweaked audio when 'Off' is selected (0 dB across all 10 bands, unity transfer function $H(z)=1$, bit-perfect pass-through) with strict binary (0/1) Karaoke state integration. In `MusicPopup.qml`, interactive sliders enforce `focusPolicy: Qt.NoFocus` so keyboard Left/Right arrows cleanly cycle equalizer presets without stealing focus. The spectral karaoke LADSPA plugin operates with clean center-cancellation (`Depth = 0.96`, `Low Cutoff = 150 Hz`, `Air Depth = 0.15`, `Reverb Duck = 0 dB`) preserving uncompressed stereo instruments while completely eliminating center vocals.
+- **Native PipeWire Unified 10-Band Equalizer & Karaoke Filter-Chain**: Audio configuration is owned by `modules/home/audio.nix`. Its PipeWire `libpipewire-module-filter-chain` provides the equalizer sink and in-graph spectral karaoke effect; the base preset matches `karaoke.sh` (`Depth=0.99`, low cutoff `100 Hz`, air depth `0.05`, transient protection `0`, release `40 ms`, reverb duck `0 dB`).
+- **Karaoke & Equalizer UI State Authority**: Equalizer presets maintain raw untweaked audio when 'Off' is selected (0 dB across all 10 bands, unity transfer function $H(z)=1$, bit-perfect pass-through) with strict binary (0/1) Karaoke state integration. In `MusicPopup.qml`, interactive sliders enforce `focusPolicy: Qt.NoFocus` so keyboard Left/Right arrows cleanly cycle equalizer presets without stealing focus.
 - **Automatic Handover, Zero Speaker Leak & Physical Sink Cycling**: EQ sink passively forwards audio to the highest-priority physical endpoint automatically (external devices priority 2150; internal speakers priority 1000). WirePlumber setting `device.routes.mute-on-alsa-playback-removed = false` prevents laptop speakers from being muted upon headphone/Bluetooth disconnect. Internal speaker rule `node.drain-on-empty = false` alongside `session.suspend-timeout-seconds = 0` eliminates buffer draining and prevents split-second speaker audio bursts on unplug. Endpoint cycling (`cycle_audio_sink.sh`) reparents `effect_output.eq10` via `pw-link` without setting physical nodes as the global default sink, protecting WirePlumber virtual sink routing.
 - **Bluetooth AAC stereo & Dynamic Device Reporting**: WirePlumber rule `bluetooth.autoswitch-to-headset-profile = false` prevents AVDTP codec renegotiation crashes, locking high-quality A2DP stereo. UI widgets (`music_info.sh`, `bluetooth_panel_logic.sh`) resolve playback device and active profile dynamically from `pw-link -l` and `pw-dump Node`/`Device`, accurately reflecting physical targets (e.g. OnePlus Nord Buds 3 vs Laptop Speaker) in both playing and stopped states while guarding against already-paired BlueZ connect errors.
 - **WebRTC Microphone Denoising**: `libpipewire-module-echo-cancel` with `monitor.mode = true` binds to the microphone array, cancels speaker playback acoustic bleed from `effect_input.eq10:monitor`, and publishes `echo_cancel_source` at priority 2100 with zero daemon overhead.
@@ -65,20 +66,24 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
   - Persistent desktop state lives strictly in `${XDG_STATE_HOME:-$HOME/.local/state}/desktop/` (subdivided by area: `wallpaper/`, `power/`, `audio/`). State writes must be atomic (`tmp` file + `mv -f` in the same directory).
   - Regenerable cache files belong in `~/.cache`.
   - *Persistent State Unified*: All persistent state migrated to `${XDG_STATE_HOME:-$HOME/.local/state}/desktop/` (`quickshell/state.json`, `power/profile`, `modes/wallpaper_killed`, `modes/gaming_mode`, `recording/rec_pid`, `wallpaper/current_wallpaper.txt`). Legacy cache locations purged.
-- **Race-to-Sleep Strategy**: Maximize package C-state sleep ($C8/C10$) by bursting tasks at full frequency and sleeping immediately. Periodic polling loops are banned.
+- **Race-to-Sleep Strategy**: Maximize package C-state sleep ($C8/C10$) by bursting tasks at full frequency and sleeping immediately. Use event signals where possible and keep intentional accounting/sample intervals coarse and bounded.
 - **Coffee Mode & Persistent Idle Inhibition**:
   - `SUPER + CTRL + U` invokes `power.sh inhibit` to acquire `systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity`.
   - `restore_state.sh` checks state and automatically re-engages the inhibitor across QuickShell reloads, Hyprland restarts, and cold boots until explicitly toggled off.
   - In `hypridle.conf`, idle timers enforce DPMS off at 120s, lock at 150s, and suspend at 1800s (30m) with `ignore_dbus_inhibit = false` and `ignore_systemd_inhibit = false`.
 - **Continuous Battery Drainage Pattern Analyzer (`battery_audit.sh`, `power.sh battery-audit`)**:
-  - Samples real-time power draw directly from `/sys/class/power_supply/BAT0/power_now` every 15s during battery discharge.
-  - Samples process CPU times over the interval to calculate time-series proportional energy attribution in Watt-hours ($Wh$) per application.
+  - Samples `/sys/class/power_supply/BAT0/power_now` every 60s during battery discharge and uses the elapsed timestamp delta for interval totals.
+  - Per-app Watt-hour attribution is modeled from proportional CPU-time deltas; it is not measured per application.
   - Detects power surges ($>16\text{W}$) with timestamps and offending processes.
 - **Zero-Overhead Balanced Hardware Energy Optimizations (`power.nix`, `default.nix`)**:
   - NVMe APST enabled (`NVME_APST_CHAR_ENABLE_ON_BAT = 1`), allowing PCIe Gen4 SSD to drop into autonomous low-power states (<50mW) when idle.
-  - Kernel NMI watchdog disabled on battery (`NMI_WATCHDOG = 0`), eliminating periodic timer interrupts across all 12 cores / 16 threads and unlocking deep $PC8/PC10$ package sleep.
+  - Kernel NMI watchdog disabled system-wide (`boot.kernelParams = [ "nmi_watchdog=0" ]` and `NMI_WATCHDOG = 0`); TLP does not scope this setting to battery.
   - Process packing (`SCHED_POWERSAVE_ON_BAT = 1`) packs background tasks onto fewer cores so unused cores remain asleep.
   - Intel Iris Xe dynamic frequency scaling (100MHz idle downclocking with full 1.45GHz burst on demand).
+  - TLP USB autosuspend is disabled to match the retained global `usbcore.autosuspend=-1` workaround. Repository history documents a webcam stability issue but no VID:PID, so no narrower denylist is safe.
+  - The Power Saver TLP profile keeps platform profile `balanced` to preserve the intended fan behavior; `power.sh profile` makes no direct ACPI or vendor-CLI writes.
+- **Display Power Policy**: `hypr-local/monitors.lua` selects 120Hz on AC and 60Hz on battery from Hyprland `availableModes`. The single saved intent at `$DESKTOP_STATE_DIR/monitors/intent.json` owns resolution, scale, transform, layout, and placement; a power event changes only refresh and does not re-enable a disabled internal panel.
+- **Input Device Permissions**: `/dev/uinput` uses mode `0660` with the seat ACL (`TAG+="uaccess"`); direct membership in the broad `input` group is not required by repository services. Lid-event access remains a device-specific uaccess rule.
   - NetworkManager connectivity check interval set to 300s, eliminating 30s periodic Wi-Fi radio and CPU wakeups.
 
 ## 6. Wayland, Compositor & Application Integration
@@ -112,4 +117,4 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 - **Intel GPU Ring Protection**: Minimum 1.5s separation between manual visual mode test steps to prevent integrated GPU `rcs0` execution ring saturation and Aquamarine DRM page-flip crashes (`CHyprOpenGLImpl::begin` assertion failure -> `SIGABRT` -> Safe Mode). Product code drops overlapping requests while a transition is in flight.
 - **Lockscreen Ban**: Never execute or test `Lock.qml` directly or autonomously (desynchronizes PAM session state and locks the user out).
 - **Workspace Protection**: Never delete files or directories inside `~/Projects/` or its subfolders.
-- **Safe Rebuild Pipeline**: Never invoke bare `nixos-rebuild`. Always execute the `rebuild "<commit message>"` shell function, which formats code, dry-builds, switches, and runs post-switch health checks with automatic rollback.
+- **Safe Rebuild Pipeline**: For normal updates, use `rebuild`, which builds the tracked working tree through a `git+file` flake reference, switches, runs post-switch health checks, and rolls back on critical failure. It never stages or commits. The first installation uses an explicit `nixos-rebuild switch --flake` command before the helper exists.
