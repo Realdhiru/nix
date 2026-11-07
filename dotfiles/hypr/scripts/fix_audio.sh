@@ -4,7 +4,7 @@ set -euo pipefail
 # Check if core daemons are responsive
 if pw-cli info 0 >/dev/null 2>&1 && systemctl --user is-active --quiet pipewire wireplumber; then
     # Daemons are healthy: non-destructive graph and routing repair without dropping Bluetooth or PulseAudio sockets
-    "$HOME/nix/dotfiles/hypr/scripts/quickshell/music/equalizer.sh" --init 2>/dev/null || true
+    "${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/quickshell/music/equalizer.sh" --init 2>/dev/null || true
     
     # Enforce default sink routing to equalizer pipeline
     EQ_ID=$(pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_input.eq10"/ {gsub(/,/, "", id); print id}')
@@ -29,8 +29,8 @@ else
     # Core daemon dead/hung: full service restart
     systemctl --user restart pipewire pipewire-pulse wireplumber
     sleep 1
-    "$HOME/nix/dotfiles/hypr/scripts/quickshell/music/equalizer.sh" --init 2>/dev/null || true
-    "$HOME/nix/dotfiles/hypr/scripts/qs_manager.sh" reload 2>/dev/null || true
+    "${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/quickshell/music/equalizer.sh" --init 2>/dev/null || true
+    "${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/qs_manager.sh" reload 2>/dev/null || true
     for _ in {1..20}; do
         if busctl --user status org.freedesktop.Notifications >/dev/null 2>&1; then
             break

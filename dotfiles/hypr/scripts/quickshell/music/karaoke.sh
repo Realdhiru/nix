@@ -3,7 +3,7 @@
 set -eu
 
 exec 201>"${XDG_RUNTIME_DIR:-/run/user/1000}/karaoke.lock"
-flock 201
+flock -w 5 201 || { echo "karaoke: operation lock timed out" >&2; exit 1; }
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/audio"
 KARAOKE_STATE="${STATE_DIR}/karaoke.json"

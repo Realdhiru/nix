@@ -186,7 +186,7 @@ if [ "$WALLPAPER" = "--neutral" ]; then
     pkill -USR2 cava 2>/dev/null || true
     alacritty msg config -r >/dev/null 2>&1 || true
     if command -v quickshell >/dev/null 2>&1; then
-        quickshell ipc -p "$HOME/.config/hypr/scripts/quickshell/Shell.qml" call main reloadTheme >/dev/null 2>&1 || true
+        timeout 5 quickshell ipc -p "$HOME/.config/hypr/scripts/quickshell/Shell.qml" call main reloadTheme >/dev/null 2>&1 || true
     fi
     if command -v gsettings >/dev/null 2>&1; then
         gsettings set org.gnome.desktop.interface gtk-theme "Adwaita:dark" >/dev/null 2>&1 || true
@@ -208,14 +208,11 @@ if [[ "$WALL_LOWER" == *.gif ]]; then
     WALL_INPUT="${WALLPAPER}[0]"
 fi
 
-# 1. Compute luminance metrics directly from the wallpaper (downsampled for instant execution)
-OVERALL_LUM="50"
+# Compute top-edge luminance from a small downsample; the overall average was unused.
 TOP_LUM="50"
 if command -v magick >/dev/null 2>&1; then
-    OVERALL_LUM=$(magick "$WALL_INPUT" -resize 128x128\! -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
     TOP_LUM=$(magick "$WALL_INPUT" -resize 128x128\! -gravity North -crop 128x13+0+0 +repage -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
 elif command -v convert >/dev/null 2>&1; then
-    OVERALL_LUM=$(convert "$WALL_INPUT" -resize 128x128\! -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
     TOP_LUM=$(convert "$WALL_INPUT" -resize 128x128\! -gravity North -crop 128x13+0+0 +repage -colorspace Gray -format "%[fx:mean*100]" info: 2>/dev/null || echo "50")
 fi
 
@@ -542,7 +539,7 @@ fi
 pkill -USR2 cava 2>/dev/null || true
 alacritty msg config -r >/dev/null 2>&1 || true
 if command -v quickshell >/dev/null 2>&1; then
-    quickshell ipc -p "$HOME/.config/hypr/scripts/quickshell/Shell.qml" call main reloadTheme >/dev/null 2>&1 || true
+    timeout 5 quickshell ipc -p "$HOME/.config/hypr/scripts/quickshell/Shell.qml" call main reloadTheme >/dev/null 2>&1 || true
 fi
 if command -v gsettings >/dev/null 2>&1; then
     gsettings set org.gnome.desktop.interface gtk-theme "Adwaita:dark" >/dev/null 2>&1 || true

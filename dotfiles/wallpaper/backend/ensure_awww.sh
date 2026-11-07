@@ -103,7 +103,7 @@ daemon_socket_exists() {
 # These files are pure derived data (pre-resized RGB frames) and are
 # regenerated on demand the next time the gif is set, so deleting them is
 # safe. We match ONLY the `*_crop_Argb` suffix and only at the versioned
-# cache depth: state files (e.g. `eDP-1`) and everything else are untouched.
+# cache depth: output-specific state and everything else are untouched.
 #
 # EXCEPTION: the cache of the currently selected wallpaper (read from
 # $XDG_STATE_HOME/quickshell/wallpaper/current_wallpaper.txt) is preserved. Its animation frames are

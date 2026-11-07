@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fast wallpaper indexer - native awk/bash generator (replaces heavy python/sklearn)
-SRC_DIR="${1:-$HOME/Pictures/Wallpapers}"
+SRC_DIR="${1:-${WALLPAPER_DIR:-$HOME/Pictures/Wallpapers}}"
 OUTPUT_FILE="${2:-$HOME/.cache/quickshell/wallpaper_index.json}"
 CACHE_DIR="${QS_CACHE_WALLPAPER_PICKER:-$HOME/.cache/quickshell/wallpaper_picker}"
 COLOR_DIR="$CACHE_DIR/colors_markers"

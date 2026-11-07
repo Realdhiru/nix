@@ -174,11 +174,11 @@ case "$MODE" in
         [ "$MODE" = "glyph" ] || [ "$MODE" = "glyphs" ] && SUBMODE="glyph"
 
         EMOJI_DB="$HOME/.config/hypr/assets/emoji.db"
-        [ -f "$EMOJI_DB" ] || EMOJI_DB="$HOME/nix/dotfiles/hypr/assets/emoji.db"
+        [ -f "$EMOJI_DB" ] || EMOJI_DB="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/assets/emoji.db"
         [ -f "$EMOJI_DB" ] || EMOJI_DB="$HOME/Projects/emoji.db"
 
         GLYPH_DB="$HOME/.config/hypr/assets/glyph.db"
-        [ -f "$GLYPH_DB" ] || GLYPH_DB="$HOME/nix/dotfiles/hypr/assets/glyph.db"
+        [ -f "$GLYPH_DB" ] || GLYPH_DB="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/assets/glyph.db"
         [ -f "$GLYPH_DB" ] || GLYPH_DB="$HOME/Projects/glyph.db"
 
         QUERY=""

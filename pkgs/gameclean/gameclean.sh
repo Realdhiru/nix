@@ -12,7 +12,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-HOME_DIR="${HOME:-/home/realdhiru}"
+HOME_DIR="${HOME:?HOME must be set}"
 GAMES="$HOME_DIR/Games"
 PREFIXES="$GAMES/prefixes"
 LUTRIS_GAMES="$HOME_DIR/.local/share/lutris/games"
@@ -49,7 +49,6 @@ get_size() {
 declare -a ORPHAN_PATHS=()
 declare -a ORPHAN_REASONS=()
 declare -A REFERENCED_PREFIXES=()
-declare -A REFERENCED_ROOTS=()
 
 # 1+2+5: check lutris entries for broken installs
 if [ -d "$LUTRIS_GAMES" ]; then
@@ -68,10 +67,7 @@ if [ -d "$LUTRIS_GAMES" ]; then
             REFERENCED_PREFIXES["$real_p"]=1
         fi
 
-        if [ -n "$root_dir" ] && [ -d "$root_dir" ]; then
-            real_r=$(realpath "$root_dir" 2>/dev/null || echo "$root_dir")
-            REFERENCED_ROOTS["$real_r"]=1
-        else
+        if [ -z "$root_dir" ] || [ ! -d "$root_dir" ]; then
             ORPHAN_PATHS+=("$yml")
             ORPHAN_REASONS+=("lutris entry points to deleted game files")
         fi

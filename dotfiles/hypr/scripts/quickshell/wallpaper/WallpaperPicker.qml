@@ -81,7 +81,7 @@ FocusScope {
 
     FolderListModel {
         id: categoryFolderModel
-        folder: "file://" + Quickshell.env("HOME") + "/Pictures/Wallpapers"
+        folder: "file://" + Config.wallpaperDir
         showDirs: true
         showFiles: false
         showDotAndDotDot: false
@@ -476,7 +476,7 @@ FocusScope {
                     export DEST_FILE="${escapeBash(destFile)}"
                     export FINAL_THUMB="${escapeBash(finalThumb)}"
                     
-                    ~/.config/hypr/scripts/set_wallpaper.sh ${outArg} "$DEST_FILE"
+                    ~/.config/wallpaper/wallpaper.sh set ${outArg} "$DEST_FILE"
                 `;
                 Quickshell.execDetached(["bash", "-c", applyScript]);
             } else {
@@ -526,8 +526,8 @@ FocusScope {
                         exit 1
                     fi
                     
-                    ~/.config/hypr/scripts/set_wallpaper.sh ${outArg} "\$DEST_FILE"
-                    ~/.config/hypr/scripts/wallpaper_thumbnail.sh &
+                    ~/.config/wallpaper/wallpaper.sh set ${outArg} "\$DEST_FILE"
+                    ~/.config/wallpaper/wallpaper.sh thumb &
                 `;
                 downloadProc.command = ["bash", "-c", downloadScript];
                 downloadProc.running = true;
@@ -540,7 +540,7 @@ FocusScope {
         const escOriginal = escapeBash(originalFile);
 
         const fullScript = `
-            ~/.config/hypr/scripts/set_wallpaper.sh ${outArg} "${escOriginal}" "fade" "0.2" "120"
+            ~/.config/wallpaper/wallpaper.sh set ${outArg} "${escOriginal}" "fade" "0.2" "120"
         `;
         Quickshell.execDetached(["bash", "-c", fullScript]);
     }
@@ -587,7 +587,7 @@ FocusScope {
             }
             if (window.hasPendingOrganize) {
                 window.hasPendingOrganize = false;
-                Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; if command -v python3 >/dev/null 2>&1 && [ -f \"$HOME/Pictures/Wallpapers/scripts/auto_organize.py\" ]; then python3 \"$HOME/Pictures/Wallpapers/scripts/auto_organize.py\"; fi"]);
+                Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; if command -v python3 >/dev/null 2>&1 && [ -f \"$WALLPAPER_DIR/scripts/auto_organize.py\" ]; then python3 \"$WALLPAPER_DIR/scripts/auto_organize.py\"; fi"]);
             } else {
                 Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
             }
@@ -843,7 +843,7 @@ FocusScope {
     // "thumbs/yourfile.mp4" (no .jpg suffix, and QML's Image can't decode
     // raw video anyway) instead of the actual generated
     // "thumbs/yourfile.mp4.jpg". This checks the real file extension
-    // instead, matching set_wallpaper.sh and wallpaper_thumbnail.sh.
+    // instead, matching the wallpaper CLI's set and thumb commands.
     function isVideoFile(name) {
         if (!name) return false;
         let m = String(name).match(/\.([a-zA-Z0-9]+)$/);
@@ -941,12 +941,12 @@ FocusScope {
 
             REAL_PATH="$(readlink -f "$FLAT_PATH" 2>/dev/null || true)"
             if [ -z "$REAL_PATH" ] || [ ! -f "$REAL_PATH" ]; then
-                REAL_PATH="$HOME/Pictures/Wallpapers/$FILE_NAME"
+                REAL_PATH="$WALLPAPER_DIR/$FILE_NAME"
             fi
 
             if [ -n "$REAL_PATH" ] && [ -f "$REAL_PATH" ]; then
-                if command -v python3 >/dev/null 2>&1 && [ -f "$HOME/Pictures/Wallpapers/scripts/auto_organize.py" ]; then
-                    python3 "$HOME/Pictures/Wallpapers/scripts/auto_organize.py" --delete "$REAL_PATH" || gio trash "$REAL_PATH" 2>/dev/null || rm -f "$REAL_PATH"
+                if command -v python3 >/dev/null 2>&1 && [ -f "$WALLPAPER_DIR/scripts/auto_organize.py" ]; then
+                    python3 "$WALLPAPER_DIR/scripts/auto_organize.py" --delete "$REAL_PATH" || gio trash "$REAL_PATH" 2>/dev/null || rm -f "$REAL_PATH"
                 else
                     gio trash "$REAL_PATH" 2>/dev/null || rm -f "$REAL_PATH"
                 fi
@@ -956,7 +956,7 @@ FocusScope {
             rm -f "$HOME/.cache/quickshell/wallpaper_picker/thumbs/\${FILE_NAME}"*
             rm -f "$HOME/.cache/quickshell/wallpaper_picker/colors_markers/\${FILE_NAME}"*
             rm -f "$HOME/.cache/converted_gifs/\${FILE_NAME}"*
-            rm -f "$HOME/Pictures/Wallpapers/previews/"*"/\${FILE_NAME}"*
+            rm -f "$WALLPAPER_DIR/previews/"*"/\${FILE_NAME}"*
         `;
         Quickshell.execDetached(["bash", "-c", deleteLocalScript]);
 
@@ -1041,7 +1041,7 @@ FocusScope {
         window.statusToast = isFav ? "Removed from Favorites" : "Added to Favorites";
         toastTimer.restart();
 
-        Quickshell.execDetached(["bash", "-c", `~/.config/hypr/scripts/wallpaper.sh fav "${escTarget}"`]);
+        Quickshell.execDetached(["bash", "-c", `~/.config/wallpaper/wallpaper.sh fav "${escTarget}"`]);
     }
 
     function toggleFavoriteCurrentWallpaper() {
@@ -1397,7 +1397,7 @@ FocusScope {
     readonly property string flatSrcDir: "file://" + Caching.getCacheDir("wallpaper_picker") + "/flat"
     readonly property string srcDir: {
         const dir = Quickshell.env("WALLPAPER_DIR")
-        return (dir && dir !== "") ? dir : Quickshell.env("HOME") + "/Pictures/Wallpapers"
+        return (dir && dir !== "") ? dir : Config.wallpaperDir
     }
 
     readonly property real itemWidth: window.s(400)
@@ -2724,7 +2724,7 @@ FocusScope {
 
     Component.onDestruction: {
         if (window.hasPendingOrganize) {
-            Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; if command -v python3 >/dev/null 2>&1 && [ -f \"$HOME/Pictures/Wallpapers/scripts/auto_organize.py\" ]; then python3 \"$HOME/Pictures/Wallpapers/scripts/auto_organize.py\" & fi"]);
+            Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; if command -v python3 >/dev/null 2>&1 && [ -f \"$WALLPAPER_DIR/scripts/auto_organize.py\" ]; then python3 \"$WALLPAPER_DIR/scripts/auto_organize.py\" & fi"]);
         } else {
             Quickshell.execDetached(["bash", "-c", "rm -f '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
         }

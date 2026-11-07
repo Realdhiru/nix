@@ -56,12 +56,7 @@ get_status() {
     devices_json="[]"
 
     if [ "$power" == "on" ]; then
-        paired_macs=$(timeout 1 bluetoothctl devices Paired 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g')
-        mapfile -t devices < <(timeout 1 bluetoothctl devices 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g')
         mapfile -t connected_info_lines < <(timeout 1 bluetoothctl devices Connected 2>/dev/null | sed -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g')
-        
-        cached_cards=$(timeout 0.5 pactl list cards 2>/dev/null)
-        
         connected_macs=""
         connected_list_objs=()
         devices_list_objs=()
@@ -145,7 +140,7 @@ toggle_power() {
     local bt_state_dir="$desktop_state/bluetooth"
     mkdir -p "$bt_state_dir"
     local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
-    [ ! -x "$state_ctl" ] && state_ctl="$HOME/nix/dotfiles/hypr/scripts/quickshell/state_ctl.sh"
+    [ ! -x "$state_ctl" ] && state_ctl="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/quickshell/state_ctl.sh"
 
     if timeout 0.5 bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
         timeout 0.5 bluetoothctl power off 2>/dev/null

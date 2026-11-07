@@ -19,7 +19,6 @@ shift || true
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND="$SCRIPT_DIR/backend"
-WALL_DIR="${WALLPAPER_DIR:-$HOME/Pictures/Wallpapers}"
 CACHE_DIR="$HOME/.cache/quickshell/wallpaper_picker"
 THUMB_DIR="$CACHE_DIR/thumbs"
 COLOR_DIR="$CACHE_DIR/colors_markers"
@@ -30,7 +29,6 @@ STATE_WALL_DIR="$DESKTOP_STATE_DIR/wallpaper"
 STATE_MODES_DIR="$DESKTOP_STATE_DIR/modes"
 CURRENT_TXT="$STATE_WALL_DIR/current_wallpaper.txt"
 LAST_TXT="$STATE_WALL_DIR/last_wallpaper.txt"
-WP_KILLED_FILE="$STATE_MODES_DIR/wallpaper_killed"
 DEFAULT_WALLPAPER="${DEFAULT_WALLPAPER:-}"
 
 mkdir -p "$CACHE_DIR" "$THUMB_DIR" "$COLOR_DIR" "$FLAT_DIR" "$GIF_DIR" "$STATE_WALL_DIR" "$STATE_MODES_DIR"
@@ -40,7 +38,8 @@ atomic_write() {
     local content="$2"
     local dir
     dir="$(dirname "$target")"
-    local tmp="$dir/.$(basename "$target").tmp.$$"
+    local tmp
+    tmp="$dir/.$(basename "$target").tmp.$$"
     printf '%s\n' "$content" > "$tmp"
     mv -f "$tmp" "$target"
 }
@@ -97,7 +96,6 @@ cmd_clean() {
 # SUBCOMMAND: kill
 # -----------------------------------------------------------------------------
 cmd_kill() {
-    local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
     mkdir -p "$STATE_WALL_DIR"
     local throttle_lock="$STATE_WALL_DIR/wallpaper_kill_throttle"
 
@@ -115,7 +113,7 @@ cmd_kill() {
     fi
     date +%s%N > "$throttle_lock" 2>/dev/null || true
 
-    local mode_ctl="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
+    local mode_ctl="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/mode_ctl.sh"
     [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
 
     local is_killed="false"
@@ -168,7 +166,7 @@ cmd_set() {
 # SUBCOMMAND: boot
 # -----------------------------------------------------------------------------
 cmd_boot() {
-    local mode_ctl="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
+    local mode_ctl="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/mode_ctl.sh"
     [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
     if bash "$mode_ctl" is-active wallpaper-kill 2>/dev/null; then
         exit 0

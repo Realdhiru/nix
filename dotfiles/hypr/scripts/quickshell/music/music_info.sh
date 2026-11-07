@@ -137,8 +137,6 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
             touch "$lockFile"
             (
                 tempArt="$TMP_DIR/${trackHash}_temp_art.jpg"
-                tempBlur="$TMP_DIR/${trackHash}_temp_blur.png"
-
                 # Fast native fetcher handles encoded file:// URIs and http/https
                 if [[ "$rawUrl" == file://* ]]; then
                     local_url="${rawUrl#file://}"

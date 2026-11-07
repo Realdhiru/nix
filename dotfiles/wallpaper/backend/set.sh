@@ -9,6 +9,7 @@ set -uo pipefail
 TARGET_OUTPUTS=""
 WALL=""
 TRANS_TYPE="${AWWW_TRANSITION:-fade}"
+[ -n "${WALL_TRANSITION:-}" ] && TRANS_TYPE="$WALL_TRANSITION"
 TRANS_DURATION="${AWWW_TRANSITION_DURATION:-0.15}"
 TRANS_FPS="${AWWW_TRANSITION_FPS:-120}"
 TRANS_BEZIER="${AWWW_TRANSITION_BEZIER:-.1,.9,.2,1}"
@@ -73,11 +74,11 @@ exec 8>"$LOCKFILE"
 if [ -n "${FORCE_CYCLE:-}" ]; then
     flock -n 8 || exit 0
 else
-    flock 8
+    flock -w 30 8 || { echo "wallpaper set: another wallpaper operation held the lock for 30 seconds" >&2; exit 1; }
 fi
 
 WAS_KILLED=0
-MODE_CTL="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
+MODE_CTL="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/mode_ctl.sh"
 [ -f "$MODE_CTL" ] || MODE_CTL="$HOME/.config/hypr/scripts/mode_ctl.sh"
 if [ -x "$MODE_CTL" ] && bash "$MODE_CTL" is-active wallpaper-kill 2>/dev/null; then
     WAS_KILLED=1
@@ -89,7 +90,8 @@ atomic_write() {
     local content="$2"
     local dir
     dir="$(dirname "$target")"
-    local tmp="$dir/.$(basename "$target").tmp.$$"
+    local tmp
+    tmp="$dir/.$(basename "$target").tmp.$$"
     printf '%s\n' "$content" > "$tmp"
     mv -f "$tmp" "$target"
 }
@@ -117,7 +119,7 @@ if [ -n "$TARGET_OUTPUTS" ] && [ "$TARGET_OUTPUTS" != "all" ]; then
 elif command -v hyprctl >/dev/null 2>&1; then
     while IFS= read -r m; do
         [ -n "$m" ] && RESOLVED_OUTPUTS+=("$m")
-    done < <(hyprctl monitors -j 2>/dev/null | jq -r '.[].name' 2>/dev/null || true)
+    done < <(timeout 3 hyprctl monitors -j 2>/dev/null | jq -r '.[].name' 2>/dev/null || true)
 fi
 OUT_JOINED=$(IFS=','; echo "${RESOLVED_OUTPUTS[*]}")
 
@@ -143,7 +145,8 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
     fi
 
     if [ "${#RESOLVED_OUTPUTS[@]}" -eq 0 ]; then
-        RESOLVED_OUTPUTS=("eDP-1")
+        echo "No active output is available for a video wallpaper." >&2
+        exit 1
     fi
 
     # Determine if mpvpaper is already running on all target outputs
@@ -285,7 +288,7 @@ fi
 # Derived primary/internal connector prefix check using grep -E
 internal_mon=""
 if command -v hyprctl >/dev/null 2>&1; then
-    internal_mon=$(hyprctl monitors -j 2>/dev/null | jq -r '.[].name' 2>/dev/null | grep -E '^(eDP|LVDS|DSI)' | head -n 1 || true)
+    internal_mon=$(timeout 3 hyprctl monitors -j 2>/dev/null | jq -r '.[].name' 2>/dev/null | grep -E '^(eDP|LVDS|DSI)' | head -n 1 || true)
 fi
 
 should_run_wallust=0
@@ -332,7 +335,7 @@ if [ "$should_run_wallust" -eq 1 ]; then
             [ -s "$frame_seed" ] && SEED="$frame_seed"
         fi
 
-        THEME_ENGINE="$HOME/nix/dotfiles/wallust/generate.sh"
+        THEME_ENGINE="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/wallust/generate.sh"
         [ ! -x "$THEME_ENGINE" ] && THEME_ENGINE="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
         if [ -x "$THEME_ENGINE" ]; then
             "$THEME_ENGINE" "$SEED" >/dev/null 2>&1

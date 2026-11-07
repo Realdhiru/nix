@@ -3,7 +3,7 @@
 CACHE_FILE="/tmp/qs_sys_fetcher_cache.txt"
 
 # 1. Read instantaneous current values directly from /proc/stat
-read -r _ u n s i io ir so st g gn < /proc/stat
+read -r _ u n s i io ir so st < /proc/stat
 
 # Sum rx/tx from the interface actually carrying the default route, not a
 # name-prefix guess. The old heuristic (any interface starting with 'e' or

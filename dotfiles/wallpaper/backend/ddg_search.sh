@@ -21,7 +21,6 @@ echo "=== Starting search for: '$QUERY' (mode: $MODE) ===" > "$LOG_FILE"
 mkdir -p "$SEARCH_DIR" "$(dirname "$CONTROL_FILE")"
 
 # Normalize query
-RAW_QUERY="$QUERY"
 QUERY=$(echo "$QUERY" | tr '_-' ' ' | xargs 2>/dev/null || echo "$QUERY")
 lower_q=$(echo "$QUERY" | tr '[:upper:]' '[:lower:]')
 

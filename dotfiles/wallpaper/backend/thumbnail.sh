@@ -121,7 +121,7 @@ process_wallpaper() {
     local name="${hash}_${raw_name}"
 
     # Extract repository category from relative path if present
-    local rel="${file#$SRC/}"
+    local rel="${file#"$SRC"/}"
     local category=""
     if [[ "$rel" == *"/"* ]]; then
         category="${rel%%/*}"
@@ -200,7 +200,7 @@ find "$SRC" -not -path '*/.*' -not -path '*/previews*' -not -path '*/scripts*' -
 
 # Automatically refresh QuickShell wallpaper index with fast native indexer
 INDEXER_SCRIPT="$HOME/.config/hypr/scripts/quickshell/wallpaper/indexer.sh"
-[ ! -f "$INDEXER_SCRIPT" ] && INDEXER_SCRIPT="$HOME/nix/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.sh"
+[ ! -f "$INDEXER_SCRIPT" ] && INDEXER_SCRIPT="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/quickshell/wallpaper/indexer.sh"
 if [ -f "$INDEXER_SCRIPT" ]; then
     "$INDEXER_SCRIPT" "$SRC" "$HOME/.cache/quickshell/wallpaper_index.json" >/dev/null 2>&1 &
 fi

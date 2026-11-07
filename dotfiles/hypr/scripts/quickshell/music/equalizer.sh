@@ -54,7 +54,7 @@ arg2=$3
 
 if [ "$cmd" != "get" ]; then
     exec 200>"${QS_RUN_MUSIC}/equalizer.lock"
-    flock 200
+    flock -w 5 200 || { echo "equalizer: operation lock timed out" >&2; exit 1; }
 fi
 
 case $cmd in

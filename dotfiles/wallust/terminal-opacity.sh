@@ -6,7 +6,8 @@ apply_terminal_opacity() {
     local desktop_state="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
     local state_file="$desktop_state/quickshell/state.json"
     local alacritty_colors="$HOME/.cache/theme/alacritty-colors.toml"
-    local power_profile="$(cat "$desktop_state/power/profile" 2>/dev/null || echo "")"
+    local power_profile
+    power_profile="$(cat "$desktop_state/power/profile" 2>/dev/null || echo "")"
 
     # Check modes.json computed opacity_solid as single source of truth
     local modes_json="$desktop_state/modes/modes.json"

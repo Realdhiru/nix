@@ -42,10 +42,10 @@ if [ "${1:-}" = "--rescan" ]; then
     RESCAN_MODE="yes"
 fi
 
-CURRENT_RAW=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wifi list --rescan "$RESCAN_MODE" 2>/dev/null | awk -F: -v hs="$HOTSPOT_SSID" '$1=="yes" && $2=="Infra" && (hs == "" || $3 != hs){print $1":"$3":"$4":"$5; exit}')
+CURRENT_RAW=$(LC_ALL=C nmcli -t -f active,mode,ssid,signal,security device wifi list --rescan "$RESCAN_MODE" 2>/dev/null | awk -F: -v hs="$HOTSPOT_SSID" '$1=="yes" && $2=="Infra" && (hs == "" || $3 != hs){print $3":"$4":"$5; exit}')
 
 if [[ -n "$CURRENT_RAW" ]]; then
-    IFS=':' read -r active ssid signal security <<< "$CURRENT_RAW"
+    IFS=':' read -r ssid signal security <<< "$CURRENT_RAW"
     icon=$(get_icon "$signal")
     
     IFACE=$(LC_ALL=C nmcli -t -f DEVICE,TYPE,STATE d 2>/dev/null | awk -F: '$2=="wifi" && $3=="connected"{print $1;exit}')

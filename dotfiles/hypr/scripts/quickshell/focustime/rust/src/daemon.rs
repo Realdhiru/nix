@@ -62,8 +62,8 @@ fn is_locked() -> bool {
 }
 
 fn query_active_window() -> (String, String) {
-    let output = match std::process::Command::new("hyprctl")
-        .args(["activewindow", "-j"])
+    let output = match std::process::Command::new("timeout")
+        .args(["3", "hyprctl", "activewindow", "-j"])
         .output()
     {
         Ok(out) => out,
@@ -118,62 +118,63 @@ fn flush_buffer(conn: &mut Connection, buffer: &mut Vec<TickRecord>) {
         return;
     }
 
-    let tx = match conn.transaction() {
-        Ok(t) => t,
-        Err(e) => {
-            eprintln!("Failed to begin transaction: {}", e);
-            return;
+    let result = (|| -> rusqlite::Result<()> {
+        let tx = conn.transaction()?;
+        let mut logs: HashMap<(String, String), (i64, String)> = HashMap::new();
+        let mut hours: HashMap<(String, u32, String), i64> = HashMap::new();
+        let mut intervals: HashMap<(String, u32, String), i64> = HashMap::new();
+        let mut minutes: HashMap<(String, u32, String), i64> = HashMap::new();
+
+        // Keep the source records until every write and the commit succeed.
+        for rec in buffer.iter() {
+            let entry = logs.entry((rec.date_str.clone(), rec.cls.clone())).or_insert((0, rec.title.clone()));
+            entry.0 += 1;
+            entry.1 = rec.title.clone();
+
+            *hours.entry((rec.date_str.clone(), rec.hour, rec.cls.clone())).or_insert(0) += 1;
+            *intervals.entry((rec.date_str.clone(), rec.minute_idx / 15, rec.cls.clone())).or_insert(0) += 1;
+            *minutes.entry((rec.date_str.clone(), rec.minute_idx, rec.cls.clone())).or_insert(0) += 1;
         }
-    };
 
-    let mut logs: HashMap<(String, String), (i64, String)> = HashMap::new();
-    let mut hours: HashMap<(String, u32, String), i64> = HashMap::new();
-    let mut intervals: HashMap<(String, u32, String), i64> = HashMap::new();
-    let mut minutes: HashMap<(String, u32, String), i64> = HashMap::new();
+        for ((d_str, cls), (secs, title)) in logs {
+            tx.execute(
+                "INSERT INTO focus_log (log_date, app_class, seconds, app_title) VALUES (?, ?, ?, ?)
+                 ON CONFLICT(log_date, app_class) DO UPDATE SET seconds = seconds + ?, app_title = ?",
+                rusqlite::params![d_str, cls, secs, title, secs, title],
+            )?;
+        }
 
-    for rec in buffer.drain(..) {
-        let entry = logs.entry((rec.date_str.clone(), rec.cls.clone())).or_insert((0, rec.title.clone()));
-        entry.0 += 1;
-        entry.1 = rec.title.clone();
+        for ((d_str, hr, cls), secs) in hours {
+            tx.execute(
+                "INSERT INTO focus_hourly (log_date, hour, app_class, seconds) VALUES (?, ?, ?, ?)
+                 ON CONFLICT(log_date, hour, app_class) DO UPDATE SET seconds = seconds + ?",
+                rusqlite::params![d_str, hr, cls, secs, secs],
+            )?;
+        }
 
-        *hours.entry((rec.date_str.clone(), rec.hour, rec.cls.clone())).or_insert(0) += 1;
-        *intervals.entry((rec.date_str.clone(), rec.minute_idx / 15, rec.cls.clone())).or_insert(0) += 1;
-        *minutes.entry((rec.date_str, rec.minute_idx, rec.cls)).or_insert(0) += 1;
+        for ((d_str, itv, cls), secs) in intervals {
+            tx.execute(
+                "INSERT INTO focus_intervals (log_date, interval_idx, app_class, seconds) VALUES (?, ?, ?, ?)
+                 ON CONFLICT(log_date, interval_idx, app_class) DO UPDATE SET seconds = seconds + ?",
+                rusqlite::params![d_str, itv, cls, secs, secs],
+            )?;
+        }
+
+        for ((d_str, min_idx, cls), secs) in minutes {
+            tx.execute(
+                "INSERT INTO focus_minutes (log_date, minute_idx, app_class, seconds) VALUES (?, ?, ?, ?)
+                 ON CONFLICT(log_date, minute_idx, app_class) DO UPDATE SET seconds = seconds + ?",
+                rusqlite::params![d_str, min_idx, cls, secs, secs],
+            )?;
+        }
+
+        tx.commit()
+    })();
+
+    match result {
+        Ok(()) => buffer.clear(),
+        Err(error) => eprintln!("Failed to persist FocusTime buffer; retaining {} records for retry: {error}", buffer.len()),
     }
-
-    for ((d_str, cls), (secs, title)) in logs {
-        let _ = tx.execute(
-            "INSERT INTO focus_log (log_date, app_class, seconds, app_title) VALUES (?, ?, ?, ?)
-             ON CONFLICT(log_date, app_class) DO UPDATE SET seconds = seconds + ?, app_title = ?",
-            rusqlite::params![d_str, cls, secs, title, secs, title],
-        );
-    }
-
-    for ((d_str, hr, cls), secs) in hours {
-        let _ = tx.execute(
-            "INSERT INTO focus_hourly (log_date, hour, app_class, seconds) VALUES (?, ?, ?, ?)
-             ON CONFLICT(log_date, hour, app_class) DO UPDATE SET seconds = seconds + ?",
-            rusqlite::params![d_str, hr, cls, secs, secs],
-        );
-    }
-
-    for ((d_str, itv, cls), secs) in intervals {
-        let _ = tx.execute(
-            "INSERT INTO focus_intervals (log_date, interval_idx, app_class, seconds) VALUES (?, ?, ?, ?)
-             ON CONFLICT(log_date, interval_idx, app_class) DO UPDATE SET seconds = seconds + ?",
-            rusqlite::params![d_str, itv, cls, secs, secs],
-        );
-    }
-
-    for ((d_str, min_idx, cls), secs) in minutes {
-        let _ = tx.execute(
-            "INSERT INTO focus_minutes (log_date, minute_idx, app_class, seconds) VALUES (?, ?, ?, ?)
-             ON CONFLICT(log_date, minute_idx, app_class) DO UPDATE SET seconds = seconds + ?",
-            rusqlite::params![d_str, min_idx, cls, secs, secs],
-        );
-    }
-
-    let _ = tx.commit();
 }
 
 fn main() {

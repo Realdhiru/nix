@@ -3,8 +3,6 @@
 set -euo pipefail
 
 DIR="${1:-next}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
 INDEX_FILE="$CACHE_DIR/quickshell/wallpaper_index.json"
 PATHS_FILE="$CACHE_DIR/quickshell/wallpaper_paths.txt"
@@ -161,7 +159,7 @@ fi
 
 if [ -n "$TARGET_PATH" ] && [ -f "$TARGET_PATH" ]; then
     echo "$TARGET_PATH" > "$TARGET_TXT" 2>/dev/null || true
-    FORCE_CYCLE=1 "$SCRIPT_DIR/set_wallpaper.sh" "$TARGET_PATH" "none" "0.0" "120"
+    FORCE_CYCLE=1 "$HOME/.config/wallpaper/wallpaper.sh" set "$TARGET_PATH" "none" "0.0" "120"
 else
     notify-send -a "Wallpaper" -u low "No Wallpapers Found" 2>/dev/null || true
 fi

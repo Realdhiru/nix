@@ -5,8 +5,8 @@
 #
 set -uo pipefail
 
-SRC="$HOME/Pictures/Wallpapers"
-PROJECTS_SRC="$HOME/Projects/Wallpapers"
+SRC="${WALLPAPER_DIR:-$HOME/Pictures/Wallpapers}"
+PROJECTS_SRC="${WALLPAPER_ORGANIZER_PROJECTS_DIR:-$HOME/Projects/Wallpapers}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CACHE_DIR="$HOME/.cache/quickshell/wallpaper_picker"
 THUMB="$CACHE_DIR/thumbs"
@@ -127,15 +127,14 @@ cleanup_residue() {
     fi
 
     # 6. Clean last wallpaper cache if deleted
-    for f in "$STATE_WALL_DIR/last_wallpaper.txt"; do
-        if [ -f "$f" ]; then
-            local p
-            p="$(cat "$f" 2>/dev/null || echo "")"
-            if [ -z "$p" ] || [ ! -f "$p" ] || [[ "$p" == *"/previews/"* ]]; then
-                rm -f "$f"
-            fi
+    local last_wall_file="$STATE_WALL_DIR/last_wallpaper.txt"
+    if [ -f "$last_wall_file" ]; then
+        local p
+        p="$(cat "$last_wall_file" 2>/dev/null || echo "")"
+        if [ -z "$p" ] || [ ! -f "$p" ] || [[ "$p" == *"/previews/"* ]]; then
+            rm -f "$last_wall_file"
         fi
-    done
+    fi
 }
 
 # Run initial cleanup and sync on startup
@@ -165,7 +164,7 @@ stdbuf -oL inotifywait -m -r -q \
     --format '%w%f' \
     "${WATCH_DIRS[@]}" 2>/dev/null | while read -r changed_file; do
     # Debounce: drain any events arriving in rapid succession within 0.5s
-    while read -t 0.5 -r next_file; do
+    while read -t 0.5 -r _; do
         :
     done
 
