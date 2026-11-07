@@ -72,9 +72,9 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
   - *Persistent State Unified*: All persistent state migrated to `${XDG_STATE_HOME:-$HOME/.local/state}/desktop/` (`quickshell/state.json`, `power/profile`, `modes/wallpaper_killed`, `modes/gaming_mode`, `recording/rec_pid`, `wallpaper/current_wallpaper.txt`). Legacy cache locations purged.
 - **Race-to-Sleep Strategy**: Maximize package C-state sleep ($C8/C10$) by bursting tasks at full frequency and sleeping immediately. Use event signals where possible and keep intentional accounting/sample intervals coarse and bounded.
 - **Coffee Mode & Persistent Idle Inhibition**:
-  - `SUPER + CTRL + U` invokes `power.sh inhibit` to acquire `systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity`.
+  - `SUPER + F2` invokes `power.sh inhibit` to acquire `systemd-inhibit --what=idle:sleep --who=idle-inhibit-toggle --why="Coffee mode (idle inhibit)" --mode=block sleep infinity`.
   - `restore_state.sh` checks state and automatically re-engages the inhibitor across QuickShell reloads, Hyprland restarts, and cold boots until explicitly toggled off.
-  - In `hypridle.conf`, idle timers enforce DPMS off at 120s, lock at 150s, and suspend at 1800s (30m) with `ignore_dbus_inhibit = false` and `ignore_systemd_inhibit = false`.
+  - In `hypridle.conf`, idle timers lock at 120s, turn DPMS off at 130s, and suspend at 1800s (30m) with `ignore_dbus_inhibit = false` and `ignore_systemd_inhibit = false`.
 - **Continuous Battery Drainage Pattern Analyzer (`battery_audit.sh`, `power.sh battery-audit`)**:
   - Selects the first battery supply discovered under `/sys/class/power_supply/` and samples its power reading every 60s during discharge; elapsed timestamp deltas drive interval totals.
   - Per-app Watt-hour attribution is modeled from proportional CPU-time deltas; it is not measured per application.
