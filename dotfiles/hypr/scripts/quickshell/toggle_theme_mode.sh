@@ -9,7 +9,7 @@ if [ ! -f "$STATE_CTL" ]; then
     STATE_CTL="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
 fi
 if [ ! -f "$TERMINAL_OPACITY" ]; then
-    TERMINAL_OPACITY="$HOME/nix/dotfiles/wallust/terminal-opacity.sh"
+    TERMINAL_OPACITY="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/wallust/terminal-opacity.sh"
 fi
 
 CURRENT=$("$STATE_CTL" get ui.themeMode)
