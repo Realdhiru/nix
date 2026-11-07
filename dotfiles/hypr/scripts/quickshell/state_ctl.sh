@@ -13,7 +13,7 @@ LOCK_FILE="$STATE_DIR/.state.lock"
 mkdir -p "$STATE_DIR"
 
 exec 201>"$LOCK_FILE"
-flock 201
+flock -w 5 201 || { echo "state_ctl.sh: state lock timed out" >&2; exit 1; }
 
 # Initialize or repair state.json if absent or corrupted
 if [ ! -s "$STATE_FILE" ] || ! jq empty "$STATE_FILE" 2>/dev/null; then
@@ -62,16 +62,17 @@ case "$ACTION" in
         IFS='.' read -r -a PATH_PARTS <<< "$KEY"
         PATH_JSON=$(printf '%s\n' "${PATH_PARTS[@]}" | jq -R . | jq -s .)
         
+        val_args=()
         if [ "$VAL" = "true" ] || [ "$VAL" = "false" ]; then
-            VAL_ARG="--argjson v $VAL"
+            val_args=(--argjson v "$VAL")
         elif [[ "$VAL" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
-            VAL_ARG="--argjson v $VAL"
+            val_args=(--argjson v "$VAL")
         else
-            VAL_ARG="--arg v $VAL"
+            val_args=(--arg v "$VAL")
         fi
 
         TMP="$STATE_FILE.tmp.$$$RANDOM"
-        if jq --argjson p "$PATH_JSON" $VAL_ARG 'setpath($p; $v)' "$STATE_FILE" > "$TMP" 2>/dev/null && jq empty "$TMP" 2>/dev/null; then
+        if jq --argjson p "$PATH_JSON" "${val_args[@]}" 'setpath($p; $v)' "$STATE_FILE" > "$TMP" 2>/dev/null && jq empty "$TMP" 2>/dev/null; then
             mv -f "$TMP" "$STATE_FILE"
         else
             rm -f "$TMP"

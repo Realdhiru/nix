@@ -344,7 +344,7 @@ Variants {
             // ── Hardware Backlight Service (sysfs inotify, zero polling) ──
             FileView {
                 id: brightCurView
-                path: Config.backlightDevice + "/brightness"
+                path: Config.backlightDevice ? Config.backlightDevice + "/brightness" : ""
                 watchChanges: true
                 onLoadedChanged: barWindow.updateBrightness()
                 onTextChanged: barWindow.updateBrightness()
@@ -353,7 +353,7 @@ Variants {
 
             FileView {
                 id: brightMaxView
-                path: Config.backlightDevice + "/max_brightness"
+                path: Config.backlightDevice ? Config.backlightDevice + "/max_brightness" : ""
                 onLoadedChanged: barWindow.updateBrightness()
             }
 

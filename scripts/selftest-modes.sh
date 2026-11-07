@@ -8,11 +8,12 @@
 
 set -euo pipefail
 
+hyprctl() { timeout 3 command hyprctl "$@"; }
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 MODE_CTL="$ROOT_DIR/dotfiles/hypr/scripts/mode_ctl.sh"
 DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
-MODES_JSON="$DESKTOP_STATE_DIR/modes/modes.json"
 ALACRITTY_CONF="$HOME/.cache/theme/alacritty-colors.toml"
 PACE="${PACE:-1.6}"
 

@@ -19,7 +19,29 @@ shift || true
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
-STATE_FILE="$DESKTOP_STATE_DIR/power/idle_inhibit.pid"
+# Bound all compositor IPC paths, including lid/display handlers.
+hyprctl() { timeout 3 command hyprctl "$@"; }
+
+keyboard_backlight_device() {
+    local path
+    for path in /sys/class/leds/*kbd_backlight/brightness; do
+        [ -e "$path" ] || continue
+        path="${path%/brightness}"
+        printf '%s\n' "${path##*/}"
+        return 0
+    done
+    return 1
+}
+
+cmd_keyboard_backlight() {
+    local action="${1:-off}" device
+    device=$(keyboard_backlight_device) || return 0
+    case "$action" in
+        off) brightnessctl --device="$device" -s set 0 >/dev/null 2>&1 || true ;;
+        restore) brightnessctl --device="$device" -r >/dev/null 2>&1 || true ;;
+        *) echo "Usage: power.sh keyboard-backlight {off|restore}" >&2; return 2 ;;
+    esac
+}
 
 is_locked() {
     # Check for active hyprlock
@@ -111,11 +133,13 @@ cmd_lock() {
     hyprctl eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
 
     local state_wall_dir="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/wallpaper"
-    local wp="$(head -n 1 "$state_wall_dir/current_wallpaper.txt" 2>/dev/null || true)"
+    local wp
+    wp="$(head -n 1 "$state_wall_dir/current_wallpaper.txt" 2>/dev/null || true)"
     export CURRENT_WALLPAPER="$wp"
     export CURRENT_WALLPAPER_THUMB=""
     if [[ "$wp" =~ \.(mp4|mkv|mov|webm)$ ]]; then
-        local base="$(basename "$wp")"
+        local base
+        base="$(basename "$wp")"
         if [ -f "/tmp/thumb_${base}.jpg" ]; then
             export CURRENT_WALLPAPER_THUMB="/tmp/thumb_${base}.jpg"
         elif [ -f "$HOME/.cache/quickshell/wallpaper_picker/thumbs/${base}.jpg" ]; then
@@ -138,7 +162,7 @@ cmd_lock() {
     # Watchdog cleanup trap: clear crashed session lock if process terminates abnormally
     cleanup_lock() {
         local code=$?
-        if [ $code -ne 0 ]; then
+        if [ "$code" -ne 0 ]; then
             echo "[power.sh $(date '+%Y-%m-%d %H:%M:%S')] Lock process exited with code $code. Executing emergency clear_crashed_lockscreen failsafe." >> "$crash_log"
             hyprctl eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true
         fi
@@ -189,11 +213,14 @@ cmd_lid() {
             # 1. Turn off OLED display immediately
             hyprctl eval "hl.dispatch(hl.dsp.dpms({action='off'}))" >/dev/null 2>&1 || true
 
-            # 2. Save and turn off keyboard backlight
-            local kbd_val
-            kbd_val=$(brightnessctl --device='asus::kbd_backlight' get 2>/dev/null || echo "0")
-            echo "$kbd_val" > /run/user/${UID:-1000}/saved_kbd_backlight 2>/dev/null || true
-            brightnessctl --device='asus::kbd_backlight' set 0 >/dev/null 2>&1 || true
+            # 2. Save and turn off any detected keyboard backlight.
+            local kbd_device kbd_val
+            kbd_device=$(keyboard_backlight_device 2>/dev/null || true)
+            if [ -n "$kbd_device" ]; then
+                kbd_val=$(brightnessctl --device="$kbd_device" get 2>/dev/null || echo "0")
+                printf '%s\n%s\n' "$kbd_device" "$kbd_val" > "/run/user/${UID:-1000}/saved_kbd_backlight" 2>/dev/null || true
+                brightnessctl --device="$kbd_device" set 0 >/dev/null 2>&1 || true
+            fi
 
             # 3. Pause CAVA audio FFT processing to eliminate wasted audio analysis cycles
             pkill -STOP -f "cava.*cava_topbar.conf" 2>/dev/null || true
@@ -220,10 +247,18 @@ cmd_lid() {
 
                 # Restore keyboard backlight if previously active
                 if [ -f "/run/user/${UID:-1000}/saved_kbd_backlight" ]; then
-                    local prev_kbd
-                    prev_kbd=$(cat "/run/user/${UID:-1000}/saved_kbd_backlight" 2>/dev/null || echo "0")
-                    if [ -n "$prev_kbd" ] && [ "$prev_kbd" -gt 0 ] 2>/dev/null; then
-                        brightnessctl --device='asus::kbd_backlight' set "$prev_kbd" >/dev/null 2>&1 || true
+                    local -a saved_kbd=()
+                    mapfile -t saved_kbd < "/run/user/${UID:-1000}/saved_kbd_backlight" 2>/dev/null || true
+                    local prev_kbd_device prev_kbd
+                    if [ "${#saved_kbd[@]}" -gt 1 ]; then
+                        prev_kbd_device="${saved_kbd[0]}"
+                        prev_kbd="${saved_kbd[1]}"
+                    else
+                        prev_kbd_device=$(keyboard_backlight_device 2>/dev/null || true)
+                        prev_kbd="${saved_kbd[0]:-0}"
+                    fi
+                    if [ -n "$prev_kbd_device" ] && [ -n "$prev_kbd" ] && [ "$prev_kbd" -gt 0 ] 2>/dev/null; then
+                        brightnessctl --device="$prev_kbd_device" set "$prev_kbd" >/dev/null 2>&1 || true
                     fi
                     rm -f "/run/user/${UID:-1000}/saved_kbd_backlight" 2>/dev/null || true
                 fi
@@ -306,6 +341,7 @@ cmd_profile() {
             tlp_cmd="performance"
             ;;
         power-saver|quiet)
+            prof="power-saver"
             tlp_cmd="power-saver"
             ;;
         balanced|*)
@@ -314,32 +350,95 @@ cmd_profile() {
             ;;
     esac
 
-    # TLP is the sole hardware authority; do not persist state if it failed.
-    if ! command -v tlp >/dev/null 2>&1 || ! sudo tlp "$tlp_cmd"; then
-        notify-send -a "Power" -u critical "Profile Failed" 2>/dev/null || true
+    mkdir -p "$DESKTOP_STATE_DIR/power"
+    exec 7>"${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/desktop-power.lock"
+    if ! flock -w 10 7; then
+        echo "power.sh: another profile change held the lock for 10 seconds" >&2
         return 1
     fi
 
-    # Atomic profile state sync, only after the hardware change succeeds.
-    mkdir -p "$DESKTOP_STATE_DIR/power" || return 1
-    printf '%s\n' "$prof" > "$DESKTOP_STATE_DIR/power/profile.tmp" || return 1
-    mv -f "$DESKTOP_STATE_DIR/power/profile.tmp" "$DESKTOP_STATE_DIR/power/profile" || return 1
-    local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
-    [ ! -x "$state_ctl" ] && state_ctl="$HOME/nix/dotfiles/hypr/scripts/quickshell/state_ctl.sh"
-    if [ -x "$state_ctl" ]; then
-        bash "$state_ctl" set power.profile "$prof" || return 1
+    local applied
+    applied="$(cat "$DESKTOP_STATE_DIR/power/applied" 2>/dev/null || true)"
+
+    # 1. Hardware TLP profile (invisible modeset), skip if already applied
+    local has_battery=false type_path supply_type
+    for type_path in /sys/class/power_supply/*/type; do
+        [ -r "$type_path" ] || continue
+        read -r supply_type < "$type_path"
+        if [ "$supply_type" = "Battery" ]; then
+            has_battery=true
+            break
+        fi
+    done
+
+    if [ "$has_battery" = "true" ] && [ "$applied" != "$prof" ]; then
+        if ! command -v tlp >/dev/null 2>&1 || ! timeout 15 sudo tlp "$tlp_cmd" 7>&-; then
+            notify-send -a "Power" -u critical "Profile Failed" 2>/dev/null || true
+            return 1
+        fi
+        printf '%s\n' "$prof" > "$DESKTOP_STATE_DIR/power/applied"
+    elif [ "$has_battery" = "false" ]; then
+        echo "power.sh: no battery detected; skipping the optional TLP hardware profile" >&2
     fi
 
-    # 5. Modes Engine SSOT sync (only if not called internally by mode_ctl.sh)
+    # 2. Atomic state sync
+    printf '%s\n' "$prof" > "$DESKTOP_STATE_DIR/power/profile.tmp" && \
+        mv -f "$DESKTOP_STATE_DIR/power/profile.tmp" "$DESKTOP_STATE_DIR/power/profile"
+    local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
+    [ ! -x "$state_ctl" ] && state_ctl="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/quickshell/state_ctl.sh"
+    if [ -x "$state_ctl" ]; then
+        bash "$state_ctl" set power.profile "$prof" 7>&- || {
+            echo "power.sh: failed to persist power profile state" >&2
+            return 1
+        }
+    fi
+
+    # Never hold desktop-power.lock while acquiring mode_ctl's .modes.lock.
+    # mode_ctl may call back here while holding .modes.lock, so nested locks
+    # in the opposite order deadlock during concurrent profile/mode changes.
+    flock -u 7
+    exec 7>&-
+
+    # 3. Appearance + Modes Engine SSOT sync (skip profile recursion, suppress wallpaper transition)
     if [ "${CALLER_IS_MODE_CTL:-false}" != "true" ]; then
-        notify-send -a "Power" -u low "${prof^} Mode" 2>/dev/null || true
         local mode_ctl="$SCRIPT_DIR/mode_ctl.sh"
         [ -f "$mode_ctl" ] || mode_ctl="$HOME/.config/hypr/scripts/mode_ctl.sh"
-        if [ "$prof" = "power-saver" ] || [ "$prof" = "quiet" ]; then
-            bash "$mode_ctl" set power-saver true 2>/dev/null || true
-        else
-            bash "$mode_ctl" set power-saver false 2>/dev/null || true
+        local want=false
+        [ "$prof" = "power-saver" ] && want=true
+        if [ -x "$mode_ctl" ]; then
+            MODE_CTL_NO_PROFILE=1 WALL_TRANSITION=none \
+                timeout 10 bash "$mode_ctl" set power-saver "$want" >/dev/null 2>&1 || {
+                    echo "power.sh: failed to synchronize power-saver mode" >&2
+                    return 1
+                }
         fi
+    fi
+
+    # 4. Monitor refresh rate modeset LAST: ensures all shaders/backgrounds ready, single blink
+    local refresh_script="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/refresh_monitor.sh"
+    [ -x "$refresh_script" ] || refresh_script="$HOME/.config/hypr/scripts/refresh_monitor.sh"
+    if [ -x "$refresh_script" ]; then
+        timeout 5 "$refresh_script" || echo "power.sh: monitor refresh policy could not be applied" >&2
+    fi
+}
+
+cmd_auto() {
+    local on_ac=0 p cur
+    for p in /sys/class/power_supply/*/online; do
+        if [ -f "$p" ] && [ "$(cat "$p" 2>/dev/null)" = "1" ]; then
+            on_ac=1
+            break
+        fi
+    done
+
+    cur="$(cat "$DESKTOP_STATE_DIR/power/profile" 2>/dev/null || echo balanced)"
+    if [ "$on_ac" -eq 1 ]; then
+        cmd_profile performance
+    elif [ "$cur" = "performance" ]; then
+        cmd_profile balanced
+    else
+        # On battery, keep power-saver or balanced as set by user
+        cmd_profile "$cur"
     fi
 }
 
@@ -353,13 +452,13 @@ cmd_display() {
     case "$action" in
         off)
             touch "$marker" 2>/dev/null || true
-            brightnessctl -sd asus::kbd_backlight set 0 >/dev/null 2>&1 || true
+            cmd_keyboard_backlight off
             hyprctl eval "hl.dispatch(hl.dsp.dpms({action='off'}))" >/dev/null 2>&1 || true
             ;;
         on)
             rm -f "$marker" 2>/dev/null || true
             hyprctl eval "hl.dispatch(hl.dsp.dpms({action='on'}))" >/dev/null 2>&1 || true
-            brightnessctl -rd asus::kbd_backlight >/dev/null 2>&1 || true
+            cmd_keyboard_backlight restore
             ;;
         toggle)
             local status
@@ -396,11 +495,13 @@ case "$CMD" in
     lid)      cmd_lid "$@" ;;
     inhibit)  cmd_inhibit "$@" ;;
     display)  cmd_display "$@" ;;
+    keyboard-backlight) cmd_keyboard_backlight "$@" ;;
     dpms)     cmd_display "$@" ;;
     profile)  cmd_profile "$@" ;;
+    auto)     cmd_auto "$@" ;;
     battery-audit|audit) cmd_battery_audit "$@" ;;
     *)
-        echo "Usage: power.sh [lock|suspend|resume|lid close|lid open|inhibit|display <off|on|toggle>|profile <performance|balanced|power-saver>|battery-audit [report|status|start|stop|reset]]" >&2
+        echo "Usage: power.sh [lock|suspend|resume|lid close|lid open|inhibit|display <off|on|toggle>|keyboard-backlight <off|restore>|profile <performance|balanced|power-saver>|auto|battery-audit [report|status|start|stop|reset]]" >&2
         exit 1
         ;;
 esac

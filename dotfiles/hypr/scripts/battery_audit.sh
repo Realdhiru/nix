@@ -2,7 +2,7 @@
 #
 # battery_audit.sh -- Intelligent Continuous Battery Drainage Pattern Analyzer
 #
-# Tracks real-time power draw from /sys/class/power_supply/BAT0, attributes energy
+# Tracks real-time power draw from the first detected battery supply, attributes energy
 # consumption (Wh) using CPU-time weighting; per-app Wh is modeled, not measured.
 # detects power spikes, and provides balanced-mode optimization diagnostics.
 #
@@ -10,6 +10,8 @@
 #
 
 set -uo pipefail
+
+hyprctl() { timeout 3 command hyprctl "$@"; }
 
 STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/power/battery_audit"
 mkdir -p "$STATE_DIR" "$STATE_DIR/history"
@@ -46,9 +48,22 @@ canonical_app_name() {
 }
 
 # Read current battery status, power draw in Watts, capacity, energy in Wh
+find_battery_path() {
+    local supply type
+    for supply in /sys/class/power_supply/*; do
+        [ -r "$supply/type" ] || continue
+        IFS= read -r type < "$supply/type" || continue
+        if [ "$type" = "Battery" ]; then
+            printf '%s\n' "$supply"
+            return 0
+        fi
+    done
+    return 1
+}
+
 get_battery_metrics() {
-    local bat_path="/sys/class/power_supply/BAT0"
-    [ -d "$bat_path" ] || return 1
+    local bat_path
+    bat_path=$(find_battery_path) || return 1
 
     local status="Unknown"
     local power_uw=0
@@ -66,6 +81,14 @@ get_battery_metrics() {
         cur_ua=$(cat "$bat_path/current_now" 2>/dev/null || echo 0)
         volt_uv=$(cat "$bat_path/voltage_now" 2>/dev/null || echo 0)
         power_uw=$(awk "BEGIN { printf \"%.0f\", ($cur_ua * $volt_uv) / 1000000 }")
+    fi
+
+    # Charge-based supplies expose charge_now rather than energy_now.
+    if [ "$energy_uw" -eq 0 ] && [ -r "$bat_path/charge_now" ] && [ -r "$bat_path/voltage_now" ]; then
+        local charge_uah volt_uv
+        charge_uah=$(cat "$bat_path/charge_now" 2>/dev/null || echo 0)
+        volt_uv=$(cat "$bat_path/voltage_now" 2>/dev/null || echo 0)
+        energy_uw=$(awk "BEGIN { printf \"%.0f\", ($charge_uah * $volt_uv) / 1000000 }")
     fi
 
     # Output: status power_w energy_wh capacity
@@ -289,6 +312,11 @@ EOF
 
 # Daemon loop
 run_daemon() {
+    if ! find_battery_path >/dev/null; then
+        echo "No battery supply detected; battery audit daemon is not needed."
+        exit 0
+    fi
+
     exec 8>"$LOCK_FILE"
     if ! flock -n 8; then
         echo "Battery audit daemon already running."
@@ -302,7 +330,7 @@ run_daemon() {
         sample_step 2>/dev/null || true
         # If discharging, sample every SAMPLE_INTERVAL; if plugged in, check every 45s.
         local status
-        status=$(cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo "Unknown")
+        status=$(get_battery_metrics | awk '{ print $1 }' || echo "Unknown")
         if [ "$status" = "Discharging" ]; then
             sleep "$SAMPLE_INTERVAL"
         else
@@ -313,6 +341,10 @@ run_daemon() {
 
 # Generate rich analytical report
 generate_report() {
+    if ! find_battery_path >/dev/null; then
+        echo "No battery supply detected."
+        return 0
+    fi
     read -r status power_w energy_wh capacity <<< "$(get_battery_metrics)"
 
     if [ ! -f "$SESSION_FILE" ] || [ ! -s "$SESSION_FILE" ]; then

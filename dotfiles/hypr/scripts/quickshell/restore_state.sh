@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # QuickShell System-Wide State Restoration Script
+hyprctl() { timeout 3 command hyprctl "$@"; }
 DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
 STATE_DIR="$DESKTOP_STATE_DIR/quickshell"
 STATE_FILE="$STATE_DIR/state.json"
@@ -46,7 +47,7 @@ fi
 
 # Parse state JSON via jq
 TEMP=6500; GAMMA=100; SAT=100; GRAIN=0; CRT=0
-GAMING=false; WP_KILLED=false; COFFEE=false; POWER_PROF="balanced"; SUNSET_ACTIVE=false
+COFFEE=false; POWER_PROF="balanced"; SUNSET_ACTIVE=false
 
 if [ -f "$STATE_FILE" ]; then
     vals=$(jq -r '[
@@ -55,15 +56,13 @@ if [ -f "$STATE_FILE" ]; then
         (.sunset.sat // 100),
         (.sunset.grain // 0),
         (.sunset.crt // 0),
-        (.modes.gaming // false),
-        (.modes.wallpaperKilled // false),
         (.modes.coffee // false),
         (.power.profile // "balanced"),
         (.sunset.active // false)
     ] | @tsv' "$STATE_FILE" 2>/dev/null || true)
 
     if [ -n "$vals" ]; then
-        read -r TEMP GAMMA SAT GRAIN CRT GAMING WP_KILLED COFFEE POWER_PROF SUNSET_ACTIVE <<< "$vals"
+        read -r TEMP GAMMA SAT GRAIN CRT COFFEE POWER_PROF SUNSET_ACTIVE <<< "$vals"
     fi
 fi
 
@@ -73,7 +72,7 @@ if ! pgrep -x hyprsunset >/dev/null 2>&1; then
     systemctl --user start hyprsunset.service 2>/dev/null || true
 fi
 
-if [ "$SUNSET_ACTIVE" = "true" ] && ([ "$TEMP" -ne 6500 ] || [ "$GAMMA" -ne 100 ]); then
+if [ "$SUNSET_ACTIVE" = "true" ] && { [ "$TEMP" -ne 6500 ] || [ "$GAMMA" -ne 100 ]; }; then
     hyprctl hyprsunset temperature "$TEMP" >/dev/null 2>&1 || true
     hyprctl hyprsunset gamma "$GAMMA" >/dev/null 2>&1 || true
 else
@@ -83,7 +82,7 @@ fi
 
 # 2. Shader Restoration (Saturation / Paper Grain / CRT Curvature)
 NEEDS_SHADER=0
-if [ "$SUNSET_ACTIVE" = "true" ] && ([ "$SAT" -ne 100 ] || [ "$GRAIN" -gt 0 ] || [ "$CRT" -gt 0 ]); then
+if [ "$SUNSET_ACTIVE" = "true" ] && { [ "$SAT" -ne 100 ] || [ "$GRAIN" -gt 0 ] || [ "$CRT" -gt 0 ]; }; then
     NEEDS_SHADER=1
 fi
 
@@ -152,7 +151,7 @@ fi
 
 # 3. Synchronize modes via mode_ctl.sh (Single Source of Truth)
 MODES_CTL="$SCRIPTS_DIR/mode_ctl.sh"
-[ ! -x "$MODES_CTL" ] && MODES_CTL="$HOME/nix/dotfiles/hypr/scripts/mode_ctl.sh"
+[ ! -x "$MODES_CTL" ] && MODES_CTL="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/mode_ctl.sh"
 [ -x "$MODES_CTL" ] && bash "$MODES_CTL" apply >/dev/null 2>&1 || true
 
 

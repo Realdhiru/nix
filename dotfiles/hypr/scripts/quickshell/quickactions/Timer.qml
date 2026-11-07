@@ -97,7 +97,7 @@ Item {
         id: soundProc
     }
 
-    readonly property string alarmSoundPath: "/home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/quickactions/sounds/alarm_beep.wav"
+    readonly property string alarmSoundPath: Qt.resolvedUrl("sounds/alarm_beep.wav")
 
     Timer {
         id: alarmLoopTimer
@@ -142,8 +142,8 @@ Item {
         // Slide the sidepopup widget open and switch to Timer tab (tab 2)
         Quickshell.execDetached([
             "bash", "-c",
-            "quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call floating setIndex 2; " +
-            "quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call floating showEdge left"
+            "timeout 5 quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call floating setIndex 2; " +
+            "timeout 5 quickshell ipc -p ~/.config/hypr/scripts/quickshell/Shell.qml call floating showEdge left"
         ]);
     }
 

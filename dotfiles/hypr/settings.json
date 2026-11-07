@@ -16,22 +16,10 @@
   "accentColorSource": "primary",
   "barAccentColorSource": "text",
   "cavaGradient": "soft",
-  "wallpaperDir": "/home/realdhiru/Pictures/Wallpapers",
+  "wallpaperDir": "~/Pictures/Wallpapers",
   "language": "",
   "kbOptions": "grp:alt_shift_toggle",
   "workspaceCount": 8,
-  "monitors": [
-    {
-      "name": "eDP-1",
-      "resW": 2880,
-      "resH": 1620,
-      "rate": 120,
-      "x": 0,
-      "y": 0,
-      "scale": 2,
-      "transform": 0
-    }
-  ],
   "keybinds": [],
   "topbarHelpIcon": true,
   "topbarPosition": "left",

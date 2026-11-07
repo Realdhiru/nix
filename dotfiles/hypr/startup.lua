@@ -7,15 +7,18 @@ hl.on("hyprland.start", function()
     os.execute("systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP")
     hl.exec_cmd("systemctl --user start hyprland-session.target")
 
-    -- 2. Quickshell: Launch immediately so TopBar & master window render concurrently
-    hl.exec_cmd("quickshell -p " .. scripts .. "quickshell/Shell.qml")
-    hl.exec_cmd("hyprctl setcursor Bibata-Modern-Ice 32")
+    -- 2. Apply display and power policy through one serialized request.
+    hl.exec_cmd(scripts .. "power.sh auto")
 
-    -- 3. Wallpaper initialization in background
-    hl.exec_cmd(scripts .. "boot_wallpaper.sh")
-    hl.exec_cmd(scripts .. "wallpaper_watcher.sh")
+    -- 3. Keep startup, reload, and the toggle bind behind one singleton owner.
+    hl.exec_cmd("bash " .. scripts .. "qs_manager.sh start")
+    hl.exec_cmd("timeout 3 hyprctl setcursor Bibata-Modern-Ice 32")
 
-    -- 4. Idle & Utilities
+    -- 4. Wallpaper initialization in background
+    hl.exec_cmd(home .. "/.config/wallpaper/wallpaper.sh boot")
+    hl.exec_cmd(home .. "/.config/wallpaper/wallpaper.sh watch")
+
+    -- 5. Idle & Utilities
     hl.exec_cmd("hypridle")
     -- KDE Connect: autostart disabled per user request
     -- hl.exec_cmd("kdeconnect-indicator")

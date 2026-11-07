@@ -12,6 +12,27 @@ if lf then
     end
 end
 
+local blur_enabled = true
+local shadow_enabled = true
+local anim_enabled = true
+local allow_tearing = false
+local direct_scanout = 0
+
+local modes_file = desktop_state .. "/modes/modes.json"
+local mf = io.open(modes_file, "r")
+if mf then
+    local content = mf:read("*a")
+    mf:close()
+    if content then
+        if content:match('"blur"%s*:%s*false') then blur_enabled = false end
+        if content:match('"shadow"%s*:%s*false') then shadow_enabled = false end
+        if content:match('"animations"%s*:%s*false') then anim_enabled = false end
+        if content:match('"tearing"%s*:%s*1') then allow_tearing = true end
+        local ds = content:match('"direct_scanout"%s*:%s*([0-9]+)')
+        if ds then direct_scanout = tonumber(ds) end
+    end
+end
+
 hl.config({
     general = {
         gaps_in  = 5,
@@ -27,9 +48,13 @@ hl.config({
         -- Set to true enable resizing windows by clicking and dragging on borders and gaps
         resize_on_border = true,
 
-        allow_tearing = false,
+        allow_tearing = allow_tearing,
 
         layout = current_layout,
+    },
+
+    render = {
+        direct_scanout = direct_scanout,
     },
 
     decoration = {
@@ -40,14 +65,14 @@ hl.config({
         inactive_opacity = 1.0,
 
         shadow = {
-            enabled      = true,
+            enabled      = shadow_enabled,
             range        = 4,
             render_power = 3,
             color        = "rgba(1a1a1a44)",
         },
 
         blur = {
-            enabled  = true,
+            enabled  = blur_enabled,
             size     = 8,
             passes   = 1,
             vibrancy = 0.1696,
@@ -55,7 +80,7 @@ hl.config({
     },
 
     animations = {
-        enabled = true,
+        enabled = anim_enabled,
     },
 })
 

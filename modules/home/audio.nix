@@ -1,5 +1,8 @@
-{ pkgs, ... }:
+{ pkgs, user, ... }:
 
+let
+  suspendTimeout = if user.audio.keepInternalSpeakerAwake then 0 else 5;
+in
 {
   # WirePlumber: Prioritize external audio devices (Bluetooth, USB DAC/headsets, Headphones) over internal speaker
   xdg.configFile."wireplumber/wireplumber.conf.d/51-device-autoswitch.conf" = {
@@ -114,7 +117,7 @@
               priority.session = 1000
               priority.driver = 1000
               "node.drain-on-empty" = false
-              "session.suspend-timeout-seconds" = 0
+              "session.suspend-timeout-seconds" = ${toString suspendTimeout}
             }
           }
         }
@@ -156,7 +159,7 @@
         "device.routes.mute-on-bluetooth-playback-removed" = false
         "device.routes.mute-on-alsa-playback-removed" = false
         "device.routes.default-sink-volume" = 1.0
-        "session.suspend-timeout-seconds" = 0
+        "session.suspend-timeout-seconds" = ${toString suspendTimeout}
       }
     '';
   };
@@ -330,4 +333,14 @@
     ]
   '';
   services.playerctld.enable = true;
+  systemd.user.services.playerctld = {
+    Unit = {
+      StartLimitIntervalSec = "60s";
+      StartLimitBurst = 3;
+    };
+    Service = {
+      Restart = "on-failure";
+      RestartSec = "5s";
+    };
+  };
 }

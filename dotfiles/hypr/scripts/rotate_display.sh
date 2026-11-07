@@ -3,6 +3,8 @@
 
 set -euo pipefail
 
+hyprctl() { timeout 3 command hyprctl "$@"; }
+
 STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/monitors"
 INTENT_FILE="$STATE_DIR/intent.json"
 LOCK_FILE="$INTENT_FILE.lock"
@@ -48,7 +50,7 @@ MODE="${WIDTH}x${HEIGHT}@${REFRESH%.*}"
 mkdir -p "$STATE_DIR"
 
 (
-    flock 9
+    flock -w 10 9 || exit 1
     if [ ! -s "$INTENT_FILE" ]; then
         printf '%s\n' '{"layout":"extend","displays":{}}' > "$INTENT_FILE"
     fi

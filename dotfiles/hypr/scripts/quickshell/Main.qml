@@ -188,51 +188,10 @@ PanelWindow {
         }
     }
 
-    function preloadWidget(name) {
-        if (widgetCache[name]) return;
-        let t = getLayout(name);
-        if (!t || !t.comp) return;
-
-        let obj = t.comp.createObject(masterWindow, {
-            "visible": false
-        });
-        if (obj) {
-            if (obj.notifModel !== undefined) obj.notifModel = masterWindow.notifModel;
-            if (obj.liveNotifs !== undefined) obj.liveNotifs = masterWindow.liveNotifs;
-            widgetCache[name] = obj;
-        }
-    }
-
     Component.onCompleted: {
         Config.masterWidth = masterWindow.width;
         Config.masterHeight = masterWindow.height;
         masterWindow.applySettings(settingsFileView.text());
-    }
-
-    property var _preloadQueue: ["sunset", "battery", "network", "music", "clipboard", "monitors", "focustime", "weather_setup", "calendar", "wallpaper"]
-    property int _preloadIndex: 0
-
-    // Defer preloading until 1.5 seconds after boot so desktop compositor finishes frame-0
-    Timer {
-        id: preloadIdleTimer
-        interval: 1500
-        running: true
-        onTriggered: preloadStaggerTimer.start()
-    }
-
-    Timer {
-        id: preloadStaggerTimer
-        interval: 120
-        repeat: true
-        running: false
-        onTriggered: {
-            if (_preloadIndex < _preloadQueue.length) {
-                preloadWidget(_preloadQueue[_preloadIndex]);
-                _preloadIndex++;
-            } else {
-                preloadStaggerTimer.stop();
-            }
-        }
     }
 
     property string currentActive: "hidden"

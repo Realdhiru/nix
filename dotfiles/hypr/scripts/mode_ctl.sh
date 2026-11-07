@@ -10,11 +10,14 @@ MODES_DIR="$DESKTOP_STATE_DIR/modes"
 MODES_JSON="$MODES_DIR/modes.json"
 LOCK_FILE="$MODES_DIR/.modes.lock"
 
+# IPC must never hold a compositor-driven caller indefinitely.
+hyprctl() { timeout 3 command hyprctl "$@"; }
+
 mkdir -p "$MODES_DIR"
 
 acquire_lock() {
     exec 200>"$LOCK_FILE"
-    flock 200
+    flock -w 10 200
 }
 
 release_lock() {
@@ -130,9 +133,8 @@ recompute_and_apply() {
     fi
     [ -n "$prior_saver" ] && old_saver="$prior_saver"
 
-    # Detect if an exclusive mode was active BEFORE this recompute (captured before jq overwrites).
-    # When restoring from an exclusive mode, blur/shadow/anim both read 'true' in old and new JSON,
-    # so a plain diff misses the restore. Force-apply compositor whenever we were in exclusive mode.
+    # Detect if an exclusive mode was active BEFORE this recompute and is now turning off.
+    # When restoring from an exclusive mode, blur/shadow/anim restore to 'true' from baseline.
     local was_exclusive="false"
     { [ "$old_blur" = "false" ] || [ "$old_shadow" = "false" ] || [ "$old_anim" = "false" ]; } && was_exclusive="true"
 
@@ -182,7 +184,10 @@ recompute_and_apply() {
 
     # 1. Apply Compositor rules without reload.
     # Evaluates full blur/shadow configuration to guarantee exact appearance restoration.
-    if [ "$was_exclusive" = "true" ] || \
+    local restoring_exclusive="false"
+    [ "$was_exclusive" = "true" ] && { [ "$blur_val" = "true" ] || [ "$shadow_val" = "true" ] || [ "$anim_val" = "true" ]; } && restoring_exclusive="true"
+
+    if [ "$restoring_exclusive" = "true" ] || \
        [ "$blur_val" != "$old_blur" ] || [ "$shadow_val" != "$old_shadow" ] || \
        [ "$anim_val" != "$old_anim" ] || [ "$direct_val" != "$old_direct" ] || \
        [ "$tearing_val" != "$old_tearing" ]; then
@@ -235,7 +240,8 @@ recompute_and_apply() {
                     local dir
                     dir="$(dirname "$last_wp")"
                     mkdir -p "$dir"
-                    local tmp="$dir/.$(basename "$last_wp").tmp.$$"
+                    local tmp
+                    tmp="$dir/.$(basename "$last_wp").tmp.$$"
                     printf '%s\n' "$prev_cur" > "$tmp"
                     mv -f "$tmp" "$last_wp"
                 fi
@@ -246,7 +252,7 @@ recompute_and_apply() {
             pkill -15 -f "mpvpaper" 2>/dev/null || true
             command -v awww >/dev/null 2>&1 && awww clear >/dev/null 2>&1 || true
 
-            local theme_engine="$HOME/nix/dotfiles/wallust/generate.sh"
+            local theme_engine="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/wallust/generate.sh"
             [ ! -x "$theme_engine" ] && theme_engine="${THEME_ENGINE:-$HOME/.config/wallust/generate.sh}"
             if [ -x "$theme_engine" ]; then
                 "$theme_engine" --neutral >/dev/null 2>&1 || true
@@ -258,7 +264,7 @@ recompute_and_apply() {
                 local wp_path
                 wp_path="$(cat "$target_wp" 2>/dev/null || true)"
                 if [ -n "$wp_path" ] && [ -f "$wp_path" ]; then
-                    local set_sh="$HOME/nix/dotfiles/wallpaper/backend/set.sh"
+                    local set_sh="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/wallpaper/backend/set.sh"
                     [ ! -x "$set_sh" ] && set_sh="$HOME/.config/wallpaper/backend/set.sh"
                     if [ -x "$set_sh" ]; then
                         "$set_sh" "$wp_path" 200>&- >/dev/null 2>&1 || true
@@ -281,7 +287,7 @@ recompute_and_apply() {
                 end
             " >/dev/null 2>&1 || true
         fi
-        local term_op="$HOME/nix/dotfiles/wallust/terminal-opacity.sh"
+        local term_op="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/wallust/terminal-opacity.sh"
         [ ! -f "$term_op" ] && term_op="$HOME/.config/wallust/terminal-opacity.sh"
         if [ -f "$term_op" ]; then
             bash "$term_op" --reload >/dev/null 2>&1 || true
@@ -306,27 +312,35 @@ recompute_and_apply() {
     fi
 
     # 5. Synchronize hardware power profile when power-saver state changes
-    if [ "$old_saver" = "true" ] && [ "$saver_val" = "false" ]; then
-        local target_prof="balanced"
-        local ac_online="0"
-        for ps in /sys/class/power_supply/*/online; do
-            if [ -f "$ps" ] && [ "$(cat "$ps" 2>/dev/null || echo 0)" = "1" ]; then
-                ac_online="1"
-                break
-            fi
-        done
-        [ "$ac_online" = "1" ] && target_prof="performance"
+    if [ "${MODE_CTL_NO_PROFILE:-}" != "1" ]; then
+        if [ "$old_saver" = "true" ] && [ "$saver_val" = "false" ]; then
+            local target_prof="balanced"
+            local ac_online="0"
+            for ps in /sys/class/power_supply/*/online; do
+                if [ -f "$ps" ] && [ "$(cat "$ps" 2>/dev/null || echo 0)" = "1" ]; then
+                    ac_online="1"
+                    break
+                fi
+            done
+            [ "$ac_online" = "1" ] && target_prof="performance"
 
-        local power_sh="$HOME/.config/hypr/scripts/power.sh"
-        [ ! -x "$power_sh" ] && power_sh="$HOME/nix/dotfiles/hypr/scripts/power.sh"
-        if [ -x "$power_sh" ]; then
-            CALLER_IS_MODE_CTL=true bash "$power_sh" profile "$target_prof" >/dev/null 2>&1 || true
-        fi
-    elif [ "$old_saver" = "false" ] && [ "$saver_val" = "true" ]; then
-        local power_sh="$HOME/.config/hypr/scripts/power.sh"
-        [ ! -x "$power_sh" ] && power_sh="$HOME/nix/dotfiles/hypr/scripts/power.sh"
-        if [ -x "$power_sh" ]; then
-            CALLER_IS_MODE_CTL=true bash "$power_sh" profile power-saver >/dev/null 2>&1 || true
+            local power_sh="$HOME/.config/hypr/scripts/power.sh"
+            [ ! -x "$power_sh" ] && power_sh="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/power.sh"
+            if [ -x "$power_sh" ]; then
+                CALLER_IS_MODE_CTL=true bash "$power_sh" profile "$target_prof" >/dev/null 2>&1 || {
+                    echo "mode_ctl.sh: failed to synchronize hardware profile '$target_prof'" >&2
+                    return 1
+                }
+            fi
+        elif [ "$old_saver" = "false" ] && [ "$saver_val" = "true" ]; then
+            local power_sh="$HOME/.config/hypr/scripts/power.sh"
+            [ ! -x "$power_sh" ] && power_sh="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/power.sh"
+            if [ -x "$power_sh" ]; then
+                CALLER_IS_MODE_CTL=true bash "$power_sh" profile power-saver >/dev/null 2>&1 || {
+                    echo "mode_ctl.sh: failed to synchronize power-saver hardware profile" >&2
+                    return 1
+                }
+            fi
         fi
     fi
 
@@ -349,7 +363,7 @@ recompute_and_apply() {
     fi
 
     local state_ctl="$HOME/.config/hypr/scripts/quickshell/state_ctl.sh"
-    [ ! -x "$state_ctl" ] && state_ctl="$HOME/nix/dotfiles/hypr/scripts/quickshell/state_ctl.sh"
+    [ ! -x "$state_ctl" ] && state_ctl="${NIX_CONFIG_DIR:-$HOME/nix}/dotfiles/hypr/scripts/quickshell/state_ctl.sh"
     if [ -x "$state_ctl" ]; then
         bash "$state_ctl" modes "$is_game_active" "$is_wp_killed" "$coffee_val" 2>/dev/null || true
     fi

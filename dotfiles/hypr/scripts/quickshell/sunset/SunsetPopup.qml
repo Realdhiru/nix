@@ -265,16 +265,16 @@ FocusScope {
             fi
 
             if [ "${p.temp}" -ne 6500 ] || [ "${p.gamma}" -ne 100 ]; then
-                hyprctl hyprsunset temperature ${p.temp} >/dev/null 2>&1 || true
-                hyprctl hyprsunset gamma ${p.gamma} >/dev/null 2>&1 || true
+                timeout 3 hyprctl hyprsunset temperature ${p.temp} >/dev/null 2>&1 || true
+                timeout 3 hyprctl hyprsunset gamma ${p.gamma} >/dev/null 2>&1 || true
             else
-                hyprctl hyprsunset identity >/dev/null 2>&1 || true
+                timeout 3 hyprctl hyprsunset identity >/dev/null 2>&1 || true
             fi
 
             # 2. Dynamic Shader Pipeline (Sat / Grain / CRT)
             rm -f "${root.satShaderFile}"
             if [ "${needsShader ? 1 : 0}" -eq 0 ]; then
-                hyprctl eval "hl.config({ decoration = { screen_shader = '' } })" >/dev/null 2>&1 || true
+                timeout 3 hyprctl eval "hl.config({ decoration = { screen_shader = '' } })" >/dev/null 2>&1 || true
                 rm -f "${root.shaderFile}"
             else
                 cat <<'EOF' > "${root.shaderFile}"
@@ -329,7 +329,7 @@ void main(){
     fragColor = vec4(col, pix.a);
 }
 EOF
-                hyprctl eval "hl.config({ decoration = { screen_shader = '${root.shaderFile}' } })" >/dev/null 2>&1 || true
+                timeout 3 hyprctl eval "hl.config({ decoration = { screen_shader = '${root.shaderFile}' } })" >/dev/null 2>&1 || true
             fi
 
             # 3. Save persistent state in canonical state.json
@@ -351,9 +351,9 @@ EOF
         root.isActive = false;
 
         let script = `
-            hyprctl hyprsunset identity >/dev/null 2>&1 || true
-            hyprctl hyprsunset gamma 100 >/dev/null 2>&1 || true
-            hyprctl eval "hl.config({ decoration = { screen_shader = '' } })" >/dev/null 2>&1 || true
+            timeout 3 hyprctl hyprsunset identity >/dev/null 2>&1 || true
+            timeout 3 hyprctl hyprsunset gamma 100 >/dev/null 2>&1 || true
+            timeout 3 hyprctl eval "hl.config({ decoration = { screen_shader = '' } })" >/dev/null 2>&1 || true
             rm -f "${root.shaderFile}" "${root.satShaderFile}"
             bash "${Quickshell.env("HOME")}/.config/hypr/scripts/quickshell/state_ctl.sh" sunset 6500 100 100 0 0 false
         `;

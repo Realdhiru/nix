@@ -254,12 +254,12 @@ FocusScope {
 
     FileView {
         id: briView
-        path: Config.backlightDevice + "/actual_brightness"
+        path: Config.backlightDevice ? Config.backlightDevice + "/actual_brightness" : ""
     }
 
     FileView {
         id: maxBriView
-        path: Config.backlightDevice + "/max_brightness"
+        path: Config.backlightDevice ? Config.backlightDevice + "/max_brightness" : ""
     }
 
     function syncBrightness() {

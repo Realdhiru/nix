@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+hyprctl() { timeout 3 command hyprctl "$@"; }
+
 systemctl --user stop graphical-session.target graphical-session-pre.target 2>/dev/null || true
 
 # Try graceful Hyprland IPC exit dispatcher

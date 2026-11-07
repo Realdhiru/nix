@@ -11,15 +11,9 @@ require("scrolling")
 -- 1. Universal catch-all rule: any unknown monitor works with zero config
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
 
--- 2. Declarative per-host monitor overrides (deployed by Nix if present)
-pcall(function()
-    local cfg_dir = os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")
-    dofile(cfg_dir .. "/hypr-local/monitors.lua")
-end)
-
--- 3. Dynamic layout intent manager (persisted in $DESKTOP_STATE_DIR/monitors/intent.json)
+-- 2. Dynamic layout intent manager (persisted in $DESKTOP_STATE_DIR/monitors/intent.json)
 local connected_monitors = {}
-local known_internal_name = "eDP-1"
+local known_internal_name = nil
 
 function is_internal_monitor(name)
     if not name then return false end
@@ -34,6 +28,7 @@ end
 
 function is_real_external(name)
     if not name or #name == 0 then return false end
+    if name == known_internal_name then return false end
     if is_internal_monitor(name) then return false end
     if name == "FALLBACK" or name == "NOOP" or name:find("^HEADLESS%-") or name:find("^WAYLAND%-") then return false end
     return true
@@ -41,7 +36,10 @@ end
 
 local function sync_connected_monitors(intent_data)
     local mons = hl.get_monitors()
+    known_internal_name = nil
+    local first_output_name = nil
     for _, m in ipairs(mons) do
+        if not first_output_name then first_output_name = m.name end
         connected_monitors[m.name] = {
             name = m.name,
             description = m.description or "",
@@ -64,6 +62,8 @@ local function sync_connected_monitors(intent_data)
             end
         end
     end
+
+    if not known_internal_name then known_internal_name = first_output_name end
 
     if intent_data and intent_data.raw then
         for name in intent_data.raw:gmatch('"name"%s*:%s*"([^"]+)"') do
@@ -121,6 +121,7 @@ end
 function apply_layout(explicit_intent)
     local intent_data = get_monitor_intent()
     sync_connected_monitors(intent_data)
+    if not known_internal_name then return end
     local intent = explicit_intent or intent_data.layout
 
     local external_count = 0
@@ -132,14 +133,17 @@ function apply_layout(explicit_intent)
 
     -- Safety rule: if no external monitors are present, internal panel MUST be active!
     if external_count == 0 then
-        hl.monitor({ output = known_internal_name, disabled = false, position = "0x0" })
+        local internal = connected_monitors[known_internal_name]
+        local internal_cfg = internal and get_display_intent(intent_data.raw, internal.description, internal.name) or nil
+        local mode_val = (internal_cfg and internal_cfg.mode) or "preferred"
+        local scale_val = (internal_cfg and internal_cfg.scale) or (internal and internal.scale or "auto")
+        local transform_val = (internal_cfg and internal_cfg.transform) or 0
+        hl.monitor({ output = known_internal_name, mode = mode_val, position = "0x0", scale = scale_val, transform = transform_val, disabled = false })
         return
     end
 
     local internal = connected_monitors[known_internal_name]
-    if not internal then
-        internal = { name = known_internal_name, width = 2880, height = 1620, scale = 2 }
-    end
+    if not internal then return end
 
     local internal_cfg = get_display_intent(intent_data.raw, internal.description, internal.name)
     local internal_pos = (internal_cfg and internal_cfg.placement and internal_cfg.placement ~= "auto") and internal_cfg.placement or "0x0"
@@ -179,7 +183,7 @@ function apply_layout(explicit_intent)
     else
         -- Extend mode: internal panel is placed at internal_pos. External placed beside internal panel.
         hl.monitor({ output = internal.name, disabled = false, position = internal_pos })
-        local internal_logical_w = math.floor((internal.width or 2880) / (internal.scale or 2) + 0.5)
+        local internal_logical_w = math.floor((internal.width / (internal.scale or 1)) + 0.5)
         for name, m in pairs(connected_monitors) do
             if is_real_external(name) then
                 local disp_cfg = get_display_intent(intent_data.raw, m.description, name)
@@ -199,9 +203,13 @@ function apply_layout(explicit_intent)
     end
 end
 
--- Bind primary workspaces 1-10 to the internal panel
+sync_connected_monitors(get_monitor_intent())
+
+-- Bind primary workspaces 1-10 to the internal panel or first active output.
 for ws = 1, 10 do
-    hl.workspace_rule({ workspace = tostring(ws), monitor = known_internal_name })
+    if known_internal_name then
+        hl.workspace_rule({ workspace = tostring(ws), monitor = known_internal_name })
+    end
 end
 
 -- Apply on startup
@@ -243,7 +251,7 @@ hl.on("monitor.removed", function(m)
             external_count = external_count + 1
         end
     end
-    if external_count == 0 then
+    if external_count == 0 and known_internal_name then
         hl.monitor({ output = known_internal_name, disabled = false, position = "0x0" })
         for ws = 11, 20 do
             pcall(function()

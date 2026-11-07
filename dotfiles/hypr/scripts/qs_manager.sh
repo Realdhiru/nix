@@ -9,6 +9,8 @@ set -uo pipefail
 SCRIPTS_DIR="$HOME/.config/hypr/scripts/quickshell"
 SHELL_QML_PATH="$SCRIPTS_DIR/Shell.qml"
 
+hyprctl() { timeout 3 command hyprctl "$@"; }
+
 # Resolve the correct NixOS binary dynamically
 QS_BIN=""
 if command -v quickshell >/dev/null 2>&1; then
@@ -49,43 +51,77 @@ reap_qs_orphans() {
 
 QS_LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/desktop/quickshell"
 QS_LOG_FILE="$QS_LOG_DIR/quickshell.log"
+QS_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+QS_INSTANCE_LOCK="$QS_RUNTIME_DIR/quickshell-shell.lock"
+QS_PROCESS_LOCK="$QS_RUNTIME_DIR/quickshell-shell.process.lock"
+QS_PID_FILE="$QS_RUNTIME_DIR/quickshell-shell.pid"
 
-if [[ "$ACTION" == "reload" ]]; then
-    pkill -9 -f "quickshell.*Shell\.qml" 2>/dev/null || pkill -9 -x quickshell 2>/dev/null || pkill -9 -f "(^|/)\.quickshell-wra" 2>/dev/null || true
-    reap_qs_orphans
-    sleep 0.3
+qs_ipc() {
+    timeout 5 "$QS_BIN" ipc "$@"
+}
+
+shell_is_running() {
+    local pid
+    if [ -r "$QS_PID_FILE" ]; then
+        read -r pid < "$QS_PID_FILE"
+        if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null \
+            && ps -o args= -p "$pid" 2>/dev/null | grep -Fq -- "$SHELL_QML_PATH"; then
+            return 0
+        fi
+    fi
+    pgrep -f -- "$SHELL_QML_PATH" >/dev/null 2>&1
+}
+
+start_shell() {
     mkdir -p "$QS_LOG_DIR"
-    hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('bash -c \"$QS_BIN -p $SHELL_QML_PATH > $QS_LOG_FILE 2>&1\"'))" >/dev/null 2>&1 || (nohup "$QS_BIN" -p "$SHELL_QML_PATH" > "$QS_LOG_FILE" 2>&1 & disown)
-    exit 0
-fi
+    # The operation lock serializes commands; this second lock is inherited
+    # by QuickShell and held for its lifetime. A replacement waits on the
+    # kernel lock until a killed process has fully exited, preventing overlap
+    # without sleep/poll loops.
+    nohup flock -x "$QS_PROCESS_LOCK" "$QS_BIN" -p "$SHELL_QML_PATH" > "$QS_LOG_FILE" 2>&1 </dev/null 9>&- &
+    printf '%s\n' "$!" > "$QS_PID_FILE.tmp"
+    mv -f "$QS_PID_FILE.tmp" "$QS_PID_FILE"
+    disown || true
+}
 
-if [[ "$ACTION" == "toggle" && "$TARGET" == "quickshell" ]]; then
-    if pgrep -f "Shell.qml" >/dev/null || pgrep -x quickshell >/dev/null || pgrep -f "(^|/)\.quickshell-wra" >/dev/null; then
-        pkill -9 -f "quickshell.*Shell\.qml" 2>/dev/null || pkill -9 -x quickshell 2>/dev/null || pkill -9 -f "(^|/)\.quickshell-wra" 2>/dev/null || true
-        reap_qs_orphans
+stop_shell() {
+    pkill -9 -f -- "$SHELL_QML_PATH" 2>/dev/null || true
+    rm -f "$QS_PID_FILE"
+    reap_qs_orphans
+}
+
+if [[ "$ACTION" == "start" || "$ACTION" == "reload" || ( "$ACTION" == "toggle" && "$TARGET" == "quickshell" ) ]]; then
+    exec 9>"$QS_INSTANCE_LOCK"
+    flock -w 10 9 || { echo "qs_manager.sh: shell-operation lock timed out" >&2; exit 1; }
+
+    if [[ "$ACTION" == "reload" ]]; then
+        stop_shell
+        start_shell
+    elif [[ "$ACTION" == "start" ]]; then
+        if ! shell_is_running; then start_shell; fi
+    elif shell_is_running; then
+        stop_shell
         notify-send -a "QuickShell" -u low "QuickShell OFF" 2>/dev/null || true
     else
-        reap_qs_orphans
-        mkdir -p "$QS_LOG_DIR"
-        hyprctl eval "hl.dispatch(hl.dsp.exec_cmd('bash -c \"$QS_BIN -p $SHELL_QML_PATH > $QS_LOG_FILE 2>&1\"'))" >/dev/null 2>&1 || (nohup "$QS_BIN" -p "$SHELL_QML_PATH" > "$QS_LOG_FILE" 2>&1 & disown)
+        start_shell
         notify-send -a "QuickShell" -u low "QuickShell ON" 2>/dev/null || true
     fi
     exit 0
 fi
 
 if [[ "$ACTION" == "toggle" && ("$TARGET" == "topbar" || "$TARGET" == "bar") ]]; then
-    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "toggle" "topbar" "" >/dev/null 2>&1 || "$QS_BIN" ipc -p "$SHELL_QML_PATH" call topbar toggle >/dev/null 2>&1
+    qs_ipc -p "$SHELL_QML_PATH" call main handleCommand "toggle" "topbar" "" >/dev/null 2>&1 || qs_ipc -p "$SHELL_QML_PATH" call topbar toggle >/dev/null 2>&1
     exit 0
 fi
 
 if [[ "$ACTION" == "position" && ("$TARGET" == "topbar" || "$TARGET" == "bar") ]]; then
-    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "position" "topbar" "$SUBTARGET" >/dev/null 2>&1 || "$QS_BIN" ipc -p "$SHELL_QML_PATH" call topbar setPosition "$SUBTARGET" >/dev/null 2>&1
+    qs_ipc -p "$SHELL_QML_PATH" call main handleCommand "position" "topbar" "$SUBTARGET" >/dev/null 2>&1 || qs_ipc -p "$SHELL_QML_PATH" call topbar setPosition "$SUBTARGET" >/dev/null 2>&1
     exit 0
 fi
 
 if [[ "$ACTION" == "open" || "$ACTION" == "toggle" || "$ACTION" == "close" ]]; then
     if [[ "$TARGET" != "network" && "$TARGET" != "wallpaper" && "$TARGET" != "calendar" ]]; then
-        "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
+        qs_ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
         exit 0
     fi
 fi
@@ -93,7 +129,7 @@ fi
 
 if [[ "$ACTION" != "close" && "$ACTION" != "open" && "$ACTION" != "toggle" && "$ACTION" =~ ^[0-9a-zA-Z:-]+$ ]]; then
     # Send IPC command directly to Main.qml via Quickshell's native IPC handler
-    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
+    qs_ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
 
     if [[ "$ACTION" =~ ^[0-9]+$ ]]; then
         WS_ARG="$ACTION"
@@ -193,7 +229,7 @@ handle_network_prep() {
 # IPC ROUTING
 # -----------------------------------------------------------------------------
 if [[ "$ACTION" == "close" ]]; then
-    "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
+    qs_ipc -p "$SHELL_QML_PATH" call main handleCommand "close" "" "" >/dev/null 2>&1
 
     if [[ "$TARGET" == "network" || "$TARGET" == "all" || -z "$TARGET" ]]; then
         if [ -f "$BT_PID_FILE" ]; then
@@ -211,7 +247,7 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
     if [[ "$TARGET" == "network" ]]; then
         handle_network_prep
         [[ -n "$SUBTARGET" ]] && { echo "$SUBTARGET" > "$NETWORK_MODE_FILE"; bash "$SCRIPTS_DIR/state_ctl.sh" set ui.networkMode "$SUBTARGET" 2>/dev/null || true; }
-        "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
+        qs_ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
         exit 0
     fi
 
@@ -247,9 +283,9 @@ if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
             [[ "${EXT,,}" =~ ^(mp4|mkv|mov|webm)$ ]] && TARGET_THUMB="000_$BASE" || TARGET_THUMB="$BASE"
         fi
 
-        "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$TARGET_THUMB" >/dev/null 2>&1
+        qs_ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$TARGET_THUMB" >/dev/null 2>&1
     else
-        "$QS_BIN" ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
+        qs_ipc -p "$SHELL_QML_PATH" call main handleCommand "$ACTION" "$TARGET" "$SUBTARGET" >/dev/null 2>&1
     fi
     exit 0
 fi

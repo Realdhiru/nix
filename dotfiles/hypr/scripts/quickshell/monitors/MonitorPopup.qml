@@ -169,8 +169,8 @@ FocusScope {
     property int _resEpoch: 0
 
     // Refresh-rate picker: ONLY the rates the active monitor advertises for
-    // the CURRENTLY SELECTED resolution. A real panel exposes 1–3 rates per
-    // mode (eDP-1 @2880x1620 → 60 + 120) — that short list is the entire
+    // the CURRENTLY SELECTED resolution. A panel exposes only a few rates per
+    // mode — that short list is the entire
     // point. The old 13-entry table (24…360) offered modes no real monitor
     // has. Falls back to the current rate so the slider is never empty.
     property var rateList: {
@@ -222,7 +222,7 @@ FocusScope {
     property real currentSimW: {
         if (monitorsModel.count === 0) {
             // Physical pixels, same units as the model — logical screen size
-            // times scale (eDP-1: 1440×2 = 2880), not logical px.
+            // times scale, not logical px.
             let s = _fallbackScreen;
             if (!s || !(s.width > 0)) return 1280;
             let sc = (s.scale && s.scale > 0) ? s.scale : 1.0;
@@ -509,7 +509,7 @@ FocusScope {
 
     Process {
         id: displayPoller
-        command: ["hyprctl", "monitors", "all", "-j"]
+        command: ["timeout", "3", "hyprctl", "monitors", "all", "-j"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
@@ -634,7 +634,7 @@ FocusScope {
         let safeDisplays = JSON.stringify(displays).replace(/'/g, "'\\''");
         let lockFile = intentFile + ".lock";
         let mergeIntent = '.layout = $layout | .displays = ((.displays // {}) * $displays)';
-        let stateCmd = "mkdir -p '" + monitorsDir + "' && (flock 9; " +
+        let stateCmd = "mkdir -p '" + monitorsDir + "' && (flock -w 5 9 || exit 1; " +
             "if [ -s '" + intentFile + "' ]; then jq --arg layout '" + intent + "' --argjson displays '" + safeDisplays + "' '" + mergeIntent + "' '" + intentFile + "' > '" + tmpFile + "'; " +
             "else jq -n --arg layout '" + intent + "' --argjson displays '" + safeDisplays + "' '{layout: $layout, displays: $displays}' > '" + tmpFile + "'; fi && " +
             "mv -f '" + tmpFile + "' '" + intentFile + "') 9>'" + lockFile + "'";
@@ -651,7 +651,7 @@ FocusScope {
         }
         evalCmds.push("apply_layout('" + intent + "')");
 
-        let fullEval = evalCmds.map(lua => "hyprctl eval '" + lua.replace(/'/g, "'\\''") + "'").join(" ; ");
+        let fullEval = evalCmds.map(lua => "timeout 3 hyprctl eval '" + lua.replace(/'/g, "'\\''") + "'").join(" ; ");
 
         Quickshell.execDetached(["bash", "-c", stateCmd + " && " + fullEval]);
         Quickshell.execDetached(["notify-send", "-a", "Display", "-u", "low", "Display Applied"]);

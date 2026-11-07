@@ -33,10 +33,71 @@ warn()  { printf '%-10s %s\n' "WARN" "$1"; warnings=1; }
 fail()  { printf '%-10s %s\n' "CRITICAL" "$1"; critical=1; }
 
 # ---------------------------------------------------------------- Hyprland
-if hyprctl activewindow >/dev/null 2>&1 || pgrep -x Hyprland >/dev/null; then
+if timeout 3 hyprctl activewindow >/dev/null 2>&1 || pgrep -x Hyprland >/dev/null; then
   pass "Hyprland alive"
 else
   fail "Hyprland dead (hyprctl + pgrep both failed) — session gone"
+fi
+
+# --------------------------------------------------- failed units (both scopes)
+system_failed=$(systemctl --failed --no-legend --plain --no-pager 2>/dev/null || true)
+user_failed=$(systemctl --user --failed --no-legend --plain --no-pager 2>/dev/null || true)
+if [ -n "$system_failed$user_failed" ]; then
+  printf 'system failed units:\n%s\nuser failed units:\n%s\n' "$system_failed" "$user_failed"
+  fail "failed system or user units are present"
+else
+  pass "no failed system or user units"
+fi
+
+# ---------------------------------------------- stuck D-state / I/O pressure
+d_state_pids() {
+  ps -eo pid=,stat= | awk '$2 ~ /^D/ {print $1}' | sort -n
+}
+d_first=$(d_state_pids)
+sleep 2
+d_second=$(d_state_pids)
+if [ -n "$d_second" ] && [ "$d_first" = "$d_second" ]; then
+  fail "processes remained in D state across a 2-second observation: $d_second"
+else
+  pass "no persistent D-state process across 2 seconds"
+fi
+if [ -r /proc/pressure/io ]; then
+  io_full=$(awk '/^full / {for(i=1;i<=NF;i++) if($i ~ /^avg10=/){split($i,a,"="); print a[2]}}' /proc/pressure/io)
+  io_full=${io_full:-0}
+  if awk -v value="$io_full" 'BEGIN{exit !(value >= 10)}'; then
+    fail "full I/O pressure avg10 is ${io_full}% (threshold 10%)"
+  else
+    pass "full I/O pressure avg10 is ${io_full}%"
+  fi
+else
+  warn "I/O pressure is unavailable from /proc/pressure/io"
+fi
+
+# ----------------------------------------------- active panel refresh policy
+ac_online=0
+for online_file in /sys/class/power_supply/*/online; do
+  [ -r "$online_file" ] || continue
+  [ "$(cat "$online_file" 2>/dev/null || echo 0)" = 1 ] && ac_online=1
+done
+if [ "$ac_online" -eq 1 ]; then cap=${HYPR_REFRESH_AC:-120}; else cap=${HYPR_REFRESH_BATTERY:-60}; fi
+monitor_json=$(timeout 3 hyprctl monitors -j 2>/dev/null || true)
+refresh_pair=$(jq -r --argjson cap "$cap" '
+  ([.[] | select((.name | test("^(eDP|LVDS|DSI|MIPI)")))][0] // .[0])
+  | if . == null then empty else
+      ([.availableModes[]? | capture("@(?<rate>[0-9.]+)Hz$").rate | tonumber] as $rates
+       | ([ $rates[] | select(. <= $cap) ] | if length > 0 then max else ($rates|min) end)) as $target
+      | "\(.refreshRate) \($target)"
+    end
+' <<< "$monitor_json" 2>/dev/null || true)
+if [ -n "$refresh_pair" ]; then
+  read -r actual_refresh expected_refresh <<< "$refresh_pair"
+  if awk -v actual="$actual_refresh" -v expected="$expected_refresh" 'BEGIN{d=actual-expected;if(d<0)d=-d;exit !(d<=1)}'; then
+    pass "panel refresh ${actual_refresh}Hz matches ${expected_refresh}Hz policy (cap ${cap}Hz)"
+  else
+    fail "panel refresh ${actual_refresh}Hz differs from expected ${expected_refresh}Hz (cap ${cap}Hz)"
+  fi
+else
+  fail "cannot read active internal panel refresh policy"
 fi
 
 # ---------------------------------------------------- isolated alacritty probe

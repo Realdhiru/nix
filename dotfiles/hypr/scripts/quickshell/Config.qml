@@ -17,7 +17,7 @@ Item {
     readonly property string settingsJsonPath: hyprDir + "/settings.json"
 
     // Dynamic Hardware Sysfs Discovery (Multi-Hardware / Multi-Vendor Portability)
-    property string backlightDevice: "/sys/class/backlight/intel_backlight"
+    property string backlightDevice: ""
 
     Process {
         id: hwDiscoveryProc
@@ -95,7 +95,7 @@ Item {
         // first to fully finish (and therefore sees its result) instead
         // of racing it. `util-linux` (flock) is explicit in packages.nix.
         let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" '${cacheDir}' && ` +
-                  `( flock 200; ` +
+                  `( flock -w 5 200 || exit 1; ` +
                   `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
                   `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
                   `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}' ) 200>'${cacheDir}/settings.json.lock'`;
@@ -109,7 +109,7 @@ Item {
         // same lock file, so the two stay mutually exclusive with each
         // other too (not just with themselves).
         let cmd = `mkdir -p "$(dirname '${settingsJsonPath}')" '${cacheDir}' && ` +
-                  `( flock 200; ` +
+                  `( flock -w 5 200 || exit 1; ` +
                   `[ ! -f '${settingsJsonPath}' ] && echo '{}' > '${settingsJsonPath}'; ` +
                   `echo '${safeJson}' | jq -s '.[0] * .[1]' '${settingsJsonPath}' - > '${settingsJsonPath}.tmp' && ` +
                   `mv '${settingsJsonPath}.tmp' '${settingsJsonPath}' ) 200>'${cacheDir}/settings.json.lock'`;
@@ -135,7 +135,7 @@ Item {
         // flock-guarded per-file, same reasoning as setSetting() above —
         // keyed on filePath so different .env files don't contend on the
         // same lock.
-        sh(`( flock 200; ${cmds.join(" && ")} ) 200>'${filePath}.lock'`);
+        sh(`( flock -w 5 200 || exit 1; ${cmds.join(" && ")} ) 200>'${filePath}.lock'`);
     }
 
     // =========================================================================
@@ -183,7 +183,7 @@ Item {
     property int initialWorkspaceCount: 8
     property string wallpaperDir: Quickshell.env("WALLPAPER_DIR") || (homeDir + "/Pictures/Wallpapers")
     property string language: ""
-    property string kbOptions: "grp:alt_shift_toggle"
+    property string kbOptions: Quickshell.env("HYPR_KEYBOARD_OPTIONS") || "grp:alt_shift_toggle"
 
     // =========================================================================
     // Settings Save Functions
@@ -203,7 +203,7 @@ Item {
         // Notification intentionally removed for silence
 
         if (config.workspaceCount !== config.initialWorkspaceCount) {
-            let reloadCmd = `if command -v qs >/dev/null 2>&1; then QS_BIN="qs"; else QS_BIN="quickshell"; fi; $QS_BIN -p "${qsScriptsDir}/TopBar.qml" ipc call topbar queueReload`;
+            let reloadCmd = `if command -v qs >/dev/null 2>&1; then QS_BIN="qs"; else QS_BIN="quickshell"; fi; timeout 5 $QS_BIN -p "${qsScriptsDir}/TopBar.qml" ipc call topbar queueReload`;
             sh(reloadCmd);
             config.initialWorkspaceCount = config.workspaceCount;
         }
@@ -293,7 +293,7 @@ Item {
         let lockFile = intentFile + ".lock";
         let safeJson = JSON.stringify(displayUpdates).replace(/'/g, "'\\''");
         let mergeDisplays = '.layout = (.layout // "extend") | .displays = ((.displays // {}) * $displays)';
-        return `mkdir -p '${monitorsDir}' && (flock 9; ` +
+        return `mkdir -p '${monitorsDir}' && (flock -w 5 9 || exit 1; ` +
                `if [ -s '${intentFile}' ]; then ` +
                `jq --argjson displays '${safeJson}' '${mergeDisplays}' '${intentFile}' > '${tmpFile}'; ` +
                `else jq -n --argjson displays '${safeJson}' '{layout: "extend", displays: $displays}' > '${tmpFile}'; fi && ` +
@@ -312,8 +312,8 @@ Item {
                 mode: m.resW + "x" + m.resH + "@" + m.rate,
                 scale: m.sysScale, transform: m.transform, placement: "0x0"
             };
-            let evalCmd = "hyprctl eval \"hl.monitor({output='" + m.name + "',mode='" + m.resW + "x" + m.resH + "@" + m.rate + "',position='0x0',scale='" + m.sysScale + "'" + (m.transform !== 0 ? ",transform=" + m.transform : "") + "})\"";
-            config.sh(config.monitorIntentWriteCommand(displayUpdates) + " && " + evalCmd + " && ~/.config/hypr/scripts/ensure_awww.sh --restart");
+            let evalCmd = "timeout 3 hyprctl eval \"hl.monitor({output='" + m.name + "',mode='" + m.resW + "x" + m.resH + "@" + m.rate + "',position='0x0',scale='" + m.sysScale + "'" + (m.transform !== 0 ? ",transform=" + m.transform : "") + "})\"";
+            config.sh(config.monitorIntentWriteCommand(displayUpdates) + " && " + evalCmd + " && ~/.config/wallpaper/wallpaper.sh ensure --restart");
             Quickshell.execDetached(["notify-send", "-a", "Display", "-u", "low", "Applied", m.resW + "x" + m.resH]);
         } else {
             let rects = [];
@@ -364,7 +364,7 @@ Item {
                     scale: r.sysScale, transform: r.transform, placement: r.x + "x" + r.y
                 };
             }
-            config.sh(config.monitorIntentWriteCommand(displayUpdates) + " && hyprctl --batch '" + batchCmds.join(" ; ") + "' && ~/.config/hypr/scripts/ensure_awww.sh --restart");
+            config.sh(config.monitorIntentWriteCommand(displayUpdates) + " && timeout 3 hyprctl --batch '" + batchCmds.join(" ; ") + "' && ~/.config/wallpaper/wallpaper.sh ensure --restart");
             Quickshell.execDetached(["notify-send", "-a", "Display", "-u", "low", "Layout Applied"]);
         }
     }
@@ -379,7 +379,7 @@ Item {
     property alias displayPoller: _displayPoller
     Process {
         id: _displayPoller
-        command: ["hyprctl", "monitors", "-j"]
+        command: ["timeout", "3", "hyprctl", "monitors", "-j"]
         running: false
         stdout: StdioCollector {
             onStreamFinished: {

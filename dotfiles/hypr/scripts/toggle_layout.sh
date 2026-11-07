@@ -3,9 +3,13 @@
 # Preserves and restores custom window proportions, splits, and layout memory across toggles.
 set -euo pipefail
 
+hyprctl() { timeout 3 command hyprctl "$@"; }
+
 STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/layout"
 mkdir -p "$STATE_DIR"
 STATE_FILE="$STATE_DIR/current_layout.txt"
+exec 9>"$STATE_DIR/layout.lock"
+flock -w 5 9 || { echo "toggle_layout.sh: layout operation lock timed out" >&2; exit 1; }
 
 cur=$(hyprctl getoption general:layout -j 2>/dev/null | jq -r '.str // "dwindle"')
 if [ "$cur" = "scrolling" ]; then

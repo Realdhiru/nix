@@ -28,7 +28,7 @@ Item {
     // The one signal every consumer (topbar, popup, automation) should use
     // for "is the charger physically connected". NOT derived from
     // batStatus, because a charge-threshold-capped battery
-    // (STOP_CHARGE_THRESH_BAT0 in power.nix) reports status="Not charging"
+    // the host's TLP charge ceiling reports status="Not charging"
     // once the cap is hit even while plugged in -- keying off the status
     // string alone made the whole system blind to "plugged in" above that %.
     property bool acOnline: !UPower.onBattery
@@ -508,11 +508,6 @@ Item {
     function _handleAcTransition(wasOnline, isOnline) {
         if (!root._acInitialized) {
             root._acInitialized = true;
-            // On startup initialization, ensure hardware profile matches power source
-            if (!isOnline && (root.powerProfile === "performance" || root.requestedProfile === "performance")) {
-                root._manualOverride = false;
-                root.setPowerProfile("balanced", false);
-            }
             return;
         }
         if (wasOnline === isOnline) return;
@@ -522,14 +517,9 @@ Item {
             isOnline ? "AC Connected" : "AC Disconnected"
         ]);
 
-        if (isOnline) {
-            root._manualOverride = false;
-            root.setPowerProfile("performance", false);
-        } else {
-            // Disconnecting AC always resets override and switches to balanced
-            root._manualOverride = false;
-            root.setPowerProfile("balanced", false);
-        }
+        // udev hypr-refresh-rate.service invokes `power.sh auto` atomically under flock.
+        // SysData simply restarts the platform timer so telemetry syncs without racing.
+        profileRefreshTimer.restart();
     }
 
     Timer {
