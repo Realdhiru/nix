@@ -10,7 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 <p align="center">
-  A fully declarative Wayland desktop environment built on NixOS, Hyprland, and custom QuickShell widgets. Portable to any machine from a single flake.
+  A declarative Wayland desktop for NixOS, Hyprland, and custom QuickShell widgets. Hardware facts are isolated per host; the current flake targets x86_64-linux.
 </p>
 
 </div>
@@ -131,14 +131,29 @@ Built for **100% portability** — clone, edit one file, and deploy on any machi
    ```bash
    git clone https://github.com/Realdhiru/nix.git ~/nix
    cd ~/nix
-   nixos-generate-config --show-hardware-config > hosts/nixos/hardware-configuration.nix
+   nix run .#init-host -- <host-name>
+   git add hosts/<host-name>/hardware-configuration.nix hosts/<host-name>/system.nix
    ```
-   *Edit [`user.nix`](user.nix) to set your username, display name, and hostname.*
-3. **Build & Activate**:
+   *Review the generated files, then edit [`user.nix`](user.nix) for identity and personal preferences. Hostname and hardware facts belong in `hosts/<host>/system.nix`.*
+3. **Manual first installation** (before the `rebuild` shell function is installed):
    ```bash
    sudo nixos-rebuild switch --flake ~/nix#nixos
    ```
-   For later changes, use `rebuild`; it builds the current tracked working tree, switches, runs the health check, and rolls back on critical failure. It never stages or commits files.
+   For later changes, use `rebuild`; it runs `nix flake check`, builds the current tree, switches, runs the health check, and rolls back on critical failure. `rebuild -c [message]` optionally commits files already staged by you after a successful switch; it never stages files itself, ignores unrelated unstaged work, and stops if a staged file also has unstaged edits.
+
+### Configuration layers and new hosts
+
+- `modules/` and `dotfiles/` hold shared implementation. Hardware-sensitive behavior reads runtime capabilities or receives facts from a host module.
+- `hosts/<host>/hardware-configuration.nix` and `system.nix` hold generated machine facts and hardware quirks.
+- `user.nix` holds identity, home directory, locale, keyboard, theme, app defaults, wallpaper paths, and personal power/audio preferences.
+- Battery-specific TLP profile permissions and settings are emitted only for hosts whose generated facts include a battery.
+- The retained USB autosuspend workaround is one personal setting that controls both the kernel argument and TLP policy.
+- The shared `refresh_monitor.sh` applies AC/battery refresh from Hyprland's advertised modes and the saved monitor intent; it resolves data before one `hl.monitor()` IPC call, and is used by power events, startup, and profile changes.
+- QuickShell startup, reload, and its full-shell toggle are serialized through `qs_manager.sh` to keep one `Shell.qml` instance.
+- FocusTime persists buffered samples transactionally and retains them for retry after database errors; its Rust crate and popup live together under the widget folder.
+- Home-managed application launchers use the selected Nix package paths rather than hardcoded system-profile binaries.
+- `home.nix` is the Home Manager entry point; desktop applications/services live in `modules/home/desktop.nix`, with audio, monitor, shell, and theme policy in their feature modules.
+- To add a host, run `nix run .#init-host -- <name>` from this repository. Review both generated files and add them explicitly with `git add`; the flake ignores untracked host files.
 
 ---
 
@@ -148,7 +163,7 @@ Custom shell workflows defined in [`modules/home/shell.nix`](modules/home/shell.
 
 | Command | Description |
 | :--- | :--- |
-| `rebuild` | Builds and switches the current tracked working tree, then runs the health gate and automatic rollback; never stages or commits |
+| `rebuild` | Runs flake checks, builds and switches the current tree, then runs the health gate and automatic rollback; never stages or commits |
 | `update` | Update flake inputs (`nixos-unstable`) and trigger verified rebuild |
 | `gens` | List annotated, color-coded system generations with active/stable markers |
 | `pin-stable [gen]` | Permanently pin a generation as a GC root (`/nix/var/nix/gcroots/boot-stable`) |

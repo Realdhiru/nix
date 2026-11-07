@@ -5,7 +5,7 @@ size = 10
 family = "JetBrains Mono"
 
 [general]
-import = ["/home/realdhiru/.cache/theme/alacritty-colors.toml"]
+import = ["~/.cache/theme/alacritty-colors.toml"]
 
 [window]
 

@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, user, ... }:
 
 {
   boot.loader.systemd-boot.enable = true;
@@ -16,12 +16,12 @@
     "bgrt_disable"
     "video=efifb:nobgrt"
     "fbcon=nodefer"
-    "nmi_watchdog=0"
     "mem_sleep_default=deep"
     "rd.systemd.show_status=auto"
     "rd.udev.log_level=3"
-    "usbcore.autosuspend=-1"
-  ];
+  ]
+  ++ lib.optional user.power.disableNmiWatchdog "nmi_watchdog=0"
+  ++ lib.optional user.workarounds.disableUsbAutosuspend "usbcore.autosuspend=-1";
 
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernel.sysctl = {

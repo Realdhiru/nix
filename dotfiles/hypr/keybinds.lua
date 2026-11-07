@@ -179,7 +179,7 @@ hl.define_submap("locked", function()
 end)
 
 -- Desktop Modes & Hardware Services (SUPER + F1..F10)
-hl.bind(mainMod .. " + F1", hl.dsp.exec_cmd(scripts .. "wallpaper.sh kill"),
+hl.bind(mainMod .. " + F1", hl.dsp.exec_cmd(home .. "/.config/wallpaper/wallpaper.sh kill"),
     { description = "toggle solid mode (kill wallpaper)" })
 hl.bind(mainMod .. " + F2", hl.dsp.exec_cmd(scripts .. "power.sh inhibit"),
     { description = "toggle coffee mode idle inhibit" })

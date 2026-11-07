@@ -1,8 +1,8 @@
 # Installation & Deployment Guide
 
-This repository contains a declarative, production-ready NixOS workstation configuration featuring Hyprland, QuickShell, dynamic Wallust color palette generation, and TLP hardware power management.
+This repository contains a declarative NixOS workstation configuration featuring Hyprland, QuickShell, dynamic Wallust color palette generation, and TLP hardware power management.
 
-It is engineered with a **portable, single-source user architecture** (similar to the Omarchy distribution model), meaning you can fork, clone, and deploy it on any machine without having to hunt down hardcoded paths or usernames.
+Shared desktop behavior is separated from machine facts and personal preferences. The current flake targets x86_64-linux; hardware support is selected through each host's generated facts and hardware configuration.
 
 ---
 
@@ -15,32 +15,21 @@ git clone https://github.com/<your-username>/nix.git ~/nix
 cd ~/nix
 ```
 
-### Step 2: Configure Your Identity (`user.nix`)
-Open [`user.nix`](file:///home/realdhiru/nix/user.nix) in your editor:
-```nix
-{
-  username    = "yourusername";      # Your Linux account username
-  name        = "Your Full Name";    # Display name
-  hostname    = "yourhostname";      # System hostname
-}
-```
-> [!NOTE]
-> This single file configures your user identity, sudo privileges, and Home Manager paths. Anyone cloning this repo can freely customize these fields without creating new files or touching system modules.
-
-
-### Step 3: Generate Hardware Configuration
-Generate the hardware specification for your physical machine and save it to the host configuration:
+### Step 2: Generate Host Configuration
+Choose a short host name and run the generator from the repository root. It writes the host's system facts and a fresh hardware configuration, and refuses to overwrite existing files:
 ```bash
-nixos-generate-config --show-hardware-config > ~/nix/hosts/nixos/hardware-configuration.nix
+nix run .#init-host -- <host-name>
+git add hosts/<host-name>/hardware-configuration.nix hosts/<host-name>/system.nix
 ```
+Review the generated host files. Set identity, home path, locale, keyboard, application defaults, theme, and personal power/audio preferences in [`user.nix`](../user.nix). Shared implementation belongs in `modules/` and `dotfiles/`.
 
-### Step 4: Build and Activate
+### Step 3: Build and Activate
 For the first installation, build and switch explicitly without staging unrelated files:
 ```bash
-sudo nixos-rebuild switch --flake ~/nix#nixos
+sudo nixos-rebuild switch --flake ~/nix#<host-name>
 ```
 
-For later changes, use the `rebuild` shell function. It builds and switches the current working tree, runs the repository health check, and keeps the previous generation available for rollback; it never stages or commits files.
+For later changes, use the `rebuild` shell function. It runs `nix flake check`, builds and switches the current working tree, then runs the repository health check and rolls back on critical failures. It never stages or commits by default. `rebuild -c [message]` commits only already-staged files after a healthy switch, ignores unrelated unstaged work, and stops when a staged path has additional unstaged edits.
 
 Once the switch completes, reboot your machine:
 ```bash
@@ -53,16 +42,16 @@ systemctl reboot
 
 All desktop scripts follow a **domain multi-tool pattern** rather than scattered single-use scripts:
 
-### Wallpaper System (`dotfiles/hypr/scripts/wallpaper.sh`)
+### Wallpaper System (`dotfiles/wallpaper/wallpaper.sh`)
 Unified CLI managing all wallpaper lifecycle events:
 ```bash
-wallpaper.sh set <path>      # Set active image, GIF, or MP4 video wallpaper
-wallpaper.sh boot            # Cold-boot wallpaper loader
-wallpaper.sh kill            # Teardown wallpaper daemons and reset theme to neutral
-wallpaper.sh ensure          # Safe, idempotent awww-daemon lifecycle manager
-wallpaper.sh thumb           # Generate previews and flat links for QuickShell picker
-wallpaper.sh watch           # Background inotify watcher for ~/Pictures/Wallpapers
-wallpaper.sh clean           # Purge orphaned cache entries and broken symlinks
+~/.config/wallpaper/wallpaper.sh set <path>      # Set image, GIF, or video wallpaper
+~/.config/wallpaper/wallpaper.sh boot            # Initialize wallpaper at session start
+~/.config/wallpaper/wallpaper.sh kill            # Toggle wallpaper-kill mode
+~/.config/wallpaper/wallpaper.sh ensure          # Ensure the wallpaper backend is ready
+~/.config/wallpaper/wallpaper.sh thumb           # Generate picker previews and links
+~/.config/wallpaper/wallpaper.sh watch           # Watch the configured wallpaper directory
+~/.config/wallpaper/wallpaper.sh clean           # Remove orphaned cache entries and links
 ```
 
 ### Power & Session System (`dotfiles/hypr/scripts/power.sh`)
@@ -108,18 +97,11 @@ You can customize the desktop shell without modifying QML code by editing [`dotf
   "cardOpacity": 0.0,
   "borderWidth": 0,
   "wallpaperDir": "~/Pictures/Wallpapers",
-  "workspaceCount": 8,
-  "monitors": [
-    {
-      "name": "eDP-1",
-      "resW": 2880,
-      "resH": 1620,
-      "rate": 120,
-      "scale": 2
-    }
-  ]
+  "workspaceCount": 8
 }
 ```
+
+Monitor modes and layout are discovered from the live outputs and stored in `${XDG_STATE_HOME:-$HOME/.local/state}/desktop/monitors/intent.json`; do not add a connector or resolution list to `settings.json`.
 
 - **`PopupCard.qml`**: Standardized base container for all QuickShell popups, enforcing uniform borders, opacity, corner radii, and frosted specular highlights.
 - **Wallust**: Colors automatically derive from the active wallpaper and propagate to QuickShell, Foot, Alacritty, GTK 3/4, and Qt apps in real time.

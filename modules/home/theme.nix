@@ -1,29 +1,34 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, user, ... }:
+let
+  gtkTheme = if user.desktop.themeMode == "dark" then "Adwaita:dark" else "Adwaita";
+  colorScheme = if user.desktop.themeMode == "dark" then "prefer-dark" else "prefer-light";
+  kdeColorScheme = if user.desktop.themeMode == "dark" then "BreezeDark" else "Breeze";
+in
 {
-  home.sessionVariables.GTK_THEME = "Adwaita:dark";
+  home.sessionVariables.GTK_THEME = gtkTheme;
   home.sessionVariables.QT_QPA_PLATFORMTHEME = lib.mkForce "qt6ct";
 
   # GTK3 config channels (settings.ini/dconf) don't apply here; environment is
   # the only reliable channel (proven). sessionVariables covers GUI/logins;
   # user-environment.d covers systemd user services (e.g. the portal).
   xdg.configFile."environment.d/gtk-theme.conf".text =
-    "GTK_THEME=Adwaita:dark\n";
+    "GTK_THEME=${gtkTheme}\n";
   xdg.configFile."environment.d/qt-theme.conf".text =
     "QT_QPA_PLATFORMTHEME=qt6ct\n";
 
   gtk = {
     enable = true;
-    theme = { name = "Adwaita:dark"; package = pkgs.gnome-themes-extra; };
+    theme = { name = gtkTheme; package = pkgs.gnome-themes-extra; };
     iconTheme = { name = "buuf-nestort"; package = pkgs.buuf-nestort-icon-theme; };
-    gtk3.extraConfig.gtk-application-prefer-dark-theme = true;
+    gtk3.extraConfig.gtk-application-prefer-dark-theme = user.desktop.themeMode == "dark";
     gtk3.extraConfig.gtk-decoration-layout = ":";
-    gtk4.extraConfig.gtk-application-prefer-dark-theme = true;
+    gtk4.extraConfig.gtk-application-prefer-dark-theme = user.desktop.themeMode == "dark";
     gtk4.extraConfig.gtk-decoration-layout = ":";
   };
 
   dconf.settings."org/gnome/desktop/interface" = {
-    color-scheme = "prefer-dark";
-    gtk-theme = "Adwaita:dark";
+    color-scheme = colorScheme;
+    gtk-theme = gtkTheme;
   };
 
   dconf.settings."org/gnome/desktop/wm/preferences" = {
@@ -100,9 +105,9 @@
   # Enforce dark theme for KDE Frameworks applications (Okular, Dolphin, Gwenview)
   xdg.configFile."kdeglobals".text = ''
     [General]
-    ColorScheme=BreezeDark
+    ColorScheme=${kdeColorScheme}
 
     [KDE]
-    colorScheme=BreezeDark
+    colorScheme=${kdeColorScheme}
   '';
 }

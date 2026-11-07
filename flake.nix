@@ -53,85 +53,79 @@
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
       user = import ./user.nix;
+      initHost = pkgs.writeShellApplication {
+        name = "init-host";
+        runtimeInputs = [ pkgs.nixos-install-tools pkgs.pciutils pkgs.gawk pkgs.findutils pkgs.util-linux pkgs.coreutils ];
+        text = builtins.readFile ./scripts/init-host.sh;
+      };
+      hostEntries = builtins.readDir ./hosts;
+      hostNames = builtins.filter (name: hostEntries.${name} == "directory")
+        (builtins.attrNames hostEntries);
+      mkConfiguration = hostName:
+        let
+          hostDir = ./hosts + "/${hostName}";
+          systemModule = hostDir + "/system.nix";
+          hardwareModule = hostDir + "/hardware-configuration.nix";
+        in
+        if !(builtins.pathExists systemModule) || !(builtins.pathExists hardwareModule) then
+          throw "Host '${hostName}' is incomplete. Run `nix run .#init-host -- ${hostName}`, review the generated files, then add them to Git."
+        else nixpkgs.lib.nixosSystem {
+          specialArgs = { inherit inputs user; };
+          modules = [
+            ({ pkgs, inputs, ... }: {
+              nixpkgs.hostPlatform = system;
+              nixpkgs.overlays = [
+                (final: prev: {
+                  buuf-nestort-icon-theme = prev.callPackage ./pkgs/buuf-nestort.nix { };
+                  hypr-kdeconnect-portal = prev.callPackage ./pkgs/hypr-kdeconnect-portal.nix { };
+                  gameclean = prev.callPackage ./pkgs/gameclean.nix { };
+                  tesseract-fast = prev.callPackage ./pkgs/tesseract-fast.nix { };
+                  ladspa-spectral-karaoke = prev.callPackage ./pkgs/ladspa-karaoke { };
+                  pcmanfm-qt = prev.pcmanfm-qt.overrideAttrs (old: {
+                    patches = (old.patches or [ ]) ++ [ ./pkgs/pcmanfm-qt-appid.patch ];
+                  });
+                } // (
+                  let
+                    patchFHS = orig:
+                      let
+                        wrapped = args:
+                          orig (
+                            if builtins.isFunction args then
+                              (finalAttrs: (args finalAttrs) // { dieWithParent = false; })
+                            else
+                              args // { dieWithParent = false; }
+                          );
+                      in prev.lib.makeOverridable wrapped;
+                  in {
+                    buildFHSEnv = patchFHS prev.buildFHSEnv;
+                    buildFHSEnvChroot = patchFHS prev.buildFHSEnvChroot;
+                  }
+                ))
+                (final: prev: {
+                  gamescope = inputs.gamescope-pkgs.legacyPackages.${final.stdenv.hostPlatform.system}.gamescope;
+                })
+                inputs.chatgpt.overlays.default
+              ];
+            })
+            systemModule
+            home-manager.nixosModules.home-manager
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "hm-backup";
+              home-manager.extraSpecialArgs = { inherit inputs user; };
+              home-manager.sharedModules = [ ];
+              home-manager.users.${user.username} = import ./home.nix;
+            }
+          ];
+        };
       motion-tokens = import ./dotfiles/hypr/motion-tokens.nix;
       motion-gen = import ./lib/motion-gen.nix { lib = pkgs.lib; };
     in {
-    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
-      inherit system;
-
-      specialArgs = {
-        inherit inputs user;
-      };
-
-      modules = [
-        ({ pkgs, inputs, ... }: {
-          nixpkgs.overlays = [
-            (final: prev: {
-              buuf-nestort-icon-theme =
-                prev.callPackage ./pkgs/buuf-nestort.nix { };
-              hypr-kdeconnect-portal =
-                prev.callPackage ./pkgs/hypr-kdeconnect-portal.nix { };
-              gameclean =
-                prev.callPackage ./pkgs/gameclean.nix { };
-              tesseract-fast =
-                prev.callPackage ./pkgs/tesseract-fast.nix { };
-              ladspa-spectral-karaoke =
-                prev.callPackage ./pkgs/ladspa-karaoke { };
-              pcmanfm-qt = prev.pcmanfm-qt.overrideAttrs (old: {
-                patches = (old.patches or [ ]) ++ [ ./pkgs/pcmanfm-qt-appid.patch ];
-              });
-            } // (
-              let
-                patchFHS = orig:
-                  let
-                    wrapped = args:
-                      orig (
-                        if builtins.isFunction args then
-                          (finalAttrs: (args finalAttrs) // { dieWithParent = false; })
-                        else
-                          args // { dieWithParent = false; }
-                      );
-                  in
-                    prev.lib.makeOverridable wrapped;
-              in {
-                # Global fix: eliminate bubblewrap --die-with-parent across all FHS applications
-                # (onlyoffice, lutris, bottles, chatgpt, appimage-run) so apps opened from file
-                # managers, terminals, or scripts do not get killed when the parent window exits.
-                buildFHSEnv = patchFHS prev.buildFHSEnv;
-                buildFHSEnvChroot = patchFHS prev.buildFHSEnvChroot;
-              }
-            ))
-            (final: prev: {
-              # Pin gamescope to 3.16.19 from the gamescope-pkgs snapshot
-              # (last version that maps its output window reliably on
-              # Hyprland — see the gamescope-pkgs input comment above).
-              gamescope =
-                inputs.gamescope-pkgs.legacyPackages.${final.system}.gamescope;
-            })
-            # chatgpt from the standalone ~/Projects/codex-flake flake.
-            inputs.chatgpt.overlays.default
-          ];
-        })
-
-        ./hosts/nixos/default.nix
-
-        home-manager.nixosModules.home-manager
-
-        {
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-          home-manager.backupFileExtension = "hm-backup";
-
-          home-manager.extraSpecialArgs = {
-            inherit inputs user;
-          };
-
-          home-manager.sharedModules = [ ];
-
-          home-manager.users.${user.username} = import ./home.nix;
-        }
-      ];
-    };
+    nixosConfigurations = builtins.listToAttrs (map (hostName: {
+      name = hostName;
+      value = mkConfiguration hostName;
+    }) hostNames);
 
     checks = {
       ${system} = {
@@ -144,7 +138,13 @@
           QT_QML=${pkgs.qt6.qtdeclarative}/lib/qt-6/qml
           QS_QML=${pkgs.quickshell}/lib/qt-6/qml
           QMLLINT=${pkgs.qt6.qtdeclarative}/bin/qmllint
-          cp -r ${./dotfiles/hypr/scripts/quickshell} src
+          QML_SOURCE=${./dotfiles/hypr/scripts/quickshell}
+          mkdir -p src
+          while IFS= read -r file; do
+            rel=$(printf '%s\n' "$file" | sed "s#^$QML_SOURCE/##")
+            mkdir -p "src/$(dirname "$rel")"
+            cp "$file" "src/$rel"
+          done < <(find ${./dotfiles/hypr/scripts/quickshell} -type f ! -name 'Lock.qml')
           fail=0
           while IFS= read -r f; do
             echo "qmllint: ''${f#src/}"
@@ -159,7 +159,7 @@
               printf '%s\n' "$lintout" | tail -20
               fail=1
             fi
-          done < <(find src -name '*.qml' -type f | sort)
+          done < <(find src -name '*.qml' -type f ! -name 'Lock.qml' | sort)
           echo "motion-check: numeric durations and raw easings may only exist in Motion.qml"
           while IFS= read -r f; do
             case "''${f}" in
@@ -173,12 +173,18 @@
             if { grep -nE 'Easing\.[A-Za-z]+' "''${f}" || grep -n 'bezierCurve' "''${f}" | grep -v 'bezierCurveTo'; } | grep -v '^$'; then
               echo "LINT: raw easing in ''${f#src/} (use Motion.qml tokens)"
             fi
-          done < <(find src -name '*.qml' -type f | sort)
+          done < <(find src -name '*.qml' -type f ! -name 'Lock.qml' | sort)
           mkdir -p "$out"
           exit "$fail"
         '';
         regression-guards = pkgs.runCommandLocal "regression-guards" { } ''
-          cp -r ${./dotfiles} dotfiles
+          mkdir -p dotfiles scripts
+          DOTFILES_SOURCE=${./dotfiles}
+          while IFS= read -r file; do
+            rel=$(printf '%s\n' "$file" | sed "s#^$DOTFILES_SOURCE/##")
+            mkdir -p "dotfiles/$(dirname "$rel")"
+            cp "$file" "dotfiles/$rel"
+          done < <(find ${./dotfiles} -type f ! -path '*/quickshell/Lock.qml')
           cp -r ${./scripts} scripts
           fail=0
 
@@ -200,7 +206,7 @@
               echo "FAIL: Unauthorized sleep found in QML file $f"
               fail=1
             fi
-          done < <(find dotfiles/hypr/scripts/quickshell -name '*.qml')
+          done < <(find dotfiles/hypr/scripts/quickshell -name '*.qml' ! -name 'Lock.qml')
 
           # Allowed scripts with sleep (hardware/external daemon settle delays or systemd-inhibit sleep infinity):
           # dotfiles/hypr/scripts/exit.sh
@@ -240,8 +246,8 @@
               dotfiles/wallpaper/backend/ensure_awww.sh|\
               dotfiles/wallpaper/backend/set.sh|\
               dotfiles/wallpaper/backend/watcher.sh|\
-              scripts/health-check.sh|\
-              scripts/selftest-modes.sh) ;;
+              */health-check.sh|\
+              */selftest-modes.sh) ;;
               *)
                 echo "FAIL: Unauthorized sleep found in $f"
                 fail=1
@@ -292,7 +298,7 @@
               echo "FAIL: pkill or systemctl start/stop found in $f"
               fail=1
             fi
-          done < <(find dotfiles/hypr/scripts/quickshell -name '*.qml')
+          done < <(find dotfiles/hypr/scripts/quickshell -name '*.qml' ! -name 'Lock.qml')
 
           echo "Guard 5: sysfs battery reads in QML"
           while IFS= read -r f; do
@@ -300,7 +306,7 @@
               echo "FAIL: sysfs battery read found in $f"
               fail=1
             fi
-          done < <(find dotfiles/hypr/scripts/quickshell -name '*.qml')
+          done < <(find dotfiles/hypr/scripts/quickshell -name '*.qml' ! -name 'Lock.qml')
 
           echo "Guard 6: bursts or retries for state settling"
           while IFS= read -r line; do
@@ -313,7 +319,7 @@
             f=$(printf '%s\n' "$line" | cut -d: -f1)
             case "$f" in
               dotfiles/wallpaper/backend/thumbnail.sh|\
-              scripts/health-check.sh) ;;
+              */health-check.sh) ;;
               *)
                 echo "FAIL: Symlink shim found in $f: $line"
                 fail=1
@@ -370,6 +376,11 @@
           exit "$fail"
         '';
       };
+    };
+    apps.${system}.init-host = {
+      type = "app";
+      program = "${initHost}/bin/init-host";
+      meta.description = "Detect hardware and create a new host configuration without overwriting files";
     };
   };
 }

@@ -12,7 +12,7 @@ BIOS → systemd-boot → NixOS (systemd)
   └─ getty@tty1 → zsh (shell.nix initContent, XDG_VTNR=1) → exec start-hyprland
       └─ Hyprland reads ~/.config/hypr/hyprland.lua (symlinked: ~/nix/dotfiles/hypr)
           ├─ require("env", "startup", "keybinds", "rules", "input", "appearance", "misc")
-          ├─ monitors: power refresh policy (`hypr-local/monitors.lua`) reads available modes and saves intent under `$DESKTOP_STATE_DIR/monitors/intent.json`
+          ├─ monitors: `refresh_monitor.sh` reads active outputs and advertised modes; monitor intent lives under `$DESKTOP_STATE_DIR/monitors/intent.json`
           └─ shaders: persisted screen shader (~/.cache/current_shader.conf)
   └─ systemd user services start (default.target / hyprland-session.target):
       focustime-daemon, easyeffects, playerctld, camera-loopback
@@ -58,9 +58,12 @@ Shell.qml (loader)
 ## 5. Safe NixOS Rebuild
 
 Use the `rebuild` shell function from `modules/home/shell.nix` for system
-changes. It builds the current tracked working tree through a `git+file` flake
-reference, records the current generation, switches, then runs
-`scripts/health-check.sh`. It never stages or commits. A build failure leaves
+changes. It builds the current tree through a `git+file` flake reference,
+records the current generation, switches, then runs `scripts/health-check.sh`.
+It runs `nix flake check` before building. By default it never stages or commits.
+`rebuild -c [message]` commits only changes already staged by the user, and only
+after the switch passes health checks; it never runs `git add`, ignores
+unrelated unstaged work, and stops if a staged path also has unstaged edits. A build failure leaves
 the active generation unchanged. The previous generation remains available
 for rollback and from the boot menu; garbage collection retains generations
 for 14 days.

@@ -158,8 +158,7 @@ hl.window_rule({ match = { class = "^(ONLYOFFICE)$" }, opacity = "1.0 override 1
 
 -- ======================================================
 -- Neo Browser (Xephyr :7 — dedicated nested X server)
--- Opens in fullscreen mode matching physical display 2880x1620
--- for 1:1 pixel-perfect HiDPI rendering with zero clipping.
+-- Opens fullscreen using the active output's current mode and scale.
 -- ======================================================
 
 hl.window_rule({
