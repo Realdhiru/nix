@@ -94,8 +94,18 @@ get_active_playback_device() {
 if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
 
     rawUrl=$($PT metadata mpris:artUrl 2>/dev/null)
+    mediaUrl=$($PT metadata xesam:url 2>/dev/null)
     title=$($PT metadata xesam:title 2>/dev/null)
     artist=$($PT metadata xesam:artist 2>/dev/null)
+
+    # Fall back to local media file if artUrl is empty but xesam:url is a local file
+    if [ -z "$rawUrl" ] && [[ "$mediaUrl" == file://* ]]; then
+        candidate_file="${mediaUrl#file://}"
+        candidate_file="$(printf '%b' "${candidate_file//%/\\x}")"
+        if [ -f "$candidate_file" ]; then
+            rawUrl="$mediaUrl"
+        fi
+    fi
 
     if [ -n "$rawUrl" ]; then
         trackHash=$(echo "$rawUrl" | md5sum | cut -d" " -f1)
@@ -133,30 +143,45 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
                 if [[ "$rawUrl" == file://* ]]; then
                     local_url="${rawUrl#file://}"
                     decoded_url="$(printf '%b' "${local_url//%/\\x}")"
-                    cp "$decoded_url" "$tempArt" 2>/dev/null || true
+                    mime_type=$(file -b --mime-type "$decoded_url" 2>/dev/null)
+                    if [[ "$mime_type" == image/* ]]; then
+                        cp "$decoded_url" "$tempArt" 2>/dev/null || true
+                    elif [[ "$mime_type" == video/* ]]; then
+                        ffmpegthumbnailer -i "$decoded_url" -o "$tempArt" -s 500 -q 8 2>/dev/null || \
+                            ffmpeg -ss 00:00:01 -i "$decoded_url" -vframes 1 -q:v 2 "$tempArt" -y 2>/dev/null || true
+                    elif [[ "$mime_type" == audio/* ]]; then
+                        ffmpeg -i "$decoded_url" -an -vcodec copy "$tempArt" -y 2>/dev/null || true
+                    fi
                 else
                     curl -sSL --max-time 8 -A "Mozilla/5.0" "$rawUrl" -o "$tempArt" 2>/dev/null || true
                 fi
 
                 if [ -s "$tempArt" ]; then
-                    # Real download succeeded — this is the only case that
-                    # gets promoted to finalArt. Previously a failed
-                    # download was copied from PLACEHOLDER and moved to
-                    # finalArt anyway, which permanently "succeeded" the
-                    # existence check on line 54 for that trackHash and
-                    # silently locked the track to the blank placeholder
-                    # for the rest of the session (most commonly hit right
-                    # after login, before DNS/network is fully up).
-                    echo "linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)" > "$colorPath"
-                    echo "#cdd6f4" > "$textPath"
-                    cp "$tempArt" "$blurPath"
-                    mv "$tempArt" "$finalArt"
-                    dbus-send --session --type=signal /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Seeked int64:0 2>/dev/null
-                else
-                    # Download failed — clean up and leave nothing cached
-                    # for this trackHash, so the next poll (or the next
-                    # PropertiesChanged/Seeked signal) retries the fetch
-                    # instead of being stuck on the placeholder forever.
+                    # Check if extracted artwork is actually just a browser/app icon
+                    is_app_icon=false
+                    for icon_cand in /run/current-system/sw/share/icons/hicolor/256x256/apps/brave-browser.png /run/current-system/sw/share/icons/hicolor/128x128/apps/zen.png; do
+                        if [ -f "$icon_cand" ]; then
+                            ae_diff=$(magick compare -metric AE -fuzz 5% "$tempArt" "$icon_cand" null: 2>&1 || true)
+                            if [ "${ae_diff%% *}" = "0" ]; then
+                                is_app_icon=true
+                                break
+                            fi
+                        fi
+                    done
+
+                    if [ "$is_app_icon" = true ]; then
+                        rm -f "$tempArt"
+                    else
+                        # Real track artwork succeeded
+                        echo "linear-gradient(45deg, #cba6f7, #89b4fa, #f38ba8, #cba6f7)" > "$colorPath"
+                        echo "#cdd6f4" > "$textPath"
+                        cp "$tempArt" "$blurPath"
+                        mv "$tempArt" "$finalArt"
+                        dbus-send --session --type=signal /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.Seeked int64:0 2>/dev/null
+                    fi
+                fi
+
+                if [ ! -s "$finalArt" ]; then
                     rm -f "$tempArt"
                 fi
 

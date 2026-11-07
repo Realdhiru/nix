@@ -11,6 +11,7 @@
     noto-fonts-color-emoji
     font-awesome
     liberation_ttf
+    stix-two
   ];
 
   fonts.fontconfig = {

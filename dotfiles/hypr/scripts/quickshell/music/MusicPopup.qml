@@ -455,8 +455,10 @@ FocusScope {
                     spacing: root.s(25)
 
                     Item {
-                        Layout.preferredWidth: root.s(220)
-                        Layout.preferredHeight: root.s(220)
+                        readonly property bool hasArtwork: root.musicData && root.musicData.artReady === "true" && root.musicData.artUrl && !root.musicData.artUrl.endsWith("placeholder_blank.png")
+                        visible: hasArtwork
+                        Layout.preferredWidth: hasArtwork ? root.s(220) : 0
+                        Layout.preferredHeight: hasArtwork ? root.s(220) : 0
                         Layout.alignment: Qt.AlignVCenter
 
                         opacity: root.introCover
