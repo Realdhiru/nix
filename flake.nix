@@ -145,6 +145,11 @@
             mkdir -p "src/$(dirname "$rel")"
             cp "$file" "src/$rel"
           done < <(find ${./dotfiles/hypr/scripts/quickshell} -type f ! -name 'Lock.qml')
+          while IFS= read -r file; do
+            rel=$(printf '%s\n' "$file" | sed "s#^${./dotfiles/quickshell}/#battery/#")
+            mkdir -p "src/$(dirname "$rel")"
+            cp "$file" "src/$rel"
+          done < <(find ${./dotfiles/quickshell}/battery -type f -name '*.qml')
           fail=0
           while IFS= read -r f; do
             echo "qmllint: ''${f#src/}"

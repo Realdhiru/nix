@@ -5,7 +5,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
-import "../"
+import "../../hypr/scripts/quickshell"
 
 FocusScope {
     id: window

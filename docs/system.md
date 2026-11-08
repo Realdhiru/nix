@@ -13,6 +13,8 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 - **Dynamic Theming (SSOT)**: Semantic color tokens dynamically extracted from wallpaper via Wallust (Rust, K-Means in Lch colorspace). Hardcoded hex color literals in widgets are forbidden.
 
 ## 2. QuickShell Architecture & Widget Invariants
+
+The battery widget lives in `dotfiles/quickshell/battery/`; shared QuickShell components remain under `dotfiles/hypr/scripts/quickshell/`.
 - **Native Event-Driven Bindings**: Use `Quickshell.Hyprland` (`focusedWorkspace`, `workspaces`, `rawEvent`), `Quickshell.Services.Pipewire` (`defaultAudioSink.audio`), `Quickshell.Io.FileWatcher`, and `FileView { watchChanges: true }`. Never fork bash process loops inside QML `Process` or `Timer`.
 - **Scene-Visibility Gating**: All `ListView.positionViewAtIndex()`, carousel centering, and layout settle passes must be strictly gated on `window.visible && view.width > 0`. Widgets are created on first open and cached afterward; hidden widgets are not eagerly instantiated at startup, so their background processes and timers remain dormant until needed.
 - **Power-Saver Animation Gating**: Decorative infinite QML animations and title marquees bind to `Config.animationsEnabled`, which is false when the observed profile is `power-saver`; visibility gating remains in place. Recording and action-status indicators remain available. This pauses decorative loops without adding profile polling or widget processes.

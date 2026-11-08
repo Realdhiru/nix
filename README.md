@@ -153,7 +153,7 @@ Built for **portable x86_64-linux NixOS hosts** — generate host facts, edit pe
 - FocusTime persists buffered samples transactionally and retains them for retry after database errors; its Rust crate and popup live together under the widget folder.
 - Home-managed application launchers use the selected Nix package paths rather than hardcoded system-profile binaries.
 - `home.nix` is the Home Manager entry point; `modules/home/desktop.nix` composes the remaining desktop setup with focused audio, monitor, QuickShell, wallpaper, shell, theme, and state modules. TLP hardware policy stays in `modules/system/power.nix`.
-- QuickShell widgets keep their QML and feature-specific helpers together under `dotfiles/hypr/scripts/quickshell/<feature>/`; shared desktop helpers remain under `dotfiles/hypr/scripts/`.
+- QuickShell widgets keep their QML and feature-specific helpers together under `dotfiles/quickshell/<feature>/ (with shared shell components retained in the Hyprland QuickShell source tree)`; shared desktop helpers remain under `dotfiles/hypr/scripts/`.
 - Wallust writes palette data to `~/.cache/theme/`; the Fuzzel launcher reads that palette for runtime colors instead of rewriting the tracked `fuzzel.ini`.
 - Power Saver pauses decorative QuickShell loops and title marquees while leaving status indicators available.
 - To add a host, run `nix run .#init-host -- <name>` from this repository. Review both generated files and add them explicitly with `git add`; the flake ignores untracked host files.
