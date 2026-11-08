@@ -20,11 +20,17 @@ Deleting only the game folder leaves the prefix, caches, and Lutris entry behind
 
 ```bash
 gameclean         # preview — safe, deletes nothing
-gameclean -y      # actually delete everything from the preview
+gameclean -y      # delete safe candidates from the preview
 gameclean -y -q   # delete, print only the freed size
+gameclean -y --include-unmanaged-prefixes  # also opt in to unreferenced or stray prefixes
 ```
 
 Never run `-y` without reading the preview first.
+Unreferenced or stray prefixes are preserved by default because they may be used by
+Steam, umu, or a manually managed Wine setup that has no Lutris entry. If any
+are present, `-y` refuses the entire deletion pass unless the explicit
+`--include-unmanaged-prefixes` option is supplied. Nested cleanup candidates
+are counted and deleted once through their selected ancestor.
 
 ## What it scans
 
@@ -38,8 +44,10 @@ Never run `-y` without reading the preview first.
 
 - Working games are **never touched**: a prefix or game dir referenced by an existing Lutris `.yml` (Silksong, GTA:SA, NFS:MW, FL Studio, …) is protected — even broken entries only flag the *yml file itself*, never the referenced game data of other titles.
 - The dots of trust are the Lutris entries: `gameclean` parses every `.yml` and builds the referenced set before deciding what is orphaned.
-- Preview is the default mode; `-y` exists for after you've read it.
+- Preview is the default mode; `-y` exists for after you've read it. Deleting
+  unreferenced or stray prefixes needs the separate `--include-unmanaged-prefixes`
+  opt-in.
 
-- Source: `pkgs/gameclean/gameclean.sh` — pure bash script with awk, **zero Python or external dependencies**. Handles nested `game:`/`system:` keys with indentation-aware matching and prefix paths with escaped spaces (`gta\\ san` style).
+- Source: `pkgs/gameclean/gameclean.sh` — Bash script using the packaged coreutils and gawk tools, with no Python or Node. Reads Lutris prefix and executable fields, including escaped spaces in paths.
 - Packaging: `pkgs/gameclean.nix` wraps the script with `coreutils` and `gawk`; imported through the flake overlay (`flake.nix`) and exposed on system `PATH` via `environment.systemPackages` in `modules/system/gaming.nix`.
 - Zero-Python compliance: fully adheres to the repo-wide rule banning Python in owned code.

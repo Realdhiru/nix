@@ -9,7 +9,7 @@ set -uo pipefail
 SCRIPTS_DIR="$HOME/.config/hypr/scripts/quickshell"
 SHELL_QML_PATH="$SCRIPTS_DIR/Shell.qml"
 
-hyprctl() { timeout 3 command hyprctl "$@"; }
+hyprctl() { timeout 3 env hyprctl "$@"; }
 
 # Resolve the correct NixOS binary dynamically
 QS_BIN=""

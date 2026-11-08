@@ -20,7 +20,7 @@ shift || true
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
 # Bound all compositor IPC paths, including lid/display handlers.
-hyprctl() { timeout 3 command hyprctl "$@"; }
+hyprctl() { timeout 3 env hyprctl "$@"; }
 
 keyboard_backlight_device() {
     local path

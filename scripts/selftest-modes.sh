@@ -2,18 +2,22 @@
 # scripts/selftest-modes.sh
 # Mode Exclusivity and Baseline Restoration Self-Test Suite
 # Strictly tests:
-# 1. Mode conflicts (power-saver <-> gaming <-> wallpaper-kill): blocked attempts, notifications, no state change.
+# 1. Mode conflicts (power-saver <-> gaming <-> wallpaper-kill): atomic preemption both ways.
 # 2. Independent mode concurrency (coffee).
 # 3. Exact return to baseline for every single mode and allowed multi-mode set.
 
 set -euo pipefail
 
-hyprctl() { timeout 3 command hyprctl "$@"; }
+hyprctl() { timeout 3 env hyprctl "$@"; }
+
+if [[ "${1:-}" != "--live" || $# -ne 1 ]]; then
+    echo "Refusing to change live desktop modes. Run explicitly with --live to test them." >&2
+    exit 2
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 MODE_CTL="$ROOT_DIR/dotfiles/hypr/scripts/mode_ctl.sh"
-DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
 ALACRITTY_CONF="$HOME/.cache/theme/alacritty-colors.toml"
 PACE="${PACE:-1.6}"
 
@@ -161,6 +165,6 @@ done
 
 echo ""
 echo "=== Summary ==="
-echo "All 3 conflict pairs exhaustively verified: blocked attempts triggered no state change and emitted blocked notification."
+echo "All 3 conflict pairs verified through atomic preemption in both directions."
 echo "Independent mode verified: coffee operates concurrently without interference."
 echo "Baseline restoration verified: 100% assertions passed across all transitions."

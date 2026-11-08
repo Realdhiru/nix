@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # QuickShell Sunset / Night Light Instant Toggle Utility
-hyprctl() { timeout 3 command hyprctl "$@"; }
+hyprctl() { timeout 3 env hyprctl "$@"; }
 DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
 STATE_DIR="$DESKTOP_STATE_DIR/quickshell"
 STATE_FILE="$STATE_DIR/state.json"

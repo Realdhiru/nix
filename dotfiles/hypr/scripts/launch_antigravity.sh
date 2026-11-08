@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-hyprctl() { timeout 3 command hyprctl "$@"; }
+hyprctl() { timeout 3 env hyprctl "$@"; }
 
 if hyprctl clients | grep -q "class: antigravity"; then
     # Focus existing antigravity window and trigger internal New Window (Ctrl+Shift+N)

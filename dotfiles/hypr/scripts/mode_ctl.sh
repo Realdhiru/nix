@@ -11,7 +11,7 @@ MODES_JSON="$MODES_DIR/modes.json"
 LOCK_FILE="$MODES_DIR/.modes.lock"
 
 # IPC must never hold a compositor-driven caller indefinitely.
-hyprctl() { timeout 3 command hyprctl "$@"; }
+hyprctl() { timeout 3 env hyprctl "$@"; }
 
 mkdir -p "$MODES_DIR"
 

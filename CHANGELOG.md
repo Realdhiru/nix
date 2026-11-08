@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+- Fixed all shell `hyprctl` timeout wrappers to invoke the external client through `env`; GNU `timeout` cannot execute the shell builtin `command`.
+- Made the live mode self-test require `--live` and corrected its summary to describe atomic preemption.
+- Made `gameclean -y` refuse when unreferenced or stray prefixes exist unless `--include-unmanaged-prefixes` is supplied; nested candidates no longer double-count or receive duplicate removal attempts.
+
 ## 2026-11-07 — Power, Display State, and Configuration Ownership
 
 - **Power Policy and Diagnostics**: Kept TLP as the sole hardware profile writer, made its Intel GPU battery limit explicit, derived both USB autosuspend controls from one retained webcam workaround flag, gated passwordless TLP profile commands on battery capability, and documented the locked Balanced profile and system-wide NMI watchdog setting.

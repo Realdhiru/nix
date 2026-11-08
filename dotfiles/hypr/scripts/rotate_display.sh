@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-hyprctl() { timeout 3 command hyprctl "$@"; }
+hyprctl() { timeout 3 env hyprctl "$@"; }
 
 STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/monitors"
 INTENT_FILE="$STATE_DIR/intent.json"

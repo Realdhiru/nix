@@ -168,7 +168,8 @@ Custom shell workflows defined in [`modules/home/shell.nix`](modules/home/shell.
 | `gens` | List annotated, color-coded system generations with active/stable markers |
 | `pin-stable [gen]` | Permanently pin a generation as a GC root (`/nix/var/nix/gcroots/boot-stable`) |
 | `clean` | Safely delete unpinned store paths older than 14 days |
-| `gameclean [-y]` | Wine, Proton, Lutris & umu storage janitor (scans & removes orphaned gigabytes) |
+| `gameclean [-y] [--include-unmanaged-prefixes]` | Preview or clean Wine/Proton caches; unreferenced prefixes require explicit opt-in |
+| `scripts/selftest-modes.sh --live` | Explicitly run the mode-transition test; it changes live desktop modes |
 | `af` / `ff` | Animated video terminal fetcher (`anifetch`) / Fastfetch |
 
 ---

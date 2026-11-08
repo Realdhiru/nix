@@ -11,7 +11,7 @@
 
 set -uo pipefail
 
-hyprctl() { timeout 3 command hyprctl "$@"; }
+hyprctl() { timeout 3 env hyprctl "$@"; }
 
 STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}/power/battery_audit"
 mkdir -p "$STATE_DIR" "$STATE_DIR/history"

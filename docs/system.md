@@ -7,6 +7,8 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
 - **Declarative Nix Flakes**: System configuration managed via `flake.nix` and `flake.lock`. Pure Nix derivations over ad-hoc imperative scripts.
 - **Out-of-Store Symlinks**: Home Manager `mkOutOfStoreSymlink` targets live `~/nix/dotfiles/` for instant live updates (`SUPER + R`) without requiring full rebuilds.
 - **Event-Driven IPC with Bounded Sampling**: Desktop daemons and UI widgets prefer kernel/daemon signals (Hyprland socket2, PipeWire, UPower D-Bus, and `FileWatcher`). FocusTime keeps one-second accounting ticks but publishes live JSON on app changes or every 15 seconds; battery audit samples every 60 seconds on battery. Unbounded polling loops in interactive QML remain forbidden.
+- **Bounded Command Resolution**: Bash wrappers apply `timeout` to the external `hyprctl` executable through `env`; `timeout` cannot invoke shell builtins such as `command` itself.
+- **Cleanup Safety**: `gameclean -y` refuses when unreferenced or stray Wine prefixes are present unless `--include-unmanaged-prefixes` is explicitly supplied; preview mode remains the default.
 - **Fast Compiled Execution**: Native compiled binaries (Rust, C/C++), Qt/QML bindings, or instant POSIX C utilities (`jq`, `awk`, coreutils) in interactive paths. No Python or Node in hot paths.
 - **Dynamic Theming (SSOT)**: Semantic color tokens dynamically extracted from wallpaper via Wallust (Rust, K-Means in Lch colorspace). Hardcoded hex color literals in widgets are forbidden.
 

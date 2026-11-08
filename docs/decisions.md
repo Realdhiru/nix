@@ -453,6 +453,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Rationale:** Wine games scatter files across five locations (game dir, `~/Games/prefixes`, shared umu/Proton prefix, `~/.cache` caches, `~/.local/share/lutris/games/*.yml`), so manual uninstall cleanup is error-prone and drifts. Packaging in-repo makes the janitor reproducible, versioned, and available on every machine the flake deploys to.
 - **Safety Model:** Preview-only by default; `gameclean -y` deletes. Working titles are protected by building the referenced `prefix:`/`exe:` set from every Lutris `.yml` first — only true orphans (unreferenced prefixes, broken entries, umu `Temp`/shadercache, `~/.cache` game caches) are flagged.
 - **Zero-Python Hot-Path Scope:** `gameclean` is an interactive, manually invoked janitor — not a desktop hot path — so the Python ban (see above) does not apply; no polling daemons or keybind handlers invoke it.
+- **Implementation update (2026-11-08):** The shipped implementation is `pkgs/gameclean/gameclean.sh` (Bash with coreutils/gawk), not the historical `gameclean.py` path. `-y` refuses the whole pass when unreferenced or stray prefixes are present unless `--include-unmanaged-prefixes` is supplied; see ADR-085.
 
 ### ADR-070: Web Apps Hardware Video Acceleration & Window Glass Hierarchy
 - **Decision:** All present and future Brave web apps and browser windows must receive native VA-API zero-copy hardware acceleration via user wrapper `~/.local/bin/brave` injecting `--use-gl=angle --use-angle=gl --enable-features=VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder,WaylandWindowDecorations --enable-zero-copy "$@"`.
@@ -545,3 +546,11 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### ADR-084: Bound UI and Monitor IPC
 - **Decision:** Scripted Hyprland and QuickShell IPC has finite deadlines, including widget-owned monitor and timer calls. State/settings/audio/layout/monitor/power locks have bounded acquisition; wallpaper replacement waits at most 30 seconds. Monitor mode selection remains outside compositor evals.
 - **Rationale:** A blocked compositor socket or stale lock should fail that operation in bounded time instead of holding an event, reload, or widget action indefinitely. Failed requests remain visible through the caller's existing return handling or journal output.
+
+### ADR-085: Require Explicit Opt-In for Unreferenced Prefix Deletion
+- **Decision:** `gameclean -y` refuses the cleanup pass if unreferenced or stray prefixes are detected. Deleting those paths requires `--include-unmanaged-prefixes`; duplicate and nested candidates are counted and removed only once.
+- **Rationale:** Absence from Lutris YAML does not prove that a prefix is unused; Steam, umu, and manual Wine setups may own it. The opt-in preserves the janitor feature while avoiding silent recursive deletion of unmanaged prefixes.
+
+### ADR-086: Make Live Mode Self-Test Explicit
+- **Decision:** `scripts/selftest-modes.sh` requires the explicit `--live` argument before it resets or transitions desktop modes. Its Hyprland wrapper resolves the external client through `env` so `timeout` runs an executable rather than a shell builtin.
+- **Rationale:** The suite changes user runtime modes and must not be mistaken for a read-only diagnostic. The previous summary also claimed blocked-transition behavior while the assertions exercised atomic preemption.

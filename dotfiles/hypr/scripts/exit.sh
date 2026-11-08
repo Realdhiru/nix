@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-hyprctl() { timeout 3 command hyprctl "$@"; }
+hyprctl() { timeout 3 env hyprctl "$@"; }
 
 systemctl --user stop graphical-session.target graphical-session-pre.target 2>/dev/null || true
 

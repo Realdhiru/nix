@@ -4,11 +4,18 @@ set -euo pipefail
 
 APPLY=0
 QUIET=0
+INCLUDE_UNMANAGED_PREFIXES=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -y) APPLY=1; shift ;;
         -q) QUIET=1; shift ;;
-        *) shift ;;
+        --include-unmanaged-prefixes) INCLUDE_UNMANAGED_PREFIXES=1; shift ;;
+        -h|--help)
+            echo "Usage: gameclean [-y] [-q] [--include-unmanaged-prefixes]"
+            echo "Unreferenced or stray prefixes are never deleted with -y without the explicit opt-in."
+            exit 0
+            ;;
+        *) echo "Unknown option: $1" >&2; exit 2 ;;
     esac
 done
 
@@ -49,6 +56,7 @@ get_size() {
 declare -a ORPHAN_PATHS=()
 declare -a ORPHAN_REASONS=()
 declare -A REFERENCED_PREFIXES=()
+HAS_UNMANAGED_PREFIX=0
 
 # 1+2+5: check lutris entries for broken installs
 if [ -d "$LUTRIS_GAMES" ]; then
@@ -83,6 +91,7 @@ if [ -d "$PREFIXES" ]; then
             if [ -z "${REFERENCED_PREFIXES[$real_p]:-}" ]; then
                 ORPHAN_PATHS+=("$p")
                 ORPHAN_REASONS+=("orphan wine prefix (no game references it)")
+                HAS_UNMANAGED_PREFIX=1
             fi
         fi
     done
@@ -96,6 +105,7 @@ if [ -d "$GAMES" ]; then
             if [ "$base" != "$UMU_PREFIX" ]; then
                 ORPHAN_PATHS+=("$base")
                 ORPHAN_REASONS+=("stray wine prefix inside game folder")
+                HAS_UNMANAGED_PREFIX=1
             fi
         fi
     done
@@ -126,6 +136,34 @@ for name in "${CACHE_DIRS[@]}"; do
         ORPHAN_REASONS+=("game-related cache")
     fi
 done
+
+# Avoid counting/removing nested candidates twice (for example, Temp inside a
+# prefix that is itself an orphan).
+declare -a PRUNED_PATHS=()
+declare -a PRUNED_REASONS=()
+declare -A SEEN_PATHS=()
+for ((i=0; i<${#ORPHAN_PATHS[@]}; i++)); do
+    p="${ORPHAN_PATHS[i]}"
+    if [ -n "${SEEN_PATHS[$p]:-}" ]; then
+        continue
+    fi
+    SEEN_PATHS["$p"]=1
+    nested=0
+    for ((j=0; j<${#ORPHAN_PATHS[@]}; j++)); do
+        [[ $i -eq $j ]] && continue
+        parent="${ORPHAN_PATHS[j]}"
+        if [[ "$p" == "$parent"/* ]]; then
+            nested=1
+            break
+        fi
+    done
+    if [ "$nested" -eq 0 ]; then
+        PRUNED_PATHS+=("$p")
+        PRUNED_REASONS+=("${ORPHAN_REASONS[i]}")
+    fi
+done
+ORPHAN_PATHS=("${PRUNED_PATHS[@]}")
+ORPHAN_REASONS=("${PRUNED_REASONS[@]}")
 
 TOTAL=0
 declare -a SIZES=()
@@ -158,10 +196,14 @@ else
 fi
 
 if [ "$APPLY" -eq 1 ] && [ "${#ORPHAN_PATHS[@]}" -gt 0 ]; then
+    if [ "$HAS_UNMANAGED_PREFIX" -eq 1 ] && [ "$INCLUDE_UNMANAGED_PREFIXES" -eq 0 ]; then
+        echo "Refusing deletion: an unreferenced prefix may be managed outside Lutris. Re-run with --include-unmanaged-prefixes to opt in." >&2
+        exit 2
+    fi
     for p in "${ORPHAN_PATHS[@]}"; do
         rm -rf "$p" 2>/dev/null || echo "failed: $p" >&2
     done
     echo "Deleted. Freed $TOTAL_HUMAN."
 elif [ "$APPLY" -eq 0 ]; then
-    echo "(preview only — run:  gameclean -y   to actually delete)"
+    echo "(preview only — run: gameclean -y to delete; include --include-unmanaged-prefixes to delete unreferenced prefixes)"
 fi
