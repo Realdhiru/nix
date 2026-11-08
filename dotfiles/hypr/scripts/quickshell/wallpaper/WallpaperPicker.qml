@@ -378,8 +378,14 @@ FocusScope {
         path: window.activeWallpaperFile
         watchChanges: true
         onFileChanged: {
-            window.reloadActiveWallpaperPath();
-            let c = window.getCleanName(window.activeWallpaperName);
+            let actPath = window.reloadActiveWallpaperPath();
+            let c = "";
+            let fn = "";
+            if (actPath) {
+                let parts = actPath.split("/");
+                fn = parts[parts.length - 1] || "";
+                if (fn) c = window.getCleanName(fn);
+            }
             if (c !== "") window.appliedWallCleanName = c;
             window.refreshActiveWallpapers();
             if (window.isApplying) {
@@ -388,6 +394,17 @@ FocusScope {
                     window.applyingWallCleanName = "";
                 }
                 return;
+            }
+            // If the currently focused item already matches the applied wallpaper, keep current view steady
+            let curModel = window.getModelForFilter(window.currentFilter);
+            if (curModel && view.currentIndex >= 0 && view.currentIndex < curModel.count) {
+                let curItem = curModel.get(view.currentIndex);
+                if (curItem && curItem.fileName) {
+                    let curClean = window.getCleanName(curItem.fileName);
+                    if (curClean === c || curItem.fileName === fn || curItem.fileName === window.activeWallpaperName) {
+                        return;
+                    }
+                }
             }
             window.syncActiveWallpaperFocus();
         }
@@ -400,8 +417,25 @@ FocusScope {
         onFileChanged: {
             let cur = (activeWallWatcher.text() || "").trim();
             if (!cur) {
-                window.reloadActiveWallpaperPath();
+                let actPath = window.reloadActiveWallpaperPath();
                 if (!window.isApplying) {
+                    let c = "";
+                    let fn = "";
+                    if (actPath) {
+                        let parts = actPath.split("/");
+                        fn = parts[parts.length - 1] || "";
+                        if (fn) c = window.getCleanName(fn);
+                    }
+                    let curModel = window.getModelForFilter(window.currentFilter);
+                    if (curModel && view.currentIndex >= 0 && view.currentIndex < curModel.count) {
+                        let curItem = curModel.get(view.currentIndex);
+                        if (curItem && curItem.fileName) {
+                            let curClean = window.getCleanName(curItem.fileName);
+                            if (curClean === c || curItem.fileName === fn || curItem.fileName === window.activeWallpaperName) {
+                                return;
+                            }
+                        }
+                    }
                     window.syncActiveWallpaperFocus();
                 }
             }
@@ -456,7 +490,11 @@ FocusScope {
         }
 
         if (foundIdx !== -1) {
+            window.isModelChanging = true;
             view.currentIndex = foundIdx;
+            view.forceLayout();
+            view.positionViewAtIndex(foundIdx, ListView.Beginning);
+            window.isModelChanging = false;
         }
     }
 
@@ -1161,7 +1199,7 @@ FocusScope {
             }
             view.currentIndex = foundIdx;
             view.forceLayout();
-            view.positionViewAtIndex(foundIdx, ListView.Center);
+            view.positionViewAtIndex(foundIdx, ListView.Beginning);
             window.initialFocusSet = true;
             window.isModelChanging = false;
         } else if (!window.initialFocusSet && window.centerRetryCount < 30) {
@@ -1210,7 +1248,7 @@ FocusScope {
             view.currentIndex = targetIndex;
             if (requirePositioning && window.visible && view.width > 0) {
                 view.forceLayout();
-                view.positionViewAtIndex(targetIndex, ListView.Center);
+                view.positionViewAtIndex(targetIndex, ListView.Beginning);
                 window.initialFocusSet = true;
             } else if (!requirePositioning) {
                 window.initialFocusSet = true;
@@ -1393,7 +1431,7 @@ FocusScope {
             window.currentFilter = "Search";
         }
         view.currentIndex = 0;
-        view.positionViewAtIndex(0, ListView.Center);
+        view.positionViewAtIndex(0, ListView.Beginning);
         window.isModelChanging = false;
         window.searchIndexRestored = true;
         window.isOnlineSearch = true;

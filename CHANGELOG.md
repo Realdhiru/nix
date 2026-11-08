@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Removed unused wallpaper secrets placeholder directory and `.gitignore` exception rules.
-- Prevented the wallpaper picker preview from shifting away to random wallpapers when applied by skipping `syncActiveWallpaperFocus()` while `isApplying` is active, matching canonical filter capitalization from `filterData`, and letting `StrictlyEnforceRange` center the selected card without coordinate fighting.
+- Fixed wallpaper picker preview shift on apply by guarding `activeWallWatcher` against jumping when the current carousel item already matches the applied wallpaper, extracting clean file names synchronously from state paths, and replacing `ListView.Center` with `ListView.Beginning` to align cleanly with `StrictlyEnforceRange`'s skewed `preferredHighlightBegin`.
 
 - Split Home Manager wallpaper daemons/config and FocusTime service into feature owners; moved refresh environment, desktop-state environment, and the retained WirePlumber camera setting to their matching modules without changing runtime policy.
 - Power Saver now also pauses the TopBar title marquee; recording status pulses stay active.
