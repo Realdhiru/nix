@@ -1,7 +1,5 @@
 dotfiles/secrets/*
 !dotfiles/secrets/.gitkeep
-dotfiles/wallpaper/secrets/*
-!dotfiles/wallpaper/secrets/.gitkeep
 
 
 result

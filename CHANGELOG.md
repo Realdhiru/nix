@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Removed unused wallpaper secrets placeholder directory and `.gitignore` exception rules.
 - Prevented the wallpaper picker preview from shifting away to random wallpapers when applied by skipping `syncActiveWallpaperFocus()` while `isApplying` is active, matching canonical filter capitalization from `filterData`, and letting `StrictlyEnforceRange` center the selected card without coordinate fighting.
 
 - Split Home Manager wallpaper daemons/config and FocusTime service into feature owners; moved refresh environment, desktop-state environment, and the retained WirePlumber camera setting to their matching modules without changing runtime policy.
