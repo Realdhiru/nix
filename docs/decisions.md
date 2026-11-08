@@ -562,3 +562,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### ADR-088: Pause Decorative Shell Marquees in Power Saver
 - **Decision:** TopBar and Music title marquees use the same observed-profile animation gate as decorative widget loops. Recording and action-status indicators remain active.
 - **Rationale:** Text motion is continuous display work with little value in Power Saver; keeping state indicators visible preserves useful feedback.
+
+### ADR-089: Keep Home Manager Services With Their Owning Features
+- **Decision:** `wallpaper.nix` owns wallpaper paths, the wallpaper symlink, and awww/mpvpaper user units; `quickshell.nix` owns the FocusTime unit; `audio.nix` owns the retained WirePlumber libcamera setting; `monitors.nix` and `desktop-state.nix` own their exported environment values. `desktop.nix` composes these modules and keeps general desktop application setup. System-level TLP policy remains in `modules/system/power.nix`.
+- **Rationale:** Feature files remain the source of truth for their session state and services, while the generic Home Manager entry file stays focused on composition and application setup.

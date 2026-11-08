@@ -21,7 +21,7 @@ Choose a short host name and run the generator from the repository root. It writ
 nix run .#init-host -- <host-name>
 git add hosts/<host-name>/hardware-configuration.nix hosts/<host-name>/system.nix
 ```
-Review the generated host files. Set identity, home path, locale, keyboard, application defaults, theme, and personal power/audio preferences in [`user.nix`](../user.nix). Shared implementation belongs in `modules/` and `dotfiles/`.
+Review the generated host files. Set identity, home path, locale, keyboard, application defaults, theme, and personal power/audio preferences in [`user.nix`](../user.nix). Shared implementation belongs in `modules/` and `dotfiles/`; Home Manager feature modules own audio, monitors, QuickShell, wallpaper, shell, theme, and persistent desktop state, while `modules/system/power.nix` owns TLP hardware policy.
 
 ### Step 3: Build and Activate
 For the first installation, build and switch explicitly without staging unrelated files:

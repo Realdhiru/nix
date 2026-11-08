@@ -5,29 +5,20 @@
     ./audio.nix
     ./desktop-state.nix
     ./monitors.nix
+    ./quickshell.nix
     ./shell.nix
     ./spicetify.nix
     ./theme.nix
+    ./wallpaper.nix
   ];
 
-  # Declarative Default Wallpaper (Flake store-path)
-  home.sessionVariables.DEFAULT_WALLPAPER = "${../../dotfiles/wallpaper/default.jpg}";
-  home.sessionVariables.WALLPAPER_DIR = "${config.home.homeDirectory}/${user.desktop.wallpaperDirectory}";
-  home.sessionVariables.WALLPAPER_ORGANIZER_PROJECTS_DIR = "${config.home.homeDirectory}/${user.desktop.wallpaperOrganizerProjectsDirectory}";
-  home.sessionVariables.HYPR_REFRESH_AC = toString user.desktop.refreshRate.ac;
-  home.sessionVariables.HYPR_REFRESH_BATTERY = toString user.desktop.refreshRate.battery;
   home.sessionVariables.NIX_CONFIG_DIR = "${config.home.homeDirectory}/${user.desktop.repositoryDirectory}";
-  home.sessionVariables.DESKTOP_STATE_DIR = config.desktop.stateDir;
   home.sessionVariables.TERMINAL = user.desktop.terminal;
   home.sessionVariables.BROWSER = user.desktop.browser;
   home.sessionVariables.EDITOR = user.desktop.editor;
   home.sessionVariables.FILEMANAGER = user.desktop.fileManager;
   home.sessionVariables.HYPR_KEYBOARD_LAYOUT = user.keyboard.layout;
   home.sessionVariables.HYPR_KEYBOARD_OPTIONS = user.keyboard.options;
-  xdg.configFile."environment.d/wallpaper.conf".text =
-    "DEFAULT_WALLPAPER=${../../dotfiles/wallpaper/default.jpg}\nWALLPAPER_DIR=${config.home.homeDirectory}/${user.desktop.wallpaperDirectory}\nWALLPAPER_ORGANIZER_PROJECTS_DIR=${config.home.homeDirectory}/${user.desktop.wallpaperOrganizerProjectsDirectory}\n";
-  xdg.configFile."environment.d/desktop_state.conf".text =
-    "DESKTOP_STATE_DIR=${config.desktop.stateDir}\n";
 
   # Universal Hardware Acceleration Wrapper for Brave & Web Apps:
   # Injects VA-API zero-copy and ANGLE GL flags into the PATH wrapper, ensuring
@@ -91,12 +82,6 @@
     force = true;
   };
 
-  xdg.configFile."wallpaper" = {
-    source = config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/${user.desktop.repositoryDirectory}/dotfiles/wallpaper";
-    force = true;
-  };
-
   # Declarative mpv MPRIS plugin symlink (auto-tracked across nix store generations)
   xdg.configFile."mpv/scripts/mpris.so" = {
     source = "${pkgs.mpvScripts.mpris}/share/mpv/scripts/mpris.so";
@@ -117,18 +102,6 @@
   # Mutable user-managed MIME associations (allows casual right-click "Set as Default" in PCManFM-Qt)
   xdg.mimeApps.enable = false;
 
-  # WirePlumber: Disable conflicting libcamera monitor so UVC cameras are exclusively handled by V4L2
-  xdg.configFile."wireplumber/wireplumber.conf.d/50-disable-libcamera.conf" = {
-    force = true;
-    text = ''
-      wireplumber.profiles = {
-        main = {
-          monitor.libcamera = disabled
-        }
-      }
-    '';
-  };
-
 
   # PCManFM-Qt: file-based config (app reads/writes this INI directly, no
   # other mechanism), so the few mixed settings live inline here.
@@ -147,29 +120,6 @@
     '';
   };
 
-
-  # Focus time tracking daemon — single authoritative lifecycle owner.
-  # Previously launched via Hyprland `exec-once` + a shell supervisor loop
-  # (launch_daemon.sh); both removed. systemd restarts it on crash, boots,
-  # Hyprland restarts, nixos-rebuild, etc. without any other supervision.
-  systemd.user.services.focustime-daemon = {
-    Unit = {
-      Description = "Focus time tracking daemon (Hyprland active window)";
-    };
-    Service = {
-      ExecStart = "%h/.config/hypr/scripts/quickshell/focustime/focus_daemon";
-      Restart = "always";
-      RestartSec = 3;
-      Environment = [
-        "QS_STATE_FOCUSTIME=%h/.local/state/desktop/focustime"
-        "QS_RUN_FOCUSTIME=%t/quickshell/focustime"
-        "PATH=/run/current-system/sw/bin"
-      ];
-    };
-    Install = {
-      WantedBy = [ "default.target" ];
-    };
-  };
 
   # Clipboard history recorders — supervised systemd replacements for the
   # unsupervised `wl-paste --watch cliphist store` one-shots previously
@@ -202,36 +152,6 @@
     };
     Install = {
       WantedBy = [ "graphical-session.target" ];
-    };
-  };
-
-  # Declarative wallpaper daemon managed by systemd
-  systemd.user.services.awww-daemon = {
-    Unit = {
-      Description = "awww wallpaper daemon";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.awww}/bin/awww-daemon --no-cache --format argb";
-      Restart = "on-failure";
-    };
-    Install = {
-      WantedBy = [ "graphical-session.target" ];
-    };
-  };
-
-  # Per-output mpvpaper video wallpaper template service
-  systemd.user.services."mpvpaper@" = {
-    Unit = {
-      Description = "mpvpaper video wallpaper for %i";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" ];
-    };
-    Service = {
-      EnvironmentFile = "%h/.local/state/mpvpaper/%i.env";
-      ExecStart = "${pkgs.mpvpaper}/bin/mpvpaper -p -o \"no-audio --load-scripts=no --loop-file=inf --loop-playlist=inf --hwdec=auto-safe --panscan=1.0 --input-ipc-server=%t/mpvpaper-%i.sock\" %i \${WALLPAPER_VIDEO}";
-      Restart = "on-failure";
     };
   };
 

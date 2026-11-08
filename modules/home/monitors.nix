@@ -1,5 +1,10 @@
 { user, ... }:
 {
+  home.sessionVariables = {
+    HYPR_REFRESH_AC = toString user.desktop.refreshRate.ac;
+    HYPR_REFRESH_BATTERY = toString user.desktop.refreshRate.battery;
+  };
+
   # The same standalone script handles startup and power-supply events. It
   # resolves all monitor data first, then sends one `hyprctl eval` containing
   # only hl.monitor(); nested hyprctl IPC from inside that eval can stall Hyprland.

@@ -4,6 +4,19 @@ let
   suspendTimeout = if user.audio.keepInternalSpeakerAwake then 0 else 5;
 in
 {
+  # Keep the unresolved internal-camera workaround in the audio/WirePlumber
+  # owner; camera functionality remains parked for later diagnosis.
+  xdg.configFile."wireplumber/wireplumber.conf.d/50-disable-libcamera.conf" = {
+    force = true;
+    text = ''
+      wireplumber.profiles = {
+        main = {
+          monitor.libcamera = disabled
+        }
+      }
+    '';
+  };
+
   # WirePlumber: Prioritize external audio devices (Bluetooth, USB DAC/headsets, Headphones) over internal speaker
   xdg.configFile."wireplumber/wireplumber.conf.d/51-device-autoswitch.conf" = {
     force = true;

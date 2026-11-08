@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Split Home Manager wallpaper daemons/config and FocusTime service into feature owners; moved refresh environment, desktop-state environment, and the retained WirePlumber camera setting to their matching modules without changing runtime policy.
 - Power Saver now also pauses the TopBar title marquee; recording status pulses stay active.
 - Bounded PipeWire, WirePlumber, ALSA, playerctl, and systemd calls in audio helpers; serialized sink cycling and replaced the FocusTime seek marker with an atomic latest-request worker.
 - Stopped Wallust from editing `fuzzel.ini`; Fuzzel reads generated palette colors at launch. File search now avoids the overlapping current-directory scan and reports enumeration failures.
