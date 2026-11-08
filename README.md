@@ -139,7 +139,7 @@ Built for **portable x86_64-linux NixOS hosts** — generate host facts, edit pe
    ```bash
    sudo nixos-rebuild switch --flake ~/nix#nixos
    ```
-   For later changes, use `rebuild`; it runs `nix flake check`, builds the current tree, switches, runs the health check, and rolls back on critical failure. Only `rebuild -c [message]` optionally commits files already staged by you after a successful switch; it never stages files itself, ignores unrelated unstaged work, rejects unknown arguments, and stops if a staged file also has unstaged edits.
+   For later changes, use `rebuild`; it stages tracked changes, commits, builds, switches, runs the health check, and rolls back on critical failure.
 
 ### Configuration layers and new hosts
 

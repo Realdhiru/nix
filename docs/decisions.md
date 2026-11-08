@@ -516,7 +516,6 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 
 ### ADR-079: Portable Host and Personal Configuration
 - **Decision:** Discover NixOS configurations from complete `hosts/<host>/system.nix` and `hardware-configuration.nix` pairs. `nix run .#init-host -- <name>` detects hardware and creates missing host files without overwriting existing files. `user.nix` owns personal defaults; shared modules consume generated host facts instead of assuming Intel, ASUS, a battery, or a specific display.
-- **Decision:** `rebuild` runs `nix flake check` before building and remains non-committing by default. Only `rebuild -c [message]` commits the existing Git index after a successful switch and health check; it never stages, ignores unrelated unstaged files, and refuses when a staged path also has unstaged edits. Unknown arguments fail before switching.
 - **Decision:** Keep the global USB autosuspend workaround unchanged while camera troubleshooting is deferred; derive the kernel argument and TLP setting from the same user workaround flag.
 - **Decision:** Monitor controls read active outputs and advertised modes at runtime. The unused `settings.json` eDP-1 mode list was removed; the machine-specific connector and supported rates remain documented in `hosts/nixos/PERSONAL.md`.
 - **Decision:** Keep TLP's exact passwordless profile commands in the power module and emit them only when host facts indicate a battery; keep audio recovery's narrow `modprobe` allowlist in the user module.

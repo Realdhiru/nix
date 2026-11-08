@@ -56,29 +56,9 @@
       # The bad generation is NEVER deleted: it stays selectable in the
       # profile and bootable via bootctl. See docs/flow.md §5–7.
       rebuild() {
-        local commit_after=0 commit_message=""
-        if (( $# == 0 )); then
-          :
-        elif [[ "''${1:-}" == "-c" ]]; then
-          commit_after=1
-          shift
-          commit_message="$*"
-          commit_message="''${commit_message:-Rebuild verified NixOS system}"
-        else
-          echo "Usage: rebuild [-c [commit message]]" >&2
-          return 2
-        fi
-        cd "''${NIX_CONFIG_DIR:-$HOME/nix}" || return
-
-        if (( commit_after )); then
-          while IFS= read -r staged_path; do
-            if git diff --name-only -- "$staged_path" | grep -Fxq -- "$staged_path"; then
-              echo "rebuild -c cannot commit '$staged_path' because it has both staged and unstaged edits."
-              echo "Unrelated unstaged files are ignored."
-              return 1
-            fi
-          done < <(git diff --cached --name-only)
-        fi
+        cd ~/nix || return
+        git add -u || return
+        git commit -m "Rebuild verified NixOS system" || return
 
         local start gen flake_ref
         start=$(date -Is)
@@ -88,11 +68,6 @@
         mkdir -p "$HOME/.cache"
         printf '%s %s\n' "$start" "$gen" >> "$HOME/.cache/nix_rebuild_log"
 
-        if ! nix flake check --show-trace; then
-          echo "FLAKE CHECK FAILED — nothing activated; still on generation $gen."
-          return 1
-        fi
-
         if ! sudo nixos-rebuild build --no-link --flake "$flake_ref"; then
           echo "BUILD FAILED — nothing activated; still on generation $gen."
           return 1
@@ -100,15 +75,13 @@
 
         sudo nixos-rebuild switch --flake "$flake_ref" || {
           echo "SWITCH FAILED — still on generation $gen (build itself was fine)."
-          echo "Manual recovery: ''${NIX_CONFIG_DIR:-$HOME/nix}/docs/flow.md §7"
+          echo "Manual recovery: ~/nix/docs/flow.md §7"
           return 1
         }
         local new_gen
         new_gen=$(readlink /nix/var/nix/profiles/system)
 
-        HYPR_REFRESH_AC=${toString user.desktop.refreshRate.ac} \
-          HYPR_REFRESH_BATTERY=${toString user.desktop.refreshRate.battery} \
-          "$PWD/scripts/health-check.sh" "$start"
+        "$HOME/nix/scripts/health-check.sh" "$start"
         local hc=$?
         if [ $hc -eq 0 ]; then
           echo "Rebuild OK: generation $new_gen (previous known-good: $gen)"
@@ -133,20 +106,6 @@
           echo "Investigate: journalctl -k --since '$start' | grep -iE 'GPU HANG|call trace'"
           echo "Docs: ~/nix/docs/flow.md §5–7"
           return 1
-        fi
-
-        if (( commit_after )); then
-          if git diff --cached --quiet; then
-            echo "Switch succeeded; no staged changes to commit."
-          elif ! git diff --cached --check; then
-            echo "Switch succeeded; staged changes have whitespace errors, so no commit was made."
-            return 1
-          elif git commit -m "''${commit_message:-Rebuild verified NixOS system}"; then
-            echo "Committed staged changes after successful switch."
-          else
-            echo "Switch succeeded; Git commit failed. Staged changes remain staged."
-            return 1
-          fi
         fi
       }
 

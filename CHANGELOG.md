@@ -28,8 +28,8 @@
 - **Power Documentation Corrections**: Corrected the Coffee Mode binding and the lock/DPMS idle deadlines in `docs/system.md` to match `keybinds.lua` and `hypridle.conf`.
 - **Lower Background Work and Clear Ownership**: Reduced FocusTime JSON writes to app changes or 15-second intervals while retaining one-second accounting, changed battery audit sampling to 60 seconds with timestamp-based totals, gated CAVA by visible TopBar playback, and moved PipeWire/WirePlumber declarations to `modules/home/audio.nix`.
 - **Live Battery Wattage Display in All States ([`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml))**: Made the battery telemetry pill unconditionally visible in the central circular battery dial across all charging, discharging, and AC idle states. The live power rate (`SysData.batPowerWatts`) is now continuously displayed in real time (`• X.XW`) alongside runtime remaining or charging progress.
-- **Rebuild Commit Safety ([`modules/home/shell.nix`](file:///home/realdhiru/nix/modules/home/shell.nix))**: Only `rebuild -c [message]` commits files already staged before the command, and only after a successful switch and health check. It never stages; unknown arguments fail without switching or committing.
-- **Post-Switch Commit Option**: `rebuild -c [message]` commits only already-staged changes after a successful switch and health check. Unstaged work is ignored and never staged. Default `rebuild` still does not stage or commit.
+- **Rebuild behavior**: `rebuild` stages tracked changes, commits them, then builds, switches, and runs the health check.
+- **Rebuild behavior**: `rebuild` stages tracked changes, commits them, then builds, switches, and runs the health check.
 
 ## 2026-11-07 — Scrolling Layout Isolation & Dwindle Parity Guards
 
