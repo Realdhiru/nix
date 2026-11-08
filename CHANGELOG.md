@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Power Saver now also pauses the TopBar title marquee; recording status pulses stay active.
 - Bounded PipeWire, WirePlumber, ALSA, playerctl, and systemd calls in audio helpers; serialized sink cycling and replaced the FocusTime seek marker with an atomic latest-request worker.
 - Stopped Wallust from editing `fuzzel.ini`; Fuzzel reads generated palette colors at launch. File search now avoids the overlapping current-directory scan and reports enumeration failures.
 - Made `make-loop.sh` preserve an existing output until a new encode succeeds and continue batch processing after individual file errors.

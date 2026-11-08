@@ -731,7 +731,7 @@ Variants {
                                                 SequentialAnimation on x {
                                                     id: titleAnim
                                                     loops: Animation.Infinite
-                                                    running: titleClipRect.isOver
+                                                    running: titleClipRect.isOver && Config.animationsEnabled
 
                                                     PauseAnimation { duration: 2500 }
 

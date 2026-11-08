@@ -558,3 +558,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### ADR-087: Bound Desktop Helper Work and Keep Generated Theme Data Out of Source
 - **Decision:** Interactive audio clients have finite IPC deadlines, sink cycling is serialized, and FocusTime seeks atomically replace a single pending request consumed by one worker. Fuzzel colors are passed at launch from Wallust's cache palette; theme generation does not edit the tracked launcher config. Video-loop outputs are written to a same-directory temporary file and atomically renamed after successful encoding, with per-input batch failures reported without aborting later files.
 - **Rationale:** A stuck user daemon should not hold a shortcut indefinitely, simultaneous audio transitions should not interleave, generated colors should not dirty source config, and an encoder failure should preserve an existing output instead of leaving a partial file.
+
+### ADR-088: Pause Decorative Shell Marquees in Power Saver
+- **Decision:** TopBar and Music title marquees use the same observed-profile animation gate as decorative widget loops. Recording and action-status indicators remain active.
+- **Rationale:** Text motion is continuous display work with little value in Power Saver; keeping state indicators visible preserves useful feedback.

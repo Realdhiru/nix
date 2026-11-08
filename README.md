@@ -155,6 +155,7 @@ Built for **portable x86_64-linux NixOS hosts** — generate host facts, edit pe
 - `home.nix` is the Home Manager entry point; desktop applications/services live in `modules/home/desktop.nix`, with audio, monitor, shell, and theme policy in their feature modules.
 - QuickShell widgets keep their QML and feature-specific helpers together under `dotfiles/hypr/scripts/quickshell/<feature>/`; shared desktop helpers remain under `dotfiles/hypr/scripts/`.
 - Wallust writes palette data to `~/.cache/theme/`; the Fuzzel launcher reads that palette for runtime colors instead of rewriting the tracked `fuzzel.ini`.
+- Power Saver pauses decorative QuickShell loops and title marquees while leaving status indicators available.
 - To add a host, run `nix run .#init-host -- <name>` from this repository. Review both generated files and add them explicitly with `git add`; the flake ignores untracked host files.
 
 ---
