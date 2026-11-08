@@ -50,7 +50,7 @@ get_data() {
         return
     fi
 
-    echo "$raw_api" | jq '
+    echo "$raw_api" | jq --arg unit "$UNIT" '
       def wmo_icon(code):
         if code == 0 then ""
         elif code <= 3 then ""
@@ -84,9 +84,12 @@ get_data() {
         elif code >= 95 then "Thunderstorm"
         else "Partly Cloudy" end;
 
+      def temperature(value):
+        if $unit == "standard" then value + 273.15 else value end;
+
       {
         timezone: (.utc_offset_seconds | tostring),
-        current_temp: (.current.temperature_2m | tostring),
+        current_temp: (temperature(.current.temperature_2m) | tostring),
         current_icon: wmo_icon(.current.weather_code),
         current_hex: wmo_hex(.current.weather_code),
         forecast: [
@@ -96,9 +99,9 @@ get_data() {
             day: (.daily.time[$i] | strptime("%Y-%m-%d") | strftime("%a")),
             day_full: (.daily.time[$i] | strptime("%Y-%m-%d") | strftime("%A")),
             date: (.daily.time[$i] | strptime("%Y-%m-%d") | strftime("%d %b")),
-            max: (.daily.temperature_2m_max[$i] | tostring),
-            min: (.daily.temperature_2m_min[$i] | tostring),
-            feels_like: (.daily.apparent_temperature_max[$i] | tostring),
+            max: (temperature(.daily.temperature_2m_max[$i]) | tostring),
+            min: (temperature(.daily.temperature_2m_min[$i]) | tostring),
+            feels_like: (temperature(.daily.apparent_temperature_max[$i]) | tostring),
             wind: (.daily.wind_speed_10m_max[$i] | round | tostring),
             humidity: (.current.relative_humidity_2m | round | tostring),
             pop: ((.daily.precipitation_probability_max[$i] // 0) | round | tostring),
@@ -110,7 +113,7 @@ get_data() {
               ($i * 24 + $h * 3) as $idx |
               {
                 time: (.hourly.time[$idx] | split("T")[1]),
-                temp: (.hourly.temperature_2m[$idx] | tostring),
+                temp: (temperature(.hourly.temperature_2m[$idx]) | tostring),
                 icon: wmo_icon(.hourly.weather_code[$idx]),
                 hex: wmo_hex(.hourly.weather_code[$idx])
               }

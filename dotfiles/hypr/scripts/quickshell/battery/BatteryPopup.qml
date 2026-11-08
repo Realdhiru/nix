@@ -319,7 +319,7 @@ FocusScope {
 
     property real globalOrbitAngle: 0
     NumberAnimation on globalOrbitAngle {
-        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: window.visible
+        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: window.visible && Config.animationsEnabled
     }
 
     property real introMain: 1.0
@@ -469,7 +469,7 @@ FocusScope {
                         z: 0 
                         Behavior on color { ColorAnimation { duration: 400 } }
                         SequentialAnimation on scale {
-                            loops: Animation.Infinite; running: window.visible
+                            loops: Animation.Infinite; running: window.visible && Config.animationsEnabled
                             NumberAnimation { to: heroMa.containsMouse ? 1.15 : 1.08; duration: heroMa.containsMouse ? 800 : 2000; easing.type: Easing.InOutSine }
                             NumberAnimation { to: 1.0; duration: heroMa.containsMouse ? 800 : 2000; easing.type: Easing.InOutSine }
                         }
@@ -488,7 +488,7 @@ FocusScope {
                         
                         SequentialAnimation on scale {
                             loops: Animation.Infinite
-                            running: window.visible
+                            running: window.visible && Config.animationsEnabled
                             NumberAnimation {
                                 to: heroMa.containsMouse ? 1.05 : (centralCore.isDangerState ? 1.04 : 1.01)
                                 duration: heroMa.containsMouse ? 1200 : (centralCore.isDangerState ? 600 : 2500)
@@ -513,7 +513,7 @@ FocusScope {
                             opacity: centralCore.isDangerState ? 0.15 : 0.0
                             Behavior on opacity { NumberAnimation { duration: 1000 } }
                             SequentialAnimation on opacity {
-                                loops: Animation.Infinite; running: centralCore.isDangerState
+                                loops: Animation.Infinite; running: centralCore.isDangerState && Config.animationsEnabled
                                 NumberAnimation { to: 0.25; duration: 600; easing.type: Easing.InOutSine }
                                 NumberAnimation { to: 0.15; duration: 600; easing.type: Easing.InOutSine }
                             }
@@ -524,14 +524,14 @@ FocusScope {
                             
                             property real textPulse: 0.0
                             SequentialAnimation on textPulse {
-                                loops: Animation.Infinite; running: window.visible
+                                loops: Animation.Infinite; running: window.visible && Config.animationsEnabled
                                 NumberAnimation { from: 0.0; to: 1.0; duration: 1200; easing.type: Easing.InOutSine }
                                 NumberAnimation { from: 1.0; to: 0.0; duration: 1200; easing.type: Easing.InOutSine }
                             }
                             
                             property real pumpPhase: 0.0
                             NumberAnimation on pumpPhase {
-                                running: heroMa.containsMouse && window.isCharging
+                                running: heroMa.containsMouse && window.isCharging && Config.animationsEnabled
                                 loops: Animation.Infinite
                                 from: 0.0; to: 1.0; duration: 1200
                                 easing.type: Easing.InOutSine 
@@ -540,7 +540,7 @@ FocusScope {
                             
                             property real dischargePhase: 1.0
                             NumberAnimation on dischargePhase {
-                                running: heroMa.containsMouse && !window.isCharging
+                                running: heroMa.containsMouse && !window.isCharging && Config.animationsEnabled
                                 loops: Animation.Infinite
                                 from: 1.0; to: 0.0; duration: 1600
                                 easing.type: Easing.InOutSine
@@ -721,7 +721,7 @@ FocusScope {
                                     Layout.alignment: Qt.AlignHCenter
                                     Layout.topMargin: window.s(4)
                                     spacing: window.s(6)
-                                    visible: (window.upHours > 0 || window.upMins > 0) || SysData.batPowerWatts > 0
+                                    visible: true
 
                                     Rectangle {
                                         radius: window.s(6)
@@ -757,8 +757,7 @@ FocusScope {
                                             }
 
                                             Text {
-                                                visible: SysData.batPowerWatts > 0
-                                                text: ((window.upHours > 0 || window.upMins > 0) ? "• " : "") + SysData.batPowerWatts + "W"
+                                                text: ((window.upHours > 0 || window.upMins > 0) ? "• " : "") + (SysData.batPowerWatts > 0 ? SysData.batPowerWatts : "0.0") + "W"
                                                 font.pixelSize: window.s(9)
                                                 font.family: "JetBrains Mono"
                                                 font.weight: Font.Bold
@@ -1084,7 +1083,7 @@ FocusScope {
                                             
                                             property real wavePhase: 0.0
                                             NumberAnimation on wavePhase {
-                                                running: actionCapsule.fillLevel > 0.0 && actionCapsule.fillLevel < 1.0
+                                                running: actionCapsule.fillLevel > 0.0 && actionCapsule.fillLevel < 1.0 && Config.animationsEnabled
                                                 loops: Animation.Infinite
                                                 from: 0; to: Math.PI * 2; duration: 800
                                             }

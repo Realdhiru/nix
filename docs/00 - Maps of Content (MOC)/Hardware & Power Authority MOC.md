@@ -13,7 +13,7 @@ Hardware governance, power arbitration, thermal management, and battery conserva
 ## Core Documents
 
 1. [[TLP Exclusive Authority]]
-   - TLP 1.9.1 as the sole power governor.
+   - TLP 1.10.2 as the sole power governor.
    - Deconflicting competing daemons (`power-profiles-daemon` masked, `asusd` restricted).
    - Empirically locked balanced profile settings.
 

@@ -7,22 +7,27 @@
 set -euo pipefail
 
 MODE="${1:-app}"
-MODE_FILE="${XDG_RUNTIME_DIR:-/tmp}/fuzzel_mode"
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+MODE_FILE="$RUNTIME_DIR/fuzzel_mode"
+CONTROL_LOCK="$RUNTIME_DIR/fuzzel_mode.lock"
+mkdir -p "$RUNTIME_DIR"
+exec 9>"$CONTROL_LOCK"
+flock -x 9
 
 # If fuzzel is already open: toggle off if same mode, or switch seamlessly if different mode
 if pgrep -x fuzzel >/dev/null 2>&1; then
     ACTIVE_MODE="$(cat "$MODE_FILE" 2>/dev/null || echo "")"
     if [ "$ACTIVE_MODE" = "$MODE" ]; then
-        pkill -x fuzzel || true
+        pkill -x fuzzel || { flock -u 9; exit 1; }
         rm -f "$MODE_FILE"
+        flock -u 9
         exit 0
     fi
-    pkill -x fuzzel || true
-    # Brief yield to let Wayland layer surface release before re-spawning
-    sleep 0.05
+    pkill -x fuzzel || { flock -u 9; exit 1; }
 fi
 
-echo "$MODE" > "$MODE_FILE"
+printf '%s\n' "$MODE" > "$MODE_FILE"
+flock -u 9
 
 # Detect power & compositor state for solid background fallback
 DESKTOP_STATE_DIR="${DESKTOP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/desktop}"
@@ -34,9 +39,17 @@ if [ -f "$DESKTOP_STATE_DIR/modes/wallpaper_killed" ] || \
     SOLID_BG=true
 fi
 
+THEME_ARGS=()
+THEME_COLORS="$HOME/.cache/theme/colors.json"
+if THEME_VALUES=$(jq -r '[((.primary // .mauve // "#EDE6DC") | ltrimstr("#")), ((.base // "#121318") | ltrimstr("#")), (if .opacity == 1 then "ff" else "33" end)] | @tsv' "$THEME_COLORS" 2>/dev/null); then
+    IFS=$'\t' read -r MATCH_HEX BACKGROUND_HEX BACKGROUND_ALPHA <<< "$THEME_VALUES"
+    THEME_ARGS+=("--match-color=${MATCH_HEX}ff" "--selection-match-color=${MATCH_HEX}ff")
+    THEME_ARGS+=("--background-color=${BACKGROUND_HEX}${BACKGROUND_ALPHA}")
+fi
+
 case "$MODE" in
     app|apps)
-        EXTRA_ARGS=()
+        EXTRA_ARGS=("${THEME_ARGS[@]}")
         if [ "$SOLID_BG" = true ]; then
             EXTRA_ARGS+=(--background-color=111111ff)
         fi
@@ -45,6 +58,7 @@ case "$MODE" in
 
     file|files)
         FUZZEL_ARGS=(
+            "${THEME_ARGS[@]}"
             --dmenu
             --match-mode=exact
             --hide-before-typing
@@ -72,8 +86,9 @@ case "$MODE" in
             FUZZEL_ARGS+=(--background-color=111111ff)
         fi
 
-        SELECTED_FILE=$(
-            fd --max-depth 6 \
+        file_list=$(mktemp "${TMPDIR:-/tmp}/fuzzel-files.XXXXXX")
+        trap 'rm -f "$file_list" "$file_list.errors"' EXIT
+        if ! fd --max-depth 6 \
                --exclude .git \
                --exclude node_modules \
                --exclude .cache \
@@ -106,8 +121,7 @@ case "$MODE" in
                --exclude '*/GPUCache' \
                --exclude '*/Code Cache' \
                --exclude '*/blob_storage' \
-               --type f . \
-               "$HOME" "$HOME/.config" 2>/dev/null | \
+               --type f . "$HOME" "$HOME/.config" 2>"$file_list.errors" | \
             awk -v home="$HOME" '{
                 full = $0;
                 sub(home "/?", "~/", full);
@@ -158,9 +172,16 @@ case "$MODE" in
                     tags = tags " /" ext;
                 }
                 printf "%s %-28s  %s\t%s\t%s\t%s\t%s\n", glyph, fname, dir, $0, fname, dir, tags;
-            }' | \
-            fuzzel "${FUZZEL_ARGS[@]}" 2>/dev/null || true
-        )
+            }' > "$file_list"; then
+            cat "$file_list.errors" >&2
+            rm -f "$file_list.errors"
+            exit 1
+        fi
+        rm -f "$file_list.errors"
+        SELECTED_FILE=""
+        FUZZEL_STATUS=0
+        SELECTED_FILE=$(fuzzel "${FUZZEL_ARGS[@]}" < "$file_list" 2>/dev/null) || FUZZEL_STATUS=$?
+        [[ "$FUZZEL_STATUS" -eq 0 || "$FUZZEL_STATUS" -eq 1 ]] || exit "$FUZZEL_STATUS"
 
         if [ -n "$SELECTED_FILE" ] && [ -e "$SELECTED_FILE" ]; then
             DIR_PATH="$SELECTED_FILE"
@@ -201,6 +222,7 @@ case "$MODE" in
             fi
 
             FUZZEL_ARGS=(
+                "${THEME_ARGS[@]}"
                 --dmenu
                 --match-mode=fzf
                 --anchor=center

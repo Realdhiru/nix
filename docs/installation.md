@@ -29,7 +29,7 @@ For the first installation, build and switch explicitly without staging unrelate
 sudo nixos-rebuild switch --flake ~/nix#<host-name>
 ```
 
-For later changes, use the `rebuild` shell function. It runs `nix flake check`, builds and switches the current working tree, then runs the repository health check and rolls back on critical failures. It never stages or commits by default. `rebuild -c [message]` commits only already-staged files after a healthy switch, ignores unrelated unstaged work, and stops when a staged path has additional unstaged edits.
+For later changes, use the `rebuild` shell function. It runs `nix flake check`, builds and switches the current working tree, then runs the repository health check and rolls back on critical failures. It never stages or commits by default. Only `rebuild -c [message]` commits already-staged files after a healthy switch; it ignores unrelated unstaged work, stops when a staged path also has unstaged edits, and rejects other arguments without switching.
 
 Once the switch completes, reboot your machine:
 ```bash

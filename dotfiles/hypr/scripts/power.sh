@@ -157,6 +157,7 @@ cmd_lock() {
     fi
 
     local crash_log="/run/user/${UID:-1000}/quickshell/lock_crash.log"
+    local lock_qml="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/scripts/quickshell/Lock.qml"
     mkdir -p "$(dirname "$crash_log")"
 
     # Watchdog cleanup trap: clear crashed session lock if process terminates abnormally
@@ -169,7 +170,7 @@ cmd_lock() {
     }
     trap cleanup_lock EXIT INT TERM HUP
 
-    "$qs_bin" -p "$LOCK_QML" 2> >(tee -a "$crash_log" >&2)
+    "$qs_bin" -p "$lock_qml" 2> >(tee -a "$crash_log" >&2)
     local exit_code=$?
     if [ $exit_code -ne 0 ]; then
         hyprctl eval 'hl.clear_crashed_lockscreen()' >/dev/null 2>&1 || true

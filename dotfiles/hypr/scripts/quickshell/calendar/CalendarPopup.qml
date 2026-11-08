@@ -165,7 +165,7 @@ FocusScope {
 
     property real globalOrbitAngle: 0
     NumberAnimation on globalOrbitAngle {
-        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: window.visible
+        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: window.visible && Config.animationsEnabled
     }
 
     // -------------------------------------------------------------------------
@@ -499,7 +499,7 @@ FocusScope {
                 property real drift: 0
                 SequentialAnimation on drift {
                     loops: Animation.Infinite
-                    running: window.visible
+                    running: window.visible && Config.animationsEnabled
                     NumberAnimation { to: Math.round(-20 * window.sf); duration: 6000; easing.type: Easing.InOutSine }
                     NumberAnimation { to: 0; duration: 6000; easing.type: Easing.InOutSine }
                 }
@@ -525,7 +525,7 @@ FocusScope {
                 property real levitation: 0
                 SequentialAnimation on levitation {
                     loops: Animation.Infinite
-                    running: window.visible
+                    running: window.visible && Config.animationsEnabled
                     NumberAnimation { to: Math.round(-15 * window.sf); duration: 4000; easing.type: Easing.InOutSine }
                     NumberAnimation { to: 0; duration: 4000; easing.type: Easing.InOutSine }
                 }
@@ -533,28 +533,28 @@ FocusScope {
                 property real orbitBreath: 1.0
                 SequentialAnimation on orbitBreath {
                     loops: Animation.Infinite
-                    running: window.visible
+                    running: window.visible && Config.animationsEnabled
                     NumberAnimation { to: 1.035; duration: 3500; easing.type: Easing.InOutSine }
                     NumberAnimation { to: 1.0; duration: 3500; easing.type: Easing.InOutSine }
                 }
 
                 property real pitchBreath: 0
                 SequentialAnimation on pitchBreath {
-                    loops: Animation.Infinite; running: window.visible
+                    loops: Animation.Infinite; running: window.visible && Config.animationsEnabled
                     NumberAnimation { to: 3.5; duration: 4200; easing.type: Easing.InOutSine }
                     NumberAnimation { to: -3.5; duration: 4200; easing.type: Easing.InOutSine }
                 }
 
                 property real yawBreath: 0
                 SequentialAnimation on yawBreath {
-                    loops: Animation.Infinite; running: window.visible
+                    loops: Animation.Infinite; running: window.visible && Config.animationsEnabled
                     NumberAnimation { to: 2.5; duration: 5100; easing.type: Easing.InOutSine }
                     NumberAnimation { to: -2.5; duration: 5100; easing.type: Easing.InOutSine }
                 }
 
                 property real rollBreath: 0
                 SequentialAnimation on rollBreath {
-                    loops: Animation.Infinite; running: window.visible
+                    loops: Animation.Infinite; running: window.visible && Config.animationsEnabled
                     NumberAnimation { to: 1.5; duration: 5800; easing.type: Easing.InOutSine }
                     NumberAnimation { to: -1.5; duration: 5800; easing.type: Easing.InOutSine }
                 }
@@ -1061,7 +1061,7 @@ FocusScope {
                             
                             property real pulseOffset: 0
                             SequentialAnimation on pulseOffset {
-                                loops: Animation.Infinite; running: window.visible
+                                loops: Animation.Infinite; running: window.visible && Config.animationsEnabled
                                 NumberAnimation { to: Math.round(-3 * window.sf); duration: 1000; easing.type: Easing.InOutSine }
                                 NumberAnimation { to: 0; duration: 1000; easing.type: Easing.InOutSine }
                             }
@@ -1094,7 +1094,7 @@ FocusScope {
                             
                             property real pulseOffset: 0
                             SequentialAnimation on pulseOffset {
-                                loops: Animation.Infinite; running: window.visible
+                                loops: Animation.Infinite; running: window.visible && Config.animationsEnabled
                                 NumberAnimation { to: Math.round(3 * window.sf); duration: 1000; easing.type: Easing.InOutSine }
                                 NumberAnimation { to: 0; duration: 1000; easing.type: Easing.InOutSine }
                             }

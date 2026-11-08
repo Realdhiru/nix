@@ -445,7 +445,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 
 ### ADR-068: Obsidian Native Integration & Dotfiles Knowledge Brain Vault
 - **Decision:** Install Obsidian declaratively via `pkgs.obsidian` in `modules/system/packages.nix` without custom wrapper layers or redundant CLI flags. Maintain the system's central second-brain knowledge graph vault in `~/nix/docs`.
-- **Rationale:** Upstream Nixpkgs packages Obsidian with an Electron wrapper that automatically checks for `NIXOS_OZONE_WL` and `WAYLAND_DISPLAY`, appending `--ozone-platform=wayland --enable-wayland-ime=true --wayland-text-input-version=3`. Because `hosts/nixos/default.nix` sets `NIXOS_OZONE_WL = "1"`, Obsidian natively binds to Wayland with kinetic scrolling and IME support with zero wrapper maintenance.
+- **Rationale:** Upstream Nixpkgs packages Obsidian with an Electron wrapper that automatically checks for `NIXOS_OZONE_WL` and `WAYLAND_DISPLAY`, appending `--ozone-platform=wayland --enable-wayland-ime=true --wayland-text-input-version=3`. Because `hosts/nixos/system.nix` sets `NIXOS_OZONE_WL = "1"`, Obsidian natively binds to Wayland with kinetic scrolling and IME support with zero wrapper maintenance.
 - **Glass Theming:** Scoped with opacity `0.65` in `dotfiles/hypr/rules.lua` matching the system-wide glass token hierarchy.
 
 ### ADR-069: Declarative Wine Leftover Janitor (`gameclean`)
@@ -516,7 +516,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 
 ### ADR-079: Portable Host and Personal Configuration
 - **Decision:** Discover NixOS configurations from complete `hosts/<host>/system.nix` and `hardware-configuration.nix` pairs. `nix run .#init-host -- <name>` detects hardware and creates missing host files without overwriting existing files. `user.nix` owns personal defaults; shared modules consume generated host facts instead of assuming Intel, ASUS, a battery, or a specific display.
-- **Decision:** `rebuild` runs `nix flake check` before building and remains non-committing by default. `rebuild -c [message]` commits only the existing Git index after a successful switch and health check; it never stages files, ignores unrelated unstaged work, and stops if a staged path also has unstaged edits.
+- **Decision:** `rebuild` runs `nix flake check` before building and remains non-committing by default. Only `rebuild -c [message]` commits the existing Git index after a successful switch and health check; it never stages, ignores unrelated unstaged files, and refuses when a staged path also has unstaged edits. Unknown arguments fail before switching.
 - **Decision:** Keep the global USB autosuspend workaround unchanged while camera troubleshooting is deferred; derive the kernel argument and TLP setting from the same user workaround flag.
 - **Decision:** Monitor controls read active outputs and advertised modes at runtime. The unused `settings.json` eDP-1 mode list was removed; the machine-specific connector and supported rates remain documented in `hosts/nixos/PERSONAL.md`.
 - **Decision:** Keep TLP's exact passwordless profile commands in the power module and emit them only when host facts indicate a battery; keep audio recovery's narrow `modprobe` allowlist in the user module.
@@ -554,3 +554,7 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 ### ADR-086: Make Live Mode Self-Test Explicit
 - **Decision:** `scripts/selftest-modes.sh` requires the explicit `--live` argument before it resets or transitions desktop modes. Its Hyprland wrapper resolves the external client through `env` so `timeout` runs an executable rather than a shell builtin.
 - **Rationale:** The suite changes user runtime modes and must not be mistaken for a read-only diagnostic. The previous summary also claimed blocked-transition behavior while the assertions exercised atomic preemption.
+
+### ADR-087: Bound Desktop Helper Work and Keep Generated Theme Data Out of Source
+- **Decision:** Interactive audio clients have finite IPC deadlines, sink cycling is serialized, and FocusTime seeks atomically replace a single pending request consumed by one worker. Fuzzel colors are passed at launch from Wallust's cache palette; theme generation does not edit the tracked launcher config. Video-loop outputs are written to a same-directory temporary file and atomically renamed after successful encoding, with per-input batch failures reported without aborting later files.
+- **Rationale:** A stuck user daemon should not hold a shortcut indefinitely, simultaneous audio transitions should not interleave, generated colors should not dirty source config, and an encoder failure should preserve an existing output instead of leaving a partial file.

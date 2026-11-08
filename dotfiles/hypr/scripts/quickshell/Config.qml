@@ -38,6 +38,8 @@ Item {
     property bool dataReady: false
     property var rawSettings: ({})
     property var rawEnvs: ({})
+    readonly property bool powerSaverActive: SysData.powerProfile === "power-saver"
+    readonly property bool animationsEnabled: !powerSaverActive
     property bool topBarVisible: true
     property string topBarPosition: {
         try {

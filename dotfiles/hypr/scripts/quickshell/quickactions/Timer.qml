@@ -434,7 +434,7 @@ Item {
                     property real downOffset: 0
 
                     SequentialAnimation on upOffset {
-                        running: isSelected && root.isTimerIdle && root.widgetVisible
+                        running: isSelected && root.isTimerIdle && root.widgetVisible && Config.animationsEnabled
                         loops: Animation.Infinite
                         NumberAnimation { to: -root.s(4); duration: 500; easing.type: Easing.InOutSine }
                         NumberAnimation { to: 0; duration: 500; easing.type: Easing.InOutSine }
@@ -442,7 +442,7 @@ Item {
                     onIsSelectedChanged: if (!isSelected) { upOffset = 0; downOffset = 0; }
 
                     SequentialAnimation on downOffset {
-                        running: isSelected && root.isTimerIdle && root.widgetVisible
+                        running: isSelected && root.isTimerIdle && root.widgetVisible && Config.animationsEnabled
                         loops: Animation.Infinite
                         NumberAnimation { to: root.s(4); duration: 500; easing.type: Easing.InOutSine }
                         NumberAnimation { to: 0; duration: 500; easing.type: Easing.InOutSine }

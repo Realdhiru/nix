@@ -10,7 +10,7 @@ Power management on Linux laptops frequently suffers from daemon conflicts:
 - Manufacturer daemons (like `asusd`) attempt to throttle CPU clocks and adjust fan profiles.
 - Desktop environments attempt to manage sleep and screen dimming timers.
 
-In `modules/system/power.nix`, we established **TLP 1.9.1 as the sole, authoritative hardware power governor**.
+In `modules/system/power.nix`, we established **TLP 1.10.2 as the sole, authoritative hardware power governor**.
 
 ---
 
@@ -20,7 +20,7 @@ To eliminate conflicting hardware instructions, competing daemons are either dis
 
 - **`power-profiles-daemon`**: Completely masked and disabled.
 - **`asusd`**: Stripped of power profile switching authority. In `asusd.ron`, `change_platform_profile_on_battery` and `change_platform_profile_on_ac` are locked to `false`. `asusd.service` is enabled strictly to enforce the **80% battery charge ceiling** (`charge_control_end_threshold = 80`).
-- **TLP 1.9.1**: Exclusively manages CPU scaling governors, Energy Performance Preferences (EPP), Intel Turbo Boost, and PCIe Active State Power Management (ASPM).
+- **TLP 1.10.2**: Exclusively manages CPU scaling governors, Energy Performance Preferences (EPP), Intel Turbo Boost, and PCIe Active State Power Management (ASPM).
 
 ---
 

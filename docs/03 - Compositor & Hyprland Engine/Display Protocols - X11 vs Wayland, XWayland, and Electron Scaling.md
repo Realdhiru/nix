@@ -50,7 +50,7 @@ Many legacy applications (and unconfigured Electron apps) cannot speak the Wayla
 To ensure that Chromium, Electron, and Web-based applications render natively at true display resolution with crisp font rendering and kinetic touchpad gestures:
 
 ### The Global Invariant: `NIXOS_OZONE_WL = "1"`
-In `hosts/nixos/default.nix`:
+In `hosts/nixos/system.nix`:
 ```nix
 environment.sessionVariables = {
   NIXOS_OZONE_WL = "1";

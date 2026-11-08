@@ -2,6 +2,18 @@
 # Robust audio output switcher (Speaker <-> Wired Headphones <-> Bluetooth / USB)
 set -euo pipefail
 
+pw-cli() { timeout 5 env pw-cli "$@"; }
+pw-dump() { timeout 5 env pw-dump "$@"; }
+pw-link() { timeout 5 env pw-link "$@"; }
+pw-metadata() { timeout 5 env pw-metadata "$@"; }
+wpctl() { timeout 5 env wpctl "$@"; }
+
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
+exec 9>"$runtime_dir/cycle-audio-sink.lock"
+if ! flock -w 2 9; then
+    exit 0
+fi
+
 EQ_OUT_ID=$(pw-cli ls Node 2>/dev/null | awk '/id [0-9]+/ {id=$2} /node.name = "effect_output.eq10"/ {gsub(/,/, "", id); print id; exit}' || echo "")
 if [ -z "$EQ_OUT_ID" ]; then
     notify-send -a "Audio" -u low "Equalizer Offline" 2>/dev/null || true

@@ -248,7 +248,7 @@ FocusScope {
         to: Math.PI * 2
         duration: 90000
         loops: Animation.Infinite
-        running: window.visible
+        running: window.visible && Config.animationsEnabled
     }
 
     // -------------------------------------------------------------------------

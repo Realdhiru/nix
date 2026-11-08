@@ -943,7 +943,7 @@ FocusScope {
 
     property real globalOrbitAngle: 0
     NumberAnimation on globalOrbitAngle {
-        from: 0; to: Math.PI * 2; duration: 200000; loops: Animation.Infinite; running: window.isPopupActive
+        from: 0; to: Math.PI * 2; duration: 200000; loops: Animation.Infinite; running: window.isPopupActive && Config.animationsEnabled
     }
 
     property real introState: 0.0
@@ -958,7 +958,7 @@ FocusScope {
                 width: window.s(6); height: window.s(6); radius: window.s(3); color: dotCol
                 SequentialAnimation on y {
                     loops: Animation.Infinite
-                    running: window.visible
+                    running: window.visible && Config.animationsEnabled
                     PauseAnimation { duration: index * 100 }
                     NumberAnimation { from: 0; to: window.s(-6); duration: 250; easing.type: Easing.OutSine }
                     NumberAnimation { from: window.s(-6); to: 0; duration: 250; easing.type: Easing.InSine }
@@ -1301,7 +1301,7 @@ FocusScope {
 
                                 property real wavePhase: 0.0
                                 NumberAnimation on wavePhase {
-                                    running: centralCore.disconnectFill > 0.0 && centralCore.disconnectFill < 1.0
+                                    running: window.visible && Config.animationsEnabled && centralCore.disconnectFill > 0.0 && centralCore.disconnectFill < 1.0
                                     loops: Animation.Infinite
                                     from: 0; to: Math.PI * 2; duration: 800
                                 }
@@ -1359,7 +1359,7 @@ FocusScope {
                                 Behavior on opacity { NumberAnimation { duration: 300 } }
 
                                 SequentialAnimation on scale {
-                                    loops: Animation.Infinite; running: window.currentConn || showPassword
+                                    loops: Animation.Infinite; running: window.visible && Config.animationsEnabled && (window.currentConn || showPassword)
                                     NumberAnimation { to: 1.1; duration: 2000; easing.type: Easing.InOutSine }
                                     NumberAnimation { to: 1.0; duration: 2000; easing.type: Easing.InOutSine }
                                 }
@@ -1406,12 +1406,12 @@ FocusScope {
                                         color: "transparent"
                                         border.color: window.activeColor; border.width: window.s(2)
                                         SequentialAnimation on scale {
-                                            running: showScanning; loops: Animation.Infinite
+                                            running: window.visible && Config.animationsEnabled && showScanning; loops: Animation.Infinite
                                             PauseAnimation { duration: index * 400 }
                                             NumberAnimation { from: 1.0; to: 2.5; duration: 2000; easing.type: Easing.OutSine }
                                         }
                                         SequentialAnimation on opacity {
-                                            running: showScanning; loops: Animation.Infinite
+                                            running: window.visible && Config.animationsEnabled && showScanning; loops: Animation.Infinite
                                             PauseAnimation { duration: index * 400 }
                                             NumberAnimation { from: 0.8; to: 0.0; duration: 2000; easing.type: Easing.OutSine }
                                         }
@@ -1424,7 +1424,7 @@ FocusScope {
                                     color: window.activeColor
                                     text: window.activeMode === "wifi" ? "󰤨" : (window.activeMode === "eth" ? "󰈀" : "󰂯")
                                     SequentialAnimation on opacity {
-                                        running: showScanning; loops: Animation.Infinite
+                                        running: window.visible && Config.animationsEnabled && showScanning; loops: Animation.Infinite
                                         NumberAnimation { to: 0.5; duration: 1000; easing.type: Easing.InOutSine }
                                         NumberAnimation { to: 1.0; duration: 1000; easing.type: Easing.InOutSine }
                                     }
@@ -1834,7 +1834,7 @@ FocusScope {
                                 property real textOffset: 0
 
                                 SequentialAnimation on textOffset {
-                                    running: floatCard.doMarquee
+                                    running: window.visible && Config.animationsEnabled && floatCard.doMarquee
                                     loops: Animation.Infinite
                                     PauseAnimation { duration: 600 }
                                     NumberAnimation {
@@ -2002,12 +2002,12 @@ FocusScope {
                                     visible: parent.isHighlighted && !parent.isMyBusy && !parent.isCurrentlyConnected && !parent.isFailed
 
                                     SequentialAnimation on scale {
-                                        loops: Animation.Infinite; running: parent.visible
+                                        loops: Animation.Infinite; running: parent.visible && Config.animationsEnabled
                                         NumberAnimation { to: 1.15; duration: 1200; easing.type: Easing.InOutSine }
                                         NumberAnimation { to: 1.0; duration: 1200; easing.type: Easing.InOutSine }
                                     }
                                     SequentialAnimation on opacity {
-                                        loops: Animation.Infinite; running: parent.visible
+                                        loops: Animation.Infinite; running: parent.visible && Config.animationsEnabled
                                         NumberAnimation { to: 0.0; duration: 1200; easing.type: Easing.InOutSine }
                                         NumberAnimation { to: 0.8; duration: 1200; easing.type: Easing.InOutSine }
                                     }

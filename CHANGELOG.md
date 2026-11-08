@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Bounded PipeWire, WirePlumber, ALSA, playerctl, and systemd calls in audio helpers; serialized sink cycling and replaced the FocusTime seek marker with an atomic latest-request worker.
+- Stopped Wallust from editing `fuzzel.ini`; Fuzzel reads generated palette colors at launch. File search now avoids the overlapping current-directory scan and reports enumeration failures.
+- Made `make-loop.sh` preserve an existing output until a new encode succeeds and continue batch processing after individual file errors.
+- Gated the remaining decorative Calendar, Network, and Battery animation loops in Power Saver.
 - Fixed all shell `hyprctl` timeout wrappers to invoke the external client through `env`; GNU `timeout` cannot execute the shell builtin `command`.
 - Made the live mode self-test require `--live` and corrected its summary to describe atomic preemption.
 - Made `gameclean -y` refuse when unreferenced or stray prefixes exist unless `--include-unmanaged-prefixes` is supplied; nested candidates no longer double-count or receive duplicate removal attempts.
@@ -21,8 +25,8 @@
 - **Batteryless Host Handling**: Power profile requests now skip TLP only when no battery supply exists, while still synchronizing desktop mode state and display refresh policy; battery-backed hosts still fail visibly if the TLP command fails.
 - **Power Documentation Corrections**: Corrected the Coffee Mode binding and the lock/DPMS idle deadlines in `docs/system.md` to match `keybinds.lua` and `hypridle.conf`.
 - **Lower Background Work and Clear Ownership**: Reduced FocusTime JSON writes to app changes or 15-second intervals while retaining one-second accounting, changed battery audit sampling to 60 seconds with timestamp-based totals, gated CAVA by visible TopBar playback, and moved PipeWire/WirePlumber declarations to `modules/home/audio.nix`.
-- **Rebuild Safety and Validation**: `rebuild` runs `nix flake check` before building. Its health gate now checks both unit scopes, persistent D-state, full I/O pressure, and panel refresh policy. `rebuild -c` commits only existing staged files after a successful health gate and ignores unrelated unstaged work; it never stages files.
-- **Power Event Pipeline Follow-up**: The profile and monitor handlers now have bounded lock acquisition and IPC calls; power-supply bursts restart a 500ms timer. The profile lock is released before mode synchronization to avoid nested lock inversion. These source changes still require a privileged rebuild and live verification.
+- **Live Battery Wattage Display in All States ([`BatteryPopup.qml`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/quickshell/battery/BatteryPopup.qml))**: Made the battery telemetry pill unconditionally visible in the central circular battery dial across all charging, discharging, and AC idle states. The live power rate (`SysData.batPowerWatts`) is now continuously displayed in real time (`• X.XW`) alongside runtime remaining or charging progress.
+- **Rebuild Commit Safety ([`modules/home/shell.nix`](file:///home/realdhiru/nix/modules/home/shell.nix))**: Only `rebuild -c [message]` commits files already staged before the command, and only after a successful switch and health check. It never stages; unknown arguments fail without switching or committing.
 - **Post-Switch Commit Option**: `rebuild -c [message]` commits only already-staged changes after a successful switch and health check. Unstaged work is ignored and never staged. Default `rebuild` still does not stage or commit.
 
 ## 2026-11-07 — Scrolling Layout Isolation & Dwindle Parity Guards

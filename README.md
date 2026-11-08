@@ -121,7 +121,7 @@ Standardized keybind conventions organized into distinct functional tiers:
 
 ## 🚀 Quick Start
 
-Built for **100% portability** — clone, edit one file, and deploy on any machine with zero hardcoded paths:
+Built for **portable x86_64-linux NixOS hosts** — generate host facts, edit personal defaults, and keep machine-specific details out of shared modules:
 
 1. **Enable Flakes** in `/etc/nixos/configuration.nix`:
    ```nix
@@ -139,7 +139,7 @@ Built for **100% portability** — clone, edit one file, and deploy on any machi
    ```bash
    sudo nixos-rebuild switch --flake ~/nix#nixos
    ```
-   For later changes, use `rebuild`; it runs `nix flake check`, builds the current tree, switches, runs the health check, and rolls back on critical failure. `rebuild -c [message]` optionally commits files already staged by you after a successful switch; it never stages files itself, ignores unrelated unstaged work, and stops if a staged file also has unstaged edits.
+   For later changes, use `rebuild`; it runs `nix flake check`, builds the current tree, switches, runs the health check, and rolls back on critical failure. Only `rebuild -c [message]` optionally commits files already staged by you after a successful switch; it never stages files itself, ignores unrelated unstaged work, rejects unknown arguments, and stops if a staged file also has unstaged edits.
 
 ### Configuration layers and new hosts
 
@@ -153,6 +153,8 @@ Built for **100% portability** — clone, edit one file, and deploy on any machi
 - FocusTime persists buffered samples transactionally and retains them for retry after database errors; its Rust crate and popup live together under the widget folder.
 - Home-managed application launchers use the selected Nix package paths rather than hardcoded system-profile binaries.
 - `home.nix` is the Home Manager entry point; desktop applications/services live in `modules/home/desktop.nix`, with audio, monitor, shell, and theme policy in their feature modules.
+- QuickShell widgets keep their QML and feature-specific helpers together under `dotfiles/hypr/scripts/quickshell/<feature>/`; shared desktop helpers remain under `dotfiles/hypr/scripts/`.
+- Wallust writes palette data to `~/.cache/theme/`; the Fuzzel launcher reads that palette for runtime colors instead of rewriting the tracked `fuzzel.ini`.
 - To add a host, run `nix run .#init-host -- <name>` from this repository. Review both generated files and add them explicitly with `git add`; the flake ignores untracked host files.
 
 ---

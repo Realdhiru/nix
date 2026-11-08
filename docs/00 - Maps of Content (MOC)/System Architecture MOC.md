@@ -58,7 +58,7 @@ Dynamic color extraction and semantic design tokens.
 
 ### 6. Power & Hardware Authority
 Power arbitration, battery life engineering, and machine quirks on the ASUS Vivobook S 15 OLED.
-- [[TLP Exclusive Authority]] — TLP 1.9.1 as the single source of truth for power profiles and governors.
+- [[TLP Exclusive Authority]] — TLP 1.10.2 as the single source of truth for power profiles and governors.
 - [[Race-to-Sleep Strategy]] — The physics of CPU C-states and why clock throttling harms battery efficiency.
 - [[Thermal and Battery Engineering - EPP, ASPM, Turbo, and C-States]] — Intel P-State Speed Shift, PCIe ASPM link states, TB4 D3cold traps, and GPU framebuffer compression.
 - [[ASUS Hardware Quirks]] — 80% charge ceiling, OLED brightness key rebind hooks, and lid switch behavior.

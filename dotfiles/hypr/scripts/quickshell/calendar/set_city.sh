@@ -11,19 +11,20 @@ CONFIG_FILE="$STATE_DIR/weather_config.json"
 mkdir -p "$STATE_DIR"
 
 IFS=',' read -r lat lon name country <<< "$CITY_ARG"
-if [ -z "$lat" ] || [ -z "$lon" ]; then
+if [[ ! "$lat" =~ ^-?[0-9]+([.][0-9]+)?$ || ! "$lon" =~ ^-?[0-9]+([.][0-9]+)?$ ]] || \
+   ! awk -v lat="$lat" -v lon="$lon" 'BEGIN { exit !(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) }'; then
     exit 1
 fi
 
-cat <<EOF > "$CONFIG_FILE"
-{
-  "name": "${name:-Unknown}",
-  "country": "${country:-}",
-  "latitude": ${lat},
-  "longitude": ${lon},
-  "unit": "metric"
-}
-EOF
+tmp_file="$STATE_DIR/.weather_config.json.$$"
+jq -n \
+    --arg name "${name:-Unknown}" \
+    --arg country "${country:-}" \
+    --argjson latitude "$lat" \
+    --argjson longitude "$lon" \
+    '{name:$name, country:$country, latitude:$latitude, longitude:$longitude, unit:"metric"}' \
+    > "$tmp_file"
+mv -f "$tmp_file" "$CONFIG_FILE"
 
 # Trigger a weather refresh
 ~/.config/hypr/scripts/quickshell/calendar/weather.sh --getdata >/dev/null 2>&1 &

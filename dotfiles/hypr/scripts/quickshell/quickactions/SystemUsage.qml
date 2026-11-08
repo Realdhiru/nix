@@ -71,7 +71,7 @@ Item {
 
     property real globalWavePhase: 0.0
     NumberAnimation on globalWavePhase {
-        from: 0; to: Math.PI * 2; duration: 1800; loops: Animation.Infinite; running: root.widgetVisible
+        from: 0; to: Math.PI * 2; duration: 1800; loops: Animation.Infinite; running: root.widgetVisible && Config.animationsEnabled
     }
 
     // Telemetry subscription follows ACTUAL visibility, not component

@@ -117,7 +117,7 @@ In Nixpkgs' official `obsidian` package:
 makeWrapper ${electron}/bin/electron $out/bin/obsidian \
   --add-flags "\${NIXOS_OZONE_WL:+\${WAYLAND_DISPLAY:+--ozone-platform=wayland --enable-wayland-ime=true --wayland-text-input-version=3}}"
 ```
-By setting `NIXOS_OZONE_WL = "1"` in `hosts/nixos/default.nix`, the wrapper detects the variable and injects native Wayland flags at startup.
+By setting `NIXOS_OZONE_WL = "1"` in `hosts/nixos/system.nix`, the wrapper detects the variable and injects native Wayland flags at startup.
 
 ---
 

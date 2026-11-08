@@ -5,7 +5,7 @@ tags: [architecture, hardware, intel, kernel, bootloader, oled]
 
 # Host Configuration Anatomy
 
-The host configuration located in `hosts/nixos/default.nix` defines the low-level operating system configuration for our physical machine: **ASUS Vivobook S 15 OLED (K5504VA / S5504VA)** powered by an **Intel Core i5-13500H** processor and Intel Iris Xe Graphics.
+The host configuration located in `hosts/nixos/system.nix` defines the low-level operating system configuration for our physical machine: **ASUS Vivobook S 15 OLED (K5504VA / S5504VA)** powered by an **Intel Core i5-13500H** processor and Intel Iris Xe Graphics.
 
 ---
 

@@ -19,7 +19,7 @@ A chronological, categorized index of all system and rice issues resolved in thi
 ### Intel Iris Xe KMS Mode-Switch Delay & OEM Splash Double-Flash
 - **Symptom:** Flickering mode-switch delay between UEFI boot and login manager; ASUS OEM splash renders twice.
 - **Root Cause:** Late modesetting inside stage 2 userspace, and kernel re-rendering ACPI BGRT bitmap during handover.
-- **Solution:** In [`hosts/nixos/default.nix`](file:///home/realdhiru/nix/hosts/nixos/default.nix) & [`modules/system/boot.nix`](file:///home/realdhiru/nix/modules/system/boot.nix):
+- **Solution:** In [`hosts/nixos/system.nix`](file:///home/realdhiru/nix/hosts/nixos/system.nix) & [`modules/system/boot.nix`](file:///home/realdhiru/nix/modules/system/boot.nix):
   - Add `i915` to `boot.initrd.kernelModules` for early KMS in stage 1 initrd.
   - Pass `i915.fastboot=1`, `bgrt_disable`, `video=efifb:nobgrt`, and `fbcon=nodefer` to suppress double splash rendering.
 
@@ -53,7 +53,7 @@ A chronological, categorized index of all system and rice issues resolved in thi
 - **Symptom:** Excessive battery drain and fan noise during light idle workloads.
 - **Root Cause:** ASUS platform profile and energy performance preference (EPP) were fighting; CPU governor was pinned to performance.
 - **Solution:** In [`modules/system/power.nix`](file:///home/realdhiru/nix/modules/system/power.nix):
-  - TLP 1.9.1 established as sole hardware authority; `asusd` restricted to 80% charge threshold.
+  - TLP 1.10.2 established as sole hardware authority; `asusd` restricted to 80% charge threshold.
   - Locked Balanced profile: `CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_power"`, `CPU_BOOST_ON_BAT = 0`, `PLATFORM_PROFILE_ON_BAT = "balanced"`, `PCIE_ASPM_ON_BAT = "powersupersave"`.
   - Enabled Intel framebuffer compression: `boot.kernelParams = [ "i915.enable_fbc=1" ]` (saves ~2.2 GB/s memory bandwidth on 2.8K 120Hz OLED).
 
@@ -71,13 +71,10 @@ A chronological, categorized index of all system and rice issues resolved in thi
 
 ## 4. Hardware Quirks & WebCam
 
-### Sonix FHD Webcam (3277:0022) USB Babble & Disconnects
-- **Symptom:** Webcam disconnected with `ioctl(VIDIOC_DQBUF): Invalid argument` / `No such device` during WebRTC browser calls.
-- **Root Cause:** Firmware bug crashes controller when non-native resolution or MJPEG compression is requested; simultaneous `libcamera` and `v4l2` monitors caused competing initialization.
-- **Solution:** In [`hosts/nixos/hardware/sonix-webcam.nix`](file:///home/realdhiru/nix/hosts/nixos/hardware/sonix-webcam.nix) and [`home.nix`](file:///home/realdhiru/nix/home.nix):
-  - Created `v4l2loopback` virtual device `/dev/video10` fed by an on-demand FFmpeg loopback streaming native 1080p YUYV pass-through.
-  - Disabled conflicting WirePlumber `libcamera` monitor via `wireplumber.conf.d/50-disable-libcamera.conf`.
-  - Disabled USB autosuspend for device (`3277:0022`) in TLP.
+### Internal Camera Compatibility Workaround (Unresolved)
+- **Observed issue:** The internal camera is not detected by browsers/apps and does not work. Camera troubleshooting is parked; no current fix is claimed.
+- **Current configuration:** `modules/home/desktop.nix` disables WirePlumber's `libcamera` monitor. `user.nix` retains the global USB autosuspend workaround, which controls both the kernel argument and TLP policy because a stable device VID:PID target has not been established.
+- **Limit:** The earlier Sonix/`v4l2loopback` explanation and `/dev/video10` pipeline are not present in the current repository and should not be treated as verified diagnosis or active configuration.
 
 ### Single-Radio Wi-Fi Roaming vs AP Concurrency
 - **Symptom:** Investigated simultaneous Wi-Fi client (STA) and Hotspot (AP) repeating on campus network (`KIET`).

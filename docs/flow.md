@@ -15,17 +15,18 @@ BIOS → systemd-boot → NixOS (systemd)
           ├─ monitors: `refresh_monitor.sh` reads active outputs and advertised modes; monitor intent lives under `$DESKTOP_STATE_DIR/monitors/intent.json`
           └─ shaders: persisted screen shader (~/.cache/current_shader.conf)
   └─ systemd user services start (default.target / hyprland-session.target):
-      focustime-daemon, easyeffects, playerctld, camera-loopback
+      focustime-daemon, easyeffects, playerctld
 ```
 
 ## 2. Startup (`dotfiles/hypr/startup.lua`, sequential)
 
 1. `dbus-update-activation-environment` (Wayland → D-Bus sync for notifications)
 2. `systemctl --user start hyprland-session.target`
-3. `quickshell -p quickshell/Shell.qml` (TopBar & master window render concurrently)
-4. `hyprctl setcursor Bibata-Modern-Ice 32`
-5. `boot_wallpaper.sh` (warm-cache push ~0.2s vs cold ~27s; awww/mpvpaper lifecycle)
-6. `hypridle`, `equalizer.sh --init`
+3. `power.sh auto` applies the detected AC/battery profile before UI startup.
+4. `qs_manager.sh start` owns the single `Shell.qml` process and its per-session lock.
+5. `hyprctl setcursor Bibata-Modern-Ice 32`
+6. `wallpaper.sh boot` and `wallpaper.sh watch` start the wallpaper backend and event watcher.
+7. `hypridle`, `equalizer.sh --init`
 
 Clipboard recording is started separately by Home Manager user services
 `cliphist-text-watcher` and `cliphist-image-watcher`, attached to

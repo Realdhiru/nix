@@ -57,10 +57,16 @@
       # profile and bootable via bootctl. See docs/flow.md §5–7.
       rebuild() {
         local commit_after=0 commit_message=""
-        if [[ "''${1:-}" == "-c" ]]; then
+        if (( $# == 0 )); then
+          :
+        elif [[ "''${1:-}" == "-c" ]]; then
           commit_after=1
           shift
           commit_message="$*"
+          commit_message="''${commit_message:-Rebuild verified NixOS system}"
+        else
+          echo "Usage: rebuild [-c [commit message]]" >&2
+          return 2
         fi
         cd "''${NIX_CONFIG_DIR:-$HOME/nix}" || return
 

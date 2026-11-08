@@ -47,7 +47,7 @@ A structured guide for presenting this custom NixOS distribution during technica
 ### Talking Points
 - Running an advanced desktop does not require sacrificing battery life. The machine idles at ~2GB RAM and 0% CPU.
 - We implemented the **Race-to-Sleep** strategy: instead of artificially throttling CPU clocks (which keeps the package energized in $C0$ active states longer), tasks burst at 4.2 GHz and immediately return to deep $C8$/$C10$ sleep packages.
-- **TLP 1.9.1** acts as the single source of truth for power profiles, while **asusd** enforces an 80% charge ceiling at the firmware level to protect battery longevity.
+- **TLP 1.10.2** acts as the single source of truth for power profiles, while **asusd** enforces an 80% charge ceiling at the firmware level to protect battery longevity.
 
 ### Live Demo
 - Press `SUPER + CTRL + U`: toggle **Coffee Mode**. Point out the coffee indicator lighting up in the TopBar battery pill and explain the persistent systemd inhibitor.

@@ -1,72 +1,70 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../caching.sh"
 qs_ensure_cache "music"
 
-# File to store the latest seek request
 SEEK_FILE="$QS_RUN_MUSIC/seek_data"
+SEEK_LOCK="$QS_RUN_MUSIC/seek.lock"
+WORKER_PID="$QS_RUN_MUSIC/seek.pid"
 
-# Arg mapping
-command=$1
-arg=$2
-len_sec=$3
-player_name=$4
-
-# Fallback for player name
-if [ -z "$player_name" ]; then
-    player_name=$(playerctl status -f "{{playerName}}" 2>/dev/null | head -n 1)
-fi
-if [ -z "$player_name" ]; then exit 0; fi
-
-case $command in
-    "seek")
-        # 1. WRITE: Save the latest target data to a file immediately.
-        #    This overwrites any previous pending request.
-        echo "$arg $len_sec $player_name" > "$SEEK_FILE"
-
-        # 2. CHECK: Is a worker already running?
-        #    We check for a specific marker we create below.
-        lock_file="$QS_RUN_MUSIC/seek.lock"
-        
-        # If the lock file exists, a worker is already waiting to execute.
-        # We just exit and let that worker pick up our new value from step 1.
-        if [ -f "$lock_file" ]; then
+run_seek_worker() {
+    exec 9>"$SEEK_LOCK"
+    flock -x 9
+    while :; do
+        if [[ ! -s "$SEEK_FILE" ]]; then
+            rm -f "$WORKER_PID"
             exit 0
         fi
+        IFS=$'\t' read -r seek_percent length player < "$SEEK_FILE" || true
+        rm -f "$SEEK_FILE"
+        flock -u 9
 
-        # 3. WORKER: Create the lock and run in background
-        touch "$lock_file"
-        
-        (
-            # Wait a tiny bit to gather rapid updates (Debounce)
-            sleep 0.05
-            
-            # Read the LATEST value from the file (Step 1)
-            read -r final_arg final_len final_player < "$SEEK_FILE"
-            
-            # Perform the Seek Logic
-            if [ -n "$final_len" ] && [ "$final_len" != "0" ]; then
-                # Use AWK for math
-                target_sec=$(awk -v len="$final_len" -v perc="$final_arg" 'BEGIN { printf "%.2f", (len * perc) / 100 }')
-                # Execute
-                playerctl -p "$final_player" position "$target_sec"
-            fi
-            
-            # Remove lock so a new batch can start
-            rm "$lock_file"
-        ) & 
-        
-        # Exit main script immediately to free up the UI
-        exit 0
-        ;;
-    
-    "next")
-        playerctl -p "$player_name" next ;;
-        
-    "prev")
-        playerctl -p "$player_name" previous ;;
-        
-    "play-pause")
-        playerctl -p "$player_name" play-pause ;;
-        
+        if [[ "$length" =~ ^[0-9]+([.][0-9]+)?$ && "$seek_percent" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+            target=$(awk -v len="$length" -v pct="$seek_percent" 'BEGIN { printf "%.2f", len * pct / 100 }')
+            timeout 3 playerctl -p "$player" position "$target" >/dev/null 2>&1 || true
+        fi
+
+        flock -x 9
+    done
+}
+
+command_name="${1:-}"
+arg="${2:-}"
+length="${3:-}"
+player="${4:-}"
+
+if [[ "$command_name" == seek ]]; then
+    if [[ -z "$player" ]]; then
+        player=$(timeout 2 playerctl status -f '{{playerName}}' 2>/dev/null | head -n 1 || true)
+    fi
+    [[ -n "$player" ]] || exit 0
+
+    exec 9>"$SEEK_LOCK"
+    flock -x 9
+    tmp=$(mktemp "$QS_RUN_MUSIC/seek.XXXXXX")
+    printf '%s\t%s\t%s\n' "$arg" "$length" "$player" > "$tmp"
+    mv -f -- "$tmp" "$SEEK_FILE"
+    if [[ ! -s "$WORKER_PID" ]] || ! kill -0 "$(<"$WORKER_PID")" 2>/dev/null; then
+        rm -f "$WORKER_PID"
+        ( exec 9>&-; "$0" --seek-worker ) </dev/null >/dev/null 2>&1 &
+        printf '%s\n' "$!" > "$WORKER_PID"
+    fi
+    exit 0
+fi
+
+if [[ "$command_name" == --seek-worker ]]; then
+    run_seek_worker
+    exit 0
+fi
+
+if [[ -z "$player" ]]; then
+    player=$(timeout 2 playerctl status -f '{{playerName}}' 2>/dev/null | head -n 1 || true)
+fi
+[[ -n "$player" ]] || exit 0
+
+case "$command_name" in
+    next) timeout 3 playerctl -p "$player" next ;;
+    prev) timeout 3 playerctl -p "$player" previous ;;
+    play-pause) timeout 3 playerctl -p "$player" play-pause ;;
 esac

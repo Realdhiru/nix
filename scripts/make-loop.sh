@@ -53,7 +53,7 @@ process_file() {
     local e_time="$3"
     local f_dur="$4"
 
-    [ -f "$input" ] || return 0
+    [ -f "$input" ] || { echo "[!] Not a file: $input" >&2; return 1; }
     if [[ "$input" == *"_loop.mp4"* ]]; then
         return 0
     fi
@@ -67,7 +67,7 @@ process_file() {
     # Get total duration
     local total_dur
     total_dur=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$input" 2>/dev/null || echo "0")
-    
+    [[ "$total_dur" =~ ^[0-9]+([.][0-9]+)?$ ]] || total_dur=0
     if (( $(echo "$total_dur <= 0" | bc -l) )); then
         echo "[!] Error reading video duration for: $filename"
         return 1
@@ -75,6 +75,9 @@ process_file() {
 
     local s_sec="${s_time:-0}"
     local e_sec="${e_time:-$total_dur}"
+    for value in "$s_sec" "$e_sec" "$f_dur"; do
+        [[ "$value" =~ ^[0-9]+([.][0-9]+)?$ ]] || { echo "[!] Invalid time value '$value' for $filename" >&2; return 1; }
+    done
 
     # Calculate segment duration
     local seg_dur
@@ -94,7 +97,9 @@ process_file() {
     printf "    Segment: [%.2fs -> %.2fs] (Length: %.2fs, Crossfade: %.2fs)\n" "$s_sec" "$e_sec" "$seg_dur" "$f_dur"
 
     # Precise trim + Tail-to-Head Crossfade + Web-optimized H.264
-    ffmpeg -hide_banner -loglevel warning -y \
+    local temp_output
+    temp_output=$(mktemp --suffix=.mp4 "${dir}/.${name}_loop.XXXXXX") || return 1
+    if ! ffmpeg -hide_banner -loglevel warning -y \
         -ss "$s_sec" -to "$e_sec" -i "$input" \
         -filter_complex "
             [0:v]split=2[v_main][v_tail];
@@ -109,7 +114,16 @@ process_file() {
         -crf 19 \
         -preset fast \
         -movflags +faststart \
-        "$output"
+        "$temp_output"; then
+        rm -f -- "$temp_output"
+        echo "[!] Encoding failed for: $filename" >&2
+        return 1
+    fi
+    if ! mv -f -- "$temp_output" "$output"; then
+        rm -f -- "$temp_output"
+        echo "[!] Could not replace output for: $filename" >&2
+        return 1
+    fi
 
     echo "    ✓ Perfect loop saved -> $output"
 
@@ -139,13 +153,20 @@ if [ "$#" -eq 1 ] && [ -z "$START" ] && [ -z "$END" ] && [ -t 0 ]; then
     user_f="${user_f:-1.0}"
 
     process_file "$target" "$user_s" "$user_e" "$user_f"
-    exit 0
+    exit $?
 fi
 
 # Batch / Flag mode
+failures=0
 for file in "$@"; do
-    process_file "$file" "$START" "$END" "$FADE"
+    if ! process_file "$file" "$START" "$END" "$FADE"; then
+        failures=$((failures + 1))
+    fi
 done
 
 echo ""
+if [ "$failures" -gt 0 ]; then
+    echo "==> Finished with $failures failed file(s)." >&2
+    exit 1
+fi
 echo "==> Done!"

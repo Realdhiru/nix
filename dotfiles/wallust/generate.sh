@@ -147,12 +147,6 @@ white = "#FFFFFF"
 opacity = 0.30
 EOF
 
-    for f in "$HOME/.config/fuzzel/fuzzel.ini" "$HOME/nix/dotfiles/fuzzel/fuzzel.ini"; do
-        if [ -f "$f" ]; then
-            sed -i -E "s/^(match = ).*/\1EDE6DCff/; s/^(selection-match = ).*/\1EDE6DCff/; s/^(background = ).*/\1000000ff/" "$f" 2>/dev/null || true
-        fi
-    done
-
     # Generate Obsidian theme snippet if vault exists
     OBSIDIAN_SNIPPET="$HOME/nix/docs/.obsidian/snippets/theme.css"
     if [ -f "$SCRIPT_DIR/templates/obsidian.css" ] && [ -d "$HOME/nix/docs/.obsidian" ]; then
@@ -504,13 +498,6 @@ BEGIN {
     }
 }' > "$HOME/.config/cava/themes/wallust" 2>/dev/null || true
     fi
-
-    HEX_ACCENT="${ACCENT#'#'}"
-    for f in "$HOME/.config/fuzzel/fuzzel.ini" "$HOME/nix/dotfiles/fuzzel/fuzzel.ini"; do
-        if [ -f "$f" ]; then
-            sed -i -E "s/^(match = ).*/\1${HEX_ACCENT}ff/; s/^(selection-match = ).*/\1${HEX_ACCENT}ff/; s/^(background = ).*/\112131833/" "$f" 2>/dev/null || true
-        fi
-    done
 
     # Generate Obsidian theme snippet if vault exists
     OBSIDIAN_SNIPPET="$HOME/nix/docs/.obsidian/snippets/theme.css"

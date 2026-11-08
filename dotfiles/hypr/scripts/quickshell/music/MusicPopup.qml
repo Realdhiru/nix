@@ -114,7 +114,7 @@ FocusScope {
         from: 0; to: 1.0
         duration: 8000 
         loops: Animation.Infinite
-        running: root.visible
+        running: root.visible && Config.animationsEnabled
     }
 
     property real globalOrbitAngle: 0
@@ -122,7 +122,7 @@ FocusScope {
         from: 0; to: Math.PI * 2
         duration: 90000
         loops: Animation.Infinite
-        running: root.visible
+        running: root.visible && Config.animationsEnabled
     }
 
     property real eqLightningProgress: 0.0
@@ -536,8 +536,8 @@ FocusScope {
                             NumberAnimation on rotation {
                                 from: 0; to: 360; duration: 8000
                                 loops: Animation.Infinite
-                                running: root.visible && root.musicData.status === "Playing"
-                                paused: !root.visible || root.musicData.status !== "Playing"
+                                running: root.visible && root.musicData.status === "Playing" && Config.animationsEnabled
+                                paused: !root.visible || root.musicData.status !== "Playing" || !Config.animationsEnabled
                             }
                         }
                     }
@@ -598,7 +598,7 @@ FocusScope {
                                     SequentialAnimation on x {
                                         id: titleAnim
                                         loops: Animation.Infinite
-                                        running: root.visible && titleTextMain.implicitWidth > titleClipRect.width
+                                        running: root.visible && titleTextMain.implicitWidth > titleClipRect.width && Config.animationsEnabled
 
                                         PauseAnimation { duration: 3000 }
 

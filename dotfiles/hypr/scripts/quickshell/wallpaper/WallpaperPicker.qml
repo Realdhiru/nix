@@ -189,7 +189,7 @@ FocusScope {
         if (!output || output.trim().length === 0) return;
         try {
             let data = JSON.parse(output);
-            if (!data || !data.items || data.items.length === 0) return;
+            if (!data || !Array.isArray(data.items)) return;
 
             let catMap = {};
             let colorMap = {};
@@ -244,7 +244,10 @@ FocusScope {
                 }
             }
 
-            if (isDifferent) {
+            if (isDifferent && window.visible) {
+                window._pendingIndexData = output;
+            } else if (isDifferent) {
+                window._pendingIndexData = "";
                 window.isModelChanging = true;
                 localProxyModel.clear();
                 localProxyModel.append(batchAll);
@@ -576,6 +579,11 @@ FocusScope {
                 if (curItem && curItem.fileName) {
                     window.targetWallName = String(curItem.fileName);
                 }
+            }
+            if (window._pendingIndexData !== "") {
+                let pendingIndexData = window._pendingIndexData;
+                window._pendingIndexData = "";
+                window.loadIndexData(pendingIndexData);
             }
             window.allowAddAnimation = false;
             window.searchIndexRestored = false;
@@ -1709,6 +1717,7 @@ FocusScope {
 
     property bool _suppressSync: false
     property int _localSyncedCount: 0
+    property string _pendingIndexData: ""
     property string _pendingDeleteTarget: ""
     property int _pendingDeleteIndex: -1
 
@@ -2043,11 +2052,17 @@ FocusScope {
                 }
 
                 Image {
+                    id: bgBlurThumb
                     anchors.fill: parent
                     source: thumbPath
                     sourceSize: Qt.size(256, 256)
                     fillMode: Image.Stretch
                     asynchronous: true
+                    onStatusChanged: {
+                        if (status === Image.Error && thumbPath !== "" && !delegateRoot.isVideo && window.currentFilter !== "Search") {
+                            source = encodeURI(window.flatSrcDir + "/" + delegateRoot.safeFileName);
+                        }
+                    }
                 }
 
                 Item {
@@ -2057,6 +2072,7 @@ FocusScope {
                     clip: true
 
                     Image {
+                        id: mainThumbImage
                         anchors.centerIn: parent
                         anchors.horizontalCenterOffset: window.s(-50)
                         width: (window.itemWidth * 1.5) + ((window.itemHeight + window.s(30)) * Math.abs(window.skewFactor)) + window.s(50)
@@ -2065,6 +2081,11 @@ FocusScope {
                         source: thumbPath
                         sourceSize: Qt.size(400, 400)
                         asynchronous: true
+                        onStatusChanged: {
+                            if (status === Image.Error && thumbPath !== "" && !delegateRoot.isVideo && window.currentFilter !== "Search") {
+                                source = encodeURI(window.flatSrcDir + "/" + delegateRoot.safeFileName);
+                            }
+                        }
 
                         transform: Matrix4x4 {
                             property real s: -window.skewFactor
