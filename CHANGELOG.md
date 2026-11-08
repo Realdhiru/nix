@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Prevented the wallpaper picker preview from shifting away to random wallpapers when applied by skipping `syncActiveWallpaperFocus()` while `isApplying` is active, matching canonical filter capitalization from `filterData`, and letting `StrictlyEnforceRange` center the selected card without coordinate fighting.
+
 - Split Home Manager wallpaper daemons/config and FocusTime service into feature owners; moved refresh environment, desktop-state environment, and the retained WirePlumber camera setting to their matching modules without changing runtime policy.
 - Power Saver now also pauses the TopBar title marquee; recording status pulses stay active.
 - Bounded PipeWire, WirePlumber, ALSA, playerctl, and systemd calls in audio helpers; serialized sink cycling and replaced the FocusTime seek marker with an atomic latest-request worker.

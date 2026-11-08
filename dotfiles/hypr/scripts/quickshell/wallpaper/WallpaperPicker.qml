@@ -56,7 +56,7 @@ FocusScope {
     
     Timer {
         id: applyUnlockTimer
-        interval: 300
+        interval: 1500
         onTriggered: {
             window.isApplying = false;
             if (window.applyingWallCleanName !== "") {
@@ -382,6 +382,13 @@ FocusScope {
             let c = window.getCleanName(window.activeWallpaperName);
             if (c !== "") window.appliedWallCleanName = c;
             window.refreshActiveWallpapers();
+            if (window.isApplying) {
+                if (c !== "" && c === window.applyingWallCleanName) {
+                    window.isApplying = false;
+                    window.applyingWallCleanName = "";
+                }
+                return;
+            }
             window.syncActiveWallpaperFocus();
         }
     }
@@ -394,12 +401,15 @@ FocusScope {
             let cur = (activeWallWatcher.text() || "").trim();
             if (!cur) {
                 window.reloadActiveWallpaperPath();
-                window.syncActiveWallpaperFocus();
+                if (!window.isApplying) {
+                    window.syncActiveWallpaperFocus();
+                }
             }
         }
     }
 
     function syncActiveWallpaperFocus() {
+        if (window.isApplying) return;
         if (!window.activeWallpaperName) return;
         window.targetWallName = window.activeWallpaperName;
 
@@ -419,8 +429,17 @@ FocusScope {
 
         if (foundIdx === -1 && window.currentFilter !== "All" && window.currentFilter !== "Search") {
             let cat = window.getWallpaperCategory(window.activeWallpaperName);
-            if (cat !== "" && window.isFilterVisible(cat)) {
-                window.currentFilter = cat;
+            let targetCat = "All";
+            if (cat !== "") {
+                for (let k = 0; k < window.filterData.length; k++) {
+                    if (window.filterData[k].name.toLowerCase() === cat.toLowerCase()) {
+                        targetCat = window.filterData[k].name;
+                        break;
+                    }
+                }
+            }
+            if (targetCat !== "All" && window.isFilterVisible(targetCat)) {
+                window.currentFilter = targetCat;
             } else {
                 window.currentFilter = "All";
             }
@@ -438,9 +457,6 @@ FocusScope {
 
         if (foundIdx !== -1) {
             view.currentIndex = foundIdx;
-            if (window.visible && view.width > 0) {
-                view.positionViewAtIndex(foundIdx, ListView.Center);
-            }
         }
     }
 
@@ -1106,8 +1122,17 @@ FocusScope {
 
         if (foundIdx === -1 && window.currentFilter !== "All" && window.currentFilter !== "Search") {
             let cat = window.getWallpaperCategory(activeWall);
-            if (cat !== "" && window.isFilterVisible(cat)) {
-                window.currentFilter = cat;
+            let targetCat = "All";
+            if (cat !== "") {
+                for (let k = 0; k < window.filterData.length; k++) {
+                    if (window.filterData[k].name.toLowerCase() === cat.toLowerCase()) {
+                        targetCat = window.filterData[k].name;
+                        break;
+                    }
+                }
+            }
+            if (targetCat !== "All" && window.isFilterVisible(targetCat)) {
+                window.currentFilter = targetCat;
             } else {
                 window.currentFilter = "All";
             }
