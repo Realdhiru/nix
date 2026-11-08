@@ -63,6 +63,11 @@
       "key": "│ 󰓡 Swap:"
     },
     {
+      "type": "command",
+      "key": "│ 󰁹 Battery:",
+      "text": "awk 'BEGIN { while ((getline line < \"/sys/class/power_supply/BAT0/uevent\") > 0) { if (line ~ /^POWER_SUPPLY_STATUS=/) status = substr(line, 21); if (line ~ /^POWER_SUPPLY_CAPACITY=/) cap = substr(line, 23); if (line ~ /^POWER_SUPPLY_ENERGY_NOW=/) now = substr(line, 25); if (line ~ /^POWER_SUPPLY_ENERGY_FULL=/) full = substr(line, 26); if (line ~ /^POWER_SUPPLY_POWER_NOW=/) rate = substr(line, 24); } close(\"/sys/class/power_supply/BAT0/uevent\"); if (cap == \"\") exit; rem_str = \"\"; if (rate > 0) { watts = sprintf(\" @ %.1fW\", rate / 1000000); if (status == \"Discharging\" && now > 0) { sec = (now * 3600) / rate; rem_str = sprintf(\"%s (%dh %dm left)\", watts, int(sec/3600), int((sec%3600)/60)); } else if (status == \"Charging\" && full > now) { sec = ((full - now) * 3600) / rate; rem_str = sprintf(\"%s (%dh %dm until full)\", watts, int(sec/3600), int((sec%3600)/60)); } else { rem_str = watts; } } printf \"%s%% [%s]%s\\n\", cap, status, rem_str; }'"
+    },
+    {
       "type": "disk",
       "key": "│  Disk:",
       "showFileSystem": false
