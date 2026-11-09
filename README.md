@@ -119,27 +119,38 @@ Standardized keybind conventions organized into distinct functional tiers:
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Daily Workflow & Setup
 
-Built for **portable x86_64-linux NixOS hosts** — generate host facts, edit personal defaults, and keep machine-specific details out of shared modules:
+### Daily Usage (Existing Machine)
+Whenever you pull updates or edit your configuration:
+```bash
+git pull
+rebuild
+```
+`rebuild` stages tracked changes, compiles the generation, switches cleanly, and executes automated health checks (auto-rolling back if compositor/systemd sanity fails).
+
+---
+
+### First-Time Installation (New Machine)
+Built for **portable x86_64-linux NixOS hosts** without hardcoded hardware assumptions:
 
 1. **Enable Flakes** in `/etc/nixos/configuration.nix`:
    ```nix
    nix.settings.experimental-features = [ "nix-command" "flakes" ];
    ```
-2. **Clone & Configure Identity**:
+2. **Clone & Initialize Host**:
    ```bash
    git clone https://github.com/Realdhiru/nix.git ~/nix
    cd ~/nix
    nix run .#init-host -- <host-name>
    git add hosts/<host-name>/hardware-configuration.nix hosts/<host-name>/system.nix
    ```
-   *Review the generated files, then edit [`user.nix`](user.nix) for identity and personal preferences. Hostname and hardware facts belong in `hosts/<host>/system.nix`.*
-3. **Manual first installation** (before the `rebuild` shell function is installed):
+   *`init-host` auto-detects CPU (Intel/AMD), GPU, battery, and platform profiles into `hosts/<host>/system.nix`. Personal defaults (username, preferred apps, theme) belong in [`user.nix`](user.nix).*
+3. **First-Time Activation**:
    ```bash
-   sudo nixos-rebuild switch --flake ~/nix#nixos
+   sudo nixos-rebuild switch --flake ~/nix#<host-name>
    ```
-   For later changes, use `rebuild`; it stages tracked changes, commits, builds, switches, runs the health check, and rolls back on critical failure.
+   After activation, the `rebuild` shell function is permanently installed.
 
 ### Configuration layers and new hosts
 
