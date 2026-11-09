@@ -46,10 +46,7 @@
     powerOnBoot = false;
     settings = {
       General = {
-        AutoConnect = true;
-        FastConnectable = true;
-        ReconnectAttempts = 7;
-        ReconnectIntervals = "1, 2, 4";
+        Experimental = true;
       };
     };
   };

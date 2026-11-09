@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed Bluetooth audio drops and disconnects by terminating zombie background `bluetoothctl scan` processes, bounding UI discovery scans to 20 seconds in `bluetooth_panel_logic.sh`, and removing aggressive `AutoConnect`/`FastConnectable` loops in `modules/system/services.nix`.
 - Streamlined `README.md` with a clean Daily Workflow section (`git pull && rebuild`) distinguishing everyday laptop usage from one-time host initialization.
 - Fixed `rebuild()` in `modules/home/shell.nix` by guarding `git commit` with `git diff-index --cached`; it no longer aborts when the git working tree has already been cleanly committed.
 - Enabled `user.power.balancedBatteryFirst` in `user.nix` and capped Intel GPU battery frequency / boost to 1100 MHz in `modules/system/power.nix` to prevent excessive power consumption above the 10nm Iris Xe voltage wall while maintaining dynamic scaling and full AC performance.

@@ -180,12 +180,31 @@ case $cmd in
     --scan-start)
         rfkill unblock bluetooth 2>/dev/null
         timeout 0.5 bluetoothctl power on > /dev/null 2>&1
-        if [ -f "$PID_FILE" ]; then kill -- "-$(cat "$PID_FILE")" 2>/dev/null; rm -f "$PID_FILE"; fi
-        setsid bash -c '{ echo "scan on"; sleep infinity; } | bluetoothctl' > /dev/null 2>&1 &
+        if [ -f "$PID_FILE" ]; then
+            old_pid=$(cat "$PID_FILE" 2>/dev/null || true)
+            if [ -n "$old_pid" ]; then
+                kill -- "-$old_pid" 2>/dev/null || kill "$old_pid" 2>/dev/null || true
+            fi
+            rm -f "$PID_FILE"
+        fi
+        pkill -f "bluetoothctl.*scan" 2>/dev/null || true
+        # Run a bounded scan (max 20 seconds) so discovery never runs into infinity and starves audio streams
+        (
+            echo "scan on"
+            sleep 20
+            echo "scan off"
+        ) | bluetoothctl > /dev/null 2>&1 &
         echo $! > "$PID_FILE"
         ;;
     --scan-stop)
-        if [ -f "$PID_FILE" ]; then kill "$(cat "$PID_FILE")" 2>/dev/null; rm -f "$PID_FILE"; fi
-        timeout 0.5 bluetoothctl scan off > /dev/null 2>&1
+        if [ -f "$PID_FILE" ]; then
+            old_pid=$(cat "$PID_FILE" 2>/dev/null || true)
+            if [ -n "$old_pid" ]; then
+                kill -- "-$old_pid" 2>/dev/null || kill "$old_pid" 2>/dev/null || true
+            fi
+            rm -f "$PID_FILE"
+        fi
+        pkill -f "bluetoothctl.*scan" 2>/dev/null || true
+        timeout 1 bluetoothctl scan off > /dev/null 2>&1 || true
         ;;
 esac
