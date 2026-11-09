@@ -34,7 +34,7 @@
     disableNmiWatchdog = true;
     # Optional battery-first tuning while the named profile remains Balanced.
     # Off preserves the current balanced EPP/boost feel on battery.
-    balancedBatteryFirst = false;
+    balancedBatteryFirst = true;
     # User-selected TLP behavior. The host module adds only detected hardware
     # settings (battery name, Intel GPU controls, supported platform profiles).
     platformProfiles = {

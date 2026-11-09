@@ -535,8 +535,8 @@ Concise, permanent architectural invariants and technical rationale. Do not dupl
 - **Rationale:** Hidden widget instances ran their `Component.onCompleted` handlers and background helpers even when never opened. Unbounded synchronous IPC and overlapping power events were consistent contributors to stalls. A bounded restart recovers the observed `playerctld` crash while preventing a rapid restart loop.
 
 ### ADR-082: Optional Battery-First Balanced Policy
-- **Decision:** `user.power.balancedBatteryFirst` defaults to `false`. When enabled, TLP uses `power` EPP and disables CPU boost on battery only; Power Saver, AC, platform profile, and default Balanced behavior are unchanged.
-- **Rationale:** This exposes a lower-consumption Balanced variant without overriding the user's established responsiveness preference.
+- **Decision:** `user.power.balancedBatteryFirst` defaults to `false`. When enabled, TLP uses `power` EPP, disables CPU boost on battery only, and caps Intel GPU battery frequency / boost to 1100 MHz; Power Saver, AC, platform profile, and default Balanced behavior are unchanged.
+- **Rationale:** This exposes a lower-consumption Balanced variant without overriding the user's established responsiveness preference, avoiding the exponential power spike of driving Intel Iris Xe graphics past 1.1 GHz on battery.
 
 ### ADR-083: Retain FocusTime Samples on Database Failure
 - **Decision:** FocusTime keeps buffered accounting records until every grouped insert and transaction commit succeeds. Failed flushes are logged and retried with the same records.

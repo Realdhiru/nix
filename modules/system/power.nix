@@ -29,6 +29,9 @@ let
     CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
     CPU_BOOST_ON_BAT = 0;
     CPU_HWP_DYN_BOOST_ON_BAT = 0;
+  } // lib.optionalAttrs (user.power.balancedBatteryFirst && builtins.elem "intel" hostFacts.gpuVendors) {
+    INTEL_GPU_MAX_FREQ_ON_BAT = 1100;
+    INTEL_GPU_BOOST_FREQ_ON_BAT = 1100;
   };
 in
 {
