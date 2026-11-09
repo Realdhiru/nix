@@ -51,7 +51,7 @@ fi
 
 # ---------------------------------------------- stuck D-state / I/O pressure
 d_state_pids() {
-  ps -eo pid=,stat= | awk '$2 ~ /^D/ {print $1}' | sort -n
+  ps -eo pid=,ppid=,stat= | awk '$2 != 2 && $1 != 2 && $3 ~ /^D/ {print $1}' | sort -n
 }
 d_first=$(d_state_pids)
 sleep 2

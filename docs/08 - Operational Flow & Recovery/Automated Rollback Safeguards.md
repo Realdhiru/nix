@@ -28,6 +28,11 @@ Queries systemd user services to ensure critical infrastructure is active:
 - `cliphist-text-watcher.service`
 - `cliphist-image-watcher.service`
 
+### 4. Process State & I/O Pressure Probe
+Inspects system process states and pressure stalls:
+- Verifies no persistent user-space D-state processes remain stuck across consecutive sample windows (kernel threads with `ppid == 2` excluded).
+- Checks `/proc/pressure/io` avg10 is within safe thresholds.
+
 ---
 
 ## 2. The Exit Code Protocol
