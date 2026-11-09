@@ -140,7 +140,6 @@ in
     lua-language-server
     rustc
     cargo
-    gnome-network-displays
     budslink
   ];
 

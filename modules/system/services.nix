@@ -4,15 +4,7 @@
     enable = true;
     # NetworkManager's shared hotspot interface is created at runtime and has no
     # deterministic name in this host config, so DHCP/DNS remain global rules.
-    allowedUDPPorts = [ 53 67 68 5353 7236 ];
-    allowedTCPPorts = [ 7236 ];
-  };
-
-  # Network discovery & mDNS for local network devices (Smart TVs, printers, etc.)
-  services.avahi = {
-    enable = true;
-    nssmdns4 = true;
-    openFirewall = true;
+    allowedUDPPorts = [ 53 67 68 ];
   };
 
   security.apparmor.enable = true;
