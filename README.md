@@ -113,7 +113,7 @@ Standardized keybind conventions organized into distinct functional tiers:
 | **Secondary Widgets** | `SUPER + SHIFT + W` / `SUPER + SHIFT + N` / `SUPER + SHIFT + M` / `SUPER + SHIFT + A` | Toggle Wallpaper Picker / Calendar / Display Manager / Sunset Tint |
 | | `SUPER + SHIFT + X` | Fast offline OCR region capture to clipboard |
 | | `\` (in Wallpaper Picker) | Toggle favorite wallpaper |
-| **Web Applications** | `SUPER + ALT + W` / `Y` / `C` / `A` / `N` / `D` / `G` | Launch WhatsApp / YouTube / ChatGPT / Claude / Notion / To-Do / Antigravity |
+| **Web Applications** | `SUPER + ALT + W` / `Y` / `C` / `A` / `N` / `D` | Launch WhatsApp / YouTube / ChatGPT / Claude / Notion / To-Do |
 | **Hardware & System** | `SUPER + F6` | Toggle Multi-Sink Audio Broadcast |
 | | `SUPER + F7` | Recover PipeWire Audio Subsystem |
 | | `SUPER + F8` | Toggle QuickShell Desktop Shell |

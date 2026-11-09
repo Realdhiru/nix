@@ -264,9 +264,6 @@ hl.bind(mainMod .. " + ALT + Down", hl.dsp.exec_cmd(scripts .. "qs_manager.sh po
 -- 8. Applications & Web Apps (SUPER + ALT + Letter)
 -- ======================================================
 
-hl.bind(mainMod .. " + ALT + G", hl.dsp.exec_cmd(scripts .. "launch_antigravity.sh"),
-    { description = "launch Antigravity new window" })
-
 hl.bind(mainMod .. " + ALT + W",
     launch_brave_app({ class = "whatsapp", url = "https://web.whatsapp.com" }),
     { description = "launch WhatsApp web app" })

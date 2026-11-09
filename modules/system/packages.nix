@@ -141,6 +141,7 @@ in
     rustc
     cargo
     gnome-network-displays
+    budslink
   ];
 
   programs.appimage = {

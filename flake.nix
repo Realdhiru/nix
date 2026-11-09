@@ -46,6 +46,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Standalone repo: https://github.com/Realdhiru/budslink-flake.
+    budslink = {
+      url = "github:Realdhiru/budslink-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
   outputs = inputs@{ nixpkgs, home-manager, ... }:
@@ -100,6 +106,7 @@
                   gamescope = inputs.gamescope-pkgs.legacyPackages.${final.stdenv.hostPlatform.system}.gamescope;
                 })
                 inputs.chatgpt.overlays.default
+                inputs.budslink.overlays.default
               ];
             })
             systemModule
@@ -228,7 +235,6 @@
               dotfiles/hypr/scripts/exit.sh|\
               dotfiles/hypr/scripts/fix_audio.sh|\
               dotfiles/hypr/scripts/fuzzel_menu.sh|\
-              dotfiles/hypr/scripts/launch_antigravity.sh|\
               dotfiles/hypr/scripts/qs_manager.sh|\
               dotfiles/hypr/scripts/quickshell/music/music_info.sh|\
               dotfiles/hypr/scripts/quickshell/music/player_control.sh|\

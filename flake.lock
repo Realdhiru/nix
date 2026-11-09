@@ -21,6 +21,26 @@
         "type": "github"
       }
     },
+    "budslink": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794248491,
+        "narHash": "sha256-KMMMPnYY2u/Rsz1k4Khna5ZPysPXepmq8W9IunTVAVs=",
+        "owner": "Realdhiru",
+        "repo": "budslink-flake",
+        "rev": "453f40bb86ccb6bfa2de3fbb442c4a6b77bf813b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Realdhiru",
+        "repo": "budslink-flake",
+        "type": "github"
+      }
+    },
     "chatgpt": {
       "inputs": {
         "nixpkgs": [
@@ -190,6 +210,7 @@
     "root": {
       "inputs": {
         "anifetch": "anifetch",
+        "budslink": "budslink",
         "chatgpt": "chatgpt",
         "gamescope-pkgs": "gamescope-pkgs",
         "helium": "helium",
