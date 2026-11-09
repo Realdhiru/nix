@@ -728,6 +728,10 @@ ShellRoot {
 
                                 property string oldText: ""
 
+                                validator: RegularExpressionValidator {
+                                    regularExpression: /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':",.<>\/?\\|`~]*$/
+                                }
+
                                 Component.onCompleted: forceActiveFocus()
 
                                 onActiveFocusChanged: {
@@ -743,8 +747,8 @@ ShellRoot {
                                         passModel.clear();
                                         lockUI.failed = false;
                                         event.accepted = true;
-                                    } else if (event.key === Qt.Key_Space && text.length === 0) {
-                                        // Ignore leading Space used to wake display so it does not corrupt password
+                                    } else if (event.key === Qt.Key_Space) {
+                                        // Ignore space key completely (common wake key) so it never corrupts password
                                         event.accepted = true;
                                     } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && text.length === 0) {
                                         // Ignore Enter on empty to prevent spurious failed shake/flash
@@ -770,6 +774,12 @@ ShellRoot {
                                 }
 
                                 onTextChanged: {
+                                    // Strip any whitespace characters immediately if injected via IME or paste
+                                    if (/[\s]/.test(text)) {
+                                        text = text.replace(/\s+/g, "");
+                                        return;
+                                    }
+
                                     if (text.length > 0) {
                                         lockUI.failed = false;
                                     }

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed lockscreen password input in `Lock.qml` registering wake-up keystrokes (such as the spacebar when tapped to wake the display from DPMS sleep) by attaching a `RegularExpressionValidator` restricting input to non-whitespace printable characters, ignoring `Qt.Key_Space` in `Keys.onPressed`, and sanitizing whitespace on text change.
 - Fixed Bluetooth audio drops and disconnects by terminating zombie background `bluetoothctl scan` processes, bounding UI discovery scans to 20 seconds in `bluetooth_panel_logic.sh`, and removing aggressive `AutoConnect`/`FastConnectable` loops in `modules/system/services.nix`.
 - Streamlined `README.md` with a clean Daily Workflow section (`git pull && rebuild`) distinguishing everyday laptop usage from one-time host initialization.
 - Fixed `rebuild()` in `modules/home/shell.nix` by guarding `git commit` with `git diff-index --cached`; it no longer aborts when the git working tree has already been cleanly committed.
