@@ -114,87 +114,63 @@ Standardized keybind conventions organized into distinct functional tiers:
 | | `SUPER + SHIFT + X` | Fast offline OCR region capture to clipboard |
 | | `\` (in Wallpaper Picker) | Toggle favorite wallpaper |
 | **Web Applications** | `SUPER + ALT + W` / `Y` / `C` / `A` / `N` / `D` / `G` | Launch WhatsApp / YouTube / ChatGPT / Claude / Notion / To-Do / Antigravity |
-| **Hardware & Recovery**| `SUPER + F6` / `SUPER + F7` / `SUPER + F8` | Fix Audio Graph / Recover Bluetooth Daemon / Restart Wi-Fi Radio |
-| | `SUPER + R` | Instant live reload of compositor, quickshell, and themes |
+| **Hardware & System** | `SUPER + F6` | Toggle Multi-Sink Audio Broadcast |
+| | `SUPER + F7` | Recover PipeWire Audio Subsystem |
+| | `SUPER + F8` | Toggle QuickShell Desktop Shell |
+| | `SUPER + R` | Reload Compositor, QuickShell, and Theme |
 
 ---
 
-## 🚀 Daily Workflow & Setup
+## 🚀 Installation & Setup
 
-### Daily Usage (Existing Machine)
-Whenever you pull updates or edit your configuration:
-```bash
-git pull
-rebuild
-```
-`rebuild` stages tracked changes, compiles the generation, switches cleanly, and executes automated health checks (auto-rolling back if compositor/systemd sanity fails).
-
----
-
-### First-Time Installation (New Machine)
-Install on any fresh NixOS installation in 3 standard steps:
+Install on a fresh NixOS system:
 
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/Realdhiru/nix.git ~/nix
    cd ~/nix
    ```
-2. **Copy your machine's hardware configuration**:
+2. **Generate your hardware configuration**:
    ```bash
    nixos-generate-config --show-hardware-config > hosts/nixos/hardware-configuration.nix
    ```
-   *(Optional)* Edit [`user.nix`](user.nix) to set your username, name, and preferred apps.
+   *(Optional)* Edit [`user.nix`](user.nix) to set your username and default applications.
 3. **Build and switch**:
    ```bash
    sudo nixos-rebuild switch --flake .#nixos
    ```
-   Once finished, reboot or log into Hyprland. The `rebuild` shell command will now be permanently available.
 
 ---
 
 ### 📁 Where Data & Customizations Live
 
-- **Your Personal Settings**: [`user.nix`](user.nix) is the single configuration file for identity, username, terminal, browser, and themes. Changes here stay yours across git pulls.
-- **Hardware Profile**: [`hosts/nixos/hardware-configuration.nix`](hosts/nixos/hardware-configuration.nix) matches your physical drives, CPU, and kernel modules.
-- **Wallpapers**: Place wallpapers into `~/Pictures/Wallpapers/` (created automatically on first boot). A default fallback wallpaper is included in `dotfiles/wallpaper/default.jpg`.
-- **Runtime & Widget State**: Persistent settings (wallpaper favorites, active modes, monitor layout, screen-time data) live in `~/.local/state/desktop/` and `~/.cache/`. They are never overwritten by git pulls or system rebuilds.
-- `home.nix` is the Home Manager entry point; `modules/home/desktop.nix` composes the remaining desktop setup with focused audio, monitor, QuickShell, wallpaper, shell, theme, and state modules. TLP hardware policy stays in `modules/system/power.nix`.
-- QuickShell widgets keep their QML and feature-specific helpers together under `dotfiles/hypr/scripts/quickshell/<feature>/`; shared desktop helpers remain under `dotfiles/hypr/scripts/`.
-- Wallust writes palette data to `~/.cache/theme/`; the Fuzzel launcher reads that palette for runtime colors instead of rewriting the tracked `fuzzel.ini`.
-- Power Saver pauses decorative QuickShell loops and title marquees while leaving status indicators available.
-- To add a host, run `nix run .#init-host -- <name>` from this repository. Review both generated files and add them explicitly with `git add`; the flake ignores untracked host files.
+- **User Preferences**: [`user.nix`](user.nix) is the single file for username, default terminal, browser, and apps.
+- **Hardware Profile**: [`hosts/nixos/hardware-configuration.nix`](hosts/nixos/hardware-configuration.nix) contains machine-specific kernel modules and drive UUIDs.
+- **Wallpapers**: Stored in `~/Pictures/Wallpapers/` (default fallback in `dotfiles/wallpaper/default.jpg`).
+- **Runtime State**: Desktop state (wallpapers, modes, screen time) lives in `~/.local/state/desktop/` and persists across rebuilds.
 
 ---
 
-## 🧭 System Management Commands
-
-Custom shell workflows defined in [`modules/home/shell.nix`](modules/home/shell.nix):
+## 🧭 System Commands
 
 | Command | Description |
 | :--- | :--- |
-| `rebuild` | Runs flake checks, builds and switches the current tree, then runs the health gate and automatic rollback; never stages or commits |
-| `update` | Update flake inputs (`nixos-unstable`) and trigger verified rebuild |
-| `gens` | List annotated, color-coded system generations with active/stable markers |
-| `pin-stable [gen]` | Permanently pin a generation as a GC root (`/nix/var/nix/gcroots/boot-stable`) |
-| `clean` | Safely delete unpinned store paths older than 14 days |
-| `gameclean [-y] [--include-unmanaged-prefixes]` | Preview or clean Wine/Proton caches; unreferenced prefixes require explicit opt-in |
-| `scripts/selftest-modes.sh --live` | Explicitly run the mode-transition test; it changes live desktop modes |
-| `af` / `ff` | Animated video terminal fetcher (`anifetch`) / Fastfetch |
+| `rebuild` | Builds, verifies, and switches system generation with auto-rollback |
+| `update` | Updates flake inputs (`nixos-unstable`) and rebuilds |
+| `clean` | Safely removes unpinned system store paths older than 14 days |
+| `gens` | Lists system boot generations with active markers |
+| `pin-stable` | Pins the current generation so garbage collection never deletes it |
+| `af` / `ff` | Terminal fetchers (`anifetch` / `fastfetch`) |
 
 ---
 
-## System Documentation (`docs/`)
+## 📚 System Documentation
 
-[`docs/`](docs/) records this machine's configuration, architecture decisions, hardware behavior, and recovery procedures. General Linux, Wayland, Nix, and NixOS learning notes live in the separate Obsidian vault at `~/Projects/Vault/nix-brain/`.
+Architecture, hardware notes, and recovery specs documented in [`docs/`](docs/):
 
-* **[MOC: System Architecture](docs/00%20-%20Maps%20of%20Content%20(MOC)/System%20Architecture%20MOC.md)** — Router hub linking all subsystems.
-* **[01 - The Why & Nix Philosophy](docs/01%20-%20The%20Why%20&%20Nix%20Philosophy/)** — Local system rationale and configuration ownership.
-* **[02 - Flake & System Architecture](docs/02%20-%20Flake%20&%20System%20Architecture/)** — This host's flake topology, modules, and package integrations.
-* **[03 - Compositor & Hyprland Engine](docs/03%20-%20Compositor%20&%20Hyprland%20Engine/)** — Lua configuration, Frame-0 opacity evaluation, Wayland display protocols.
-* **[04 - QuickShell Desktop](docs/04%20-%20QuickShell%20QML%20Desktop/)** — Event-driven IPC, dynamic Kanji workspaces, widget breakdown.
-* **[05 - Theming & Wallust Engine](docs/05%20-%20Theming%20&%20Wallust%20Engine/)** — Palette extraction algorithm and semantic UI tokens.
-* **[06 - Power & Hardware Authority](docs/06%20-%20Power%20&%20Hardware%20Authority/)** — TLP exclusive authority, EPP/ASPM calibration, C-states, and ASUS hardware quirks.
-* **[07 - Audio & Media Pipeline](docs/07%20-%20Audio%20&%20Media%20Pipeline/)** — PipeWire 10-band DSP equalizer, MPRIS D-Bus integration, VA-API hardware decoding.
-* **[08 - Operational Flow & Recovery](docs/08%20-%20Operational%20Flow%20&%20Recovery/)** — Health check test harness, rollback mechanisms, emergency recovery.
-* **[09 - Battle-Tested Tacit Knowledge](docs/09%20-%20Battle-Tested%20Tacit%20Knowledge/)** — Intel GPU ring buffer traps, Python bans on hot paths, scene-graph coordinate gating.
-* **[Architecture Decisions (ADR)](docs/decisions.md)** & **[Tacit Knowledge](docs/tacit_knowledge.md)** — Invariants, post-mortems, and hardware specs.
+| Area | Focus | Key Topics |
+| :--- | :--- | :--- |
+| 🏛️ **Architecture** | [Flake & System](docs/02%20-%20Flake%20&%20System%20Architecture/) · [Nix Philosophy](docs/01%20-%20The%20Why%20&%20Nix%20Philosophy/) | Flake topology, modular structure, declarative ownership |
+| 🖥️ **Compositor & UI** | [Hyprland Engine](docs/03%20-%20Compositor%20&%20Hyprland%20Engine/) · [QuickShell](docs/04%20-%20QuickShell%20QML%20Desktop/) · [Wallust](docs/05%20-%20Theming%20&%20Wallust%20Engine/) | Dual layout switcher, Qt6/QML widgets, semantic color palette |
+| ⚡ **Hardware & Power** | [Power Authority](docs/06%20-%20Power%20&%20Hardware%20Authority/) · [Audio Pipeline](docs/07%20-%20Audio%20&%20Media%20Pipeline/) | TLP power policy, PipeWire 10-band DSP equalizer, LADSPA plugins |
+| 🛡️ **Recovery & ADR** | [Recovery Procedures](docs/08%20-%20Operational%20Flow%20&%20Recovery/) · [Decisions](docs/decisions.md) · [Tacit Knowledge](docs/tacit_knowledge.md) | Emergency rollbacks, architecture decision records, hardware quirks |

@@ -140,6 +140,7 @@ in
     lua-language-server
     rustc
     cargo
+    gnome-network-displays
   ];
 
   programs.appimage = {

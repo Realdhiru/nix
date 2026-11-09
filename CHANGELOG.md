@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Enabled `services.avahi` (mDNS / Zeroconf) with `nssmdns4` and opened firewall ports for mDNS (UDP 5353) and Wi-Fi Display / Miracast (TCP/UDP 7236) to enable native wireless display casting and local network device discovery (Smart TVs, printers). Added `gnome-network-displays` to `modules/system/packages.nix`.
 - Fixed false-positive auto-rollback during `rebuild` in `scripts/health-check.sh` by excluding kernel threads (`ppid == 2` and `pid == 2`) from persistent D-state process checks, preventing normal transient kernel worker operations (e.g. `kworker/*-rb_allocator`, `i915_flip`) from failing post-switch validation.
 - Removed over-engineered `hostFacts` abstraction and `init-host.sh` generator; simplified `modules/system/power.nix` and `hosts/nixos/system.nix` to use idiomatic NixOS defaults (`lib.mkDefault`) and direct user configuration.
 - Simplified first-time installation to a clean 3-step workflow (`git clone`, copy `hardware-configuration.nix`, `nixos-rebuild switch`) documented in `README.md`.
