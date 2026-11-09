@@ -113,7 +113,7 @@ if [ -e "$runtime/wayland-1" ]; then
     && ln -s "$runtime/wayland-1.lock" "$probe_runtime/wayland-1.lock"
 fi
 
-XDG_RUNTIME_DIR="$probe_runtime" timeout 10 alacritty -e sh -c 'sleep 1.5' \
+XDG_RUNTIME_DIR="$probe_runtime" timeout 10 alacritty --title "health-check-probe" -e sh -c 'sleep 1.5' \
   >/dev/null 2>&1 &
 wcli_pid=$!
 

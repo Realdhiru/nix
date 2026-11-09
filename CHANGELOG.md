@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed Bluetooth earbud mode controls in [BudsLink](https://github.com/maniacx/BudsLink) (`budslink-flake`) for OnePlus Nord Buds 3, aligning exact hardware byte commands for Noise Cancellation, Transparency, and Off with direct 3-button switching.
+- Made the `rebuild()` health-check terminal probe silent and non-intrusive by routing the `health-check-probe` Alacritty test window to a hidden special workspace (`special:silent`) with zero opacity and no focus stealing, eliminating visible test window popups while preserving full Wayland GPU hang validation.
 - Packaged and integrated [BudsLink](https://github.com/maniacx/BudsLink) (`~/Projects/flakes/budslink-flake`) for native Bluetooth earbud battery monitoring, Active Noise Cancellation (ANC), Transparency, and gesture control on Linux across multi-brand devices (OnePlus, Sony, Samsung Galaxy Buds, AirPods, Nothing, Bose, Sennheiser).
 - Removed bloated `launch_antigravity.sh` script and the broken `SUPER + ALT + G` keybind from `dotfiles/hypr/keybinds.lua`, `flake.nix`, and `README.md`.
 - Fixed false-positive auto-rollback during `rebuild` in `scripts/health-check.sh` by excluding kernel threads (`ppid == 2` and `pid == 2`) from persistent D-state process checks, preventing normal transient kernel worker operations (e.g. `kworker/*-rb_allocator`, `i915_flip`) from failing post-switch validation.
