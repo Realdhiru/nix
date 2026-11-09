@@ -28,11 +28,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794249858,
-        "narHash": "sha256-J9yx+z4/81rdT1YTzd9Usjaxx54he4k+vL7VYaKJ0xY=",
+        "lastModified": 1794251523,
+        "narHash": "sha256-ml6RKlkMX8D4gT0AyAv5m/FPaT3vqdpKIoxh/QtouX8=",
         "owner": "Realdhiru",
         "repo": "budslink-flake",
-        "rev": "837976da3675e482dd2559e4a578f53c982e11b4",
+        "rev": "0e156a06a6a4eefa5e26f67a8b4352f69c641249",
         "type": "github"
       },
       "original": {
