@@ -132,37 +132,32 @@ rebuild
 ---
 
 ### First-Time Installation (New Machine)
-Built for **portable x86_64-linux NixOS hosts** without hardcoded hardware assumptions:
+Install on any fresh NixOS installation in 3 standard steps:
 
-1. **Enable Flakes** in `/etc/nixos/configuration.nix`:
-   ```nix
-   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-   ```
-2. **Clone & Initialize Host**:
+1. **Clone the repository**:
    ```bash
    git clone https://github.com/Realdhiru/nix.git ~/nix
    cd ~/nix
-   nix run .#init-host -- <host-name>
-   git add hosts/<host-name>/hardware-configuration.nix hosts/<host-name>/system.nix
    ```
-   *`init-host` auto-detects CPU (Intel/AMD), GPU, battery, and platform profiles into `hosts/<host>/system.nix`. Personal defaults (username, preferred apps, theme) belong in [`user.nix`](user.nix).*
-3. **First-Time Activation**:
+2. **Copy your machine's hardware configuration**:
    ```bash
-   sudo nixos-rebuild switch --flake ~/nix#<host-name>
+   nixos-generate-config --show-hardware-config > hosts/nixos/hardware-configuration.nix
    ```
-   After activation, the `rebuild` shell function is permanently installed.
+   *(Optional)* Edit [`user.nix`](user.nix) to set your username, name, and preferred apps.
+3. **Build and switch**:
+   ```bash
+   sudo nixos-rebuild switch --flake .#nixos
+   ```
+   Once finished, reboot or log into Hyprland. The `rebuild` shell command will now be permanently available.
 
-### Configuration layers and new hosts
+---
 
-- `modules/` and `dotfiles/` hold shared implementation. Hardware-sensitive behavior reads runtime capabilities or receives facts from a host module.
-- `hosts/<host>/hardware-configuration.nix` and `system.nix` hold generated machine facts and hardware quirks.
-- `user.nix` holds identity, home directory, locale, keyboard, theme, app defaults, wallpaper paths, and personal power/audio preferences.
-- Battery-specific TLP profile permissions and settings are emitted only for hosts whose generated facts include a battery.
-- The retained USB autosuspend workaround is one personal setting that controls both the kernel argument and TLP policy.
-- The shared `refresh_monitor.sh` applies AC/battery refresh from Hyprland's advertised modes and the saved monitor intent; it resolves data before one `hl.monitor()` IPC call, and is used by power events, startup, and profile changes.
-- QuickShell startup, reload, and its full-shell toggle are serialized through `qs_manager.sh` to keep one `Shell.qml` instance.
-- FocusTime persists buffered samples transactionally and retains them for retry after database errors; its Rust crate and popup live together under the widget folder.
-- Home-managed application launchers use the selected Nix package paths rather than hardcoded system-profile binaries.
+### 📁 Where Data & Customizations Live
+
+- **Your Personal Settings**: [`user.nix`](user.nix) is the single configuration file for identity, username, terminal, browser, and themes. Changes here stay yours across git pulls.
+- **Hardware Profile**: [`hosts/nixos/hardware-configuration.nix`](hosts/nixos/hardware-configuration.nix) matches your physical drives, CPU, and kernel modules.
+- **Wallpapers**: Place wallpapers into `~/Pictures/Wallpapers/` (created automatically on first boot). A default fallback wallpaper is included in `dotfiles/wallpaper/default.jpg`.
+- **Runtime & Widget State**: Persistent settings (wallpaper favorites, active modes, monitor layout, screen-time data) live in `~/.local/state/desktop/` and `~/.cache/`. They are never overwritten by git pulls or system rebuilds.
 - `home.nix` is the Home Manager entry point; `modules/home/desktop.nix` composes the remaining desktop setup with focused audio, monitor, QuickShell, wallpaper, shell, theme, and state modules. TLP hardware policy stays in `modules/system/power.nix`.
 - QuickShell widgets keep their QML and feature-specific helpers together under `dotfiles/hypr/scripts/quickshell/<feature>/`; shared desktop helpers remain under `dotfiles/hypr/scripts/`.
 - Wallust writes palette data to `~/.cache/theme/`; the Fuzzel launcher reads that palette for runtime colors instead of rewriting the tracked `fuzzel.ini`.

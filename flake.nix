@@ -53,11 +53,6 @@
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
       user = import ./user.nix;
-      initHost = pkgs.writeShellApplication {
-        name = "init-host";
-        runtimeInputs = [ pkgs.nixos-install-tools pkgs.pciutils pkgs.gawk pkgs.findutils pkgs.util-linux pkgs.coreutils ];
-        text = builtins.readFile ./scripts/init-host.sh;
-      };
       hostEntries = builtins.readDir ./hosts;
       hostNames = builtins.filter (name: hostEntries.${name} == "directory")
         (builtins.attrNames hostEntries);
@@ -68,7 +63,7 @@
           hardwareModule = hostDir + "/hardware-configuration.nix";
         in
         if !(builtins.pathExists systemModule) || !(builtins.pathExists hardwareModule) then
-          throw "Host '${hostName}' is incomplete. Run `nix run .#init-host -- ${hostName}`, review the generated files, then add them to Git."
+          throw "Host '${hostName}' is missing system.nix or hardware-configuration.nix. Ensure hosts/${hostName}/hardware-configuration.nix exists."
         else nixpkgs.lib.nixosSystem {
           specialArgs = { inherit inputs user; };
           modules = [
@@ -376,11 +371,6 @@
           exit "$fail"
         '';
       };
-    };
-    apps.${system}.init-host = {
-      type = "app";
-      program = "${initHost}/bin/init-host";
-      meta.description = "Detect hardware and create a new host configuration without overwriting files";
     };
   };
 }

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Removed over-engineered `hostFacts` abstraction and `init-host.sh` generator; simplified `modules/system/power.nix` and `hosts/nixos/system.nix` to use idiomatic NixOS defaults (`lib.mkDefault`) and direct user configuration.
+- Simplified first-time installation to a clean 3-step workflow (`git clone`, copy `hardware-configuration.nix`, `nixos-rebuild switch`) documented in `README.md`.
 - Fixed lockscreen password input in `Lock.qml` registering wake-up keystrokes (such as the spacebar when tapped to wake the display from DPMS sleep) by attaching a `RegularExpressionValidator` restricting input to non-whitespace printable characters, ignoring `Qt.Key_Space` in `Keys.onPressed`, and sanitizing whitespace on text change.
 - Fixed Bluetooth audio drops and disconnects by terminating zombie background `bluetoothctl scan` processes, bounding UI discovery scans to 20 seconds in `bluetooth_panel_logic.sh`, and removing aggressive `AutoConnect`/`FastConnectable` loops in `modules/system/services.nix`.
 - Streamlined `README.md` with a clean Daily Workflow section (`git pull && rebuild`) distinguishing everyday laptop usage from one-time host initialization.

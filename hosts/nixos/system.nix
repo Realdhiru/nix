@@ -11,19 +11,6 @@
     ../../modules/system/gaming.nix
   ];
 
-  # Facts detected for this machine; capability detection is generation-time
-  # data, never an impure Nix evaluation. init-host writes this record for new
-  # hosts and does not overwrite an existing one.
-  _module.args.hostFacts = {
-    cpuVendor = "intel";
-    gpuVendors = [ "intel" ];
-    hasBattery = true;
-    batteryName = "BAT0";
-    chargeThresholds = { start = 75; stop = 80; };
-    platformProfileChoices = [ "quiet" "balanced" "performance" ];
-    intelGpuBatteryFrequencies = { min = 100; max = 1450; boost = 1450; };
-  };
-
   # Host-specific Intel GPU Early KMS & fastboot
   boot.initrd.kernelModules = [ "i915" ];
 
