@@ -58,7 +58,9 @@
       rebuild() {
         cd ~/nix || return
         git add -u || return
-        git commit -m "Rebuild verified NixOS system" || return
+        if ! git diff-index --quiet --cached HEAD --; then
+          git commit -m "Rebuild verified NixOS system" || return
+        fi
 
         local start gen flake_ref
         start=$(date -Is)

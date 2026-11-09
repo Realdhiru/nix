@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed `rebuild()` in `modules/home/shell.nix` by guarding `git commit` with `git diff-index --cached`; it no longer aborts when the git working tree has already been cleanly committed.
 - Enabled `user.power.balancedBatteryFirst` in `user.nix` and capped Intel GPU battery frequency / boost to 1100 MHz in `modules/system/power.nix` to prevent excessive power consumption above the 10nm Iris Xe voltage wall while maintaining dynamic scaling and full AC performance.
 - Removed unused wallpaper secrets placeholder directory and `.gitignore` exception rules.
 - Fixed wallpaper picker preview shift on apply by guarding `activeWallWatcher` against jumping when the current carousel item already matches the applied wallpaper, extracting clean file names synchronously from state paths, and replacing `ListView.Center` with `ListView.Beginning` to align cleanly with `StrictlyEnforceRange`'s skewed `preferredHighlightBegin`.
