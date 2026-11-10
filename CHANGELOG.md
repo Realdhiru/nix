@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Fixed Sonix FHD internal webcam (`3277:0022`) streaming stability: locked USB runtime power to active with udev rules, excluded camera VID:PID in TLP `USB_DENYLIST`, restored `uvcvideo nodrop=1 quirks=0x80` kernel modprobe options, added `v4l-utils` to system packages, and provided the `cam` testing alias in `modules/home/shell.nix`.
+- Fixed Sonix FHD internal webcam (`3277:0022`) streaming stability: locked USB runtime power to active with udev rules, excluded camera VID:PID in TLP `USB_DENYLIST`, restored `uvcvideo nodrop=1` kernel modprobe options, configured `cam` to stream native YUYV 640x480@30fps, and added `v4l-utils` to system packages.
 - Fixed Bluetooth earbud mode controls in [BudsLink](https://github.com/maniacx/BudsLink) (`budslink-flake`) for OnePlus Nord Buds 3, aligning exact hardware byte commands for Noise Cancellation, Transparency, and Off with direct 3-button switching.
 - Made the `rebuild()` health-check terminal probe silent and non-intrusive by routing the `health-check-probe` Alacritty test window to a hidden special workspace (`special:silent`) with zero opacity and no focus stealing, eliminating visible test window popups while preserving full Wayland GPU hang validation.
 - Packaged and integrated [BudsLink](https://github.com/maniacx/BudsLink) (`~/Projects/flakes/budslink-flake`) for native Bluetooth earbud battery monitoring, Active Noise Cancellation (ANC), Transparency, and gesture control on Linux across multi-brand devices (OnePlus, Sony, Samsung Galaxy Buds, AirPods, Nothing, Bose, Sennheiser).

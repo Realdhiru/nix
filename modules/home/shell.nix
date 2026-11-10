@@ -258,7 +258,7 @@
     '';
 
     shellAliases = {
-      cam = "mpv av://v4l2:/dev/video0 --profile=low-latency --untimed";
+      cam = "mpv av://v4l2:/dev/video0 --demuxer-lavf-o=video_size=640x480,input_format=yuyv422,framerate=30 --profile=low-latency --untimed";
     };
   };
 

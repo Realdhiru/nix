@@ -91,7 +91,7 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
   - The personal `user.power.disableNmiWatchdog` preference controls both `nmi_watchdog=0` and TLP's `NMI_WATCHDOG = 0`; it is enabled to preserve current behavior and is not a battery-only setting.
   - Process packing (`SCHED_POWERSAVE_ON_BAT = 1`) packs background tasks onto fewer cores so unused cores remain asleep.
   - Intel GPU battery frequency settings are emitted only when generated host facts identify Intel graphics and provide supported frequency bounds.
-  - One `user.nix` workaround flag derives both TLP USB autosuspend and `usbcore.autosuspend=-1`, preventing them from drifting apart. Sonix FHD webcam (`3277:0022`) is guarded via TLP `USB_DENYLIST`, udev power/control lock, and `uvcvideo nodrop=1 quirks=0x80`.
+  - One `user.nix` workaround flag derives both TLP USB autosuspend and `usbcore.autosuspend=-1`, preventing them from drifting apart. Sonix FHD webcam (`3277:0022`) is guarded via TLP `USB_DENYLIST`, udev power/control lock, and `uvcvideo nodrop=1`.
   - The Power Saver TLP profile keeps platform profile `balanced` to preserve the intended fan behavior; `power.sh profile` makes no direct ACPI or vendor-CLI writes.
   - Passwordless `tlp` profile/start commands are declared beside the TLP service and only on hosts with a detected battery. Audio recovery keeps its exact modprobe allowlist in `modules/system/users.nix`.
   - Batteryless hosts skip TLP hardware profile calls while keeping compositor profile state and monitor refresh handling available.

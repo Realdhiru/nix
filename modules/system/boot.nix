@@ -24,7 +24,7 @@
   ++ lib.optional user.workarounds.disableUsbAutosuspend "usbcore.autosuspend=-1";
 
   boot.extraModprobeConfig = ''
-    options uvcvideo nodrop=1 quirks=0x80
+    options uvcvideo nodrop=1
   '';
 
   boot.kernelPackages = pkgs.linuxPackages_latest;
