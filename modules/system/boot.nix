@@ -23,6 +23,10 @@
   ++ lib.optional user.power.disableNmiWatchdog "nmi_watchdog=0"
   ++ lib.optional user.workarounds.disableUsbAutosuspend "usbcore.autosuspend=-1";
 
+  boot.extraModprobeConfig = ''
+    options uvcvideo nodrop=1 quirks=0x80
+  '';
+
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernel.sysctl = {
     "kernel.kptr_restrict" = 2;

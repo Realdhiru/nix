@@ -251,12 +251,16 @@ FocusScope {
                 window.isModelChanging = true;
                 localProxyModel.clear();
                 localProxyModel.append(batchAll);
+                window.sortListModel(localProxyModel);
 
                 gifsProxyModel.clear();
                 gifsProxyModel.append(batchGifs);
+                window.sortListModel(gifsProxyModel);
 
                 videosProxyModel.clear();
                 videosProxyModel.append(batchVids);
+                window.sortListModel(videosProxyModel);
+
                 window._localSyncedCount = batchAll.length;
                 window.isModelChanging = false;
 
@@ -493,7 +497,7 @@ FocusScope {
             window.isModelChanging = true;
             view.currentIndex = foundIdx;
             view.forceLayout();
-            view.positionViewAtIndex(foundIdx, ListView.Beginning);
+            view.positionViewAtIndex(foundIdx, ListView.Center);
             window.isModelChanging = false;
         }
     }
@@ -656,15 +660,18 @@ FocusScope {
         } else {
             Quickshell.execDetached(["bash", "-c", "mkdir -p '" + Caching.getRunDir("wallpaper_picker") + "'; touch '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
             window.syncMonitors();
-            window.refreshActiveWallpapers();
             window.isApplying = false;
             window.applyingWallCleanName = "";
             window.centerRetryCount = 0;
             let actPath = window.reloadActiveWallpaperPath();
-            if (actPath && !window.targetWallName) {
+            if (actPath) {
                 let parts = actPath.split("/");
                 let fn = parts[parts.length - 1];
                 if (fn) window.targetWallName = fn;
+            } else if (window.activeWallpaperName) {
+                window.targetWallName = window.activeWallpaperName;
+            } else {
+                window.targetWallName = "";
             }
             let cur = window.getCleanName(window.activeWallpaperName);
             if (cur !== "") window.appliedWallCleanName = cur;
@@ -1199,7 +1206,7 @@ FocusScope {
             }
             view.currentIndex = foundIdx;
             view.forceLayout();
-            view.positionViewAtIndex(foundIdx, ListView.Beginning);
+            view.positionViewAtIndex(foundIdx, ListView.Center);
             window.initialFocusSet = true;
             window.isModelChanging = false;
         } else if (!window.initialFocusSet && window.centerRetryCount < 30) {
@@ -1210,26 +1217,7 @@ FocusScope {
 
     function showWidget() {
         window.centerRetryCount = 0;
-        favFileView.reload();
-        window.syncFavoritesModel();
-        window.processMarkers();
-        if (!window.currentFilter) {
-            window.currentFilter = "All";
-        }
-        let p = window.reloadActiveWallpaperPath();
-        if (p !== "") {
-            let parts = p.split("/");
-            let fname = parts[parts.length - 1];
-            if (fname !== "") {
-                window.targetWallName = fname;
-            }
-        } else if (window.activeWallpaperName !== "") {
-            window.targetWallName = window.activeWallpaperName;
-        }
-        window.initialFocusSet = false;
-        window.applyFilters(true);
         view.forceActiveFocus();
-        centerOnActiveTimer.restart();
     }
 
 
@@ -1248,7 +1236,7 @@ FocusScope {
             view.currentIndex = targetIndex;
             if (requirePositioning && window.visible && view.width > 0) {
                 view.forceLayout();
-                view.positionViewAtIndex(targetIndex, ListView.Beginning);
+                view.positionViewAtIndex(targetIndex, ListView.Center);
                 window.initialFocusSet = true;
             } else if (!requirePositioning) {
                 window.initialFocusSet = true;
@@ -1349,6 +1337,8 @@ FocusScope {
     function getWallpaperCategory(fileName) {
         if (!fileName) return "";
         let fn = String(fileName);
+        if (fn.toLowerCase().endsWith(".gif")) return "gifs";
+        if (window.isVideoFile(fn)) return "videos";
         let clean = window.getCleanName(fn);
         let mapped = window.wallpaperCategoryMap[fn] || window.wallpaperCategoryMap[clean] || "";
         return mapped.toLowerCase();
@@ -1431,7 +1421,7 @@ FocusScope {
             window.currentFilter = "Search";
         }
         view.currentIndex = 0;
-        view.positionViewAtIndex(0, ListView.Beginning);
+        view.positionViewAtIndex(0, ListView.Center);
         window.isModelChanging = false;
         window.searchIndexRestored = true;
         window.isOnlineSearch = true;
@@ -1617,11 +1607,6 @@ FocusScope {
     }
     Shortcut { 
         sequence: "\\"
-        enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
-        onActivated: window.toggleFavoriteCurrentWallpaper()
-    }
-    Shortcut { 
-        sequence: "F"
         enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
         onActivated: window.toggleFavoriteCurrentWallpaper()
     }
@@ -2799,7 +2784,7 @@ FocusScope {
     }
 
     Component.onCompleted: {
-        Quickshell.execDetached(["bash", "-c", "mkdir -p '" + decodeURIComponent(window.searchDir.replace("file://", "")) + "'; mkdir -p '" + Caching.getRunDir("wallpaper_picker") + "'; touch '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'"]);
+        Quickshell.execDetached(["bash", "-c", "mkdir -p '" + decodeURIComponent(window.searchDir.replace("file://", "")) + "'; mkdir -p '" + Caching.getRunDir("wallpaper_picker") + "'; touch '" + Caching.getRunDir("wallpaper_picker") + "/picker_active'; touch '" + Caching.getRunDir("wallpaper_picker") + "/ddg_search_control'"]);
         window.syncMonitors();
         window.refreshActiveWallpapers();
         view.forceActiveFocus();

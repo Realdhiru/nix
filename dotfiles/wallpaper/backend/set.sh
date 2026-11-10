@@ -175,6 +175,12 @@ if [[ "$EXT" =~ ^(mp4|mkv|mov|webm|gif)$ ]]; then
             POSTER_FRAME="$THUMB_DIR/$BASENAME.jpg"
         elif [ -f "$THUMB_DIR/$BASENAME" ]; then
             POSTER_FRAME="$THUMB_DIR/$BASENAME"
+        else
+            # Also search for pre-generated hashed thumbnails (e.g. <hash>_<basename>.jpg)
+            POSTER_FRAME=$(find "$THUMB_DIR" -maxdepth 1 -name "*_${BASENAME}.jpg" -print -quit 2>/dev/null || true)
+            if [ -z "$POSTER_FRAME" ]; then
+                POSTER_FRAME=$(find "$THUMB_DIR" -maxdepth 1 -name "*_${BASENAME}" -print -quit 2>/dev/null || true)
+            fi
         fi
 
         if [ -n "$POSTER_FRAME" ] && command -v awww >/dev/null 2>&1; then

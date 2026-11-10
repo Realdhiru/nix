@@ -34,6 +34,7 @@ in
     python3
     weathr
     util-linux
+    v4l-utils
 
     # Development & Terminal
     tmux

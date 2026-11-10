@@ -90,6 +90,7 @@
   services.udev.extraRules = ''
     KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", TAG+="uaccess", OPTIONS+="static_node=uinput"
     ACTION=="change", SUBSYSTEM=="power_supply", ATTR{online}=="*", RUN+="${pkgs.systemd}/bin/systemctl --no-block --user -M ${user.username}@ restart hypr-refresh-rate.timer"
+    ACTION=="add|change", SUBSYSTEM=="usb", ATTR{idVendor}=="3277", ATTR{idProduct}=="0022", ATTR{power/control}="on", ATTR{power/autosuspend_delay_ms}="-1"
   '';
 
   # Power management.

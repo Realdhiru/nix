@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed Sonix FHD internal webcam (`3277:0022`) streaming stability: locked USB runtime power to active with udev rules, excluded camera VID:PID in TLP `USB_DENYLIST`, restored `uvcvideo nodrop=1 quirks=0x80` kernel modprobe options, added `v4l-utils` to system packages, and provided the `cam` testing alias in `modules/home/shell.nix`.
 - Fixed Bluetooth earbud mode controls in [BudsLink](https://github.com/maniacx/BudsLink) (`budslink-flake`) for OnePlus Nord Buds 3, aligning exact hardware byte commands for Noise Cancellation, Transparency, and Off with direct 3-button switching.
 - Made the `rebuild()` health-check terminal probe silent and non-intrusive by routing the `health-check-probe` Alacritty test window to a hidden special workspace (`special:silent`) with zero opacity and no focus stealing, eliminating visible test window popups while preserving full Wayland GPU hang validation.
 - Packaged and integrated [BudsLink](https://github.com/maniacx/BudsLink) (`~/Projects/flakes/budslink-flake`) for native Bluetooth earbud battery monitoring, Active Noise Cancellation (ANC), Transparency, and gesture control on Linux across multi-brand devices (OnePlus, Sony, Samsung Galaxy Buds, AirPods, Nothing, Bose, Sennheiser).
@@ -15,7 +16,8 @@
 - Fixed `rebuild()` in `modules/home/shell.nix` by guarding `git commit` with `git diff-index --cached`; it no longer aborts when the git working tree has already been cleanly committed.
 - Enabled `user.power.balancedBatteryFirst` in `user.nix` and capped Intel GPU battery frequency / boost to 1100 MHz in `modules/system/power.nix` to prevent excessive power consumption above the 10nm Iris Xe voltage wall while maintaining dynamic scaling and full AC performance.
 - Removed unused wallpaper secrets placeholder directory and `.gitignore` exception rules.
-- Fixed wallpaper picker preview shift on apply by guarding `activeWallWatcher` against jumping when the current carousel item already matches the applied wallpaper, extracting clean file names synchronously from state paths, and replacing `ListView.Center` with `ListView.Beginning` to align cleanly with `StrictlyEnforceRange`'s skewed `preferredHighlightBegin`.
+- Fixed wallpaper picker preview synchronization and widget responsiveness in `WallpaperPicker.qml`: refreshed `targetWallName` directly from active wallpaper state on open, mapped `.gif` and video formats in `getWallpaperCategory()` to prevent model lookup failures, restored `ListView.Center` alignment with `StrictlyEnforceRange`, applied preferred color/type sort order to ingested index data (`sortListModel`), removed dead `awwwQueryProc` calls and duplicate `showWidget()` work on open, and eliminated the conflicting `F` shortcut.
+- Eliminated black/blank screen flashing on video/GIF wallpaper transitions in `dotfiles/wallpaper/backend/set.sh` by extending poster-frame fallback to resolve hashed thumbnail files (`<hash>_<basename>.jpg`) across `awww` and `mpvpaper` handoffs.
 
 - Split Home Manager wallpaper daemons/config and FocusTime service into feature owners; moved refresh environment, desktop-state environment, and the retained WirePlumber camera setting to their matching modules without changing runtime policy.
 - Power Saver now also pauses the TopBar title marquee; recording status pulses stay active.

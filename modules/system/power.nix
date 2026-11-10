@@ -36,6 +36,9 @@ in
 
         NMI_WATCHDOG = if user.power.disableNmiWatchdog then 0 else 1;
         USB_AUTOSUSPEND = if user.workarounds.disableUsbAutosuspend then 0 else 1;
+        USB_DENYLIST = "3277:0022";
+        USB_EXCLUDE_AUDIO = 1;
+        USB_EXCLUDE_BTUSB = 1;
       };
   };
 
