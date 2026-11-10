@@ -7,11 +7,11 @@ local function is_solid_mode()
     if f then
         local content = f:read("*a")
         f:close()
-        if content and content:match('"opacity_solid"%s*:%s*true') then
-            return true
+        if content and #content > 0 then
+            return content:match('"opacity_solid"%s*:%s*true') ~= nil
         end
     end
-    -- Fallback for quickshell state.json
+    -- Fallback for quickshell state.json only if modes.json was absent or empty
     local f_state = io.open(desktop_state .. "/quickshell/state.json", "r")
     if f_state then
         local content = f_state:read("*a")
@@ -58,8 +58,9 @@ if is_solid_mode() then
 end
 
 hl.on("window.open", function(w)
-    if is_solid_mode() and w and w.address then
-        hl.dispatch(hl.dsp.window.set_prop({ window = "address:" .. w.address, prop = "opaque", value = "1" }))
+    if w and w.address then
+        local prop_val = is_solid_mode() and "1" or "unset"
+        hl.dispatch(hl.dsp.window.set_prop({ window = "address:" .. w.address, prop = "opaque", value = prop_val }))
     end
 end)
 

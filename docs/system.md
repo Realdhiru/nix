@@ -47,6 +47,9 @@ Generic technical facts, architecture invariants, and subsystem designs. Machine
   - Managed by `mode_ctl.sh` as the order-independent Single Source of Truth (`$DESKTOP_STATE_DIR/modes/modes.json`).
   - Wallpaper kill turns off wallpaper surfaces and compositor blur/shadow, and sets solid window opacity (`opacity_solid = true`).
   - Restoring recovers transparent window glass and active wallpaper dynamically without `hyprctl reload`.
+  - In `rules.lua`, `is_solid_mode()` strictly trusts `modes.json`, eliminating fallthrough to stale QuickShell state files when `modes.json` is present.
+  - Symmetrical `window.open` hook dispatches `opaque = 1` in Solid Mode and `opaque = unset` in baseline mode, preventing newly mapped windows from inheriting false-solid opacity.
+  - Boot state synchronization (`restore_state.sh`) runs `mode_ctl.sh apply` with `FORCE_APPLY=1` to guarantee active window properties and client configs (`alacritty-colors.toml`) match computed mode state on cold start without state transitions.
 - **Carousel & Keybind Cycling Parity**:
   - Keybind cycler (`cycle_wallpaper.sh`) adheres to the active category filter in `${XDG_STATE_HOME:-$HOME/.local/state}/desktop/quickshell/state.json` (`ui.wallpaperFilter`) with fallback to `picker_filter.txt`, filtering candidates with circular index wrapping.
   - QuickShell `WallpaperPicker.qml` watches `current_wallpaper.txt` via `activeWallWatcher` and `lastWallWatcher`, dynamically keeping the carousel centered on the active wallpaper and switching category filters automatically if external cycling moves outside the current filter.

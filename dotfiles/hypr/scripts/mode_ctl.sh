@@ -274,8 +274,8 @@ recompute_and_apply() {
         fi
     fi
 
-    # 3. Window & terminal opacity update only if opacity_solid changed
-    if [ "$solid_val" != "$old_solid" ]; then
+    # 3. Window & terminal opacity update only if opacity_solid changed (or forced on apply)
+    if [ "${FORCE_APPLY:-0}" = "1" ] || [ "$solid_val" != "$old_solid" ]; then
         if command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
             local prop_val="unset"
             [ "$solid_val" = "true" ] && prop_val="1"
@@ -477,7 +477,7 @@ case "$ACTION" in
 
     apply)
         acquire_lock
-        recompute_and_apply
+        FORCE_APPLY=1 recompute_and_apply
         release_lock
         ;;
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed terminal and window opacity state desync on cold boot ([`rules.lua`](file:///home/realdhiru/nix/dotfiles/hypr/rules.lua), [`mode_ctl.sh`](file:///home/realdhiru/nix/dotfiles/hypr/scripts/mode_ctl.sh)): resolved logic bug in `is_solid_mode()` where `quickshell/state.json` fallback erroneously evaluated when `modes.json` reported non-solid baseline, ensured `hl.on("window.open")` symmetrically applies `opaque = 1` or `opaque = unset` matching the current mode, and added `FORCE_APPLY=1` to `mode_ctl.sh apply` to guarantee compositor window properties and `alacritty-colors.toml` client configs synchronize cleanly on cold boot without requiring a mode toggle.
 - Fixed Sonix FHD internal webcam (`3277:0022`) streaming stability: locked USB runtime power to active with udev rules, excluded camera VID:PID in TLP `USB_DENYLIST`, restored `uvcvideo nodrop=1` kernel modprobe options, configured `cam` to stream native YUYV 640x480@30fps, and added `v4l-utils` to system packages.
 - Fixed Bluetooth earbud mode controls in [BudsLink](https://github.com/maniacx/BudsLink) (`budslink-flake`) for OnePlus Nord Buds 3, aligning exact hardware byte commands for Noise Cancellation, Transparency, and Off with direct 3-button switching.
 - Made the `rebuild()` health-check terminal probe silent and non-intrusive by routing the `health-check-probe` Alacritty test window to a hidden special workspace (`special:silent`) with zero opacity and no focus stealing, eliminating visible test window popups while preserving full Wayland GPU hang validation.
