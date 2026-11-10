@@ -513,20 +513,18 @@ FocusScope {
     Shortcut { sequence: "Home"; enabled: window.visible; onActivated: changeDay(-7) }
     Shortcut { sequence: "End"; enabled: window.visible; onActivated: changeDay(7) }
     
-    // Escape key handling: Only intercepts if we are in a sub-view
-    Shortcut { 
-        sequence: "Escape"
-        context: Qt.ApplicationShortcut
-        enabled: window.visible && (window.selectedAppClass !== "" || window.isWeekView)
-        onActivated: {
-            if (window.selectedAppClass !== "") {
-                window.selectedAppClass = ""; 
-                window.selectedAppName = ""; 
-                window.selectedAppIcon = ""; 
-                window.requestDataUpdate(); 
-            } else if (window.isWeekView) {
-                window.isWeekView = false;
-            }
+    // Escape key handling: intercepts if in a sub-view (app detail or week view)
+    // to step back; otherwise leaves event unaccepted to bubble to Main.qml
+    Keys.onEscapePressed: (event) => {
+        if (window.selectedAppClass !== "") {
+            window.selectedAppClass = ""; 
+            window.selectedAppName = ""; 
+            window.selectedAppIcon = ""; 
+            window.requestDataUpdate(); 
+            event.accepted = true;
+        } else if (window.isWeekView) {
+            window.isWeekView = false;
+            event.accepted = true;
         }
     }
 

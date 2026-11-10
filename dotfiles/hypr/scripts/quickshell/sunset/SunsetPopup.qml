@@ -123,9 +123,6 @@ FocusScope {
         } else if (event.key === Qt.Key_R || event.key === Qt.Key_0) {
             root.resetAll();
             event.accepted = true;
-        } else if (event.key === Qt.Key_Escape) {
-            Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "close"]);
-            event.accepted = true;
         }
     }
 

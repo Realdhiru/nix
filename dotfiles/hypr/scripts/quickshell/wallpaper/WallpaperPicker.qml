@@ -13,6 +13,15 @@ FocusScope {
     width: Screen.width
     height: parent ? parent.height : Screen.height
 
+    Keys.onEscapePressed: (event) => {
+        if (window.currentFilter === "Search") {
+            window.currentFilter = "All";
+            view.forceActiveFocus();
+            event.accepted = true;
+        }
+        // Otherwise event bubbles to Main.qml to close the widget window
+    }
+
     Scaler {
         id: scaler
         currentWidth: Screen.width
@@ -1609,14 +1618,6 @@ FocusScope {
         sequence: "\\"
         enabled: window.visible && !searchInput.activeFocus && !window.isApplying && view.currentIndex >= 0
         onActivated: window.toggleFavoriteCurrentWallpaper()
-    }
-    Shortcut { 
-        sequence: "Escape"
-        enabled: window.visible && !window.isApplying && window.currentFilter === "Search" && !searchInput.activeFocus
-        onActivated: { 
-            window.currentFilter = "All"; 
-            view.forceActiveFocus();
-        } 
     }
     Shortcut { sequence: "Tab"; enabled: window.visible; onActivated: window.cycleFilter(1) }
     Shortcut { sequence: "Backtab"; enabled: window.visible; onActivated: window.cycleFilter(-1) }

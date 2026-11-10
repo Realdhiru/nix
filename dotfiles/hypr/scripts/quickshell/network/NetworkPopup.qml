@@ -11,6 +11,18 @@ FocusScope {
     id: window
     focus: true
 
+    Keys.onEscapePressed: (event) => {
+        if (window.pendingWifiId !== "") {
+            window.pendingWifiId = "";
+            window.pendingWifiSsid = "";
+            event.accepted = true;
+        } else if (window.showInfoView) {
+            window.showInfoView = false;
+            event.accepted = true;
+        }
+        // Otherwise event bubbles to Main.qml to close the window
+    }
+
     property bool isPopupActive: Config.isPopupOpen && Config.activeWidget === "network"
 
     function showWidget() {

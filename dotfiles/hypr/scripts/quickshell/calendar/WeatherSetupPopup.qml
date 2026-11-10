@@ -14,6 +14,14 @@ FocusScope {
     width: layoutWidth
     height: layoutHeight
 
+    Keys.onEscapePressed: (event) => {
+        if (searchResultsList.visible) {
+            searchResultsList.visible = false;
+            event.accepted = true;
+        }
+        // Otherwise event bubbles to Main.qml to close the window
+    }
+
     Scaler {
         id: scaler
         currentWidth: Screen.width
@@ -152,6 +160,19 @@ FocusScope {
                     }
                     leftPadding: s(15)
                     rightPadding: s(15)
+
+                    Keys.onEscapePressed: (event) => {
+                        if (searchResultsList.visible) {
+                            searchResultsList.visible = false;
+                            event.accepted = true;
+                        } else if (text !== "") {
+                            text = "";
+                            event.accepted = true;
+                        } else {
+                            focus = false;
+                            window.forceActiveFocus();
+                        }
+                    }
 
                     Timer {
                         id: searchDebouncer
